@@ -75,6 +75,19 @@ class ContainerRunner:
             return {k: s.endpoint for k, s in self._slots.items()}
 
     def _acquire_slot(self, spec: ModuleSpec, store: Path) -> _Slot:
+        """Return a slot with `busy` ALREADY incremented. The caller must
+        decrement it.
+
+        Marking it here rather than in `run()` is not tidiness. `_acquire_slot`
+        holds the lock while it spawns, so a concurrent `reap_idle()` queues on
+        that lock and acquires it the instant this returns -- before the caller
+        can take the lock again to mark the slot busy. It would then find a slot
+        with `busy == 0` and an `idle_s` measured from a `last_used` that no job
+        has advanced yet, and stop the server out from under a job that is about
+        to start. That window is microseconds wide and lost 2 runs in 3, because
+        lock handoff makes the waiting reaper the likely winner rather than an
+        unlikely one.
+        """
         key = self._key(spec)
 
         with self._lock:
@@ -82,6 +95,7 @@ class ContainerRunner:
             if slot is not None:
                 if self.backend.is_alive(slot.endpoint):
                     slot.endpoint.touch()
+                    slot.busy += 1
                     return slot
                 # Died between jobs -- drop it and start clean rather than
                 # surfacing a connection error as a module failure.
@@ -108,7 +122,7 @@ class ContainerRunner:
                     self.gpus.release(lease)
                 raise
 
-            slot = _Slot(endpoint=endpoint, lease=lease)
+            slot = _Slot(endpoint=endpoint, lease=lease, busy=1)
             self._slots[key] = slot
             return slot
 
@@ -172,25 +186,22 @@ class ContainerRunner:
 
     def run(self, job: Job, store: ArtifactStore) -> dict[str, Artifact]:
         spec = job.spec
-        slot = self._acquire_slot(spec, store.root)
-        job_id = f"job_{uuid.uuid4().hex[:12]}"
-
-        request = {
-            "job_id": job_id,
-            "module": spec.name,
-            "module_version": spec.version,
-            "image": spec.image,
-            "run": job.run,
-            "scene": job.scene,
-            "inputs": {slot_name: art.id for slot_name, art in job.inputs.items()},
-            "params": job.params,
-            "output_types": spec.output_types,
-            "device": str(slot.lease.device) if slot.lease else None,
-        }
-
-        with self._lock:
-            slot.busy += 1
+        slot = self._acquire_slot(spec, store.root)  # returns it already busy
         try:
+            job_id = f"job_{uuid.uuid4().hex[:12]}"
+            request = {
+                "job_id": job_id,
+                "module": spec.name,
+                "module_version": spec.version,
+                "image": spec.image,
+                "run": job.run,
+                "scene": job.scene,
+                "inputs": {name: art.id for name, art in job.inputs.items()},
+                "params": job.params,
+                "output_types": spec.output_types,
+                "device": str(slot.lease.device) if slot.lease else None,
+            }
+
             try:
                 http_post(f"{slot.endpoint.url}/run", request)
             except BackendError as e:

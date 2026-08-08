@@ -1,0 +1,254 @@
+name: FeatureMatchNN
+version: 1.0.0
+kind: matching
+summary: >
+  Descriptor nearest-neighbour matching with Lowe's ratio test, a mutual
+  consistency check, and RANSAC geometric verification. CPU-only baseline.
+
+description: |
+  The classical matcher: brute-force nearest neighbour in descriptor space,
+  filtered by the ratio test, optionally required to agree in both directions,
+  then verified against a two-view geometric model with MAGSAC.
+
+  It is the baseline every learned matcher is measured against, and it is the
+  right first call on a calibrated, well-textured, well-lit set. It is also the
+  only matcher here that needs no weights and no GPU, so it is what you reach for
+  when you want to know whether a problem is in the matcher or somewhere else.
+
+  Two things it does that the predecessor did not:
+
+  Pairing is a parameter. The predecessor matched image i to image i+1 and
+  nothing else, which silently caps every track at the length of an unbroken
+  consecutive chain and gives loop closures no way to appear. `pairing` and
+  `window` here decide the view graph, and the graph is reported as a metric --
+  `graph_components` above 1 means the reconstruction will come out in pieces
+  however good the matches are.
+
+  Degeneracy is measured, not assumed. Every verified pair is also fitted with a
+  homography, and the ratio of the two inlier counts is reported as `planarity`.
+  A pair that a homography explains as well as a fundamental matrix is either
+  planar or pure rotation, and triangulating it produces confident nonsense. That
+  is the failure the predecessor's `RANSAC_homography` flag asked the user to
+  predict in advance; here it is observed per pair after the fact.
+
+image: sfmstack/match-nn:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 8
+  # Hint for ~40 images, 4096 keypoints, sequential pairing with window 1.
+  # Cost is (pairs x keypoints^2), so `exhaustive` on 40 images is ~40x this and
+  # doubling max_keypoints upstream is ~4x. The service refines the estimate from
+  # observed runs; this only has to cover the cold start.
+  expected_duration_s: 90
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  features: {type: features/v1, required: true}
+
+produces:
+  matches: {type: pairwise_matches/v1}
+
+params:
+  pairing:
+    type: string
+    default: sequential
+    enum: [sequential, exhaustive]
+    description: Which image pairs to match.
+    tuning: >
+      `sequential` with window 1 is the cheapest thing that works on video or an
+      ordered capture. Raise `window` before switching to `exhaustive`: window 2-3
+      buys most of the track-length benefit at a fraction of the cost. Use
+      `exhaustive` for unordered photo collections, for orbital captures that
+      close a loop, and whenever `graph_components` comes out above 1.
+
+  window:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: "For `pairing: sequential`, match each image to the next `window` images."
+    tuning: >
+      The single largest lever on track length. Going 1 -> 3 typically lifts
+      avg_track_length by more than any ratio_test change will, because a track
+      can only span frames that are linked in the view graph. Cost grows linearly.
+
+  ratio_test:
+    type: number
+    default: 0.8
+    minimum: 0.5
+    maximum: 1.0
+    description: >
+      Lowe's ratio. A match is kept when the best descriptor distance is below
+      this fraction of the second best. Lower keeps fewer, cleaner matches.
+
+    tuning: >
+      0.8 is Lowe's value and is the right default for SIFT. Lower it to 0.7 when
+      inlier_ratio is poor and the scene has repeated structure -- the ratio test
+      is precisely the filter that repetition defeats. Raise it to 0.9 only when
+      matches are scarce AND geometric verification is left on to catch the
+      resulting false positives. Setting it to 1.0 disables the test.
+
+  mutual:
+    type: boolean
+    default: true
+    description: Require i->j and j->i to agree before keeping a match.
+    tuning: >
+      Leave on. It costs a second matching pass and removes the many-to-one
+      matches that the ratio test alone lets through, which are the ones that
+      merge two distinct scene points into one track. Turn it off only to
+      diagnose whether the mutual check is what is starving a pair.
+
+  geometric_model:
+    type: string
+    default: fundamental
+    enum: [fundamental, homography, none]
+    description: Two-view model used to reject outliers.
+    tuning: >
+      `fundamental` for anything with depth variation, which is nearly everything.
+      `homography` only for a genuinely planar target or a pure-rotation capture --
+      check the `planarity` metric rather than guessing. `none` keeps raw matches
+      and is a diagnostic setting: if inlier_ratio was low, comparing against
+      `none` tells you whether verification is discarding good matches or the
+      matcher never produced any.
+
+  ransac_threshold:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Inlier distance in pixels of the WORKING resolution.
+    tuning: >
+      Scale it with the resize the scene actually used, not with the source
+      images. 3px at max_edge 1600 is roughly 1px at max_edge 500. Raise it when
+      inlier_ratio is low on a scene you believe is correct -- heavy downscaling
+      and soft optics both move real correspondences further off the epipolar
+      line than the default allows.
+
+  ransac_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: Confidence the estimated model is correct.
+
+  min_matches:
+    type: integer
+    default: 15
+    minimum: 8
+    maximum: 1000
+    description: Pairs with fewer verified matches are dropped from the view graph.
+    tuning: >
+      Below 8 a fundamental matrix cannot be estimated at all. 15 is a permissive
+      floor that keeps weak-but-real links; raise it toward 50 when the tracker
+      reports a high conflict rate, since thin pairs are where wrong matches enter.
+
+  measure_planarity:
+    type: boolean
+    default: true
+    description: Also fit a homography per pair to detect degenerate geometry.
+    tuning: >
+      Leave on. It adds one RANSAC per pair -- small next to the matching itself --
+      and it is the only warning you get before a planar or rotation-only pair
+      produces a confident but meaningless triangulation downstream.
+
+metrics:
+  pairs_matched:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: Pairs that survived min_matches. Zero means nothing downstream can run.
+
+  matches_per_pair:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: >
+      Mean verified matches on surviving pairs. Below ~100 pose estimation gets
+      noisy; below ~30 it is unreliable however good the inlier ratio looks.
+
+  min_matches_per_pair:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: >
+      The weakest surviving link. Tracks can only cross the view graph through
+      its thinnest edge, so this bounds what the whole set can achieve.
+
+  inlier_ratio:
+    direction: higher_better
+    healthy: [0.5, null]
+    meaning: >
+      Verified matches over raw matches, averaged across pairs. The primary
+      health signal. Below 0.3 the descriptor matches largely disagree with any
+      single two-view geometry -- usually repetition, motion blur, or a genuinely
+      wrong pairing.
+
+  graph_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Connected components of the view graph over surviving pairs. Anything above
+      1 means the images split into groups with no correspondence between them,
+      and reconstruction will produce that many disconnected models.
+
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of images in the biggest component. What one model can cover.
+
+  weak_pairs:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: Pairs dropped for falling under min_matches.
+
+  planarity:
+    direction: neutral
+    meaning: >
+      Mean over pairs of homography inliers / fundamental inliers. Near 1.0 means
+      a homography explains the pair as well as epipolar geometry does, i.e. the
+      pair is planar or pure rotation and triangulation is ill-conditioned. Near
+      0.5 or below is healthy general 3D structure.
+
+diagnostics:
+  - code: broken_chain
+    severity: error
+    message: The view graph is disconnected; reconstruction will come out in pieces.
+    suggested_actions:
+      - "Raise `window`, or switch to `pairing: exhaustive` to find the missing links."
+      - Lower min_matches if the dropped pairs were merely thin rather than wrong.
+      - Check whether the scene genuinely contains two disjoint captures.
+    see_also: tuning.md#graph_components-above-1
+
+  - code: low_inlier_ratio
+    severity: warn
+    message: Most descriptor matches disagree with any two-view geometry.
+    suggested_actions:
+      - Lower ratio_test toward 0.7 if the scene has repeated structure.
+      - Raise ransac_threshold if the scene was heavily downscaled.
+      - Consider a learned matcher; see limitations.md.
+    see_also: tuning.md#inlier_ratio-below-03
+
+  - code: sparse_matches
+    severity: warn
+    message: Surviving pairs carry too few matches for stable pose estimation.
+    suggested_actions:
+      - Raise the detector's max_keypoints, or lower its contrast_threshold.
+      - Raise ratio_test toward 0.9, keeping geometric verification on.
+    see_also: tuning.md#matches_per_pair-below-100
+
+  - code: degenerate_geometry
+    severity: warn
+    message: A homography explains these pairs as well as epipolar geometry does.
+    suggested_actions:
+      - Widen the baseline -- raise `window` so pairs are further apart.
+      - Expect triangulation to be ill-conditioned on the affected pairs.
+      - If the target really is planar, this is not an SfM problem.
+    see_also: limitations.md#planar-and-rotation-only-captures
+
+  - code: no_pairs
+    severity: error
+    message: No image pair produced enough verified matches to keep.
+    suggested_actions:
+      - Check the detector's keypoints_min; a starved frame breaks every pair it is in.
+      - Run with geometric_model=none to see whether verification is what is rejecting.
+      - "Check the scene ordering: `pairing: sequential` assumes the images are ordered."
+    see_also: limitations.md#when-nn-matching-simply-fails

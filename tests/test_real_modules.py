@@ -33,7 +33,12 @@ def load_dtu(orch, **overrides):
 
 
 def test_real_modules_register(registry):
-    assert {"SceneLoader", "FeatureDetectionSIFT"} <= set(registry.names())
+    assert {
+        "SceneLoader",
+        "FeatureDetectionSIFT",
+        "FeatureMatchNN",
+        "FeatureTrackUnionFind",
+    } <= set(registry.names())
 
 
 def test_every_metric_named_in_a_manifest_is_documented(registry):
@@ -57,7 +62,9 @@ def test_every_diagnostic_points_into_the_skills(registry):
 
 
 def test_curated_skills_are_present(registry):
-    for name in ("SceneLoader", "FeatureDetectionSIFT"):
+    """Every module, not a hardcoded list -- a new module with stub skills is
+    exactly what this is meant to catch."""
+    for name in registry.names():
         spec = registry.get(name)
         assert set(spec.describe()["available_skills"]) >= {
             "SKILL",

@@ -6,9 +6,11 @@ covered hermetically in packages/sfmorch/tests/test_server.py; what is proven
 *here* is the part that only Docker can prove -- that the modules are genuinely
 isolated from one another and still interoperate.
 
-    docker build -t sfmstack/runtime:1.0      -f docker/runtime/Dockerfile .
-    docker build -t sfmstack/scene-loader:1.0.0 -f modules/scene_loader/Dockerfile .
-    docker build -t sfmstack/feature-sift:1.0.0 -f modules/feature_sift/Dockerfile .
+    docker build -t sfmstack/runtime:1.0            -f docker/runtime/Dockerfile .
+    docker build -t sfmstack/scene-loader:1.0.0     -f modules/scene_loader/Dockerfile .
+    docker build -t sfmstack/feature-sift:1.0.0     -f modules/feature_sift/Dockerfile .
+    docker build -t sfmstack/match-nn:1.0.0         -f modules/match_nn/Dockerfile .
+    docker build -t sfmstack/track-union-find:1.0.0 -f modules/track_union_find/Dockerfile .
 """
 
 import shutil
@@ -20,7 +22,12 @@ from sfmkit import ArtifactStore
 from dataset_paths import DTU_CALIB, DTU_SCAN1, needs_dtu
 from sfmorch import ContainerRunner, DockerBackend, GpuBroker, Orchestrator
 
-IMAGES = ("sfmstack/scene-loader:1.0.0", "sfmstack/feature-sift:1.0.0")
+IMAGES = (
+    "sfmstack/scene-loader:1.0.0",
+    "sfmstack/feature-sift:1.0.0",
+    "sfmstack/match-nn:1.0.0",
+    "sfmstack/track-union-find:1.0.0",
+)
 
 
 def _images_built() -> bool:
@@ -65,10 +72,15 @@ def orch(tmp_path, registry, runner):
 def test_modules_do_not_share_dependencies(orch):
     """The claim the whole architecture rests on. SceneLoader has Pillow and no
     OpenCV; SIFT has OpenCV and no Pillow. Neither could run in the other's
-    image, and they still compose."""
+    image, and they still compose.
+
+    The tracker has neither, which is the cheaper half of the same claim: a
+    module that needs nothing beyond sfmkit pays for nothing beyond sfmkit."""
     for image, present, absent in (
         ("sfmstack/scene-loader:1.0.0", "PIL", "cv2"),
         ("sfmstack/feature-sift:1.0.0", "cv2", "PIL"),
+        ("sfmstack/match-nn:1.0.0", "cv2", "PIL"),
+        ("sfmstack/track-union-find:1.0.0", "numpy", "cv2"),
     ):
         probe = subprocess.run(
             ["docker", "run", "--rm", "--entrypoint", "python", image, "-c",
@@ -99,6 +111,48 @@ def test_a_real_pipeline_runs_across_two_containers(orch):
     assert feats.type == "features/v1"
     assert feats.load("descriptors", "desc").shape[1] == 128
     assert feats.manifest.inputs == [scene.id]
+
+
+def test_the_whole_chain_runs_across_four_containers(orch, runner):
+    """scene -> features -> pairs -> tracks, each stage in its own image with its
+    own dependencies, sharing only the mounted store.
+
+    `sampling: head` matters here. Uniformly sampling 6 of scan1's 49 images
+    takes every eighth frame, and SIFT cannot bridge those baselines even with
+    exhaustive pairing -- it yields 3 components and no track reaching a third
+    view. Six contiguous frames connect completely."""
+    scene = orch.run("SceneLoader", run_id="chain", params={
+        "image_dir": str(DTU_SCAN1),
+        "calibration_path": str(DTU_CALIB),
+        "max_images": 6,
+        "sampling": "head",
+        "resize": "auto",
+        "max_edge": 800,
+    }).primary
+    feats = orch.run(
+        "FeatureDetectionSIFT", run_id="chain",
+        inputs={"scene": scene.id}, params={"max_keypoints": 2048},
+    ).primary
+    matches = orch.run(
+        "FeatureMatchNN", run_id="chain",
+        inputs={"scene": scene.id, "features": feats.id},
+        params={"pairing": "exhaustive"},
+    ).primary
+    tracks = orch.run(
+        "FeatureTrackUnionFind", run_id="chain",
+        inputs={"scene": scene.id, "matches": matches.id},
+    ).primary
+
+    assert matches.metric("graph_components") == 1
+    assert matches.metric("pairs_matched") == 15  # every pair of 6 survived
+    assert tracks.metric("track_count") > 1000
+    assert tracks.metric("long_track_fraction") > 0.3
+    assert tracks.manifest.inputs == [scene.id, matches.id]
+
+    # Four distinct containers, one per module, all still alive and reusable.
+    endpoints = runner.endpoints()
+    assert len(endpoints) == 4
+    assert len({e.handle for e in endpoints.values()}) == 4
 
 
 def test_the_artifact_crosses_the_container_boundary_intact(orch):

@@ -22,22 +22,27 @@ Early. Build order and progress:
 | 7a | First real modules: `SceneLoader`, `FeatureDetectionSIFT`, with curated skills | **done** |
 | 5 | Containerize: `sfm-runtime` base, per-module images, module server, GPU broker | **done** |
 | 6 | MCP server over the orchestrator | **done** |
-| 7 | Remaining pilot modules + first driven session | next |
+| 7b | `FeatureMatchNN`, `FeatureTrackUnionFind` — scene → features → pairs → tracks | **done** |
+| 7c | A learned matcher (first GPU module) + first driven session | next |
 | 8 | Port the remaining 19 modules | |
 
-208 tests, including a real two-container pipeline over DTU data.
+226 tests, including the full four-container pipeline over DTU data.
 `.venv/bin/python -m pytest -q`
 
 ## Containers
 
 Every module gets its own image, even where two would be identical. All of them
-build `FROM sfmstack/runtime`, so Docker stores the shared layers once — three
-images here cost 415 MB + 21 MB + 179 MB of unique disk, not 415 + 436 + 594.
+build `FROM sfmstack/runtime`, so Docker stores the shared layers once. Five
+images here cost 415 MB of base plus 21 MB (Pillow) and 179 MB (OpenCV) of unique
+layers — the two OpenCV modules share one copy, and the tracker needs nothing
+beyond `sfmkit` so its image *is* the base.
 
 ```bash
-docker build -t sfmstack/runtime:1.0        -f docker/runtime/Dockerfile .
-docker build -t sfmstack/scene-loader:1.0.0 -f modules/scene_loader/Dockerfile .
-docker build -t sfmstack/feature-sift:1.0.0 -f modules/feature_sift/Dockerfile .
+docker build -t sfmstack/runtime:1.0            -f docker/runtime/Dockerfile .
+docker build -t sfmstack/scene-loader:1.0.0     -f modules/scene_loader/Dockerfile .
+docker build -t sfmstack/feature-sift:1.0.0     -f modules/feature_sift/Dockerfile .
+docker build -t sfmstack/match-nn:1.0.0         -f modules/match_nn/Dockerfile .
+docker build -t sfmstack/track-union-find:1.0.0 -f modules/track_union_find/Dockerfile .
 ```
 
 ```python
@@ -173,10 +178,10 @@ drift apart.
 ```python
 orch = Orchestrator(store=ArtifactStore("store"), registry=registry)
 
-scene  = orch.run("MakeScene",   run_id="r1", params={"n_images": 6}).primary
-feats  = orch.run("SIFT",        run_id="r1", inputs={"scene": scene.id}).primary
-pairs  = orch.run("LightGlue",   run_id="r1", inputs={"scene": scene.id, "features": feats.id}).primary
-tracks = orch.run("UnionFind",   run_id="r1", inputs={"scene": scene.id, "pairs": pairs.id}).primary
+scene  = orch.run("SceneLoader",           run_id="r1", params={"image_dir": ...}).primary
+feats  = orch.run("FeatureDetectionSIFT",  run_id="r1", inputs={"scene": scene.id}).primary
+pairs  = orch.run("FeatureMatchNN",        run_id="r1", inputs={"scene": scene.id, "features": feats.id}).primary
+tracks = orch.run("FeatureTrackUnionFind", run_id="r1", inputs={"scene": scene.id, "matches": pairs.id}).primary
 ```
 
 The orchestrator refuses a step whose input types do not match **before** running

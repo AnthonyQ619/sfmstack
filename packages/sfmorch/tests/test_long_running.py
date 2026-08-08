@@ -212,6 +212,35 @@ def test_a_busy_server_is_never_reaped(registry, store):
         runner.shutdown()
 
 
+def test_a_slot_is_busy_the_moment_it_is_acquired(registry, store):
+    """The deterministic half of the test above.
+
+    `_acquire_slot` holds the pool lock while it spawns, so a `reap_idle()`
+    waiting on that lock runs the instant it returns -- before the caller can
+    mark the slot busy. Marking it inside the lock is what closes the window;
+    leaving it to the caller lost 2 runs in 3, because lock handoff makes the
+    waiting reaper the likely winner rather than an unlikely one.
+
+    Asserted directly rather than through a race, so a regression fails every
+    time instead of two times in three.
+    """
+    backend = SubprocessBackend()
+    runner = ContainerRunner(backend, gpus=GpuBroker(devices=[]), idle_ttl=0.0)
+    try:
+        slot = runner._acquire_slot(registry.get("SlowModule"), store.root)
+        assert slot.busy == 1
+
+        time.sleep(0.05)  # comfortably past a zero TTL
+        assert runner.reap_idle() == []
+        assert runner.endpoints()
+
+        # And it becomes reapable again once the caller is done with it.
+        slot.busy -= 1
+        assert runner.reap_idle() == ["SlowModule@1.0.0"]
+    finally:
+        runner.shutdown()
+
+
 def test_an_idle_server_is_still_reaped_once_the_job_finishes(registry, store):
     backend = SubprocessBackend()
     runner = ContainerRunner(backend, gpus=GpuBroker(devices=[]), idle_ttl=0.0)

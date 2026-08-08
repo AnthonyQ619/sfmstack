@@ -1,0 +1,185 @@
+name: FeatureTrackUnionFind
+version: 1.0.0
+kind: tracking
+summary: >
+  Chains pairwise correspondences into multi-view tracks by union-find, detecting
+  and handling tracks that contradict themselves. Pure numpy, no GPU, no weights.
+
+description: |
+  Two-view matches say nothing about the third view. This merges them: two
+  correspondences that share an endpoint belong to the same scene point, so a
+  disjoint-set pass over all matches recovers multi-view tracks from a view graph
+  of pairs.
+
+  Detector-based input carries `feature_index`, and merging is exact -- two
+  matches share a node when they cite the same keypoint. Detector-free input
+  (LoFTR, RoMa) has no keypoint table to cite, so endpoints are merged by
+  proximity within each frame instead, controlled by `merge_eps_px`. Both routes
+  produce the same tracks/v1, which is what lets the driving agent swap matchers
+  without touching anything downstream.
+
+  The interesting part is what happens when a merged group contains two DIFFERENT
+  keypoints in the same image. That track is self-contradictory: the same scene
+  point cannot project to two places in one view, so at least one of the matches
+  that built it is wrong. The predecessor resolved this by letting the last write
+  win, silently, which puts a wrong observation into bundle adjustment and
+  reports nothing. Here it is counted (`inconsistent_rate`) and handled by an
+  explicit policy (`on_conflict`).
+
+  That metric mostly reads UPSTREAM. A high conflict rate is rarely fixable in
+  this module -- it means the matcher is producing contradictory correspondences,
+  and the useful response is to tighten the matcher or replace it.
+
+image: sfmstack/track-union-find:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 8
+  # Hint for ~40 images, sequential pairing, a few hundred thousand matches. Cost
+  # is roughly linear in total match count, so `exhaustive` upstream dominates it.
+  expected_duration_s: 20
+  timeout_s: 1800
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  matches: {type: pairwise_matches/v1, required: true}
+
+produces:
+  tracks: {type: tracks/v1}
+
+params:
+  min_track_len:
+    type: integer
+    default: 2
+    minimum: 2
+    maximum: 50
+    description: Minimum observations for a track to be kept.
+    tuning: >
+      Raising this improves avg_track_length by deleting short tracks while
+      making the underlying problem worse, so never read the mean without
+      track_count beside it. 2 keeps every two-view correspondence, which
+      triangulation can use but which contributes no multi-view constraint; 3 is
+      the honest floor if you want tracks that actually rigidify the solution.
+      Prefer raising the matcher's `window` -- that creates long tracks rather
+      than filtering for them.
+
+  on_conflict:
+    type: string
+    default: drop
+    enum: [drop, first]
+    description: What to do with a track observed twice in the same image.
+    tuning: >
+      `drop` discards the whole track and is correct when you care about the
+      solution: a contradictory track means one of its matches is wrong, and you
+      cannot tell which. `first` keeps the earliest observation per frame and
+      salvages the rest of the track -- use it only when track_count is so low
+      that reconstruction cannot start, and treat it as evidence the matcher
+      needs attention rather than as a fix.
+
+  merge_eps_px:
+    type: number
+    default: 1.5
+    minimum: 0.0
+    maximum: 20.0
+    description: >
+      Detector-free input only. Grid size for merging endpoints in the same
+      frame; points within half of it always merge, points up to ~1.4x it apart
+      may. See artifact.md#how-nodes-are-formed.
+    tuning: >
+      Ignored entirely when the matches carry feature_index. For dense matchers,
+      too small fragments one scene point into several short tracks (low
+      avg_track_length, high track_count); too large fuses neighbouring points
+      and shows up as a rising inconsistent_rate. 1-2px suits a 1600px working
+      resolution; scale it with the resize the scene actually used.
+
+metrics:
+  track_count:
+    direction: higher_better
+    healthy: [200, null]
+    meaning: >
+      Tracks surviving min_track_len and the conflict policy. Incremental SfM
+      needs hundreds to seed reliably; below ~50 it will not start.
+
+  avg_track_length:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: >
+      Mean observations per track. 2.0 means nothing merged across more than one
+      pair, so the view graph, not the matcher, is what is limiting you.
+
+  long_track_fraction:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: >
+      Fraction of tracks seen in 3+ views. These are the only tracks that
+      constrain relative pose beyond a single pair, so this matters more than the
+      mean -- a set can have a healthy mean and still be mostly two-view.
+
+  max_track_length:
+    direction: neutral
+    meaning: >
+      Longest surviving track. Approaching the image count on a sequential
+      capture usually means real loop closure; exceeding what the view graph can
+      support means over-merging.
+
+  min_frame_observations:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: >
+      Observations in the weakest frame. A frame below ~50 will fail to register
+      and drop out of the reconstruction, regardless of the totals.
+
+  frames_covered:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of scene images carrying at least one observation.
+
+  inconsistent_rate:
+    direction: lower_better
+    healthy: [null, 0.05]
+    meaning: >
+      Fraction of merged groups that were observed twice in the same image, i.e.
+      built from contradictory matches. Reads upstream: above ~0.1 the matcher is
+      the problem, not this module.
+
+diagnostics:
+  - code: too_few_tracks
+    severity: error
+    message: Too few tracks survived for reconstruction to start.
+    suggested_actions:
+      - Raise the matcher's window so more pairs link, before touching anything here.
+      - Raise the detector's max_keypoints.
+      - Lower min_track_len to 2 if it was raised.
+    see_also: tuning.md#track_count-below-200
+
+  - code: mostly_two_view
+    severity: warn
+    message: Tracks rarely reach a third view; the view graph is the constraint.
+    suggested_actions:
+      - "Raise the matcher's window, or switch it to pairing: exhaustive."
+      - Check the matcher's graph_components -- a chain of isolated pairs cannot merge.
+    see_also: tuning.md#long_track_fraction-below-03
+
+  - code: high_conflict_rate
+    severity: warn
+    message: Many tracks were observed twice in the same image; matches contradict.
+    suggested_actions:
+      - Lower the matcher's ratio_test toward 0.7.
+      - Ensure the matcher's mutual check is on; without it many-to-one matches fuse points.
+      - Consider a learned matcher on repetitive scenes; see limitations.md.
+    see_also: limitations.md#contradictory-tracks-come-from-the-matcher
+
+  - code: weak_frames
+    severity: warn
+    message: At least one frame carries too few observations to register.
+    suggested_actions:
+      - Check the detector's keypoints_min for that frame.
+      - Raise the matcher's window so the frame links to more neighbours.
+    see_also: tuning.md#min_frame_observations-below-50
+
+  - code: unmergeable_input
+    severity: error
+    message: Detector-free matches with merge_eps_px 0 cannot be merged across pairs.
+    suggested_actions:
+      - Raise merge_eps_px to 1-2px for a 1600px working resolution.
+    see_also: artifact.md#how-nodes-are-formed
