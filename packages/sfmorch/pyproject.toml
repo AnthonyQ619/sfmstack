@@ -14,7 +14,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+# The MCP server is one entry point among several, so the SDK is optional and
+# imported lazily inside build_server(). sfmorch stays usable as a library
+# without it.
+mcp = ["mcp>=2.0"]
+dev = ["pytest>=7", "mcp>=2.0"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

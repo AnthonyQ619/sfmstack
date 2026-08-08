@@ -21,11 +21,11 @@ Early. Build order and progress:
 | 4 | `sfmorch` — module registry, type checking, run DAG, replay, lineage | **done** |
 | 7a | First real modules: `SceneLoader`, `FeatureDetectionSIFT`, with curated skills | **done** |
 | 5 | Containerize: `sfm-runtime` base, per-module images, module server, GPU broker | **done** |
-| 6 | MCP server over the orchestrator | next |
-| 7 | Remaining pilot modules + first driven session | |
+| 6 | MCP server over the orchestrator | **done** |
+| 7 | Remaining pilot modules + first driven session | next |
 | 8 | Port the remaining 19 modules | |
 
-162 tests, including a real two-container pipeline over DTU data.
+196 tests, including a real two-container pipeline over DTU data.
 `.venv/bin/python -m pytest -q`
 
 ## Containers
@@ -187,3 +187,50 @@ tests skip cleanly when a module's dependencies or its dataset are absent.
 depend on anything else. It is installed into every module container, so each
 dependency it takes is forced on modules pinning torch 2.6+cu124 *and* modules
 pinning torch 2.11. See the note in `packages/sfmkit/pyproject.toml`.
+
+## Driving it over MCP
+
+```bash
+.venv/bin/python -m sfmorch.mcp_server \
+    --modules ./modules --store ./store --skills ./skills \
+    --docker --mount /home/anthonyq/datasets
+```
+
+Seventeen tools in five categories — discovery, execution, inspection,
+knowledge, authoring. **The count does not grow with the module count.** Modules
+are discovered through `sfm_list_modules` / `sfm_describe_module`, never
+enumerated as tools, so the surface is the same at two modules and at two
+hundred.
+
+What that looks like in practice:
+
+```
+sfm_run(SceneLoader, {image_dir: .../DTU/scan1, max_edge: 1024})
+  → {n_images: 6, downscale_factor: 0.64, ...}
+
+sfm_run(FeatureDetectionSIFT, {max_keypoints: 512})
+  → {keypoints_per_image: 512.3, saturation: 1.0, spatial_coverage: 0.602}
+    [info] cap_binding → tuning.md#saturation-near-10
+
+sfm_module_skill(FeatureDetectionSIFT, "tuning")
+  → "## saturation near 1.0 — the cap is what limits detection, not the image
+     content. Gradient: max_keypoints ×2 ..."
+
+sfm_run(FeatureDetectionSIFT, {max_keypoints: 8192})
+  → {keypoints_per_image: 3564.2, saturation: 0.0, spatial_coverage: 0.799}
+
+sfm_compare([low, high])
+  → FeatureDetectionSIFT (features/v1): max_keypoints 512 -> 8192
+```
+
+Metrics arrive with `direction` and a `healthy` band, so whether a number is good
+is in the response rather than in the caller's head. A diagnostic's `see_also`
+names the exact curated section that addresses it. When tuning bottoms out,
+`sfm_module_skill(name, "limitations")` gives a failure signature and a
+capability query, and `sfm_find_alternatives` runs that query against the live
+registry — which is why escapes are written as queries and never as module names.
+
+New modules come from `sfm_scaffold_module` → implement the adapter →
+`sfm_build_module` → `sfm_smoke_test`. The scaffolded adapter raises until
+implemented: a stub that silently produces an empty artifact looks like a
+successful reconstruction, which is worse than a refusal.
