@@ -1,0 +1,34 @@
+---
+module: FeatureDetectionSIFT
+module_version: 1.0.0
+upstream: OpenCV 5.x cv2.SIFT_create
+curated_at: 2026-08-08
+sources: 4
+---
+
+Classical scale- and rotation-invariant keypoint detection with RootSIFT
+descriptors. CPU-only, deterministic, no weights to download, seconds per image.
+
+**Use when** the scene is well lit and genuinely textured — building facades with
+real surface detail, cluttered tabletops, textured objects on a turntable — and
+especially when the capture has wide baselines or large rotations, which SIFT
+handles by construction.
+
+**Prefer something else when** the scene is low-texture, repetitive, or
+photometrically unstable across frames. SIFT does not fail loudly there: it
+produces confident matches on repeated structure that survive ratio-test
+filtering and quietly poison tracks two stages downstream. See
+[limitations](limitations.md).
+
+**Deterministic**, so re-running with identical parameters is a cache hit, and
+comparing two parameter settings is a clean A/B with no seed noise.
+
+**Cheapest thing that usually works:** leave everything at defaults and set
+`max_keypoints` from what downstream needs — 4096 for a first look, 8192+ once
+you know track survival is the binding constraint. If keypoint counts are low at
+the default cap, the contrast filter is binding rather than the cap, and
+`contrast_threshold` is the knob. See [tuning](tuning.md).
+
+**Reading the output:** [artifact.md](artifact.md). Note that `keypoints_min`
+matters more than the mean — one starved frame breaks the track chain through it
+regardless of how good the average is.

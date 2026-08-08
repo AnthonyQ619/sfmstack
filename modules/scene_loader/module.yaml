@@ -1,0 +1,135 @@
+name: SceneLoader
+version: 1.0.0
+kind: source
+summary: >
+  Reads a directory of images and an optional calibration file into a scene/v1,
+  applying a resize policy and recording per-image geometry.
+
+description: |
+  The root of every pipeline. Enumerates images, decodes them, applies a resize
+  policy, rescales intrinsics to match, and writes the result as a self-contained
+  scene artifact.
+
+  Resized images are written INTO the artifact rather than left as references to
+  the dataset. Downstream modules then need only the artifact mounted, not the
+  dataset -- which is what lets a feature detector container run without knowing
+  where DTU lives. With `resize: none` the artifact points at the originals and
+  the dataset must be mounted downstream.
+
+  Per-image sizes are recorded individually. The predecessor computed one scale
+  from a single image and applied it to the whole set; ETH3D courtyard alone
+  mixes 6208x4134 and 6205x4135, so that was silently wrong there.
+
+image: sfmstack/scene-loader:1.0.0
+entrypoint: adapter:run
+resources: {gpu: false, min_ram_gb: 4}
+
+produces:
+  scene: {type: scene/v1}
+
+params:
+  image_dir:
+    type: string
+    required: true
+    description: Directory containing the images. Not searched recursively.
+    tuning: >
+      Point at the leaf directory that holds image files. ETH3D nests them under
+      images/dslr_images_undistorted/; CO3D under <category>/<sequence>/<subset>/.
+
+  pattern:
+    type: string
+    default: "*"
+    description: Glob within image_dir. Non-image files are skipped by extension.
+
+  calibration_path:
+    type: string
+    description: >
+      An .npz with k_mats (N,3,3), dists (N,1,5) and baseline_ext. Omit for an
+      uncalibrated scene -- VGGT and MapAnything estimate intrinsics themselves
+      and do better without a supplied K.
+
+  max_images:
+    type: integer
+    minimum: 2
+    description: Cap on image count. Omit to use all.
+
+  sampling:
+    type: string
+    default: uniform
+    enum: [uniform, head]
+    description: How max_images selects from the set.
+    tuning: >
+      `uniform` spans the whole trajectory and is almost always what you want for
+      a quick look. `head` keeps the first N, which preserves a contiguous
+      baseline -- use it when the capture is a video and you want real overlap
+      rather than a sparse sample of the whole sequence.
+
+  resize:
+    type: string
+    default: auto
+    enum: [none, auto, fixed, square]
+    description: Resize policy.
+    tuning: >
+      `auto` caps the long edge at max_edge, which keeps classical detectors in
+      their comfortable range and bounds runtime. `square` pads to a square and
+      scales to target -- required by VGGT-family models. `none` preserves the
+      originals and leaves the dataset a runtime dependency of every downstream
+      module.
+
+  max_edge:
+    type: integer
+    default: 1600
+    minimum: 256
+    maximum: 8192
+    description: "Long-edge cap for `resize: auto`."
+
+  target_resolution:
+    type: array
+    description: "[width, height] for `resize: fixed`, or [size] / [size, size] for `square`."
+
+metrics:
+  n_images:
+    direction: neutral
+    meaning: Images in the scene.
+  mixed_resolution:
+    direction: neutral
+    meaning: >
+      1 if the source images had differing resolutions. Not an error, but it
+      means any per-set scalar scale is wrong and per-image scale must be used.
+  downscale_factor:
+    direction: neutral
+    meaning: Median linear scale applied. Below ~0.4 starts costing keypoints.
+  megapixels:
+    direction: neutral
+    meaning: Working megapixels per image after resize. Drives downstream runtime.
+
+diagnostics:
+  - code: too_few_images
+    severity: error
+    message: Fewer than two images; nothing downstream can run.
+    suggested_actions:
+      - Check image_dir points at the leaf directory holding image files.
+      - Check `pattern` is not excluding the files present.
+    see_also: limitations.md#empty-or-near-empty-sets
+
+  - code: mixed_resolution
+    severity: info
+    message: Source images differ in resolution; per-image scale is in use.
+    suggested_actions:
+      - Nothing to do. Recorded because a per-set scalar scale would be wrong.
+    see_also: artifact.md#per-image-geometry
+
+  - code: uncalibrated
+    severity: info
+    message: No calibration supplied; the scene carries no intrinsics.
+    suggested_actions:
+      - Correct for VGGT/MapAnything paths, which estimate intrinsics.
+      - For classical pose estimation, supply calibration_path.
+    see_also: limitations.md#uncalibrated-scenes
+
+  - code: heavy_downscale
+    severity: warn
+    message: Images were reduced past 0.4x; keypoint counts will fall noticeably.
+    suggested_actions:
+      - Raise max_edge if downstream detectors are starved.
+    see_also: tuning.md#downscale_factor-below-04

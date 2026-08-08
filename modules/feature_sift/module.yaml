@@ -1,0 +1,146 @@
+name: FeatureDetectionSIFT
+version: 1.0.0
+kind: detection
+summary: >
+  SIFT keypoints and RootSIFT descriptors. Classical, deterministic, CPU-only,
+  and strong on well-lit high-texture scenes.
+
+description: |
+  OpenCV's SIFT with the RootSIFT transform applied to descriptors (L1-normalise
+  then square-root), which measurably improves matching at no cost and is what
+  the predecessor did.
+
+  Use on well-lit, high-texture scenes -- building facades with real detail,
+  cluttered tabletops, textured objects. Scale and rotation invariant, so wide
+  baselines and orbital captures are fine.
+
+  Do not reach for it first on low-texture, repetitive, or photometrically
+  unstable sets. It is not that SIFT fails gracefully there; it produces
+  confident matches on repeated structure that survive ratio-test filtering and
+  poison tracks downstream. See limitations.md.
+
+image: sfmstack/feature-sift:1.0.0
+entrypoint: adapter:run
+resources: {gpu: false, min_ram_gb: 4}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  features: {type: features/v1}
+
+params:
+  max_keypoints:
+    type: integer
+    default: 4096
+    minimum: 128
+    maximum: 65536
+    description: Cap per image; OpenCV keeps the best by contrast score.
+    tuning: >
+      The largest single lever on downstream track survival. Doubling is the
+      first thing to try. Returns fall off past ~16384 on most sets -- the
+      additional keypoints sit in low-contrast regions and add match candidates
+      without adding correct ones.
+
+  n_octave_layers:
+    type: integer
+    default: 3
+    minimum: 1
+    maximum: 8
+    description: Layers per octave; octave count follows from image resolution.
+    tuning: >
+      3 is Lowe's value and rarely worth changing. Raising it finds more
+      scale-intermediate keypoints at roughly linear cost.
+
+  contrast_threshold:
+    type: number
+    default: 0.04
+    minimum: 0.001
+    maximum: 0.3
+    description: Rejects weak keypoints in low-contrast regions. Higher keeps fewer.
+    tuning: >
+      Lower this before raising max_keypoints on dim or flat scenes -- the cap is
+      not what is binding there, the contrast filter is. 0.01-0.02 is a
+      reasonable floor; below that detections become noise.
+
+  edge_threshold:
+    type: number
+    default: 10.0
+    minimum: 2.0
+    maximum: 100.0
+    description: Principal-curvature ratio limit. Higher keeps MORE edge-like keypoints.
+    tuning: >
+      Opposite in sense to contrast_threshold, which is a common mistake. Raising
+      it helps on scenes whose structure is genuinely linear (girders, window
+      frames), at the cost of keypoints that localise poorly along the edge.
+
+  sigma:
+    type: number
+    default: 1.6
+    minimum: 0.5
+    maximum: 3.2
+    description: Gaussian applied at octave 0. Lower it for soft or blurred inputs.
+
+  root_sift:
+    type: boolean
+    default: true
+    description: Apply the RootSIFT transform to descriptors.
+    tuning: Leave on. It is free and strictly better for L2 matching.
+
+  grayscale_clahe:
+    type: boolean
+    default: false
+    description: Contrast-limited adaptive histogram equalisation before detection.
+    tuning: >
+      Try on scenes with strong shadow/highlight variation across the set. It
+      raises keypoint counts in dark regions but also raises repeatability across
+      exposure changes, which is the actual benefit.
+
+metrics:
+  keypoints_per_image:
+    direction: higher_better
+    healthy: [500, null]
+    meaning: Mean detections per image. Below ~500 matching gets thin.
+  keypoints_min:
+    direction: higher_better
+    healthy: [200, null]
+    meaning: >
+      Worst image in the set. A single starved frame breaks the track chain
+      through it, so the minimum matters more than the mean.
+  saturation:
+    direction: neutral
+    meaning: >
+      Fraction of images that hit max_keypoints. High means the cap is binding
+      and raising it will yield more; near zero means contrast_threshold is
+      binding instead.
+  spatial_coverage:
+    direction: higher_better
+    healthy: [0.35, null]
+    meaning: >
+      Fraction of a coarse image grid containing at least one keypoint. Detections
+      clustered in one corner give a degenerate geometry however many there are.
+
+diagnostics:
+  - code: starved_frames
+    severity: warn
+    message: At least one image yielded very few keypoints.
+    suggested_actions:
+      - Lower contrast_threshold toward 0.01.
+      - Enable grayscale_clahe if the set has strong exposure variation.
+      - Check whether those frames are blurred or largely textureless.
+    see_also: tuning.md#keypoints_min-below-200
+
+  - code: cap_binding
+    severity: info
+    message: Most images hit max_keypoints; the cap is limiting detection.
+    suggested_actions:
+      - Raise max_keypoints if downstream track survival is short.
+    see_also: tuning.md#saturation-near-10
+
+  - code: poor_coverage
+    severity: warn
+    message: Keypoints are concentrated in a small part of the frame.
+    suggested_actions:
+      - Lower contrast_threshold to reach flatter regions.
+      - Consider a detector-free matcher if large areas are genuinely textureless.
+    see_also: limitations.md#textureless-regions

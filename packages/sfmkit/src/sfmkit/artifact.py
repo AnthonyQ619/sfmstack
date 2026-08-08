@@ -61,6 +61,19 @@ class Artifact:
     def has(self, file: str) -> bool:
         return (self.data_dir / f"{file}.npz").exists()
 
+    def resolve(self, path: str) -> Path:
+        """Resolve a filesystem path recorded inside this artifact.
+
+        Relative paths are relative to the artifact root; absolute paths are
+        returned unchanged. Producers that copy files INTO the artifact record
+        them relatively, so the artifact stays self-contained and survives the
+        store being mounted at a different point inside a container. Producers
+        that merely reference external files (an unresized dataset) record
+        absolute paths, and those files must then be mounted downstream too.
+        """
+        p = Path(path)
+        return p if p.is_absolute() else self.root / p
+
     def sidecar(self, name: str) -> Path | None:
         """Path to a native-format sidecar, or None if absent.
 

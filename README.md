@@ -19,12 +19,14 @@ Early. Build order and progress:
 | 2 | Artifact spec + core type registry | **done** |
 | 3 | Module contract proven in-process | **done** |
 | 4 | `sfmorch` — module registry, type checking, run DAG, replay, lineage | **done** |
+| 7a | First real modules: `SceneLoader`, `FeatureDetectionSIFT`, with curated skills | **done** |
 | 5 | Containerize: `sfm-runtime` base, per-module images, GPU broker | next |
 | 6 | MCP server over the orchestrator | |
 | 7 | Four pilot modules + curated skills + first driven session | |
 | 8 | Port the remaining 19 modules | |
 
-109 tests. `.venv/bin/python -m pytest packages -q`
+128 tests, including integration against real DTU and ETH3D data.
+`.venv/bin/python -m pytest -q`
 
 ## Layout
 
@@ -133,9 +135,15 @@ knob under test.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e "packages/sfmkit[dev]"
-.venv/bin/python -m pytest packages/sfmkit/tests -q
+.venv/bin/pip install -e "packages/sfmkit[dev]" -e "packages/sfmorch[dev]"
+.venv/bin/python -m pytest -q                    # everything
+.venv/bin/python -m pytest packages -q           # hermetic units only
 ```
+
+Real modules bring their own dependencies (`pillow`, `opencv-contrib-python-headless`
+so far). Installing them into this one venv is a development convenience and is
+exactly the monolith the container step exists to dissolve — the integration
+tests skip cleanly when a module's dependencies or its dataset are absent.
 
 `sfmkit` depends on the standard library, numpy, and pyyaml — and must never
 depend on anything else. It is installed into every module container, so each
