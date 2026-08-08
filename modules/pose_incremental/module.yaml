@@ -1,0 +1,226 @@
+name: PoseEssentialToPnP
+version: 1.0.0
+kind: pose
+summary: >
+  Incremental SfM: essential-matrix bootstrap on a chosen initial pair, then
+  repeated PnP registration against triangulated structure. CPU-only.
+
+description: |
+  The classical incremental pipeline, in the order COLMAP established. Pick an
+  initial pair with real parallax, recover its relative pose from the essential
+  matrix, triangulate what the pair sees, then repeatedly register whichever
+  unregistered image has the most 2D-3D correspondences and triangulate whatever
+  that makes newly visible.
+
+  It consumes `tracks/v1` rather than `pairwise_matches/v1`, which is the main
+  departure from the predecessor. That module walked pairs in sequence and
+  maintained its own track structure by chaining consecutive matches, which meant
+  registration order was fixed by file order and a single unregisterable frame
+  truncated everything after it. Here the tracks already exist as a multi-view
+  table, so registration is driven by evidence: the best-connected image goes
+  next, and a frame that cannot be registered is skipped without ending the run.
+
+  Scale is arbitrary and unrecoverable from images alone. The initial pair's
+  baseline is fixed to unit length, so every distance downstream is in that unit.
+
+image: sfmstack/pose-incremental:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 4
+  # Hint for ~40 images with a few thousand tracks. Cost is dominated by the
+  # per-image PnP and the triangulation sweep, both roughly linear in track count.
+  expected_duration_s: 60
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  tracks: {type: tracks/v1, required: true}
+
+produces:
+  poses: {type: poses/v1}
+
+params:
+  min_triangulation_angle_deg:
+    type: number
+    default: 2.0
+    minimum: 0.1
+    maximum: 30.0
+    description: Minimum ray angle for a point to be accepted, in degrees.
+    tuning: >
+      The single most important parameter for accuracy. A point triangulated from
+      near-parallel rays has enormous depth uncertainty and drags every pose that
+      later registers against it. Raise toward 3-5 on wide-baseline captures where
+      you can afford to lose points; lower toward 1.0 only when
+      `points_triangulated` is so low that registration stalls, and expect
+      `mean_reprojection_error` to rise when you do.
+
+  init_min_angle_deg:
+    type: number
+    default: 4.0
+    minimum: 0.5
+    maximum: 45.0
+    description: Minimum median parallax for a pair to be eligible as the seed.
+    tuning: >
+      A seed pair with too little parallax poisons the whole reconstruction --
+      every subsequent pose is registered against structure triangulated from it.
+      Stricter than min_triangulation_angle_deg on purpose. If no pair qualifies
+      the module fails rather than seeding badly, which is the correct outcome:
+      lower it only after checking the capture actually has baseline.
+
+  max_reprojection_error:
+    type: number
+    default: 4.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Points above this pixel error are discarded after each round.
+    tuning: >
+      In WORKING-resolution pixels, so scale it with the scene's resize. Tightening
+      it below ~2 on a heavily downscaled scene removes real structure; loosening
+      past ~8 admits mistriangulated points that then corrupt PnP.
+
+  pnp_reprojection_error:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: RANSAC inlier threshold for PnP registration, in pixels.
+    tuning: >
+      Keep at or slightly below max_reprojection_error. Raising it registers more
+      images at the cost of registering some of them wrongly, which is worse than
+      leaving them out -- an image registered at the wrong pose contributes wrong
+      observations to every point it sees.
+
+  min_pnp_inliers:
+    type: integer
+    default: 20
+    minimum: 6
+    maximum: 500
+    description: Minimum PnP inliers for an image to count as registered.
+    tuning: >
+      Below 6 the problem is not determined at all. 20 is a permissive floor;
+      raise it toward 50 if `mean_reprojection_error` is poor and
+      `registered_fraction` is high, which is the signature of marginal images
+      being admitted.
+
+  min_track_len:
+    type: integer
+    default: 2
+    minimum: 2
+    maximum: 50
+    description: Ignore tracks shorter than this.
+    tuning: >
+      2 uses everything. 3 restricts structure to tracks with genuine multi-view
+      support, which usually lowers reprojection error and point count together --
+      worth trying when the tracker reports a raised inconsistent_rate.
+
+  max_iterations:
+    type: integer
+    default: 10000
+    minimum: 100
+    maximum: 100000
+    description: RANSAC iterations for PnP and for the essential matrix.
+
+  confidence:
+    type: number
+    default: 0.9999
+    minimum: 0.9
+    maximum: 0.999999
+    description: RANSAC confidence.
+
+metrics:
+  registered_fraction:
+    direction: higher_better
+    healthy: [0.9, null]
+    meaning: >
+      Fraction of scene images given a pose. Below 1.0 some images could not be
+      registered; the artifact's `valid` array says which, and every consumer must
+      honour it.
+
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: Absolute count. Two is the seed pair alone, i.e. total failure to grow.
+
+  points_triangulated:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: >
+      Surviving 3D points after angle and reprojection filtering. This is
+      structure, not poses, but a reconstruction with few points has poses that
+      nothing constrains.
+
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: >
+      Mean pixel error over all surviving observations, at working resolution.
+      The primary accuracy signal. Above ~3 the poses are not usable for anything
+      metric.
+
+  median_triangulation_angle:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: >
+      Median ray angle over surviving points, in degrees. Low means the structure
+      is poorly conditioned in depth even where reprojection error looks fine --
+      the two can disagree, and this one is the more honest.
+
+  track_utilization:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: >
+      Fraction of input tracks that became a surviving 3D point. Low with healthy
+      reprojection error means the filters are strict; low with poor error means
+      the tracks were wrong.
+
+  init_pair_angle:
+    direction: higher_better
+    healthy: [4.0, null]
+    meaning: >
+      Median parallax of the seed pair, in degrees. Everything else is registered
+      against structure this pair created, so a weak seed is not recoverable later.
+
+diagnostics:
+  - code: uncalibrated_scene
+    severity: error
+    message: This module needs intrinsics and the scene carries none.
+    suggested_actions:
+      - Pass calibration_path to SceneLoader.
+      - Or use a pose estimator that estimates intrinsics itself; see limitations.md.
+    see_also: limitations.md#uncalibrated-scenes
+
+  - code: no_viable_initial_pair
+    severity: error
+    message: No image pair had enough parallax to seed the reconstruction.
+    suggested_actions:
+      - Check the matcher's `planarity` -- a planar or rotation-only capture cannot seed.
+      - Lower init_min_angle_deg only after confirming the capture has baseline.
+      - Widen the matcher's window so more pairs are candidates.
+    see_also: limitations.md#degenerate-captures
+
+  - code: partial_registration
+    severity: warn
+    message: Some images could not be registered and carry valid=False.
+    suggested_actions:
+      - Check the tracker's min_frame_observations for the missing frames.
+      - Widen the matcher's window so those frames link to more neighbours.
+      - Lower min_pnp_inliers only if you accept weaker poses.
+    see_also: tuning.md#registered_fraction-below-10
+
+  - code: high_reprojection_error
+    severity: warn
+    message: Surviving observations have high reprojection error.
+    suggested_actions:
+      - Raise min_triangulation_angle_deg to reject ill-conditioned points.
+      - Tighten max_reprojection_error.
+      - Run bundle adjustment; this module does not refine globally.
+    see_also: tuning.md#mean_reprojection_error-above-2
+
+  - code: weak_structure
+    severity: warn
+    message: Points are triangulated from near-parallel rays.
+    suggested_actions:
+      - Raise min_triangulation_angle_deg.
+      - Widen the capture baseline; no parameter recovers missing parallax.
+    see_also: limitations.md#degenerate-captures

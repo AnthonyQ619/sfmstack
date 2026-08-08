@@ -63,6 +63,29 @@ files:
         shape: [null]
         dtype: [int32, int64]
 
+  intrinsics:
+    required: false
+    description: |
+      Present when this module estimated or refined intrinsics rather than
+      reading them. Added additively: a producer that only triangulates omits the
+      file, and a consumer that finds it should prefer it over scene/v1
+      calibration, because a bundle adjustment that refined K did so jointly with
+      the poses in the same file and the two cannot be mixed with an older K.
+
+      Observations are in UNDISTORTED pixels throughout this type, so there is no
+      distortion array here. A producer that works in distorted pixels would be
+      changing the meaning of `observations`, not adding to it.
+    arrays:
+      K:
+        required: true
+        shape: [null, 3, 3]
+        dtype: [float32, float64]
+      camera_index:
+        required: false
+        shape: [null]
+        dtype: [int32, int64]
+        description: Which camera each image used. Absent means one camera per image.
+
 invariants:
   - check: finite
     args: {file: points, array: xyz}

@@ -1,0 +1,157 @@
+name: SparseTriangulation
+version: 1.0.0
+kind: sparse
+summary: >
+  Triangulates tracks against known poses into a sparse model, filtering on ray
+  angle, cheirality, and reprojection error. CPU-only.
+
+description: |
+  The seam between "where are the cameras" and "where is the scene". Any pose
+  source feeds it -- the incremental PnP estimator, VGGT, MapAnything -- because
+  it consumes `poses/v1` and knows nothing about how those poses were obtained.
+
+  The predecessor had no equivalent. Triangulation lived inside each pose
+  estimator and inside each sparse reconstructor, in four separate
+  implementations with four sets of thresholds, and the resulting point cloud
+  could not be compared across them because the filtering differed. Splitting it
+  out means swapping the pose estimator changes exactly one thing.
+
+  Each track is triangulated from the widest-baseline pair of views that observed
+  it, then verified in every observing view. A point that reprojects badly in any
+  view is discarded rather than kept with a large residual, because a single bad
+  observation is enough to drag a bundle adjustment.
+
+image: sfmstack/sparse-triangulation:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 4
+  expected_duration_s: 30
+  timeout_s: 1800
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  tracks: {type: tracks/v1, required: true}
+  poses: {type: poses/v1, required: true}
+
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  min_triangulation_angle_deg:
+    type: number
+    default: 2.0
+    minimum: 0.1
+    maximum: 30.0
+    description: Minimum ray angle for a point to be kept, in degrees.
+    tuning: >
+      The accuracy/completeness dial. Points below ~1 degree have depth
+      uncertainty measured in scene diameters and are worse than absent. Raise to
+      3-5 before a bundle adjustment you intend to trust; lower only to get a
+      denser cloud you do not intend to measure with.
+
+  max_reprojection_error:
+    type: number
+    default: 4.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Maximum pixel error in ANY observing view, at working resolution.
+    tuning: >
+      Applied as a maximum over views, not a mean, so one bad observation kills
+      the point. That is deliberate. If point_count is too low and
+      mean_reprojection_error is already good, this is the filter that is binding.
+
+  min_observations:
+    type: integer
+    default: 2
+    minimum: 2
+    maximum: 50
+    description: Minimum registered views a track must appear in.
+    tuning: >
+      2 is the geometric minimum and admits points supported by a single pair. 3
+      is the honest floor for anything you intend to bundle-adjust -- a two-view
+      point contributes no redundancy and BA cannot improve it, only move it.
+
+  colour_points:
+    type: boolean
+    default: true
+    description: Sample RGB from the images at each point's observations.
+    tuning: >
+      Costs one decode per image. Turn off for speed when the cloud is only an
+      intermediate; the colours are what make a sanity check by eye possible.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Surviving 3D points. Below ~100 there is nothing to bundle-adjust.
+
+  observation_count:
+    direction: higher_better
+    healthy: [300, null]
+    meaning: Total 2D observations of surviving points; the size of the BA problem.
+
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: Mean pixel error over kept observations, at working resolution.
+
+  mean_track_length:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: >
+      Observations per surviving point. 2.0 means the cloud is entirely two-view
+      and bundle adjustment has no redundancy to exploit.
+
+  median_triangulation_angle:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: Median widest ray angle over kept points, in degrees.
+
+  yield:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: >
+      Kept points over input tracks. Low yield with good error means the filters
+      are doing their job; low yield with bad error means the poses are wrong.
+
+  rejected_cheirality:
+    direction: lower_better
+    healthy: [null, 0.05]
+    meaning: >
+      Fraction of tracks rejected for landing behind a camera. A raised value is
+      the signature of a wrong pose, not of a bad threshold -- no filter setting
+      fixes it.
+
+diagnostics:
+  - code: no_points
+    severity: error
+    message: No track survived triangulation.
+    suggested_actions:
+      - Check the pose artifact's registered_fraction and mean_reprojection_error.
+      - Lower min_triangulation_angle_deg if the capture genuinely has little baseline.
+    see_also: limitations.md#when-triangulation-produces-nothing
+
+  - code: bad_poses_suspected
+    severity: warn
+    message: Many tracks landed behind a camera, which points at the poses.
+    suggested_actions:
+      - Re-check the pose estimator's metrics before tuning anything here.
+      - A high rejected_cheirality with low reprojection error means a sign or frame convention error.
+    see_also: limitations.md#cheirality-failures-are-a-pose-problem
+
+  - code: two_view_cloud
+    severity: warn
+    message: Points are supported by two views each; BA has no redundancy.
+    suggested_actions:
+      - Widen the matcher's window so tracks reach further.
+      - Raise min_observations to 3 to see how much genuine multi-view structure exists.
+    see_also: tuning.md#mean_track_length-near-20
+
+  - code: weak_geometry
+    severity: warn
+    message: Points are triangulated from near-parallel rays.
+    suggested_actions:
+      - Raise min_triangulation_angle_deg.
+      - No parameter recovers missing parallax; the capture is what it is.
+    see_also: limitations.md#when-triangulation-produces-nothing

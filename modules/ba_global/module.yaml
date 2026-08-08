@@ -1,0 +1,177 @@
+name: BundleAdjustmentGlobal
+version: 1.0.0
+kind: optimization
+summary: >
+  Ceres bundle adjustment over the whole reconstruction, refining every pose and
+  every point at once. CPU-only, via pycolmap.
+
+description: |
+  The only stage that revisits earlier decisions. Everything upstream is greedy --
+  the pose estimator registers images one at a time and never moves a point once
+  it is accepted -- so drift accumulates and nothing corrects it. Global bundle
+  adjustment minimises reprojection error over all cameras and all points
+  simultaneously, which is what turns a chain of locally-consistent estimates into
+  one globally-consistent model.
+
+  Run it after any incremental pose estimator. On a well-conditioned scene the
+  improvement is modest; on a long sequence it is the difference between a usable
+  model and a banana.
+
+  Observations in `sparse_model/v1` are undistorted pixels, so the COLMAP cameras
+  built here are PINHOLE with no distortion terms. That is not an approximation --
+  the distortion was removed once, upstream, and re-modelling it here would apply
+  it twice.
+
+  Also writes a `colmap` sidecar (cameras/images/points3D.bin) beside the npz, so
+  a pycolmap consumer can open the reconstruction natively. The npz stays
+  authoritative; the sidecar is a convenience, and a consumer without pycolmap
+  loses nothing but the convenience.
+
+image: sfmstack/ba-global:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 8
+  # Scales with observations, not images. A few thousand points converges in
+  # seconds; a hundred thousand takes minutes.
+  expected_duration_s: 120
+  timeout_s: 7200
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  sparse: {type: sparse_model/v1, required: true}
+
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  max_iterations:
+    type: integer
+    default: 100
+    minimum: 1
+    maximum: 1000
+    description: Ceres iteration cap.
+    tuning: >
+      Rarely binding -- check `terminated_on` before raising it. If that says
+      CONVERGENCE, more iterations buy nothing. If it says NO_CONVERGENCE, the
+      problem is usually bad input rather than too few iterations.
+
+  robust_loss:
+    type: boolean
+    default: true
+    description: Cauchy loss on residuals rather than plain squared error.
+    tuning: >
+      Leave on. Squared error lets a handful of gross outliers dominate the whole
+      solve, and there are always some -- a mistriangulated point or a wrong
+      match survives the upstream filters more often than not. Turn it off only
+      once you trust the input completely and want the last fraction of accuracy.
+
+  loss_scale:
+    type: number
+    default: 1.0
+    minimum: 0.01
+    maximum: 100.0
+    description: Cauchy loss scale, in pixels.
+    tuning: >
+      Roughly "residuals beyond this many pixels stop being trusted". Set it near
+      the reprojection error you expect from good observations -- 1-2px at a
+      typical working resolution. Too large and the robust loss does nothing; too
+      small and real structure is treated as outlying.
+
+  refine_focal_length:
+    type: boolean
+    default: false
+    description: Let the solver adjust focal lengths.
+    tuning: >
+      Off by default because a supplied calibration is usually better than what
+      BA recovers from a short sequence, and a wrong focal length absorbs pose
+      error into itself and looks like convergence. Turn it on when the
+      calibration is untrusted or absent, and expect the refined K in the output
+      artifact's `intrinsics` file.
+
+  refine_principal_point:
+    type: boolean
+    default: false
+    description: Let the solver adjust principal points.
+    tuning: >
+      Off, and more strongly so than focal length. The principal point is weakly
+      observable from a short sequence and trades off directly against translation;
+      refining it on limited data usually moves error around rather than removing it.
+
+  min_track_length:
+    type: integer
+    default: 2
+    minimum: 2
+    maximum: 50
+    description: Points seen in fewer views are excluded from the solve.
+    tuning: >
+      3 is a defensible tightening: a two-view point has exactly as many
+      constraints as unknowns and BA can only slide it along its ray, so it adds
+      cost without adding information. Check `points_optimized` afterwards.
+
+metrics:
+  reprojection_error_before:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: Mean pixel error on entry, at working resolution.
+
+  reprojection_error_after:
+    direction: lower_better
+    healthy: [null, 1.0]
+    meaning: >
+      Mean pixel error after the solve. The number to judge the reconstruction on.
+      Above ~1.5 at a normal working resolution, something upstream is wrong.
+
+  error_reduction:
+    direction: higher_better
+    healthy: [0.0, null]
+    meaning: >
+      Fraction of reprojection error removed. Near zero means the input was
+      already at a local minimum -- fine if the error was low, and a sign the
+      solve is stuck if it was high. NEGATIVE means the robust loss traded mean
+      error for outlier resistance, which is not necessarily wrong.
+
+  points_optimized:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Points included in the solve after min_track_length filtering.
+
+  observations_optimized:
+    direction: higher_better
+    healthy: [300, null]
+    meaning: Residual blocks; the size of the problem actually solved.
+
+  iterations:
+    direction: neutral
+    meaning: Ceres iterations used. At the cap, the solve did not converge.
+
+  converged:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: 1 when Ceres reported CONVERGENCE, 0 otherwise.
+
+diagnostics:
+  - code: did_not_converge
+    severity: warn
+    message: The solver stopped without converging.
+    suggested_actions:
+      - Check reprojection_error_before -- BA cannot rescue a badly wrong input.
+      - Raise max_iterations if it stopped at the cap.
+      - Turn refine_focal_length off if it was on; free intrinsics destabilise short sequences.
+    see_also: tuning.md#converged-is-0
+
+  - code: no_improvement
+    severity: info
+    message: Bundle adjustment changed almost nothing.
+    suggested_actions:
+      - Nothing, if reprojection_error_after is already low.
+      - If the error is high and unchanged, the input is at a bad local minimum; fix the poses.
+    see_also: tuning.md#error_reduction-near-zero
+
+  - code: still_high_error
+    severity: warn
+    message: Error remains high after optimisation.
+    suggested_actions:
+      - Tighten the triangulator's max_reprojection_error and min_triangulation_angle_deg.
+      - Check the tracker's inconsistent_rate -- wrong tracks cannot be optimised away.
+    see_also: limitations.md#what-bundle-adjustment-cannot-fix

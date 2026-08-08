@@ -1,0 +1,480 @@
+"""PoseEssentialToPnP -- scene/v1 + tracks/v1 -> poses/v1.
+
+Incremental structure-from-motion: essential-matrix bootstrap, then repeated PnP
+registration against triangulated structure.
+
+Geometry is done in NORMALISED camera coordinates throughout -- observations are
+undistorted and premultiplied by K^-1 once, up front. That is what lets a scene
+with per-image intrinsics (a mixed-resolution capture, or a multi-camera rig) work
+without special-casing: the projection matrices are plain [R|t] and no K appears
+again until reprojection error is reported, where it has to be in pixels.
+"""
+
+from __future__ import annotations
+
+import cv2
+import numpy as np
+from sfmkit import Ctx, module
+
+DEG = 180.0 / np.pi
+
+
+def per_image_intrinsics(scene, n_images: int):
+    """K and distortion for every image, whatever shape the calibration took."""
+    calib = scene.load("calibration")
+    K = np.asarray(calib["intrinsics"], dtype=np.float64)
+    dist = np.asarray(calib["distortions"], dtype=np.float64)
+    cam_index = calib.get("camera_index")
+
+    if cam_index is None:
+        # One camera per image, or one shared camera broadcast across the set.
+        cam_index = np.arange(n_images) if len(K) == n_images else np.zeros(n_images, int)
+    cam_index = np.asarray(cam_index, dtype=int)
+
+    return K[cam_index], dist[cam_index]
+
+
+def observations_by_frame(obs: np.ndarray, n_images: int, min_len: int):
+    """Reorganise the flat observation table into per-frame lookups.
+
+    Returns (frame -> track ids, frame -> pixel xy, track -> frame list). The
+    tracks type is a flat table because that is what bundle adjustment wants;
+    incremental registration wants it indexed both ways, and building both once
+    is far cheaper than searching the table per image.
+    """
+    track_id = obs[:, 0].astype(np.int64)
+    frame = obs[:, 1].astype(np.int64)
+
+    lengths = np.bincount(track_id)
+    keep = lengths[track_id] >= min_len
+    track_id, frame, xy = track_id[keep], frame[keep], obs[keep, 2:4]
+
+    order = np.lexsort((track_id, frame))
+    track_id, frame, xy = track_id[order], frame[order], xy[order]
+
+    bounds = np.searchsorted(frame, np.arange(n_images + 1))
+    tracks_in = [track_id[bounds[i] : bounds[i + 1]] for i in range(n_images)]
+    points_in = [xy[bounds[i] : bounds[i + 1]] for i in range(n_images)]
+
+    frames_of: dict[int, list[int]] = {}
+    for f, t in zip(frame, track_id):
+        frames_of.setdefault(int(t), []).append(int(f))
+
+    return tracks_in, points_in, frames_of
+
+
+def normalise(points: np.ndarray, K: np.ndarray, dist: np.ndarray) -> np.ndarray:
+    """Pixels -> undistorted normalised camera coordinates."""
+    if len(points) == 0:
+        return points.reshape(0, 2).astype(np.float64)
+    p = np.ascontiguousarray(points, dtype=np.float64).reshape(-1, 1, 2)
+    return cv2.undistortPoints(p, K, dist.reshape(1, -1)).reshape(-1, 2)
+
+
+def shared(a_tracks, b_tracks):
+    """Track ids present in both frames, with their row in each."""
+    common, ia, ib = np.intersect1d(a_tracks, b_tracks, return_indices=True)
+    return common, ia, ib
+
+
+def triangulate(P1, P2, x1, x2):
+    """DLT triangulation in normalised coordinates. Returns (N, 3)."""
+    X = cv2.triangulatePoints(P1, P2, x1.T, x2.T)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return (X[:3] / X[3]).T
+
+
+def ray_angles(centers_a, centers_b, points):
+    """Angle at each 3D point between the rays from two camera centres."""
+    va = points - centers_a
+    vb = points - centers_b
+    na = np.linalg.norm(va, axis=1)
+    nb = np.linalg.norm(vb, axis=1)
+    good = (na > 1e-12) & (nb > 1e-12)
+    cos = np.ones(len(points))
+    cos[good] = np.einsum("ij,ij->i", va[good], vb[good]) / (na[good] * nb[good])
+    return np.arccos(np.clip(cos, -1.0, 1.0)) * DEG
+
+
+def camera_center(pose):
+    return -pose[:, :3].T @ pose[:, 3]
+
+
+def project(pose, K, points):
+    """Normalised-frame projection to pixels. Returns (xy, in_front)."""
+    cam = points @ pose[:, :3].T + pose[:, 3]
+    z = cam[:, 2]
+    in_front = z > 1e-8
+    with np.errstate(invalid="ignore", divide="ignore"):
+        normalised = cam[:, :2] / z[:, None]
+    pix = normalised @ K[:2, :2].T + K[:2, 2]
+    return pix, in_front
+
+
+class Reconstruction:
+    """Poses and points, with the bookkeeping that keeps them consistent."""
+
+    def __init__(self, n_images: int):
+        self.poses: dict[int, np.ndarray] = {}
+        self.points: dict[int, np.ndarray] = {}  # track id -> xyz
+        self.n_images = n_images
+
+    @property
+    def registered(self) -> list[int]:
+        return sorted(self.poses)
+
+    def center(self, frame: int) -> np.ndarray:
+        return camera_center(self.poses[frame])
+
+
+@module
+def run(ctx: Ctx):
+    scene = ctx.inputs["scene"]
+    tracks = ctx.inputs["tracks"]
+    p = ctx.params
+
+    names = scene.load("images", "names")
+    n_images = len(names)
+
+    if not scene.has("calibration"):
+        out = ctx.output("poses")
+        out.diagnostic(
+            "uncalibrated_scene",
+            severity="error",
+            message="The scene carries no intrinsics.",
+            see_also="limitations.md#uncalibrated-scenes",
+        )
+        raise ValueError(
+            "PoseEssentialToPnP needs intrinsics and this scene has none. Pass "
+            "calibration_path to SceneLoader, or use a pose estimator that "
+            "estimates intrinsics itself -- VGGT and MapAnything do, and in fact "
+            "do better without a supplied K."
+        )
+
+    K_all, dist_all = per_image_intrinsics(scene, n_images)
+    obs = tracks.load("observations", "obs")
+    n_tracks_in = int(tracks.load("observations", "track_count"))
+
+    tracks_in, pixels_in, frames_of = observations_by_frame(obs, n_images, p.min_track_len)
+    # Undistorted pixels are what reprojection error is measured against; the
+    # raw ones carry lens distortion that the geometry has already removed.
+    normal_in, undist_in = [], []
+    for i in range(n_images):
+        nrm = normalise(pixels_in[i], K_all[i], dist_all[i])
+        normal_in.append(nrm)
+        undist_in.append(nrm @ K_all[i][:2, :2].T + K_all[i][:2, 2])
+
+    # Row of each track within each frame's arrays, so an observation can be
+    # found in O(1) during registration rather than by searching.
+    row_of = [
+        {int(t): r for r, t in enumerate(tracks_in[i])} for i in range(n_images)
+    ]
+
+    rec = Reconstruction(n_images)
+
+    # ----------------------------------------------------------------- seed
+    ctx.progress(0.05, "choosing an initial pair")
+
+    best = None
+    candidates = [
+        (i, j)
+        for i in range(n_images)
+        for j in range(i + 1, n_images)
+        if len(tracks_in[i]) and len(tracks_in[j])
+    ]
+
+    for i, j in candidates:
+        common, ia, ib = shared(tracks_in[i], tracks_in[j])
+        if len(common) < max(p.min_pnp_inliers, 8):
+            continue
+
+        x1, x2 = normal_in[i][ia], normal_in[j][ib]
+        E, mask = cv2.findEssentialMat(
+            x1, x2, np.eye(3), method=cv2.USAC_MAGSAC,
+            prob=p.confidence, threshold=p.pnp_reprojection_error / K_all[i][0, 0],
+            maxIters=p.max_iterations,
+        )
+        if E is None or mask is None or E.shape != (3, 3):
+            continue
+
+        inlier = mask.ravel().astype(bool)
+        if inlier.sum() < max(p.min_pnp_inliers, 8):
+            continue
+
+        n_good, R, t, _ = cv2.recoverPose(E, x1[inlier], x2[inlier], np.eye(3))
+        if n_good < max(p.min_pnp_inliers, 8):
+            continue
+
+        P0 = np.hstack([np.eye(3), np.zeros((3, 1))])
+        P1 = np.hstack([R, t.reshape(3, 1)])
+        X = triangulate(P0, P1, x1[inlier], x2[inlier])
+        finite = np.isfinite(X).all(axis=1)
+        if finite.sum() < max(p.min_pnp_inliers, 8):
+            continue
+
+        X = X[finite]
+        angles = ray_angles(camera_center(P0), camera_center(P1), X)
+        median_angle = float(np.median(angles))
+
+        # Score by inlier count gated on parallax, not by either alone: the pair
+        # with the most matches is usually the pair with the least baseline, and
+        # seeding there is the classic way to produce a confident wrong model.
+        if median_angle < p.init_min_angle_deg:
+            continue
+        score = int(inlier.sum()) * median_angle
+        if best is None or score > best[0]:
+            best = (score, i, j, R, t.reshape(3), median_angle)
+
+    if best is None:
+        out = ctx.output("poses")
+        out.diagnostic(
+            "no_viable_initial_pair",
+            severity="error",
+            message=f"No pair of {n_images} images reached {p.init_min_angle_deg} degrees of parallax.",
+            see_also="limitations.md#degenerate-captures",
+        )
+        raise ValueError(
+            f"no pair of the {n_images} images had both {p.min_pnp_inliers}+ shared "
+            f"tracks and {p.init_min_angle_deg} degrees of median parallax. Check the "
+            f"matcher's `planarity` metric -- a planar or rotation-only capture "
+            f"cannot seed an incremental reconstruction at all. If the capture does "
+            f"have baseline, widen the matcher's window so more pairs are candidates."
+        )
+
+    _, i0, j0, R, t, init_angle = best
+
+    rec.poses[i0] = np.hstack([np.eye(3), np.zeros((3, 1))])
+    rec.poses[j0] = np.hstack([R, t.reshape(3, 1)])
+
+    ctx.progress(0.15, f"seeded on ({i0}, {j0}) at {init_angle:.1f} deg parallax")
+
+    # ------------------------------------------------------- grow the model
+    def triangulate_new():
+        """Triangulate every track visible in 2+ registered frames without a point."""
+        added = 0
+        for track, frames in frames_of.items():
+            if track in rec.points:
+                continue
+            seen = [f for f in frames if f in rec.poses]
+            if len(seen) < 2:
+                continue
+
+            # Widest baseline available for this track, which is the pair that
+            # conditions the depth best.
+            centers = {f: rec.center(f) for f in seen}
+            pair, span = None, -1.0
+            for a in range(len(seen) - 1):
+                for b in range(a + 1, len(seen)):
+                    d = float(np.linalg.norm(centers[seen[a]] - centers[seen[b]]))
+                    if d > span:
+                        span, pair = d, (seen[a], seen[b])
+            if pair is None or span < 1e-9:
+                continue
+
+            f1, f2 = pair
+            x1 = normal_in[f1][row_of[f1][track]].reshape(1, 2)
+            x2 = normal_in[f2][row_of[f2][track]].reshape(1, 2)
+            X = triangulate(rec.poses[f1], rec.poses[f2], x1, x2)[0]
+            if not np.isfinite(X).all():
+                continue
+
+            angle = ray_angles(centers[f1][None], centers[f2][None], X[None])[0]
+            if angle < p.min_triangulation_angle_deg:
+                continue
+
+            # Cheirality and reprojection, checked in every registered view.
+            ok = True
+            for f in seen:
+                pix, in_front = project(rec.poses[f], K_all[f], X[None])
+                if not in_front[0]:
+                    ok = False
+                    break
+                err = np.linalg.norm(pix[0] - undist_in[f][row_of[f][track]])
+                if err > p.max_reprojection_error:
+                    ok = False
+                    break
+            if ok:
+                rec.points[track] = X
+                added += 1
+        return added
+
+    triangulate_new()
+
+    # Images PnP has already refused. Kept separate from `rec.poses` rather than
+    # parked there as a None: everything that walks the pose dict -- triangulation,
+    # camera centres, reprojection -- assumes every entry is a real 3x4.
+    refused: set[int] = set()
+
+    while len(rec.poses) + len(refused) < n_images:
+        # Register whichever unregistered image has the most 2D-3D links.
+        candidate, best_count = None, 0
+        for f in range(n_images):
+            if f in rec.poses or f in refused:
+                continue
+            count = sum(1 for t in tracks_in[f] if int(t) in rec.points)
+            if count > best_count:
+                candidate, best_count = f, count
+
+        if candidate is None or best_count < p.min_pnp_inliers:
+            break
+
+        f = candidate
+        ids = [int(t) for t in tracks_in[f] if int(t) in rec.points]
+        object_points = np.array([rec.points[t] for t in ids], dtype=np.float64)
+        image_points = np.array(
+            [normal_in[f][row_of[f][t]] for t in ids], dtype=np.float64
+        )
+
+        ok, rvec, tvec, inliers = cv2.solvePnPRansac(
+            object_points,
+            image_points,
+            np.eye(3),
+            np.zeros(5),
+            reprojectionError=p.pnp_reprojection_error / K_all[f][0, 0],
+            iterationsCount=p.max_iterations,
+            confidence=p.confidence,
+            flags=cv2.SOLVEPNP_SQPNP,
+        )
+        if not ok or inliers is None or len(inliers) < p.min_pnp_inliers:
+            # Refuse it permanently, or the loop re-picks the same image forever.
+            refused.add(f)
+            continue
+
+        idx = inliers.ravel()
+        rvec, tvec = cv2.solvePnPRefineLM(
+            object_points[idx], image_points[idx], np.eye(3), np.zeros(5), rvec, tvec
+        )
+        rec.poses[f] = np.hstack([cv2.Rodrigues(rvec)[0], tvec.reshape(3, 1)])
+
+        ctx.progress(
+            0.15 + 0.75 * len(rec.poses) / n_images,
+            f"registered {len(rec.poses)}/{n_images}, {len(rec.points)} points",
+        )
+        # A new view can make previously untriangulable tracks viable, and can
+        # give an existing one a wider baseline -- but points are never revised
+        # once accepted, which is what bundle adjustment is for.
+        triangulate_new()
+
+    # ------------------------------------------------------------- finalise
+    ctx.progress(0.92, "filtering structure")
+
+    errors, angles_final = [], []
+    for track, X in list(rec.points.items()):
+        seen = [f for f in frames_of[track] if f in rec.poses]
+        if len(seen) < 2:
+            del rec.points[track]
+            continue
+        per_view = []
+        for f in seen:
+            pix, in_front = project(rec.poses[f], K_all[f], X[None])
+            if not in_front[0]:
+                per_view = None
+                break
+            per_view.append(float(np.linalg.norm(pix[0] - undist_in[f][row_of[f][track]])))
+        if per_view is None or max(per_view) > p.max_reprojection_error:
+            del rec.points[track]
+            continue
+
+        # Widest angle any pair of observing views subtends at this point. The
+        # widest, not the mean: one well-separated pair conditions the depth, and
+        # averaging it against a cluster of near-coincident views hides that.
+        centers = np.array([rec.center(f) for f in seen])
+        a, b = np.triu_indices(len(seen), k=1)
+        widest = float(ray_angles(centers[a], centers[b], np.tile(X, (len(a), 1))).max())
+
+        errors.extend(per_view)
+        angles_final.append(widest)
+
+    registered = sorted(rec.poses)
+    if len(registered) < 2:
+        raise ValueError(
+            f"only {len(registered)} image(s) registered, which is not a "
+            f"reconstruction. The seed pair was ({i0}, {j0}); growth stopped "
+            f"because no unregistered image reached min_pnp_inliers="
+            f"{p.min_pnp_inliers} 2D-3D correspondences. Check the tracker's "
+            f"long_track_fraction -- two-view tracks cannot register a third image."
+        )
+
+    cam_from_world = np.zeros((n_images, 3, 4), dtype=np.float64)
+    valid = np.zeros(n_images, dtype=bool)
+    for f in registered:
+        cam_from_world[f] = rec.poses[f]
+        valid[f] = True
+    cam_from_world[~valid] = np.hstack([np.eye(3), np.zeros((3, 1))])
+
+    out = ctx.output("poses")
+    out.save(
+        "poses",
+        cam_from_world=cam_from_world,
+        valid=valid,
+        image_index=np.arange(n_images, dtype=np.int32),
+    )
+
+    frac = len(registered) / n_images
+    mean_err = float(np.mean(errors)) if errors else float("nan")
+    median_angle = float(np.median(angles_final)) if angles_final else 0.0
+    utilisation = len(rec.points) / max(n_tracks_in, 1)
+
+    out.metric("registered_fraction", round(frac, 3),
+               direction="higher_better", healthy=(0.9, None))
+    out.metric("registered_images", len(registered),
+               direction="higher_better", healthy=(3, None))
+    out.metric("points_triangulated", len(rec.points),
+               direction="higher_better", healthy=(100, None))
+    out.metric("mean_reprojection_error", round(mean_err, 3) if errors else None,
+               direction="lower_better", healthy=(None, 2.0))
+    out.metric("median_triangulation_angle", round(median_angle, 2),
+               direction="higher_better", healthy=(3.0, None))
+    out.metric("track_utilization", round(utilisation, 3),
+               direction="higher_better", healthy=(0.3, None))
+    out.metric("init_pair_angle", round(float(init_angle), 2),
+               direction="higher_better", healthy=(4.0, None))
+
+    if frac < 1.0:
+        missing = [int(f) for f in range(n_images) if not valid[f]]
+        out.diagnostic(
+            "partial_registration",
+            severity="warn",
+            message=(
+                f"{len(missing)} of {n_images} images could not be registered: "
+                f"{[str(names[m]) for m in missing[:5]]}."
+            ),
+            suggested_actions=[
+                "Check the tracker's min_frame_observations for those frames.",
+                "Widen the matcher's window so they link to more neighbours.",
+            ],
+            see_also="tuning.md#registered_fraction-below-10",
+        )
+
+    if errors and mean_err > 2.0:
+        out.diagnostic(
+            "high_reprojection_error",
+            severity="warn",
+            message=f"Mean reprojection error is {mean_err:.2f}px at working resolution.",
+            suggested_actions=[
+                f"Raise min_triangulation_angle_deg above {p.min_triangulation_angle_deg}.",
+                "Run bundle adjustment; this module does not refine globally.",
+            ],
+            see_also="tuning.md#mean_reprojection_error-above-2",
+        )
+
+    if median_angle < 3.0:
+        out.diagnostic(
+            "weak_structure",
+            severity="warn",
+            message=f"Median triangulation angle is {median_angle:.2f} degrees.",
+            suggested_actions=[
+                "Raise min_triangulation_angle_deg.",
+                "Widen the capture baseline; no parameter recovers missing parallax.",
+            ],
+            see_also="limitations.md#degenerate-captures",
+        )
+
+    out.note(
+        f"Seeded on images ({i0}, {j0}) at {init_angle:.1f} degrees median parallax. "
+        f"Registered {len(registered)}/{n_images} images and kept {len(rec.points)} "
+        f"of {n_tracks_in} tracks as 3D points ({utilisation:.0%}). "
+        f"Mean reprojection error {mean_err:.2f}px, median triangulation angle "
+        f"{median_angle:.2f} degrees. Scale is arbitrary: the seed pair's baseline "
+        f"is unit length."
+    )
