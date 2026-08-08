@@ -36,6 +36,8 @@ class JobHandle:
     result: dict[str, Any] | None = None
     error: str = ""
     traceback: str = ""
+    progress: float | None = None
+    stage: str = ""
     submitted_at: float = field(default_factory=time.time)
     started_at: float | None = None
     finished_at: float | None = None
@@ -60,6 +62,10 @@ class JobHandle:
         }
         if self.label:
             doc["label"] = self.label
+        if self.progress is not None:
+            doc["progress"] = round(self.progress, 3)
+        if self.stage:
+            doc["stage"] = self.stage
         if self.run_id:
             doc["run_id"] = self.run_id
         if self.status == "ok" and self.result is not None:

@@ -21,7 +21,13 @@ description: |
 
 image: sfmstack/feature-sift:1.0.0
 entrypoint: adapter:run
-resources: {gpu: false, min_ram_gb: 4}
+resources:
+  gpu: false
+  min_ram_gb: 4
+  # Hint for a typical 40-image set at max_keypoints=4096. Scales with both, and
+  # roughly with pixel count, so a 1600px scene costs ~2.5x a 1024px one.
+  expected_duration_s: 45
+  timeout_s: 1800
 
 consumes:
   scene: {type: scene/v1, required: true}

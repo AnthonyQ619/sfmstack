@@ -1,0 +1,30 @@
+name: SlowModule
+version: 1.0.0
+kind: source
+summary: Sleeps in steps and reports progress. Stands in for a real GPU module.
+
+image: sfm-fixture:1.0.0
+resources:
+  gpu: false
+  expected_duration_s: 120     # declared slow: the service must not block on it
+  timeout_s: 60
+
+produces:
+  scene: {type: scene/v1}
+
+params:
+  steps:
+    type: integer
+    default: 4
+    minimum: 1
+    maximum: 100
+    description: Number of work steps to simulate.
+  step_s:
+    type: number
+    default: 0.05
+    minimum: 0.0
+    maximum: 10.0
+    description: Seconds per step.
+
+metrics:
+  n_images: {direction: neutral, meaning: Images in the scene.}

@@ -104,7 +104,14 @@ def _manifest(r: ScaffoldRequest, slug: str) -> str:
         ),
         "image": f"sfmstack/{slug.replace('_', '-')}:{r.version}",
         "entrypoint": "adapter:run",
-        "resources": {"gpu": r.gpu},
+        "resources": {
+            "gpu": r.gpu,
+            # How long a typical job takes. Not a limit -- it decides whether a
+            # caller blocks inline or gets a job id to poll, so a wrong value
+            # here costs either pointless blocking or pointless round trips.
+            "expected_duration_s": 300 if r.gpu else 30,
+            "timeout_s": 3600 if r.gpu else 1800,
+        },
     }
     if r.consumes:
         doc["consumes"] = {
@@ -175,6 +182,12 @@ def _adapter(r: ScaffoldRequest) -> str:
         def run(ctx: Ctx):
         {inputs or "    # no declared inputs"}
             # params = ctx.params.example_param
+
+            # Report progress from any loop running more than a few seconds. It
+            # is the only thing that lets a caller tell a working module from a
+            # stuck one on a job that legitimately takes twenty minutes.
+            # for i, item in enumerate(items):
+            #     ctx.progress(i / len(items), f"stage {{i + 1}}/{{len(items)}}")
 
             raise NotImplementedError(
                 "{r.name}: implement run() in adapter.py. "

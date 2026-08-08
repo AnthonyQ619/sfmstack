@@ -64,6 +64,8 @@ class JobRecord:
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
     error: str = ""
     traceback: str = ""
+    progress: float | None = None
+    stage: str = ""
     log: deque[str] = field(default_factory=lambda: deque(maxlen=LOG_TAIL_LINES))
     started_at: float | None = None
     duration_s: float | None = None
@@ -78,9 +80,27 @@ class JobRecord:
             "diagnostics": self.diagnostics,
             "error": self.error,
             "traceback": self.traceback,
+            "progress": self.progress,
+            "stage": self.stage,
             "log_tail": list(self.log),
             "duration_s": self.duration_s,
         }
+
+
+def _record_progress(job: "JobRecord"):
+    """Progress sink handed to the module's Ctx.
+
+    Written straight onto the job record so a poller sees it without the module
+    having to know anything about HTTP.
+    """
+
+    def sink(fraction: float | None, stage: str) -> None:
+        if fraction is not None:
+            job.progress = fraction
+        if stage:
+            job.stage = stage
+
+    return sink
 
 
 class _Tee(io.TextIOBase):
@@ -237,6 +257,7 @@ class ModuleService:
                 inputs=inputs,
                 params=Params(req.get("params") or {}),
                 output_types=dict(req.get("output_types") or self.produces),
+                on_progress=_record_progress(job),
             )
 
             tee = _Tee(job.log, sys.__stdout__)
@@ -265,8 +286,11 @@ class ModuleService:
     # ----------------------------------------------------------------- health
 
     def health(self) -> dict[str, Any]:
+        from . import __version__
+
         return {
             "ok": True,
+            "sfmkit_version": __version__,
             "module": self.name,
             "version": self.version,
             "warm": self.warm,

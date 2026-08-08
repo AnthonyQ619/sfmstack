@@ -22,7 +22,14 @@ description: |
 
 image: sfmstack/scene-loader:1.0.0
 entrypoint: adapter:run
-resources: {gpu: false, min_ram_gb: 4}
+resources:
+  gpu: false
+  min_ram_gb: 4
+  # Hint for a typical 40-image set, not a limit. Decoding and re-encoding
+  # dominate, so this scales with image count and source resolution. The service
+  # refines it from observed runs; the declared value only covers the cold start.
+  expected_duration_s: 30
+  timeout_s: 1800
 
 produces:
   scene: {type: scene/v1}

@@ -59,6 +59,7 @@ def run(ctx: Ctx):
     per_image, coverage = [], []
 
     for i, rel in enumerate(paths):
+        ctx.progress(i / len(paths), f"detecting {i + 1}/{len(paths)}")
         path = scene.resolve(str(rel))
         gray = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
         if gray is None:

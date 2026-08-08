@@ -24,7 +24,7 @@ from .module import Ctx, Params, module, run_module
 from .schema import TypeRegistry, TypeSchema, parse_schema, registry
 from .store import ArtifactStore
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Artifact",

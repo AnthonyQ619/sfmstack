@@ -40,6 +40,7 @@ POLL_BACKOFF_MAX = 2.0
 class _Slot:
     endpoint: Endpoint
     lease: Lease | None
+    busy: int = 0  # in-flight jobs; a slot with any is never reaped or evicted
 
 
 class ContainerRunner:
@@ -122,9 +123,18 @@ class ContainerRunner:
                 self.gpus.release(slot.lease)
 
     def _evict_lru_gpu_holder(self) -> bool:
-        """Free one device by stopping the least recently used GPU server."""
+        """Free one device by stopping the least recently used *idle* GPU server.
+
+        Busy slots are excluded. `last_used` only advances while a job is polled,
+        so without this guard the longest-running job -- exactly the one worth
+        protecting -- would look like the stalest and be evicted first.
+        """
         with self._lock:
-            holders = [(k, s) for k, s in self._slots.items() if s.lease is not None]
+            holders = [
+                (k, s)
+                for k, s in self._slots.items()
+                if s.lease is not None and s.busy == 0
+            ]
             if not holders:
                 return False
             key, _ = min(holders, key=lambda kv: kv[1].endpoint.last_used)
@@ -132,10 +142,16 @@ class ContainerRunner:
             return True
 
     def reap_idle(self) -> list[str]:
-        """Stop servers idle beyond the TTL. Safe to call at any time."""
+        """Stop servers idle beyond the TTL. Safe to call at any time.
+
+        Never reaps a slot with a job in flight, however long that job has been
+        running.
+        """
         with self._lock:
             stale = [
-                k for k, s in self._slots.items() if s.endpoint.idle_s > self.idle_ttl
+                k
+                for k, s in self._slots.items()
+                if s.busy == 0 and s.endpoint.idle_s > self.idle_ttl
             ]
             for key in stale:
                 self._discard(key)
@@ -172,13 +188,19 @@ class ContainerRunner:
             "device": str(slot.lease.device) if slot.lease else None,
         }
 
+        with self._lock:
+            slot.busy += 1
         try:
-            http_post(f"{slot.endpoint.url}/run", request)
-        except BackendError as e:
-            raise ExecutionError(spec.name, e) from e
+            try:
+                http_post(f"{slot.endpoint.url}/run", request)
+            except BackendError as e:
+                raise ExecutionError(spec.name, e) from e
 
-        record = self._await(slot.endpoint, job_id, spec)
-        slot.endpoint.touch()
+            record = self._await(slot.endpoint, job_id, job)
+        finally:
+            with self._lock:
+                slot.busy -= 1
+            slot.endpoint.touch()
 
         if record["status"] != "ok":
             raise ExecutionError(
@@ -194,10 +216,12 @@ class ContainerRunner:
             for slot_name, aid in (record.get("outputs") or {}).items()
         }
 
-    def _await(self, endpoint: Endpoint, job_id: str, spec: ModuleSpec) -> dict[str, Any]:
-        deadline = (
-            time.monotonic() + self.job_timeout if self.job_timeout else None
-        )
+    def _await(self, endpoint: Endpoint, job_id: str, job: Job) -> dict[str, Any]:
+        spec = job.spec
+        timeout = self.job_timeout
+        if spec.resources.timeout_s:
+            timeout = spec.resources.timeout_s
+        deadline = time.monotonic() + timeout if timeout else None
         interval = POLL_INTERVAL
 
         while True:
@@ -209,6 +233,15 @@ class ContainerRunner:
                     RuntimeError(f"lost contact with the module server: {e}"),
                 ) from e
 
+            # Keeps the slot's LRU position honest while a long job runs, so a
+            # 20-minute reconstruction does not look like the stalest server.
+            endpoint.touch()
+
+            if job.on_progress is not None:
+                progress = record.get("progress")
+                if progress is not None or record.get("stage"):
+                    job.on_progress(progress, str(record.get("stage") or ""))
+
             if record.get("status") in ("ok", "failed", "cancelled"):
                 return record
 
@@ -219,7 +252,11 @@ class ContainerRunner:
                     pass
                 raise ExecutionError(
                     spec.name,
-                    TimeoutError(f"exceeded job_timeout of {self.job_timeout}s"),
+                    TimeoutError(
+                        f"exceeded the {timeout}s timeout. Raise it with "
+                        f"resources.timeout_s in {spec.name}'s module.yaml if this "
+                        f"module is legitimately this slow."
+                    ),
                 )
 
             time.sleep(interval)

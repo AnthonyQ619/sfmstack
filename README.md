@@ -25,7 +25,7 @@ Early. Build order and progress:
 | 7 | Remaining pilot modules + first driven session | next |
 | 8 | Port the remaining 19 modules | |
 
-196 tests, including a real two-container pipeline over DTU data.
+208 tests, including a real two-container pipeline over DTU data.
 `.venv/bin/python -m pytest -q`
 
 ## Containers
@@ -51,6 +51,33 @@ orch = Orchestrator(store=store, registry=registry, runner=runner)
 `SceneLoader` has Pillow and no OpenCV; `FeatureDetectionSIFT` has OpenCV and no
 Pillow. Neither could run in the other's image, and they compose through the
 artifact store.
+
+### Long jobs
+
+Modules range from a two-second union-find to a forty-minute dense
+reconstruction, so nothing in the call path assumes a job is quick.
+
+`module.yaml` declares `resources.expected_duration_s` — a hint, not a limit —
+and the service refines it from observed runs. That decides whether a call blocks
+inline or hands back a job id:
+
+```
+SceneLoader (declared 30s):  returned in 1.0s  status=running  poll_after_s=14.5
+      13%  reading 5/30
+      53%  reading 17/30
+      97%  reading 30/30
+   -> ok in 16.0s        learned estimate: 16.0s
+```
+
+A single global wait cannot serve both ends: it either blocks pointlessly on the
+slow modules or round-trips pointlessly on the fast ones. Cache hits are the
+exception and are always waited for — they return instantly whatever the module
+normally costs.
+
+Every unfinished response carries `poll_after_s`, so the caller never has to
+guess a cadence. Modules call `ctx.progress(fraction, stage)` from any loop that
+runs more than a few seconds; it is the only thing that distinguishes a working
+module from a wedged one on a twenty-minute job.
 
 Servers stay **warm** between jobs — a second SIFT run against the same container
 skips startup entirely, which is the case a parameter sweep hits constantly. Idle

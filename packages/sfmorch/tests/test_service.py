@@ -280,6 +280,28 @@ def test_the_scaffolded_manifest_parses_and_registers(service, tmp_path):
     assert spec.produced_types == {"pairwise_matches/v1"}
 
 
+def test_the_scaffolded_adapter_is_valid_python(service, tmp_path):
+    """The templates are f-strings, so any brace in the generated code is an
+    interpolation unless escaped. A commented-out example containing `{i + 1}`
+    silently became a NameError at generation time until this caught it."""
+    service.config.modules_dir = tmp_path / "modules"
+    service.scaffold_module(
+        "MyThing",
+        consumes={"scene": "scene/v1"},
+        produces={"tracks": "tracks/v1"},
+        pip=["numpy==2.1.3"],
+    )
+    root = tmp_path / "modules" / "my_thing"
+
+    compile((root / "adapter.py").read_text(), "adapter.py", "exec")
+
+    import yaml
+
+    manifest = yaml.safe_load((root / "module.yaml").read_text())
+    assert manifest["resources"]["expected_duration_s"]
+    assert "numpy==2.1.3" in (root / "Dockerfile").read_text()
+
+
 def test_the_scaffolded_adapter_refuses_to_run(service, tmp_path):
     """A stub that silently produces an empty artifact is worse than one that
     refuses -- it looks like a successful reconstruction."""

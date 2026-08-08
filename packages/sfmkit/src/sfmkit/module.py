@@ -81,12 +81,35 @@ class Ctx:
     # output slot name -> payload type, from the module manifest's `produces`
     output_types: dict[str, str] = field(default_factory=dict)
 
+    # Set by the runner. Progress is how a caller distinguishes "still working"
+    # from "wedged" on a job that legitimately runs for twenty minutes.
+    on_progress: Callable[[float | None, str], None] | None = None
+
     _writers: dict[str, ArtifactWriter] = field(default_factory=dict, repr=False)
     _started: float = field(default_factory=time.monotonic, repr=False)
     _started_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"),
         repr=False,
     )
+
+    # --------------------------------------------------------------- progress
+
+    def progress(self, fraction: float | None = None, stage: str = "") -> None:
+        """Report how far along this job is.
+
+        Call it from any loop that runs for more than a few seconds -- per image,
+        per pair, per bundle-adjustment iteration. Cheap, and it is the only
+        thing that lets a caller tell a module that is working from one that is
+        stuck. Modules that never call it simply report no progress.
+
+            for i, path in enumerate(paths):
+                ctx.progress(i / len(paths), f"detecting {i + 1}/{len(paths)}")
+        """
+        if self.on_progress is None:
+            return
+        if fraction is not None:
+            fraction = max(0.0, min(1.0, float(fraction)))
+        self.on_progress(fraction, stage)
 
     # ----------------------------------------------------------------- inputs
 

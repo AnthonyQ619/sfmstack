@@ -74,7 +74,7 @@ def test_the_surface_does_not_grow_with_the_module_count(server):
         }))
 
     assert len(asyncio.run(mcp.list_tools())) == before
-    assert len(call(mcp, "sfm_list_modules", {})["modules"]) == 5 + 20
+    assert len(call(mcp, "sfm_list_modules", {})["modules"]) == 6 + 20
 
 
 def test_every_tool_has_a_description(server):

@@ -28,13 +28,82 @@ from .scaffold import ScaffoldRequest, scaffold_module, to_slug
 DEFAULT_INLINE_WAIT = 20.0
 
 
+def _sink(holder: dict):
+    """Route a module's progress onto its job handle.
+
+    Indirected through a holder because the handle only exists once the work has
+    been submitted, and the work needs the sink to build the call.
+    """
+
+    def sink(fraction, stage: str) -> None:
+        handle = holder.get("handle")
+        if handle is None:
+            return
+        if fraction is not None:
+            handle.progress = fraction
+        if stage:
+            handle.stage = stage
+
+    return sink
+
+
 @dataclass
 class ServiceConfig:
     modules_dir: Path
     store_root: Path
     skills_dir: Path | None = None
-    inline_wait_s: float = DEFAULT_INLINE_WAIT
     docker: str = "docker"
+
+    inline_wait_s: float = DEFAULT_INLINE_WAIT
+    """How long a call may block waiting for a module it expects to be quick."""
+
+    probe_wait_s: float = 2.0
+    """Minimum wait even for a module known to be slow.
+
+    Long enough to catch the case that matters: an already-cached result returns
+    almost instantly regardless of how expensive the module normally is, and
+    handing back a job id for work that was never going to run is pure latency.
+    """
+
+    max_poll_interval_s: float = 30.0
+
+
+class DurationEstimator:
+    """Rolling estimate of how long each module takes.
+
+    A single global inline wait cannot serve both a two-second union-find and a
+    forty-minute dense reconstruction: it either blocks pointlessly on the slow
+    ones or round-trips pointlessly on the fast ones. So the wait is derived
+    per-module -- seeded from the manifest's declared `expected_duration_s` and
+    refined from what actually happened.
+
+    Deliberately biased upward (a slow observation moves the estimate faster than
+    a fast one). Under-estimating costs a wasted round trip on every subsequent
+    call; over-estimating costs one bounded block. The asymmetry is real, so the
+    estimator leans that way.
+    """
+
+    def __init__(self, alpha_up: float = 0.6, alpha_down: float = 0.2):
+        self.alpha_up = alpha_up
+        self.alpha_down = alpha_down
+        self._observed: dict[str, float] = {}
+
+    def observe(self, module: str, duration_s: float) -> None:
+        current = self._observed.get(module)
+        if current is None:
+            self._observed[module] = duration_s
+            return
+        alpha = self.alpha_up if duration_s > current else self.alpha_down
+        self._observed[module] = (1 - alpha) * current + alpha * duration_s
+
+    def estimate(self, module: str, declared: float | None) -> float | None:
+        observed = self._observed.get(module)
+        if observed is not None:
+            return observed
+        return declared
+
+    def has_observed(self, module: str) -> bool:
+        return module in self._observed
 
 
 class SfmService:
@@ -50,6 +119,7 @@ class SfmService:
         self.orch = orchestrator
         self.registry = registry
         self.jobs = jobs or JobManager()
+        self.durations = DurationEstimator()
 
     @property
     def store(self) -> ArtifactStore:
@@ -107,6 +177,42 @@ class SfmService:
     ) -> dict[str, Any]:
         return self.orch.check(module, inputs=inputs, params=params)
 
+    def _inline_wait_for(self, module: str, *, cached: bool) -> float:
+        """How long to block before handing back a job id.
+
+        A cached result is effectively instant, so wait for it whatever the
+        module normally costs. Otherwise wait only if the module is expected to
+        finish inside the budget; if it is not, take a short probe (it may still
+        be quick on a small scene) and hand back a job id.
+        """
+        if cached:
+            return self.config.inline_wait_s
+
+        spec = self.registry.get(module)
+        estimate = self.durations.estimate(module, spec.resources.expected_duration_s)
+
+        if estimate is None:
+            # Nothing declared and nothing observed: probe with the full budget
+            # once, and the estimator will know better next time.
+            return self.config.inline_wait_s
+        if estimate <= self.config.inline_wait_s:
+            return min(estimate * 1.5 + 2.0, self.config.inline_wait_s)
+        return self.config.probe_wait_s
+
+    def _poll_after_s(self, module: str, elapsed: float) -> float:
+        """Suggested delay before the next `sfm_job` call.
+
+        Returned on every unfinished run so the caller does not have to guess a
+        cadence -- guessing costs either wasted round trips or idle time, and the
+        right answer is module-dependent.
+        """
+        spec = self.registry.get(module)
+        estimate = self.durations.estimate(module, spec.resources.expected_duration_s)
+        if estimate is None:
+            return 5.0
+        remaining = max(estimate - elapsed, 0.0)
+        return round(min(max(remaining * 0.5, 2.0), self.config.max_poll_interval_s), 1)
+
     def run(
         self,
         module: str,
@@ -117,12 +223,18 @@ class SfmService:
         force: bool = False,
         wait_s: float | None = None,
     ) -> dict[str, Any]:
-        self.orch.check(module, inputs=inputs, params=params)  # refuse early, in-band
+        plan = self.orch.check(module, inputs=inputs, params=params)  # refuse early
+        cached = not force and all(plan["cached"].values())
+
+        holder: dict[str, JobHandle] = {}
 
         def work() -> dict[str, Any]:
             result = self.orch.run(
-                module, run_id=run_id, inputs=inputs, params=params, force=force
+                module, run_id=run_id, inputs=inputs, params=params, force=force,
+                on_progress=_sink(holder),
             )
+            if not result.cached and result.step.duration_s:
+                self.durations.observe(module, result.step.duration_s)
             return self._run_payload(result)
 
         handle = self.jobs.submit_and_wait(
@@ -130,9 +242,30 @@ class SfmService:
             kind="run",
             label=module,
             run_id=run_id,
-            wait_s=self.config.inline_wait_s if wait_s is None else wait_s,
+            wait_s=(
+                self._inline_wait_for(module, cached=cached)
+                if wait_s is None
+                else wait_s
+            ),
         )
-        return handle.to_doc()
+        holder["handle"] = handle
+        return self._with_polling_hint(handle, module)
+
+    def _with_polling_hint(self, handle: JobHandle, module: str) -> dict[str, Any]:
+        doc = handle.to_doc()
+        if not handle.done:
+            doc["poll_after_s"] = self._poll_after_s(module, handle.duration_s or 0.0)
+            spec = self.registry.get(module)
+            estimate = self.durations.estimate(
+                module, spec.resources.expected_duration_s
+            )
+            if estimate is not None:
+                doc["expected_duration_s"] = round(estimate, 1)
+            doc["hint"] = (
+                f"still running; call sfm_job('{handle.id}') again in about "
+                f"{doc['poll_after_s']:.0f}s, or with wait_s to block for it"
+            )
+        return doc
 
     def replay(
         self,
@@ -168,6 +301,8 @@ class SfmService:
         )
         if handle is None:
             raise OrchestratorError(f"no job '{job_id}'")
+        if handle.kind == "run" and handle.label and not handle.done:
+            return self._with_polling_hint(handle, handle.label)
         return handle.to_doc()
 
     def list_jobs(

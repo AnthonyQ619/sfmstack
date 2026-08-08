@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
+from sfmkit import __version__ as SFMKIT_VERSION
+
 from .errors import OrchestratorError
 from .modulespec import ModuleSpec
 
@@ -77,6 +79,32 @@ def http_post(url: str, payload: dict[str, Any], timeout: float = 30.0) -> dict[
     except urllib.error.HTTPError as e:
         detail = json.loads(e.read() or b"{}").get("error", "")
         raise BackendError(f"{url} returned {e.code}: {detail}") from e
+
+
+def check_contract(health: dict, spec: ModuleSpec, *, source: str) -> None:
+    """Refuse a server carrying a different sfmkit than the orchestrator.
+
+    An image built before a contract change runs the right module name at the
+    right version with the wrong runtime underneath, and the symptom is an
+    AttributeError several frames inside the module. The image bakes sfmkit in,
+    so only an explicit check catches it -- the module version cross-check does
+    not, because the module itself did not change.
+    """
+    theirs = health.get("sfmkit_version")
+    if theirs == SFMKIT_VERSION:
+        return
+
+    # A missing field is not "unknown, assume fine" -- it means the image predates
+    # the check, which makes it stale by definition. Defaulting to permissive here
+    # is what let a stale image through as an AttributeError inside a module.
+    described = f"sfmkit {theirs}" if theirs else "an sfmkit too old to report its version"
+    raise BackendError(
+        f"module '{spec.name}' is running {described} but this orchestrator is "
+        f"{SFMKIT_VERSION}. Images bake sfmkit in, so rebuild the base first and "
+        f"then the module ({source}):\n"
+        f"  docker build -t sfmstack/runtime:1.0 -f docker/runtime/Dockerfile .\n"
+        f"  docker build -t {spec.image or '<image>'} -f modules/<name>/Dockerfile ."
+    )
 
 
 def wait_healthy(url: str, timeout: float = STARTUP_TIMEOUT, probe: float = 0.25) -> dict:
@@ -160,7 +188,7 @@ class SubprocessBackend:
         url = f"http://127.0.0.1:{announced['port']}"
         handle = str(proc.pid)
         self._procs[handle] = proc
-        wait_healthy(url)
+        check_contract(wait_healthy(url), spec, source="the local environment")
 
         return Endpoint(
             url=url, handle=handle, module=spec.name, version=spec.version, device=device
@@ -270,7 +298,7 @@ class DockerBackend:
         url = f"http://127.0.0.1:{port}"
 
         try:
-            wait_healthy(url)
+            health = wait_healthy(url)
         except BackendError:
             logs = subprocess.run(
                 [self.docker, "logs", "--tail", "60", container_id],
@@ -280,6 +308,16 @@ class DockerBackend:
             raise BackendError(
                 f"module '{spec.name}' container never became healthy. Logs:\n{logs}"
             ) from None
+
+        # Deliberately outside the handler above: a contract mismatch is a
+        # started, healthy container running the wrong runtime, and its message
+        # says exactly what to rebuild. Folding it into "never became healthy"
+        # would replace the actionable error with a misleading one.
+        try:
+            check_contract(health, spec, source="modules/*/Dockerfile")
+        except BackendError:
+            subprocess.run([self.docker, "rm", "-f", container_id], capture_output=True)
+            raise
 
         return Endpoint(
             url=url,

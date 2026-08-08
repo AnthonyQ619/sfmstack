@@ -144,6 +144,7 @@ def run(ctx: Ctx):
     size_original, size_current, scales = [], [], []
 
     for i, src in enumerate(paths):
+        ctx.progress(i / len(paths), f"reading {i + 1}/{len(paths)}")
         with Image.open(src) as raw:
             img = ImageOps.exif_transpose(raw).convert("RGB")
             w, h = img.size

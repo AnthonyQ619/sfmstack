@@ -1,6 +1,6 @@
 [project]
 name = "sfmkit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Artifact I/O, type schemas, and the module contract for sfmstack. Deliberately tiny."
 requires-python = ">=3.10"
 authors = [{name = "Anthony Quiroga", email = "aquiroga@ucsd.edu"}]

@@ -14,7 +14,7 @@ import importlib.util
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from sfmkit import Artifact, ArtifactStore, Ctx, Params, run_module
 
@@ -37,6 +37,10 @@ class Job:
     run: str = ""
     scene: str = ""
     device: str | None = None
+
+    # Honoured by both runners, so a long job reports the same way whether it is
+    # running in a container or in this process.
+    on_progress: Callable[[float | None, str], None] | None = None
 
 
 class Runner(Protocol):
@@ -69,6 +73,7 @@ class InProcessRunner:
             inputs=dict(job.inputs),
             params=Params(job.params),
             output_types=job.spec.output_types,
+            on_progress=job.on_progress,
         )
 
         try:

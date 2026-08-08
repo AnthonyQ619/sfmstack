@@ -68,6 +68,20 @@ class Resources:
     gpu: bool = False
     min_ram_gb: float | None = None
 
+    expected_duration_s: float | None = None
+    """Roughly how long a typical job takes.
+
+    Not a limit -- a hint, used to decide how long to wait inline before handing
+    back a job id, and to suggest a polling interval. Modules vary from two
+    seconds to forty minutes, so a single global wait either blocks pointlessly
+    on the slow ones or round-trips pointlessly on the fast ones. The service
+    refines this from observed durations as runs accumulate; the declared value
+    is just the cold-start estimate.
+    """
+
+    timeout_s: float | None = None
+    """Hard ceiling for one job. None means no limit."""
+
 
 @dataclass(frozen=True)
 class ModuleSpec:
@@ -251,6 +265,8 @@ class ModuleSpec:
             resources=Resources(
                 gpu=bool(res_doc.get("gpu", False)),
                 min_ram_gb=res_doc.get("min_ram_gb"),
+                expected_duration_s=res_doc.get("expected_duration_s"),
+                timeout_s=res_doc.get("timeout_s"),
             ),
             consumes=slots("consumes", default_required=True),
             produces=produces,

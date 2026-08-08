@@ -30,6 +30,7 @@ def test_fixture_modules_all_load(registry):
         "FakeReconstructor",
         "FakeTracker",
         "MakeScene",
+        "SlowModule",
     ]
 
 

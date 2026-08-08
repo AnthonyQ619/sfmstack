@@ -181,6 +181,7 @@ class Orchestrator:
         params: dict[str, Any] | None = None,
         device: str | None = None,
         force: bool = False,
+        on_progress=None,
     ) -> RunResult:
         spec = self.registry.get(module)
         run = self.open_run(run_id)
@@ -206,6 +207,7 @@ class Orchestrator:
             run=run_id,
             scene=scene,
             device=device,
+            on_progress=on_progress,
         )
 
         started = time.monotonic()
