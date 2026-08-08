@@ -184,3 +184,29 @@ a judgment the orchestrator cannot make.
 uses it to report *where two artifacts' lineage diverges*, which is strictly more
 useful than a staleness flag and stops the agent attributing a difference to the
 parameter it just changed when it actually came from three stages up.
+
+## Artifacts across a container boundary
+
+The store is mounted into every container **at its own absolute path**, so an
+artifact written by one module resolves identically in the next and no path
+translation layer exists to get wrong.
+
+Two consequences worth knowing:
+
+- **Paths recorded inside an artifact must be resolved through
+  `Artifact.resolve()`.** Relative paths resolve against the artifact root;
+  absolute ones pass through. A producer that copies files in (SceneLoader with
+  any resize policy) records them relatively and the artifact is self-contained.
+  A producer that merely references external files records absolute paths, and
+  those files must then be mounted into every downstream container too.
+
+- **Containers run as the host user.** Docker defaults to root, and without
+  `--user` everything a module writes into the shared store is root-owned: the
+  operator cannot delete their own artifacts, and a later in-process run cannot
+  write beside them. `DockerBackend` passes `--user $(id -u):$(id -g)` and sets
+  `HOME=/tmp`, because a bare uid has no passwd entry and several libraries fall
+  over resolving it.
+
+Payload never crosses the wire. The HTTP control plane carries artifact ids,
+parameters, metrics and diagnostics; the arrays move through the mounted
+filesystem.

@@ -10,6 +10,14 @@ whether the work is already done, and what was attempted.
     diverge / compare             lineage, because nothing is ever "stale"
 """
 
+from .backends import (
+    Backend,
+    BackendError,
+    DockerBackend,
+    Endpoint,
+    SubprocessBackend,
+)
+from .container import ContainerRunner
 from .errors import (
     ExecutionError,
     ManifestError,
@@ -18,6 +26,7 @@ from .errors import (
     ParamError,
     WiringError,
 )
+from .gpu import GpuBroker, Lease, NoGpuAvailable, discover_devices
 from .lineage import Divergence, compare, diverge
 from .modulespec import (
     DiagnosticSpec,
@@ -35,16 +44,24 @@ from .runner import InProcessRunner, Job, Runner
 __version__ = "0.1.0"
 
 __all__ = [
+    "Backend",
+    "BackendError",
+    "ContainerRunner",
     "DiagnosticSpec",
     "Divergence",
+    "DockerBackend",
+    "Endpoint",
     "ExecutionError",
+    "GpuBroker",
     "InProcessRunner",
     "Job",
+    "Lease",
     "ManifestError",
     "MetricSpec",
     "ModuleNotFound",
     "ModuleRegistry",
     "ModuleSpec",
+    "NoGpuAvailable",
     "Orchestrator",
     "OrchestratorError",
     "OrphanWarning",
@@ -57,7 +74,9 @@ __all__ = [
     "Runner",
     "Slot",
     "Step",
+    "SubprocessBackend",
     "WiringError",
     "compare",
+    "discover_devices",
     "diverge",
 ]

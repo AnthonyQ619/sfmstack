@@ -20,13 +20,46 @@ Early. Build order and progress:
 | 3 | Module contract proven in-process | **done** |
 | 4 | `sfmorch` — module registry, type checking, run DAG, replay, lineage | **done** |
 | 7a | First real modules: `SceneLoader`, `FeatureDetectionSIFT`, with curated skills | **done** |
-| 5 | Containerize: `sfm-runtime` base, per-module images, GPU broker | next |
-| 6 | MCP server over the orchestrator | |
-| 7 | Four pilot modules + curated skills + first driven session | |
+| 5 | Containerize: `sfm-runtime` base, per-module images, module server, GPU broker | **done** |
+| 6 | MCP server over the orchestrator | next |
+| 7 | Remaining pilot modules + first driven session | |
 | 8 | Port the remaining 19 modules | |
 
-128 tests, including integration against real DTU and ETH3D data.
+162 tests, including a real two-container pipeline over DTU data.
 `.venv/bin/python -m pytest -q`
+
+## Containers
+
+Every module gets its own image, even where two would be identical. All of them
+build `FROM sfmstack/runtime`, so Docker stores the shared layers once — three
+images here cost 415 MB + 21 MB + 179 MB of unique disk, not 415 + 436 + 594.
+
+```bash
+docker build -t sfmstack/runtime:1.0        -f docker/runtime/Dockerfile .
+docker build -t sfmstack/scene-loader:1.0.0 -f modules/scene_loader/Dockerfile .
+docker build -t sfmstack/feature-sift:1.0.0 -f modules/feature_sift/Dockerfile .
+```
+
+```python
+runner = ContainerRunner(
+    DockerBackend(mounts=["/home/anthonyq/datasets"]),
+    gpus=GpuBroker(),
+)
+orch = Orchestrator(store=store, registry=registry, runner=runner)
+```
+
+`SceneLoader` has Pillow and no OpenCV; `FeatureDetectionSIFT` has OpenCV and no
+Pillow. Neither could run in the other's image, and they compose through the
+artifact store.
+
+Servers stay **warm** between jobs — a second SIFT run against the same container
+skips startup entirely, which is the case a parameter sweep hits constantly. Idle
+servers are reaped on a TTL, and under GPU pressure the least recently used one
+is evicted rather than the request failing. One module holds one GPU exclusively.
+
+`SubprocessBackend` runs the same server as a local process for development and
+for testing the container path without Docker. The orchestrator cannot tell any
+of the three runners apart.
 
 ## Layout
 
@@ -61,7 +94,12 @@ deduplicates and re-running with new parameters keeps both attempts.
 feeds the MCP tool schema, the agent's documentation, type-based plan validation,
 and metric interpretation.
 
-**3. The module server API** — `/healthz`, `/manifest`, `POST /run`, `GET /jobs/<id>`.
+**3. The module server API** — `/healthz`, `/manifest`, `POST /run`,
+`GET /jobs/<id>`, `POST /jobs/<id>/cancel`. Implemented once in `sfmkit.server`,
+on `http.server`: it ships in every container, so a web framework here would
+become a dependency of modules pinning conflicting torch and numpy majors. The
+control plane carries ids and parameters only — every byte of payload moves
+through the mounted artifact store, so throughput is not a consideration.
 
 ## Payload types
 
