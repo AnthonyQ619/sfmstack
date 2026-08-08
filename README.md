@@ -24,11 +24,11 @@ Early. Build order and progress:
 | 6 | MCP server over the orchestrator | **done** |
 | 7b | `FeatureMatchNN`, `FeatureTrackUnionFind` — scene → features → pairs → tracks | **done** |
 | 7c | Pose, triangulation, bundle adjustment — a complete classical pipeline | **done** |
-| 7d | ORB, FLANN, SuperPoint, ALIKED, LightGlue | **done** |
-| 8 | The remaining 10 of the 23 legacy modules | in progress |
+| 7d | ORB, FLANN, SuperPoint, ALIKED, LightGlue, LoFTR | **done** |
+| 8 | The remaining 9 legacy modules | in progress |
 | 9 | First agent-driven session over MCP | |
 
-13 modules, 246 tests. `.venv/bin/python -m pytest -q`
+14 modules, 246 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -58,8 +58,36 @@ sfmstack/runtime-torch    5.8 GB   torch cu124 + git
                                    shared by SuperPoint, ALIKED, LightGlue
 ```
 
-Thirteen module images cost two bases plus a few MB of unique layer each. That
-sharing is what makes strict one-image-per-module affordable.
+```
+sfmstack/runtime-kornia          + kornia + LoFTR weights
+```
+
+Fourteen module images cost four bases plus a few MB of unique layer each. That
+sharing is what makes strict one-image-per-module affordable — and kornia is
+deliberately *not* in the lightglue base, because the predecessor's two conda
+environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
+
+## Modules
+
+| stage | module | backend | GPU |
+| --- | --- | --- | --- |
+| source | `SceneLoader` | Pillow | |
+| detection | `FeatureDetectionSIFT` | OpenCV | |
+| | `FeatureDetectionORB` | OpenCV + ANMS-SSC | |
+| | `FeatureDetectionSuperPoint` | lightglue | ✓ |
+| | `FeatureDetectionALIKED` | lightglue | ✓ |
+| matching | `FeatureMatchNN` | OpenCV brute force | |
+| | `FeatureMatchFLANN` | OpenCV FLANN | |
+| | `FeatureMatchLightGlue` | lightglue | ✓ |
+| | `FeatureMatchLoFTR` | kornia, **detector-free** | ✓ |
+| tracking | `FeatureTrackUnionFind` | numpy only | |
+| pose | `PoseEssentialToPnP` | OpenCV | |
+| sparse | `SparseTriangulation` | OpenCV | |
+| optimization | `BundleAdjustmentGlobal` | pycolmap / Ceres | |
+| | `BundleAdjustmentLocal` | pycolmap / Ceres | |
+
+Still to port: SuperGlue, RoMa, VGGT (pose/sparse/dense), MapAnything, VGGSfM,
+Tapir, COLMAP global mapper, gtsam incremental sparse, PatchMatch MVS.
 
 ```bash
 docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .
