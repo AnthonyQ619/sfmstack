@@ -1,0 +1,67 @@
+type: features/v1
+summary: Keypoints and descriptors for every image in a scene.
+
+description: |
+  Stored as one concatenated table plus an image index, not as a per-image list.
+  Variable-length per-image arrays cannot go in an npz without pickling, and the
+  concatenated form is also what every downstream consumer wants: a single
+  vectorized table it can slice.
+
+  Descriptors are optional. Detector-free matchers (LoFTR, RoMa) produce
+  correspondences with no descriptor stage at all, and forcing an empty array on
+  them would be a lie about what they computed.
+
+files:
+  keypoints:
+    required: true
+    arrays:
+      xy:
+        required: true
+        shape: [null, 2]
+        dtype: [float32, float64]
+        columns: [x, y]
+        description: Pixel coordinates in the RESIZED image (scene.size_current).
+      image_index:
+        required: true
+        shape: [null]
+        dtype: [int32, int64]
+        description: Which image each keypoint belongs to. Sorted ascending.
+      scores:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+      scale:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+        description: Detection scale, when the detector reports one (SIFT).
+      orientation:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+        description: Degrees, when the detector reports one (SIFT).
+
+  descriptors:
+    required: false
+    description: Absent for detector-free methods.
+    arrays:
+      desc:
+        required: true
+        shape: [null, null]
+        dtype: [float32, float64, uint8]
+        description: |
+          One row per keypoint, aligned with keypoints/xy. Width is
+          detector-dependent (128 SIFT, 256 SuperPoint, 32 ORB).
+      binary:
+        required: false
+        shape: []
+        dtype: [bool]
+        description: True when descriptors are binary (ORB/BRIEF).
+
+invariants:
+  - check: same_length
+    args: {file: keypoints, arrays: [xy, image_index]}
+  - check: finite
+    args: {file: keypoints, array: xy}
+  - check: values_within
+    args: {file: keypoints, array: image_index, minimum: 0}

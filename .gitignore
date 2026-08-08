@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Artifact store and run output — never committed.
+# Root-anchored: skills/runs/ is the curated worked-run corpus and IS committed.
+/store/
+/runs/
+/artifacts/
+*.npz
+
+# Model weights and caches live in a mounted volume, never in the repo.
+# The previous system kept 4.8 GB of untracked weights inside the source tree;
+# that is exactly what this rule exists to prevent.
+weights/
+*.pt
+*.pth
+*.safetensors
+.cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

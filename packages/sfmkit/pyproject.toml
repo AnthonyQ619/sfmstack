@@ -1,0 +1,38 @@
+[project]
+name = "sfmkit"
+version = "0.1.0"
+description = "Artifact I/O, type schemas, and the module contract for sfmstack. Deliberately tiny."
+requires-python = ">=3.10"
+authors = [{name = "Anthony Quiroga", email = "aquiroga@ucsd.edu"}]
+
+# HARD CONSTRAINT — read before adding anything here.
+#
+# sfmkit is installed into EVERY module container. Every dependency it takes is a
+# dependency forced on modules that pin torch 2.6+cu124 and modules that pin torch
+# 2.11, on numpy 1.26 and numpy 2.x. A conflict here reintroduces the single-
+# environment problem this whole architecture exists to eliminate.
+#
+# Allowed: the standard library, numpy, pyyaml.
+#   - numpy is unavoidable (artifacts are arrays) and is used through APIs stable
+#     across the 1.x/2.x boundary. sfmkit must never pin a numpy major version.
+#   - pyyaml is a pure-python-installable, decade-stable parser already present in
+#     essentially every ML image. It is not a conflict source.
+#
+# Nothing else. Not opencv, not torch, not pycolmap, not pydantic, not click.
+dependencies = [
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sfmkit = ["types/*.yaml"]

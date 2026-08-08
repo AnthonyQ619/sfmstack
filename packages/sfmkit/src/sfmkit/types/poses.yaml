@@ -1,0 +1,53 @@
+type: poses/v1
+summary: Camera poses, one per registered image.
+
+description: |
+  Cam-from-world 3x4 [R|t], matching COLMAP and OpenCV convention.
+
+  `valid` is required rather than implied by array length: incremental pipelines
+  routinely fail to register some images, and a pipeline that silently treats an
+  unregistered camera as identity produces a reconstruction that looks plausible
+  and is wrong. Making the flag mandatory forces every consumer to confront it.
+
+  Intrinsics may be present when the pose estimator also estimated them (VGGT,
+  MapAnything). When present they supersede scene/v1 calibration for downstream
+  stages.
+
+files:
+  poses:
+    required: true
+    arrays:
+      cam_from_world:
+        required: true
+        shape: [null, 3, 4]
+        dtype: [float32, float64]
+        description: World-to-camera rigid transform per image.
+      valid:
+        required: true
+        shape: [null]
+        dtype: [bool]
+        description: False where the image could not be registered.
+      image_index:
+        required: true
+        shape: [null]
+        dtype: [int32, int64]
+        description: Index into scene/v1 images.
+
+  intrinsics:
+    required: false
+    description: Present when this module estimated intrinsics rather than reading them.
+    arrays:
+      K:
+        required: true
+        shape: [null, 3, 3]
+        dtype: [float32, float64]
+      camera_index:
+        required: false
+        shape: [null]
+        dtype: [int32, int64]
+
+invariants:
+  - check: same_length
+    args: {file: poses, arrays: [cam_from_world, valid, image_index]}
+  - check: values_within
+    args: {file: poses, array: image_index, minimum: 0}

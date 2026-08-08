@@ -1,0 +1,76 @@
+type: sparse_model/v1
+summary: A sparse reconstruction -- 3D points, their observations, and camera poses.
+
+description: |
+  Replaces the old Scene(sparse=True) and IncrementalSfMState, which were two
+  representations of the same thing distinguished only by which module made them.
+
+  The npz payload is ALWAYS authoritative. A COLMAP-backed producer additionally
+  writes a `colmap` sidecar (cameras/images/points3D.bin) so a pycolmap consumer
+  can open the reconstruction natively instead of rebuilding it from arrays. This
+  is what replaces the live `Scene.recon` pointer -- previously the only
+  unserializable handoff in the pipeline, and the reason the whole thing had to
+  run in one process.
+
+  A consumer without pycolmap reads the npz and loses nothing but convenience.
+
+files:
+  points:
+    required: true
+    arrays:
+      xyz:
+        required: true
+        shape: [null, 3]
+        dtype: [float32, float64]
+      rgb:
+        required: false
+        shape: [null, 3]
+        dtype: [uint8]
+      error:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+        description: Mean reprojection error per point, in pixels.
+      track_id:
+        required: false
+        shape: [null]
+        dtype: [int32, int64]
+        description: The tracks/v1 track each point came from, when applicable.
+
+  observations:
+    required: true
+    arrays:
+      obs:
+        required: true
+        shape: [null, 4]
+        dtype: [float32, float64]
+        columns: [frame_idx, point_index, x, y]
+        description: Which image saw which 3D point, and where.
+
+  poses:
+    required: true
+    arrays:
+      cam_from_world:
+        required: true
+        shape: [null, 3, 4]
+        dtype: [float32, float64]
+      valid:
+        required: true
+        shape: [null]
+        dtype: [bool]
+      image_index:
+        required: true
+        shape: [null]
+        dtype: [int32, int64]
+
+invariants:
+  - check: finite
+    args: {file: points, array: xyz}
+  - check: nonempty
+    args: {file: points, array: xyz}
+  - check: finite
+    args: {file: observations, array: obs}
+  - check: values_within
+    args: {file: observations, array: obs, column: 1, minimum: 0}
+  - check: same_length
+    args: {file: poses, arrays: [cam_from_world, valid, image_index]}

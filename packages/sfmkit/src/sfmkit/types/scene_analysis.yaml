@@ -1,0 +1,112 @@
+type: scene_analysis/v1
+summary: Cues characterizing a scene before any reconstruction runs, plus derived traits.
+
+description: |
+  Every file group is OPTIONAL. This is the type that most exercises the
+  additive-extension rule: a cheap CPU extractor fills `photometric`, `texture`
+  and `metadata`; a GPU extractor fills `motion` and `degeneracy`; a new
+  extractor adds arrays nobody has thought of yet. Partial producers compose
+  without a merge step because the agent reads whichever groups are present.
+
+  Only widely-agreed cues are declared here. Anything else a producer computes
+  rides along as an extra array and is recorded in the manifest under `extras`,
+  which is exactly the intended behaviour -- promote a cue into this schema once
+  more than one module relies on it.
+
+  Traits are the retrieval key: they match the `scene_traits` frontmatter on
+  worked runs, so "find scenes like this one" is a set intersection rather than a
+  judgment call. Traits are DERIVED BY THE ORCHESTRATOR from these numbers using
+  thresholds held in skills/judgment/, not computed here -- revising a threshold
+  must not cost a GPU hour.
+
+files:
+  metadata:
+    required: false
+    description: Free. EXIF, ordering, and file structure -- no pixels involved.
+    arrays:
+      n_images: {required: true, shape: [], dtype: [int32, int64]}
+      ordered:
+        required: false
+        shape: []
+        dtype: [bool]
+        description: |
+          Whether filenames or timestamps establish a capture order. Everything
+          downstream that matches consecutive pairs assumes this and nothing
+          currently checks it.
+      capture_interval_s:
+        required: false
+        shape: []
+        dtype: [float32, float64]
+        description: Median timestamp delta. Small values imply video frames.
+      focal_35mm:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+        description: Per-image EXIF focal length, for sanity-checking calibration.
+
+  motion:
+    required: false
+    description: From dense optical flow, normalized by image diagonal.
+    arrays:
+      overall_magnitude: {required: false, shape: [], dtype: [float32, float64]}
+      high_motion_tail: {required: false, shape: [], dtype: [float32, float64]}
+      variability: {required: false, shape: [], dtype: [float32, float64]}
+      low_baseline_risk: {required: false, shape: [], dtype: [float32, float64]}
+      large_motion_risk: {required: false, shape: [], dtype: [float32, float64]}
+      rotation_median_deg: {required: false, shape: [], dtype: [float32, float64]}
+      large_rotation_risk: {required: false, shape: [], dtype: [float32, float64]}
+
+  photometric:
+    required: false
+    description: Illumination, colour, and exposure stability across the set.
+    arrays:
+      illumination_change: {required: false, shape: [], dtype: [float32, float64]}
+      color_shift: {required: false, shape: [], dtype: [float32, float64]}
+      exposure_shift: {required: false, shape: [], dtype: [float32, float64]}
+      combined_change: {required: false, shape: [], dtype: [float32, float64]}
+
+  texture:
+    required: false
+    arrays:
+      density: {required: false, shape: [], dtype: [float32, float64]}
+      repetitiveness:
+        required: false
+        shape: []
+        dtype: [float32, float64]
+        description: |
+          Self-similarity. High values defeat descriptor matching in a way no
+          parameter recovers -- the signal that says switch capability rather
+          than tune.
+      textureless_fraction: {required: false, shape: [], dtype: [float32, float64]}
+      sharpness:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+        description: Per-image Laplacian variance; identifies frames worth dropping.
+
+  degeneracy:
+    required: false
+    description: The two classic SfM killers, both detectable before anything runs.
+    arrays:
+      pure_rotation_risk:
+        required: false
+        shape: []
+        dtype: [float32, float64]
+        description: No parallax means no structure, however good the matcher is.
+      planar_dominance:
+        required: false
+        shape: []
+        dtype: [float32, float64]
+        description: |
+          GRIC homography-vs-fundamental preference. High values make
+          essential-matrix decomposition ill-conditioned.
+
+  traits:
+    required: false
+    description: Derived vocabulary. The retrieval key.
+    arrays:
+      names:
+        required: true
+        shape: [null]
+        dtype: [str]
+        description: e.g. [outdoor, repetitive-texture, planar-dominant, sequential]

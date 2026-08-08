@@ -1,0 +1,61 @@
+type: pairwise_matches/v1
+summary: Two-view correspondences between image pairs.
+
+description: |
+  One half of what the old PointsMatched conflated. That class was simultaneously
+  a pairwise container, a multi-view track container, and an observation registry
+  reconciling the two; every consumer branched on which half happened to be
+  populated. They are separate types here: this one, and tracks/v1.
+
+  `feature_index` is optional because detector-free matchers have no global
+  feature table to index into. Its absence is exactly the signal a consumer needs
+  to know it is looking at pair-local correspondences.
+
+files:
+  pairs:
+    required: true
+    arrays:
+      image_pair:
+        required: true
+        shape: [null, 2]
+        dtype: [int32, int64]
+        columns: [image_i, image_j]
+        description: |
+          The image pairs that were matched. Not assumed consecutive -- a view
+          graph from retrieval or exhaustive matching is equally valid here.
+
+  matches:
+    required: true
+    arrays:
+      xy:
+        required: true
+        shape: [null, 4]
+        dtype: [float32, float64]
+        columns: [x1, y1, x2, y2]
+        description: Correspondence coordinates in each image of the pair.
+      pair_index:
+        required: true
+        shape: [null]
+        dtype: [int32, int64]
+        description: Row in pairs/image_pair this match belongs to.
+      feature_index:
+        required: false
+        shape: [null, 2]
+        dtype: [int32, int64]
+        columns: [feature_i, feature_j]
+        description: |
+          Indices into features/v1 keypoints. Present for detector-based
+          matchers, absent for LoFTR/RoMa. Track builders use this when present
+          and fall back to coordinate merging when not.
+      confidence:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+
+invariants:
+  - check: same_length
+    args: {file: matches, arrays: [xy, pair_index]}
+  - check: finite
+    args: {file: matches, array: xy}
+  - check: values_within
+    args: {file: matches, array: pair_index, minimum: 0}

@@ -1,0 +1,52 @@
+type: dense_model/v1
+summary: A dense reconstruction -- point cloud and optionally per-view depth.
+
+description: |
+  Terminal for most pipelines. Depth maps are optional and only expressible here
+  when every view shares a resolution; producers with ragged depth should write a
+  `depth` sidecar in their native format and leave the array out rather than
+  padding, which would silently corrupt downstream metrics.
+
+  A `.ply` sidecar is conventional for viewing and for external evaluation
+  tooling.
+
+files:
+  points:
+    required: true
+    arrays:
+      xyz:
+        required: true
+        shape: [null, 3]
+        dtype: [float32, float64]
+      rgb:
+        required: false
+        shape: [null, 3]
+        dtype: [uint8]
+      normals:
+        required: false
+        shape: [null, 3]
+        dtype: [float32, float64]
+
+  depth:
+    required: false
+    description: Only when all views share a resolution.
+    arrays:
+      maps:
+        required: true
+        shape: [null, null, null]
+        dtype: [float32, float64]
+        description: (num_views, height, width). Non-finite marks invalid depth.
+      image_index:
+        required: true
+        shape: [null]
+        dtype: [int32, int64]
+      confidence:
+        required: false
+        shape: [null, null, null]
+        dtype: [float32, float64]
+
+invariants:
+  - check: nonempty
+    args: {file: points, array: xyz}
+  - check: finite
+    args: {file: points, array: xyz}

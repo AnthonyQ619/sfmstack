@@ -1,0 +1,93 @@
+type: scene/v1
+summary: A set of images and their calibration. The root of every pipeline.
+
+description: |
+  Holds image PATHS, never pixels. The old CameraData kept every decoded PIL
+  image resident for the life of a run, which is both the reason it could not be
+  serialized and a large share of its memory cost.
+
+  Per-image sizes and scales are arrays rather than scalars. The previous loader
+  computed one scale from the last image read, which is silently wrong for any
+  dataset with mixed resolutions.
+
+  Uncalibrated is a first-class state: the `calibration` file is optional, since
+  VGGT and MapAnything estimate intrinsics themselves.
+
+files:
+  images:
+    required: true
+    description: Image inventory and geometry bookkeeping.
+    arrays:
+      paths:
+        required: true
+        shape: [null]
+        dtype: [str]
+        description: Absolute path to each image, in pipeline order.
+      names:
+        required: true
+        shape: [null]
+        dtype: [str]
+        description: Basename of each image, for reporting and COLMAP export.
+      size_original:
+        required: true
+        shape: [null, 2]
+        dtype: [int32, int64]
+        columns: [width, height]
+        description: On-disk resolution, per image.
+      size_current:
+        required: true
+        shape: [null, 2]
+        dtype: [int32, int64]
+        columns: [width, height]
+        description: Resolution after any resize, per image.
+      scale:
+        required: true
+        shape: [null, 2]
+        dtype: [float32, float64]
+        columns: [width_scale, height_scale]
+        description: size_current / size_original, per image.
+      content_hash:
+        required: true
+        shape: []
+        dtype: [str]
+        description: |
+          Hash over the ordered image list and resize policy. Two runs on the
+          same scene resolve to the same artifact id and share one decode.
+
+  calibration:
+    required: false
+    description: Present only when the scene is calibrated.
+    arrays:
+      intrinsics:
+        required: true
+        shape: [null, 3, 3]
+        dtype: [float32, float64]
+        description: K per camera, already rescaled to size_current.
+      distortions:
+        required: true
+        shape: [null, 5]
+        dtype: [float32, float64]
+        columns: [k1, k2, p1, p2, k3]
+        description: OpenCV convention, per camera.
+      camera_index:
+        required: false
+        shape: [null]
+        dtype: [int32, int64]
+        description: |
+          Which camera each image used. Absent means all images share camera 0.
+          This is how multi-camera rigs are expressed without a separate flag.
+      baseline:
+        required: false
+        shape: [3, 4]
+        dtype: [float32, float64]
+        description: Stereo baseline [R|t], when the rig is stereo.
+
+invariants:
+  - check: same_length
+    args:
+      file: images
+      arrays: [paths, names, size_original, size_current, scale]
+  - check: values_within
+    args: {file: images, array: size_current, minimum: 1}
+  - check: finite
+    args: {file: calibration, array: intrinsics}

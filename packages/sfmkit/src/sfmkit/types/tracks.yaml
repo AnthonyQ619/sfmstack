@@ -1,0 +1,49 @@
+type: tracks/v1
+summary: Multi-view feature tracks as a flat observation table.
+
+description: |
+  One row per observation: a track seen in five views occupies five rows. This is
+  the form triangulation and bundle adjustment both want, and it is what the old
+  PointsMatched.data_matrix already was -- promoted here to a type of its own so
+  a consumer no longer has to guess whether it was given tracks or pairs.
+
+  Produced either by merging pairwise_matches (union-find) or directly from
+  images by a learned tracker (VGGSfM, TAPIR). Both routes land on this type,
+  which is what lets the driving agent swap between them without touching
+  anything downstream.
+
+files:
+  observations:
+    required: true
+    arrays:
+      obs:
+        required: true
+        shape: [null, 4]
+        dtype: [float32, float64]
+        columns: [track_id, frame_idx, x, y]
+        description: |
+          Coordinates are in RESIZED image pixels; multiply by scene scale for
+          original-resolution values. track_id is dense in [0, track_count).
+      track_count:
+        required: true
+        shape: []
+        dtype: [int32, int64]
+      visibility:
+        required: false
+        shape: [null]
+        dtype: [float32, float64]
+        description: |
+          Per-observation confidence, when the tracker reports one. Learned
+          trackers do; union-find over verified matches does not.
+
+invariants:
+  - check: finite
+    args: {file: observations, array: obs}
+  - check: max_plus_one_equals
+    args:
+      file: observations
+      array: obs
+      column: 0
+      scalar: track_count
+  - check: values_within
+    args: {file: observations, array: obs, column: 1, minimum: 0}
