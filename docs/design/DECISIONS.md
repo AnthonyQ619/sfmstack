@@ -379,3 +379,104 @@ likely to need real integration work rather than a port; they are also the ones
 that benefit most from the GPU passthrough being fixed first, since nothing about
 them can be meaningfully validated on CPU.
 
+---
+
+## 2026-08-08 — GPU passthrough: it does not work, and I cannot fix it
+
+Tested, as asked. It fails.
+
+```
+$ nvidia-smi --query-gpu=index,name,driver_version --format=csv,noheader
+0, NVIDIA RTX A6000, 580.159.03      (x8)
+
+$ docker info | grep Runtimes
+ Runtimes: io.containerd.runc.v2 runc          <- no `nvidia` runtime
+
+$ ls /usr/bin/nvidia-container-runtime /usr/bin/nvidia-ctk
+ls: cannot access ...: No such file or directory
+
+$ cat /etc/docker/daemon.json
+cat: /etc/docker/daemon.json: No such file or directory
+
+$ docker run --rm --gpus device=0 sfmstack/runtime:1.0 -c "print('ok')"
+docker: Error response from daemon: could not select device driver ""
+        with capabilities: [[gpu]]
+
+$ sudo -n true
+sudo: a password is required
+```
+
+Driver 580.159.03 is fine and the host sees all eight cards. What is missing is
+the **NVIDIA container toolkit**, which is a separate package that installs a
+runtime shim and registers it with the Docker daemon. Installing it needs root,
+and sudo here needs a password, so this one is yours:
+
+```bash
+sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+docker run --rm --gpus device=0 sfmstack/runtime:1.0 -c "print('ok')"
+```
+
+### The workaround, and what it bought
+
+`SubprocessBackend` runs the module server as a local process rather than in a
+container, and a local process on this host sees the GPUs normally. Installing
+torch 2.6.0+cu124, lightglue and kornia into the venv makes every GPU module
+runnable that way — `torch.cuda.device_count()` returns 8.
+
+This is not equivalent to the container path and should not be mistaken for it:
+it gives up the dependency isolation that is the entire point of the
+architecture, and it only works because those three stacks happen not to
+conflict *today*. It is a development convenience, exactly as the README says.
+
+What it did buy is real:
+
+- **The GPU broker is exercised for the first time against actual devices.** The
+  full run below shows SuperPoint leasing GPU 0 and LightGlue leasing GPU 1 —
+  distinct exclusive leases, visible as badges in the report.
+- **Honest timings.** LoFTR: 4.8s for 9 pairs on GPU against ~90s in a CPU
+  container. LightGlue: 3.2s for 120 exhaustive pairs on 16 images.
+- **A complete run to build the visualiser against.**
+
+Full pipeline, DTU scan1, 16 contiguous images at 1024px, all on real GPUs:
+
+| module | seconds | device |
+|---|---:|---|
+| SceneLoader | 0.9 | cpu |
+| FeatureDetectionSuperPoint | 1.2 | GPU 0 |
+| FeatureMatchLightGlue | 3.2 | GPU 1 |
+| FeatureTrackUnionFind | 0.1 | cpu |
+| PoseEssentialToPnP | 1.3 | cpu |
+| SparseTriangulation | 1.3 | cpu |
+| BundleAdjustmentGlobal | 4.6 | cpu |
+
+16/16 cameras registered, 2365 points, tracks spanning all 16 frames,
+0.839px → 0.681px through bundle adjustment.
+
+Two things in that run are worth noticing. `inconsistent_rate` is **0.228** —
+the LightGlue conflict-rate finding from the previous session reproducing on a
+larger set and on real hardware, so it was not a CPU or scale artefact. And
+`converged` is **0** at 301 iterations against the new cap of 300, so the cap
+wants raising again for problems this size; the previous session's fix is
+working, it just moved the boundary rather than removing it.
+
+## The report is generated from lineage, not from a recipe
+
+`tools/sfm_report.py <store> <final-artifact-id>` walks an artifact's `inputs`
+backwards and renders the whole run as one self-contained HTML file.
+
+It is not told what the pipeline was. Artifacts already record their own inputs,
+parameters, metrics with `healthy` bands, and diagnostics, so the report is
+arrangement rather than instrumentation — and it works unchanged on the
+classical chain, the learned chain, and the detector-free chain.
+
+That is the strongest argument I have for the manifest design so far: the
+visualiser needed no per-module knowledge at all, and the "is this metric
+healthy" colouring reads the band out of the artifact rather than out of a table
+in the report.
+
+No CDN, no external fonts, no runtime fetch — the point cloud is base64 inside
+the page. A report that needs the network is a blank page exactly when you most
+want to look at a result.
+

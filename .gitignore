@@ -29,3 +29,7 @@ weights/
 .vscode/
 .idea/
 .DS_Store
+
+# Generated reports. `tools/sfm_report.py` regenerates them from a store.
+/reconstruction-report.html
+/*-report.html
