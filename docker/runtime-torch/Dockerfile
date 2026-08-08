@@ -22,6 +22,14 @@ RUN pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cu124 \
         "torch==2.6.0" "torchvision==0.21.0"
 
+# git, because "pip install git+https://..." is how research code ships and the
+# slim base has none. Deliberately AFTER the torch layer so adding it does not
+# invalidate a 2.5 GB download, and deliberately here rather than in the plain
+# runtime -- the modules that install from git are the torch ones, and the
+# dependency-free tracker image should not grow by 50 MB to support them.
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 # Torch reads HOME for its hub cache. Containers run as the host uid with no
 # passwd entry, so HOME is forced to /tmp by DockerBackend; weights that must
 # survive a container restart belong in a mounted volume, not here.

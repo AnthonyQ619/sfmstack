@@ -62,16 +62,22 @@ no calibration of the penalty terms, and because it is comparable across scenes.
 Worth revisiting if `planarity` ever proves to trigger on scenes that
 reconstruct fine.
 
-## Why brute force rather than FLANN
+## Brute force rather than FLANN
 
 The predecessor offered both (`FeatureMatchFlannPair`, `FeatureMatchBFPair`).
-Only exact matching is implemented here, because FLANN's approximation makes
-results non-deterministic across runs, which breaks artifact caching — the same
-parameters would produce different artifacts — and makes A/B comparison of two
-parameter settings unreliable.
+This module is the brute-force one: it computes every distance and returns the
+true nearest neighbour.
 
-If matching cost ever becomes the bottleneck, the honest fix is a GPU matcher,
-not an approximate CPU one.
+That matters for what the ratio test *means*. Lowe's criterion compares the best
+match to the true second best; if the search is approximate, both terms are
+approximations and the filter's calibration — the 90%/5% figures above — no longer
+strictly applies.
+
+`FeatureMatchFLANN` is the approximate alternative and is the right choice once
+descriptor counts make exhaustive search the bottleneck. Its `checks` parameter
+controls how far the approximation goes, and it reports the agreement with exact
+matching so the trade is measurable rather than assumed. See that module's
+tuning file.
 
 ## Predecessor code
 

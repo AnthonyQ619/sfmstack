@@ -33,6 +33,26 @@ from .modulespec import ModuleSpec
 
 STARTUP_TIMEOUT = 180.0  # generous: a GPU module may load several GB of weights
 
+NO_GPU_WARNING = """\
+[sfmorch] '{module}' declares resources.gpu but this Docker daemon cannot pass a
+GPU into a container, so it will run on CPU. Expect it to be slow -- often 10-50x.
+
+Having GPUs on the host is not enough; the NVIDIA container toolkit has to be
+installed and wired into the daemon:
+
+    # verify the host sees them at all
+    nvidia-smi
+
+    # install the toolkit (Debian/Ubuntu), then point docker at it
+    sudo apt-get install -y nvidia-container-toolkit
+    sudo nvidia-ctk runtime configure --runtime=docker
+    sudo systemctl restart docker
+
+    # confirm
+    docker run --rm --gpus device=0 sfmstack/runtime:1.0 -c "print('ok')"
+
+Pass cpu_fallback=False to DockerBackend to make this an error instead."""
+
 
 class BackendError(OrchestratorError):
     """A server could not be started, reached, or stopped."""
@@ -235,15 +255,45 @@ class DockerBackend:
         network: str | None = None,
         extra_run_args: list[str] | None = None,
         run_as_host_user: bool = True,
+        cpu_fallback: bool = True,
+        gpu_probe_image: str = "sfmstack/runtime:1.0",
     ):
         self.docker = docker
         self.mounts = list(mounts or [])
         self.network = network
         self.extra_run_args = list(extra_run_args or [])
         self.run_as_host_user = run_as_host_user
+        # When the daemon cannot pass a GPU through, run GPU modules on CPU with a
+        # loud warning rather than failing. The alternative -- refusing outright --
+        # makes a host that is merely missing a driver package look like a host
+        # that cannot run the pipeline at all. Set False to make it an error.
+        self.cpu_fallback = cpu_fallback
+        self.gpu_probe_image = gpu_probe_image
+        self._gpu_supported: bool | None = None
+        self._warned_no_gpu = False
 
     def available(self) -> bool:
         return shutil.which(self.docker) is not None
+
+    def gpu_supported(self) -> bool:
+        """Can this daemon actually hand a GPU to a container?
+
+        Having GPUs on the host is not the same as being able to pass one in --
+        that needs the NVIDIA container toolkit wired into the daemon, which is a
+        separate install. Without it `--gpus` fails with "could not select device
+        driver", several seconds into starting a container, for every GPU module.
+
+        Probed once with a trivial container and cached, because the answer cannot
+        change while the daemon is running.
+        """
+        if self._gpu_supported is None:
+            probe = subprocess.run(
+                [self.docker, "run", "--rm", "--gpus", "device=0",
+                 "--entrypoint", "true", self.gpu_probe_image],
+                capture_output=True, text=True,
+            )
+            self._gpu_supported = probe.returncode == 0
+        return self._gpu_supported
 
     def start(self, spec: ModuleSpec, *, store: Path, device: int | None) -> Endpoint:
         if not spec.image:
@@ -274,9 +324,17 @@ class DockerBackend:
         for m in self.mounts:
             cmd += ["--volume", m if ":" in m else f"{m}:{m}:ro"]
         if device is not None:
-            # No shell here, so the value must not carry quotes of its own --
-            # docker would take them as part of the device spec.
-            cmd += ["--gpus", f"device={device}"]
+            if self.gpu_supported():
+                # No shell here, so the value must not carry quotes of its own --
+                # docker would take them as part of the device spec.
+                cmd += ["--gpus", f"device={device}"]
+            elif self.cpu_fallback:
+                device = None
+                if not self._warned_no_gpu:
+                    self._warned_no_gpu = True
+                    print(NO_GPU_WARNING.format(module=spec.name), file=sys.stderr)
+            else:
+                raise BackendError(NO_GPU_WARNING.format(module=spec.name))
         if self.network:
             cmd += ["--network", self.network]
         cmd += self.extra_run_args

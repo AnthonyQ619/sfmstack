@@ -1,0 +1,151 @@
+name: FeatureDetectionALIKED
+version: 1.0.0
+kind: detection
+summary: >
+  ALIKED learned keypoints and 128-dimensional descriptors, using deformable
+  sampling for sharper localisation. GPU, weights baked into the image.
+
+description: |
+  A lighter learned detector-descriptor than SuperPoint, with a deformable
+  sampling head that adapts its receptive field per keypoint. The practical
+  consequence is better sub-pixel localisation for fewer parameters, which shows
+  up downstream as lower reprojection error rather than as more matches.
+
+  Reach for it when triangulation quality is the constraint and match count is
+  already sufficient. Reach for SuperPoint instead when the problem is that
+  matches are scarce -- its 256-dimensional descriptors are more discriminative,
+  and LightGlue's SuperPoint weights are the more heavily exercised path.
+
+  Its `detection_threshold` is on a completely different scale from SuperPoint's:
+  0.2 here against 0.0005 there. Copying a threshold across the two produces
+  either everything or nothing, and is the single most likely mistake when
+  swapping them.
+
+image: sfmstack/feature-aliked:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 8
+  expected_duration_s: 60
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  features: {type: features/v1}
+
+params:
+  variant:
+    type: string
+    default: aliked-n16
+    enum: [aliked-t16, aliked-n16, aliked-n16rot, aliked-n32]
+    description: Model size and rotation handling.
+    tuning: >
+      `aliked-n16` is the default balance. `aliked-t16` is the tiny variant --
+      faster, weaker, worth trying when detection is the bottleneck.
+      `aliked-n32` has a wider descriptor head and is slower for a modest gain.
+      `aliked-n16rot` is trained with rotation augmentation and is the one to use
+      when the capture includes large in-plane rotation, which the others handle
+      poorly.
+
+  max_keypoints:
+    type: integer
+    default: 2048
+    minimum: 128
+    maximum: 20480
+    description: Cap per image; the highest-scoring detections are kept.
+    tuning: >
+      As with SuperPoint, 2048 here is comparable to 4096 in SIFT because learned
+      detectors apply their own suppression. Raise when track survival is short.
+
+  detection_threshold:
+    type: number
+    default: 0.2
+    minimum: 0.001
+    maximum: 0.9
+    description: Minimum score for a detection. NOT on SuperPoint's scale.
+    tuning: >
+      0.2 is ALIKED's own default. Lower toward 0.05 when keypoints_min is low.
+      Do NOT copy a value from SuperPoint, whose default is 0.0005 -- three orders
+      of magnitude apart. Setting SuperPoint's value here effectively disables the
+      filter; setting this one there detects nothing.
+
+  nms_radius:
+    type: integer
+    default: 2
+    minimum: 1
+    maximum: 32
+    description: Non-maximum suppression radius, in pixels.
+    tuning: >
+      ALIKED's default of 2 is tighter than SuperPoint's 4, which is part of why it
+      gives denser, better-localised detections. Raise to 4-6 if spatial_coverage
+      is poor and keypoints cluster on strong texture.
+
+  resize_long_edge:
+    type: integer
+    minimum: 0
+    description: >
+      Optionally resize the long edge before detection. 0 or omitted uses the
+      scene's resolution. Coordinates are always returned in scene pixels.
+    tuning: >
+      Leave unset to keep the scene's working resolution and exact coordinates.
+      Set it only when inference is the bottleneck; rescaling back is handled here
+      so downstream is unaffected.
+
+metrics:
+  keypoints_per_image:
+    direction: higher_better
+    healthy: [400, null]
+    meaning: Mean detections per image. Learned detectors are sparser by design.
+  keypoints_min:
+    direction: higher_better
+    healthy: [150, null]
+    meaning: Worst image in the set; one starved frame breaks every track through it.
+  saturation:
+    direction: neutral
+    meaning: >
+      Fraction of images hitting max_keypoints. Near zero means
+      detection_threshold or nms_radius binds instead of the cap.
+  spatial_coverage:
+    direction: higher_better
+    healthy: [0.35, null]
+    meaning: Fraction of an 8x8 grid holding at least one keypoint.
+  mean_score:
+    direction: neutral
+    meaning: >
+      Mean detection confidence. On ALIKED's own scale, which is not SuperPoint's --
+      comparable across runs on the same scene, not across detectors.
+
+diagnostics:
+  - code: starved_frames
+    severity: warn
+    message: At least one image yielded very few keypoints.
+    suggested_actions:
+      - Lower detection_threshold toward 0.05 (ALIKED's scale, not SuperPoint's).
+      - Lower nms_radius.
+      - Check whether those frames are blurred or largely textureless.
+    see_also: tuning.md#keypoints_min-below-150
+
+  - code: cap_binding
+    severity: info
+    message: Most images hit max_keypoints.
+    suggested_actions:
+      - Raise max_keypoints if downstream track survival is short.
+    see_also: tuning.md#saturation-near-10
+
+  - code: poor_coverage
+    severity: warn
+    message: Keypoints are concentrated in a small part of the frame.
+    suggested_actions:
+      - Raise nms_radius to force spatial spread.
+      - Lower detection_threshold to reach flatter regions.
+    see_also: limitations.md#textureless-regions
+
+  - code: no_keypoints
+    severity: error
+    message: ALIKED detected nothing in any image.
+    suggested_actions:
+      - Lower detection_threshold toward 0.05; check it is not set to SuperPoint's scale.
+      - Check the images decoded and are not blank.
+    see_also: limitations.md#when-aliked-finds-nothing

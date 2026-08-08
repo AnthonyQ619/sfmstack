@@ -1,0 +1,258 @@
+name: FeatureMatchFLANN
+version: 1.0.0
+kind: matching
+summary: >
+  Approximate nearest-neighbour descriptor matching via FLANN, with the same
+  ratio test, mutual check and RANSAC verification as the exact matcher. CPU-only.
+
+description: |
+  `FeatureMatchNN` with the exhaustive search replaced by an approximate index.
+  Everything downstream of the search -- ratio test, mutual consistency, MAGSAC
+  verification, view graph, planarity -- is identical, so the two are directly
+  comparable and the only variable is the search.
+
+  Use it when descriptor counts make exhaustive matching the bottleneck: large
+  keypoint caps, exhaustive pairing, or long sequences. Below a few thousand
+  keypoints per image the index build costs more than it saves and the exact
+  matcher is both faster and better.
+
+  The approximation is real and this module measures it rather than assuming it
+  away. `checks` controls how much of the index is explored; at the default it
+  finds the great majority of true nearest neighbours, and the ones it misses are
+  disproportionately the ambiguous ones the ratio test would have rejected anyway.
+
+  Note what approximation does to Lowe's criterion specifically: the ratio test
+  compares the best match to the true second best. If both are approximate, the
+  filter's published calibration no longer strictly applies. In practice it is
+  still the right filter; be aware that `ratio_test` here is a slightly different
+  instrument than in the exact matcher.
+
+  Binary descriptors (ORB) use an LSH index rather than a KD-tree, which is
+  selected automatically from the features artifact's `binary` flag.
+
+image: sfmstack/match-flann:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 8
+  expected_duration_s: 60
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  features: {type: features/v1, required: true}
+
+produces:
+  matches: {type: pairwise_matches/v1}
+
+params:
+  pairing:
+    type: string
+    default: sequential
+    enum: [sequential, exhaustive]
+    description: Which image pairs to match.
+    tuning: >
+      Same meaning as in FeatureMatchNN. `exhaustive` is where this module earns
+      its place -- the pair count is quadratic and the per-pair saving compounds.
+
+  window:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: "For `pairing: sequential`, match each image to the next `window` images."
+    tuning: >
+      The largest lever on track length, exactly as in the exact matcher. Raise it
+      before switching to `exhaustive`, and stop when `graph_components` reaches 1.
+
+  ratio_test:
+    type: number
+    default: 0.8
+    minimum: 0.5
+    maximum: 1.0
+    description: Lowe's ratio, applied to approximate neighbours.
+    tuning: >
+      0.8 as usual, but see the description: with an approximate second-best the
+      ratio is computed against a slightly different quantity than Lowe measured.
+      If you are porting a tuned value from FeatureMatchNN, verify it here rather
+      than assuming it transfers.
+
+  mutual:
+    type: boolean
+    default: true
+    description: Require both directions to agree.
+    tuning: >
+      Leave on. It matters MORE here than in the exact matcher: an approximate
+      search is asymmetric -- a to b and b to a can disagree purely from index
+      structure -- so the mutual check also filters search error, not just
+      matching error.
+
+  trees:
+    type: integer
+    default: 4
+    minimum: 1
+    maximum: 16
+    description: Randomised KD-trees in the index. Float descriptors only.
+    tuning: >
+      More trees means better recall at higher build and query cost. 4 is the
+      FLANN default and a good balance; 8 is worth trying if match_agreement is
+      poor. Ignored for binary descriptors, which use LSH.
+
+  checks:
+    type: integer
+    default: 50
+    minimum: 1
+    maximum: 2048
+    description: Leaves examined per query. The accuracy/speed dial.
+    tuning: >
+      THE parameter of this module. Higher is more exact and slower; at a few
+      hundred it converges on brute force and you should use the exact matcher
+      instead. Raise it when `match_agreement` or `inlier_ratio` is worse than the
+      exact matcher's on the same features.
+
+  lsh_tables:
+    type: integer
+    default: 12
+    minimum: 1
+    maximum: 30
+    description: Hash tables for binary descriptors. Ignored for float.
+    tuning: >
+      More tables means better recall and more memory. 12 with key size 20 is the
+      usual recommendation for ORB.
+
+  lsh_key_size:
+    type: integer
+    default: 20
+    minimum: 4
+    maximum: 32
+    description: Hash key bits for binary descriptors.
+
+  lsh_probe_level:
+    type: integer
+    default: 2
+    minimum: 0
+    maximum: 5
+    description: Multi-probe level for binary descriptors.
+
+  geometric_model:
+    type: string
+    default: fundamental
+    enum: [fundamental, homography, none]
+    description: Two-view model used to reject outliers.
+    tuning: >
+      Identical to FeatureMatchNN. `none` is the diagnostic setting that tells you
+      whether verification is rejecting or the search never found anything.
+
+  ransac_threshold:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Inlier distance in pixels at working resolution.
+
+  ransac_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: Confidence the estimated model is correct.
+
+  min_matches:
+    type: integer
+    default: 15
+    minimum: 8
+    maximum: 1000
+    description: Pairs with fewer verified matches are dropped from the view graph.
+
+  measure_planarity:
+    type: boolean
+    default: true
+    description: Also fit a homography per pair to detect degenerate geometry.
+
+  measure_agreement:
+    type: boolean
+    default: true
+    description: Spot-check the approximation against exact search on one pair.
+    tuning: >
+      Cheap -- one brute-force pass on a single pair -- and it is the only way to
+      know what the approximation is costing you on THIS data rather than in
+      general. Leave it on unless the descriptor set is enormous.
+
+metrics:
+  pairs_matched:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: Pairs that survived min_matches.
+  matches_per_pair:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Mean verified matches on surviving pairs.
+  min_matches_per_pair:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: The weakest surviving link; tracks cross the graph through it.
+  inlier_ratio:
+    direction: higher_better
+    healthy: [0.5, null]
+    meaning: >
+      Verified over raw, averaged across pairs. Compare against the exact
+      matcher's value on the same features -- a large gap is the approximation
+      costing you, and `checks` is the fix.
+  graph_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: Connected components of the view graph. Above 1 means a split model.
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of images in the biggest component.
+  weak_pairs:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: Pairs dropped for falling under min_matches.
+  planarity:
+    direction: neutral
+    meaning: >
+      Homography inliers over fundamental inliers, per pair. Near 1.0 means planar
+      or rotation-only geometry and ill-conditioned triangulation.
+  match_agreement:
+    direction: higher_better
+    healthy: [0.9, null]
+    meaning: >
+      Fraction of one pair's approximate nearest neighbours that are also the
+      EXACT nearest neighbour. Directly measures what `checks` is buying. Null when
+      measure_agreement is off.
+
+diagnostics:
+  - code: approximation_costly
+    severity: warn
+    message: The approximate search is missing many true nearest neighbours.
+    suggested_actions:
+      - Raise `checks`; it is the accuracy dial.
+      - Raise `trees` for float descriptors, or lsh_tables for binary.
+      - Below a few thousand keypoints per image, use FeatureMatchNN instead.
+    see_also: tuning.md#match_agreement-below-09
+
+  - code: broken_chain
+    severity: error
+    message: The view graph is disconnected; reconstruction will come out in pieces.
+    suggested_actions:
+      - "Raise `window`, or switch to `pairing: exhaustive`."
+      - Raise `checks` -- a poor search thins every pair and can disconnect the graph.
+    see_also: tuning.md#graph_components-above-1
+
+  - code: low_inlier_ratio
+    severity: warn
+    message: Most descriptor matches disagree with any two-view geometry.
+    suggested_actions:
+      - Check match_agreement first; this may be search error, not matching error.
+      - Lower ratio_test toward 0.7 if the scene has repeated structure.
+    see_also: tuning.md#inlier_ratio-below-03
+
+  - code: no_pairs
+    severity: error
+    message: No image pair produced enough verified matches to keep.
+    suggested_actions:
+      - Raise `checks` substantially and retry.
+      - Run FeatureMatchNN to separate search failure from matching failure.
+    see_also: limitations.md#when-the-approximation-is-the-problem

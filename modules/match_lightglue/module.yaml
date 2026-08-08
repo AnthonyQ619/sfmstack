@@ -1,0 +1,249 @@
+name: FeatureMatchLightGlue
+version: 1.0.0
+kind: matching
+summary: >
+  Learned sparse matcher with adaptive depth and width. Reasons about the whole
+  match set jointly rather than per-keypoint. GPU, weights baked into the image.
+
+description: |
+  The general-purpose learned matcher, and the right default whenever a GPU is
+  available. Where Lowe's ratio test asks each keypoint independently whether its
+  best match is distinctive, LightGlue attends over both keypoint sets together --
+  which is exactly the information the ratio test discards, and why it wins on
+  repeated structure, wide baselines and illumination change.
+
+  It is also adaptive: easy pairs exit after fewer layers (`depth_confidence`) and
+  unpromising keypoints are pruned early (`width_confidence`), so cost scales with
+  difficulty rather than with a fixed budget.
+
+  **The weight set must match the detector.** LightGlue is trained per descriptor
+  type, and running SuperPoint weights over ALIKED descriptors produces confident,
+  meaningless matches rather than an error. This module infers the right set from
+  the features artifact's provenance and cross-checks the descriptor width, so the
+  common case is safe; `weights` overrides it when you know better.
+
+  Everything after the match itself -- geometric verification, view graph,
+  planarity -- is identical to the classical matchers, so all three are directly
+  comparable and only the correspondence step differs.
+
+image: sfmstack/match-lightglue:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 8
+  # Hint for ~40 images, sequential window 1, 2048 keypoints. Adaptive depth makes
+  # this vary widely with pair difficulty; exhaustive pairing is quadratic in
+  # image count.
+  expected_duration_s: 90
+  timeout_s: 7200
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  features: {type: features/v1, required: true}
+
+produces:
+  matches: {type: pairwise_matches/v1}
+
+params:
+  weights:
+    type: string
+    default: auto
+    enum: [auto, superpoint, aliked, sift, disk]
+    description: Which trained weight set to use. `auto` infers it from provenance.
+    tuning: >
+      Leave on `auto`. It reads the producing module from the features artifact and
+      cross-checks the descriptor width, and it fails loudly when it cannot tell.
+      Set it explicitly only for a detector this module does not know -- and be
+      certain, because the wrong weights are SILENT: they produce matches, they are
+      just meaningless.
+
+  pairing:
+    type: string
+    default: sequential
+    enum: [sequential, exhaustive]
+    description: Which image pairs to match.
+    tuning: >
+      Same meaning as in the classical matchers. LightGlue is expensive per pair,
+      so raise `window` before reaching for `exhaustive` on anything but a small set.
+
+  window:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: "For `pairing: sequential`, match each image to the next `window` images."
+    tuning: >
+      The largest lever on track length. LightGlue tolerates much wider baselines
+      than SIFT, so a larger window is genuinely productive here where it would find
+      nothing with a classical matcher -- try 4-8 before concluding the capture is
+      too sparse.
+
+  filter_threshold:
+    type: number
+    default: 0.1
+    minimum: 0.0
+    maximum: 0.95
+    description: Minimum match confidence. Higher gives fewer, stronger matches.
+    tuning: >
+      THE quality dial. 0.1 is permissive by design because geometric verification
+      follows. Raise to 0.2-0.3 when inlier_ratio is poor and you would rather have
+      fewer, cleaner matches; the tracker's inconsistent_rate is the metric that
+      tells you whether it helped.
+
+  n_layers:
+    type: integer
+    default: 9
+    minimum: 1
+    maximum: 9
+    description: Attention layers. Fewer is faster and weaker.
+    tuning: >
+      9 is the full model. Reducing it is a blunt speed lever and `depth_confidence`
+      is the better one -- it lets easy pairs exit early while hard pairs still get
+      the full stack. Drop to 5-7 only if you need a hard latency bound.
+
+  depth_confidence:
+    type: number
+    default: 0.95
+    minimum: -1.0
+    maximum: 1.0
+    description: Early-exit confidence. Lower exits sooner. -1 disables.
+    tuning: >
+      The good speed lever. Lower (0.9) stops more often at earlier layers on easy
+      pairs, at a small accuracy cost that mostly does not appear on easy pairs by
+      definition. Set -1 to force every pair through all layers when you are
+      measuring accuracy rather than throughput.
+
+  width_confidence:
+    type: number
+    default: 0.99
+    minimum: -1.0
+    maximum: 1.0
+    description: Point-pruning confidence. Lower prunes more. -1 disables.
+    tuning: >
+      Complements depth_confidence by discarding unpromising keypoints between
+      layers. Lower it (0.95) for speed on images with many keypoints. Disable with
+      -1 when match count is scarce and you want every keypoint considered.
+
+  flash:
+    type: boolean
+    default: true
+    description: Use FlashAttention when available.
+    tuning: >
+      Leave on. It is faster and uses less memory with no accuracy effect, and
+      falls back silently when unavailable -- including on CPU.
+
+  geometric_model:
+    type: string
+    default: fundamental
+    enum: [fundamental, homography, none]
+    description: Two-view model used to reject outliers.
+    tuning: >
+      Keep `fundamental`. LightGlue's matches are good enough that `none` is
+      tempting; resist it, because the failures that remain are the geometrically
+      inconsistent ones this catches. `none` is still the right diagnostic setting
+      for finding out whether verification is what is rejecting.
+
+  ransac_threshold:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Inlier distance in pixels at working resolution.
+
+  ransac_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: Confidence the estimated model is correct.
+
+  min_matches:
+    type: integer
+    default: 15
+    minimum: 8
+    maximum: 1000
+    description: Pairs with fewer verified matches are dropped from the view graph.
+
+  measure_planarity:
+    type: boolean
+    default: true
+    description: Also fit a homography per pair to detect degenerate geometry.
+
+metrics:
+  pairs_matched:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: Pairs that survived min_matches.
+  matches_per_pair:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Mean verified matches on surviving pairs.
+  min_matches_per_pair:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: The weakest surviving link; tracks cross the graph through it.
+  inlier_ratio:
+    direction: higher_better
+    healthy: [0.7, null]
+    meaning: >
+      Verified over raw. The healthy floor is HIGHER than for classical matchers
+      (0.7 against 0.5) because LightGlue's raw matches are already filtered by a
+      learned criterion. Below 0.5 suspect the weight set before anything else.
+  graph_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: Connected components of the view graph. Above 1 means a split model.
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of images in the biggest component.
+  weak_pairs:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: Pairs dropped for falling under min_matches.
+  planarity:
+    direction: neutral
+    meaning: >
+      Homography inliers over fundamental inliers. Near 1.0 means planar or
+      rotation-only geometry and ill-conditioned triangulation.
+  mean_match_score:
+    direction: higher_better
+    healthy: [0.5, null]
+    meaning: >
+      Mean LightGlue confidence over verified matches. A low value with a healthy
+      inlier ratio is the signature of a mismatched weight set -- the geometry is
+      consistent because the matches came from the same rigid scene, and the model
+      is unsure because the descriptors are not what it was trained on.
+
+diagnostics:
+  - code: broken_chain
+    severity: error
+    message: The view graph is disconnected; reconstruction will come out in pieces.
+    suggested_actions:
+      - "Raise `window`, or switch to `pairing: exhaustive`."
+      - LightGlue handles wide baselines well; if it cannot link them, they may not overlap.
+    see_also: tuning.md#graph_components-above-1
+
+  - code: low_inlier_ratio
+    severity: warn
+    message: Many of LightGlue's matches disagree with any two-view geometry.
+    suggested_actions:
+      - Verify `weights` matches the detector; the wrong set is silent.
+      - Raise filter_threshold toward 0.2-0.3.
+    see_also: tuning.md#inlier_ratio-below-05
+
+  - code: low_confidence
+    severity: warn
+    message: LightGlue is unsure about the matches it produced.
+    suggested_actions:
+      - Verify `weights` matches the detector.
+      - The capture may be beyond what these descriptors support.
+    see_also: limitations.md#when-lightglue-is-not-the-answer
+
+  - code: degenerate_geometry
+    severity: warn
+    message: A homography explains these pairs as well as epipolar geometry does.
+    suggested_actions:
+      - Widen the baseline -- raise `window` so pairs are further apart.
+      - Expect triangulation to be ill-conditioned on the affected pairs.
+    see_also: limitations.md#planar-and-rotation-only-captures

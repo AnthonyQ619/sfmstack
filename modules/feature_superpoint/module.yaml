@@ -1,0 +1,147 @@
+name: FeatureDetectionSuperPoint
+version: 1.0.0
+kind: detection
+summary: >
+  SuperPoint learned keypoints and 256-dimensional descriptors. GPU, weights baked
+  into the image, and the intended partner for LightGlue.
+
+description: |
+  A self-supervised detector-descriptor trained jointly, so the keypoints it finds
+  are the ones its descriptors describe well. That joint training is why it beats
+  SIFT on illumination change and on the moderately-textured surfaces where SIFT's
+  contrast filter starts to starve — and why its output is best matched by
+  LightGlue, which was trained on these descriptors.
+
+  Detections are sparser and better spread than SIFT's at the same cap: SuperPoint
+  applies its own non-maximum suppression on the heatmap, so `nms_radius` here is a
+  real spatial control rather than an afterthought.
+
+  Prefer SIFT when you have no GPU, when you need determinism guarantees, or when
+  the scene is high-texture and well-lit — SuperPoint's advantage narrows to
+  nothing there and SIFT costs no weights. Prefer ALIKED when keypoint localisation
+  accuracy matters more than descriptor robustness.
+
+image: sfmstack/feature-superpoint:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 8
+  # Hint for ~40 images at 1024px. Weights are baked and loaded by warmup(), so a
+  # warm server pays only inference; a cold one pays model load once.
+  expected_duration_s: 60
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  features: {type: features/v1}
+
+params:
+  max_keypoints:
+    type: integer
+    default: 2048
+    minimum: 128
+    maximum: 20480
+    description: Cap per image; the highest-scoring detections are kept.
+    tuning: >
+      SuperPoint is genuinely sparser than SIFT and 2048 here is closer to 4096
+      there. Raise to 4096 when track survival is the binding constraint. Returns
+      fall off faster than with SIFT because the detector's own NMS already
+      removed the redundant candidates.
+
+  detection_threshold:
+    type: number
+    default: 0.0005
+    minimum: 0.00001
+    maximum: 0.1
+    description: Minimum heatmap score for a detection.
+    tuning: >
+      The analogue of SIFT's contrast_threshold, and the knob when
+      keypoints_min is low rather than the cap. Lower it toward 1e-4 on dim or
+      low-texture scenes. The default is deliberately permissive so that
+      max_keypoints, not this, is normally what binds.
+
+  nms_radius:
+    type: integer
+    default: 4
+    minimum: 1
+    maximum: 32
+    description: Non-maximum suppression radius on the score heatmap, in pixels.
+    tuning: >
+      A real spatial control, unlike anything SIFT offers. Raise to 6-8 when
+      spatial_coverage is poor and keypoints are clustering on strong texture;
+      lower to 2-3 when you want dense detections on a small object. Interacts
+      directly with max_keypoints -- a large radius makes the cap unreachable.
+
+  resize_long_edge:
+    type: integer
+    minimum: 0
+    description: >
+      Optionally resize the long edge before detection. 0 or omitted uses the
+      scene's resolution as-is. Coordinates are always returned in scene pixels.
+    tuning: >
+      SuperPoint was trained around 480-640px and its detections do change with
+      resolution. Leave unset to keep the scene's working resolution, which keeps
+      coordinates exact. Set it when the scene is very large and inference is the
+      bottleneck; the module rescales coordinates back, so downstream is unaffected.
+
+metrics:
+  keypoints_per_image:
+    direction: higher_better
+    healthy: [400, null]
+    meaning: >
+      Mean detections per image. The healthy floor is lower than SIFT's because
+      SuperPoint is sparser by design; 400 good keypoints beat 1500 clustered ones.
+  keypoints_min:
+    direction: higher_better
+    healthy: [150, null]
+    meaning: Worst image in the set. One starved frame breaks every track through it.
+  saturation:
+    direction: neutral
+    meaning: >
+      Fraction of images that hit max_keypoints. Near zero means
+      detection_threshold or nms_radius is binding instead of the cap.
+  spatial_coverage:
+    direction: higher_better
+    healthy: [0.35, null]
+    meaning: Fraction of an 8x8 grid holding at least one keypoint.
+  mean_score:
+    direction: neutral
+    meaning: >
+      Mean detection confidence. Comparable across runs on the same scene, not
+      across scenes. A sharp drop when raising max_keypoints means the extra
+      detections are marginal.
+
+diagnostics:
+  - code: starved_frames
+    severity: warn
+    message: At least one image yielded very few keypoints.
+    suggested_actions:
+      - Lower detection_threshold toward 1e-4.
+      - Lower nms_radius so nearby detections are not suppressed.
+      - Check whether those frames are blurred or largely textureless.
+    see_also: tuning.md#keypoints_min-below-150
+
+  - code: cap_binding
+    severity: info
+    message: Most images hit max_keypoints.
+    suggested_actions:
+      - Raise max_keypoints if downstream track survival is short.
+    see_also: tuning.md#saturation-near-10
+
+  - code: poor_coverage
+    severity: warn
+    message: Keypoints are concentrated in a small part of the frame.
+    suggested_actions:
+      - Raise nms_radius to force spatial spread.
+      - Lower detection_threshold to reach flatter regions.
+    see_also: limitations.md#textureless-regions
+
+  - code: no_keypoints
+    severity: error
+    message: SuperPoint detected nothing in any image.
+    suggested_actions:
+      - Lower detection_threshold.
+      - Check the images decoded and are not blank.
+    see_also: limitations.md#when-superpoint-finds-nothing
