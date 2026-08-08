@@ -316,3 +316,66 @@ That is an argument for the judgment tier you wanted to write yourself: "which
 metric actually answers the question I am asking" is exactly the tacit knowledge
 that does not belong in any single module's tuning file.
 
+## A synthetic test confirmed a wrong default, and real data caught it
+
+The tracker's `merge_eps_px` governs the detector-free path: with no
+`feature_index` to merge on, endpoints are merged by proximity.
+
+I tuned it early, before any detector-free matcher existed, by taking SIFT matches
+and stripping `feature_index` to force the proximity path. That experiment said
+0.5px and 1.5px were indistinguishable and 4px over-merged — a clean curve
+endorsing the 1.5px default inherited from the predecessor's
+`pseudo_merge_eps_px`.
+
+It was wrong. On real LoFTR output (DTU scan1, 5 images, 640px):
+
+| `merge_eps_px` | long_track_fraction | conflict | registered |
+|---:|---:|---:|---:|
+| 1.5 | 0.078 | 0.002 | **3/5** |
+| 3.0 | 0.195 | 0.007 | 4/5 |
+| 6.0 | 0.286 | 0.059 | 4/5 |
+| 12.0 | reconstruction fails | | |
+
+At the endorsed value, tracks barely chain past a single pair and two of five
+images cannot be registered at all.
+
+The proxy was not measuring the quantity that matters. With a detector, the same
+keypoint is *reused* in every pair it appears in, so its coordinates recur
+**exactly** and any nonzero tolerance merges them — the experiment was measuring
+numerical noise. With a detector-free matcher every pair is estimated
+independently, so one physical point lands at different sub-pixel positions per
+pair, and the tolerance has to cover that estimation spread instead.
+
+Both measurements are now in the tracker's tuning file, the wrong one included,
+because the failure mode is worth being able to recognise: a synthetic test that
+exercises the right *code path* while not exercising the right *phenomenon*, and
+which therefore confirms whatever default it was given.
+
+**Worth your attention:** this is a case where the metrics did NOT catch the
+problem on their own. `inconsistent_rate` looked excellent at 1.5px (0.002) — it
+is a measure of over-merging and says nothing about under-merging. The signal was
+`long_track_fraction` at 0.078 and `registered_fraction` at 0.6, two artifacts
+apart. If you want a rule for the judgment tier, this is a candidate: *a metric
+that only detects one direction of an error is not a health check for that
+parameter.*
+
+## Module count and what is left
+
+Fourteen modules, covering eleven of the twenty-three legacy ones plus three that
+did not exist there (`SceneLoader`, `SparseTriangulation`, and `FeatureMatchNN`
+which merges the predecessor's BF and cross-check paths).
+
+Built and measured end to end: SIFT, ORB, SuperPoint, ALIKED, NN, FLANN,
+LightGlue, LoFTR, UnionFind, EssentialToPnP, Triangulation, BA global, BA local.
+
+Not yet ported: SuperGlue, RoMa, VGGT (pose/sparse/dense), MapAnything, VGGSfM,
+Tapir, COLMAP global mapper, gtsam incremental sparse, PatchMatch MVS.
+
+The remaining nine split into two groups. The COLMAP mapper and the gtsam sparse
+module need no weights and are straightforward ports — they are the next ones I
+would do. The learned reconstruction modules (VGGT, MapAnything, VGGSfM, Tapir,
+RoMa) need vendored repositories and multi-gigabyte weights, and are the ones most
+likely to need real integration work rather than a port; they are also the ones
+that benefit most from the GPU passthrough being fixed first, since nothing about
+them can be meaningfully validated on CPU.
+

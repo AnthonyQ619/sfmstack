@@ -139,8 +139,10 @@ Check in this order:
 Ignored entirely when the matches carry `feature_index`. For dense matchers it
 sets the grid used to decide which endpoints are the same feature.
 
-**Measured on the same DTU matches with `feature_index` stripped**, to force the
-proximity path:
+### Measured twice, and the two measurements disagree. Read both.
+
+**First, on DTU SIFT matches with `feature_index` artificially stripped**, to
+exercise the proximity path without a detector-free matcher:
 
 | merge_eps_px | track_count | avg_track_length | long_track_fraction | inconsistent_rate |
 |-------------:|------------:|-----------------:|--------------------:|------------------:|
@@ -148,13 +150,42 @@ proximity path:
 | 1.5 | 3264 | 2.62 | 0.350 | 0.0018 |
 | 4.0 | 2720 | 2.57 | 0.336 | **0.0617** |
 
-0.5 and 1.5 are indistinguishable here because SIFT keypoints are well separated —
-there is nothing within 1.5px to fuse. At 4.0 the merge starts eating genuinely
-distinct keypoints: `track_count` falls 17% and `inconsistent_rate` jumps 34x.
+0.5 and 1.5 are indistinguishable, and 4.0 starts over-merging: `track_count`
+falls 17% while `inconsistent_rate` jumps 34x. That looks like a clean answer —
+"stay at 1-2px" — and it is **wrong for real detector-free input**.
 
-That is the signature of over-merging, and it is the one to watch for: **fewer
-tracks and more conflicts at the same time.** Under-merging looks like the
-opposite — more tracks, shorter, with conflicts unchanged.
+**Second, on genuine LoFTR output** (DTU scan1, 5 contiguous images at 640px,
+exhaustive pairing, everything downstream identical):
 
-1-2px is right for a ~1600px working resolution. Scale it with the scene's actual
-resize, not with the source images.
+| merge_eps_px | tracks | avg_track_length | long_track_fraction | conflict | registered | final error |
+|-------------:|-------:|-----------------:|--------------------:|---------:|-----------:|------------:|
+| 1.5 | 3667 | 2.08 | 0.078 | 0.002 | **0.60** | 0.350 |
+| 3.0 | 3221 | 2.21 | 0.195 | 0.007 | 0.80 | 0.437 |
+| 6.0 | 2528 | 2.32 | **0.286** | 0.059 | 0.80 | 0.508 |
+| 12.0 | — | — | — | — | — | reconstruction fails |
+
+At 1.5px — the value the first experiment endorsed, and the predecessor's default —
+tracks barely chain past a single pair (`long_track_fraction` 0.078) and **two of
+five images cannot be registered at all**.
+
+**Why the two disagree**, which is the thing worth understanding: with a detector,
+the same keypoint is *reused* across every pair it appears in, so its coordinates
+recur exactly and any tolerance above zero merges them. With a detector-free
+matcher every pair is estimated independently, so the same physical point lands at
+slightly different sub-pixel positions in each pair it participates in. The
+tolerance has to cover that per-pair estimation spread, which is far larger than
+the numerical noise the stripped-SIFT experiment was measuring.
+
+The first experiment was a proxy, and the proxy was not measuring the thing that
+matters. Recorded rather than deleted, because the failure mode — a synthetic test
+that confirms a wrong default — is worth being able to recognise.
+
+**Practical guidance:** start at 3-4px for a ~640px working resolution and scale
+with the resize; that is roughly 8-10px at 1600px. Raise until
+`long_track_fraction` stops improving, then stop — the cost appears as
+`inconsistent_rate` (0.002 → 0.059 across this sweep) and as rising final
+reprojection error, and past some point the reconstruction fails outright.
+
+The signature of **over**-merging is fewer tracks and more conflicts at the same
+time. **Under**-merging looks like more tracks, shorter, with conflicts unchanged —
+which is exactly the 1.5px row above.

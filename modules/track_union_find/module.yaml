@@ -86,11 +86,14 @@ params:
       frame; points within half of it always merge, points up to ~1.4x it apart
       may. See artifact.md#how-nodes-are-formed.
     tuning: >
-      Ignored entirely when the matches carry feature_index. For dense matchers,
-      too small fragments one scene point into several short tracks (low
-      avg_track_length, high track_count); too large fuses neighbouring points
-      and shows up as a rising inconsistent_rate. 1-2px suits a 1600px working
-      resolution; scale it with the resize the scene actually used.
+      Ignored entirely when the matches carry feature_index. Measured on real LoFTR
+      output at 640px: 1.5px leaves tracks unable to chain (long_track_fraction
+      0.078) and two of five images unregisterable; 3px fixes registration; 6px
+      chains further at 30x the conflict rate; 12px breaks reconstruction entirely.
+      Start at 3-4px for ~640px and scale with the resize. Too small fragments one
+      scene point into short tracks; too large fuses neighbours and shows up as a
+      rising inconsistent_rate. See tuning.md -- a synthetic experiment on stripped
+      SIFT matches endorses 1-2px and is misleading for real detector-free input.
 
 metrics:
   track_count:

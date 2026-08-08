@@ -1,0 +1,219 @@
+name: FeatureMatchLoFTR
+version: 1.0.0
+kind: matching
+summary: >
+  Detector-free semi-dense matching straight from images. No keypoint detection
+  stage at all. GPU, weights baked into the image.
+
+description: |
+  The escape hatch for scenes where interest points do not exist. LoFTR matches a
+  coarse 8x8 grid across both images with transformer attention, then refines the
+  surviving correspondences to sub-pixel — so a textureless wall, which has no
+  repeatable keypoint at any detector threshold, still produces correspondences.
+
+  It consumes `scene/v1` directly. There is no `features/v1` in its inputs and no
+  detector upstream, which is what makes it the answer to the query
+  `produces=pairwise_matches/v1, not_consuming=features/v1` — the capability query
+  every detector's limitations file names as the way out of textureless captures.
+
+  Its output carries **no `feature_index`**, because there is no keypoint table to
+  cite. That absence is a signal, not an omission: `FeatureTrackUnionFind` branches
+  on it and merges endpoints by proximity rather than by identity. Set the
+  tracker's `merge_eps_px` accordingly.
+
+  `setting` selects between two separately trained models. Indoor and outdoor are
+  not interchangeable and picking the wrong one is a common cause of thin matches.
+
+image: sfmstack/match-loftr:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 16
+  # Semi-dense attention over the full image pair. Substantially more expensive
+  # per pair than any sparse matcher, and quadratic in pair count.
+  expected_duration_s: 180
+  timeout_s: 14400
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  matches: {type: pairwise_matches/v1}
+
+params:
+  setting:
+    type: string
+    default: outdoor
+    enum: [indoor, outdoor]
+    description: Which pretrained model to use. They are not interchangeable.
+    tuning: >
+      `outdoor` is trained on MegaDepth (buildings, landmarks, wide baselines);
+      `indoor` on ScanNet (rooms, close range, low texture). Using the wrong one
+      typically halves the match count without any other symptom, so try both
+      before concluding a scene is hard.
+
+  pairing:
+    type: string
+    default: sequential
+    enum: [sequential, exhaustive]
+    description: Which image pairs to match.
+    tuning: >
+      LoFTR is the most expensive matcher here per pair. `exhaustive` on more than
+      ~15 images is a serious cost; raise `window` first.
+
+  window:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: "For `pairing: sequential`, match each image to the next `window` images."
+    tuning: >
+      LoFTR tolerates very wide baselines, so a large window is productive here
+      where a classical matcher finds nothing. Weigh that against the per-pair cost.
+
+  min_confidence:
+    type: number
+    default: 0.2
+    minimum: 0.0
+    maximum: 0.95
+    description: Minimum LoFTR confidence for a correspondence.
+    tuning: >
+      The main quality dial. LoFTR is semi-dense and emits many low-confidence
+      correspondences in ambiguous regions -- exactly the ones that become
+      contradictory tracks. Raise toward 0.4-0.5 when the tracker reports
+      high_conflict_rate; that matters more here than with sparse matchers because
+      proximity merging has no identity check to fall back on.
+
+  max_matches:
+    type: integer
+    default: 8000
+    minimum: 0
+    maximum: 100000
+    description: Cap per pair, keeping the highest confidence. 0 disables.
+    tuning: >
+      Semi-dense output can reach tens of thousands per pair, which makes the
+      tracker's union-find and the bundle adjustment expensive for little gain.
+      8000 is generous. Lower to 2000-4000 if downstream cost is the problem.
+
+  resize_long_edge:
+    type: integer
+    minimum: 0
+    description: >
+      Optionally resize the long edge before matching. 0 or omitted uses the
+      scene's resolution. Coordinates are returned in scene pixels regardless.
+    tuning: >
+      The main cost lever, because attention cost grows with the coarse grid area.
+      LoFTR was trained around 640-840px. Setting 840 on a 1600px scene is often a
+      large speedup with little accuracy loss; coordinates are rescaled back here.
+
+  geometric_model:
+    type: string
+    default: fundamental
+    enum: [fundamental, homography, none]
+    description: Two-view model used to reject outliers.
+
+  ransac_threshold:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Inlier distance in pixels at working resolution.
+
+  ransac_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: Confidence the estimated model is correct.
+
+  min_matches:
+    type: integer
+    default: 30
+    minimum: 8
+    maximum: 5000
+    description: Pairs with fewer verified matches are dropped from the view graph.
+    tuning: >
+      Higher than the sparse matchers' default of 15, because LoFTR normally
+      produces hundreds to thousands per pair -- a pair below 30 here is genuinely
+      broken rather than merely thin.
+
+  measure_planarity:
+    type: boolean
+    default: true
+    description: Also fit a homography per pair to detect degenerate geometry.
+
+metrics:
+  pairs_matched:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: Pairs that survived min_matches.
+  matches_per_pair:
+    direction: higher_better
+    healthy: [200, null]
+    meaning: >
+      Mean verified matches on surviving pairs. The healthy floor is higher than
+      for sparse matchers because LoFTR is semi-dense; a few hundred is thin here.
+  min_matches_per_pair:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: The weakest surviving link.
+  inlier_ratio:
+    direction: higher_better
+    healthy: [0.6, null]
+    meaning: >
+      Verified over raw. Lower than a sparse matcher's typical value is normal --
+      semi-dense output includes ambiguous regions by design.
+  graph_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: Connected components of the view graph.
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of images in the biggest component.
+  weak_pairs:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: Pairs dropped for falling under min_matches.
+  planarity:
+    direction: neutral
+    meaning: Homography inliers over fundamental inliers. Near 1.0 is degenerate.
+  mean_match_score:
+    direction: higher_better
+    healthy: [0.4, null]
+    meaning: >
+      Mean LoFTR confidence over verified matches. Low with a healthy inlier ratio
+      suggests the wrong `setting` for the scene type.
+
+diagnostics:
+  - code: broken_chain
+    severity: error
+    message: The view graph is disconnected; reconstruction will come out in pieces.
+    suggested_actions:
+      - "Raise `window`, or switch to `pairing: exhaustive`."
+      - Lower min_confidence toward 0.2.
+    see_also: tuning.md#graph_components-above-1
+
+  - code: low_inlier_ratio
+    severity: warn
+    message: Many correspondences disagree with any two-view geometry.
+    suggested_actions:
+      - Raise min_confidence toward 0.4.
+      - Try the other `setting`; indoor and outdoor are separately trained.
+    see_also: tuning.md#inlier_ratio-below-04
+
+  - code: degenerate_geometry
+    severity: warn
+    message: A homography explains these pairs as well as epipolar geometry does.
+    suggested_actions:
+      - Widen the baseline -- raise `window`.
+      - Expect triangulation to be ill-conditioned on the affected pairs.
+    see_also: limitations.md#planar-and-rotation-only-captures
+
+  - code: detector_free_output
+    severity: info
+    message: These matches carry no feature_index; the tracker will merge by proximity.
+    suggested_actions:
+      - Set the tracker's merge_eps_px to 1-2px at a 1600px working resolution.
+      - Watch the tracker's inconsistent_rate for over-merging.
+    see_also: artifact.md#no-feature_index
