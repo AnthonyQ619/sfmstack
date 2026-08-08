@@ -76,6 +76,18 @@ params:
       that reconstruction cannot start, and treat it as evidence the matcher
       needs attention rather than as a fix.
 
+  probe_merge_headroom:
+    type: boolean
+    default: true
+    description: >
+      Detector-free input only. Rebuild the tracks at twice merge_eps_px to measure
+      whether the tolerance is too tight.
+    tuning: >
+      Leave on. It roughly doubles this module's runtime, which is small next to any
+      matcher, and it is the ONLY signal for under-merging -- inconsistent_rate
+      detects the opposite error and nothing else here sees this one. Turn it off
+      only when the tolerance is already known-good and runtime matters.
+
   merge_eps_px:
     type: number
     default: 1.5
@@ -143,7 +155,24 @@ metrics:
     meaning: >
       Fraction of merged groups that were observed twice in the same image, i.e.
       built from contradictory matches. Reads upstream: above ~0.1 the matcher is
-      the problem, not this module.
+      the problem, not this module. Detects OVER-merging only -- it is structurally
+      blind to the opposite error, because splitting one physical point into
+      several tracks produces no contradiction at all. `merge_sensitivity` is its
+      counterpart.
+
+  merge_headroom:
+    direction: lower_better
+    healthy: [null, 0.03]
+    meaning: >
+      Detector-free input only; null otherwise. How much long_track_fraction would
+      RISE if merge_eps_px were doubled, measured by rebuilding the tracks at that
+      tolerance. Strongly positive means endpoints that are one physical point are
+      being split into separate tracks -- the direction inconsistent_rate is
+      structurally blind to. Near zero means the tolerance is on a plateau.
+      Negative means doubling would start fusing distinct points, so the current
+      value is already at or past the useful range. Read the two together: near
+      zero on both is a well-set tolerance; positive headroom is under-merging;
+      high inconsistent_rate is over-merging.
 
 diagnostics:
   - code: too_few_tracks
@@ -171,6 +200,14 @@ diagnostics:
       - Ensure the matcher's mutual check is on; without it many-to-one matches fuse points.
       - Consider a learned matcher on repetitive scenes; see limitations.md.
     see_also: limitations.md#contradictory-tracks-come-from-the-matcher
+
+  - code: under_merged
+    severity: warn
+    message: Doubling merge_eps_px would measurably lengthen tracks.
+    suggested_actions:
+      - Raise merge_eps_px and re-check merge_headroom.
+      - inconsistent_rate cannot detect this; it only sees over-merging.
+    see_also: tuning.md#merge_headroom-above-003
 
   - code: weak_frames
     severity: warn

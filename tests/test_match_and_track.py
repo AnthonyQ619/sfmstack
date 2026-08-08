@@ -345,3 +345,78 @@ def test_track_observations_are_the_coordinates_the_matcher_produced(orch):
 
     for row in sample:
         assert (round(float(row[2]), 3), round(float(row[3]), 3)) in endpoints
+
+
+# --------------------------------------------------------------------------- #
+# The under-merge probe
+# --------------------------------------------------------------------------- #
+
+
+def test_merge_headroom_is_null_when_merging_is_exact(orch):
+    """With feature_index there is no tolerance and nothing to probe."""
+    scene = fake_scene(orch.store, 3)
+    matches = fake_matches(orch.store, scene, CONFLICT_PAIRS, CONFLICT_ROWS)
+    assert run_tracker(orch, scene, matches).metric("merge_headroom") is None
+
+
+def test_merge_headroom_detects_the_split_that_conflict_rate_cannot(orch):
+    """Two pairs observe one physical point in frame 1, at coordinates 2.5px apart
+    -- the per-pair estimation spread a detector-free matcher produces.
+
+    At a tolerance below that spread the point splits into two 2-view tracks. No
+    track is observed twice in any frame, so `inconsistent_rate` is 0.0 and sees
+    nothing wrong. `merge_headroom` is what reports it."""
+    scene = fake_scene(orch.store, 3)
+    rows = []
+    for k in range(20):
+        y = 20.0 + 25 * k
+        rows.append((0, 10.0, y, 50.0, y, -1, -1))
+        rows.append((1, 51.0, y, 90.0, y, -1, -1))   # 1px per-pair spread in frame 1
+    matches = fake_matches(orch.store, scene, [(0, 1), (1, 2)], rows,
+                           with_feature_index=False)
+
+    tight = run_tracker(orch, scene, matches, merge_eps_px=0.5)
+    assert tight.metric("track_count") == 40          # every point split in two
+    assert tight.metric("long_track_fraction") == 0.0
+    assert tight.metric("inconsistent_rate") == 0.0   # blind to this
+    assert tight.metric("merge_headroom") > 0.0       # sees it
+    assert "under_merged" in [d.code for d in tight.manifest.diagnostics]
+
+    # Wide enough to merge them: 20 three-view tracks, and the headroom closes.
+    wide = run_tracker(orch, scene, matches, merge_eps_px=2.0)
+    assert wide.metric("track_count") == 20
+    assert wide.metric("max_track_length") == 3
+    assert wide.metric("merge_headroom") == 0.0
+    assert "under_merged" not in [d.code for d in wide.manifest.diagnostics]
+
+
+def test_the_headroom_probe_looks_further_than_one_doubling(orch):
+    """A single 2x probe is silent when the tolerance is off by more than a factor
+    of two -- which would repeat the failure the metric exists to prevent. The
+    ladder goes to 8x.
+
+    It is still a bounded lookahead, not a guarantee: a tolerance 16x too tight
+    reads zero. It is a local gradient, and the way to use it is to follow it."""
+    scene = fake_scene(orch.store, 3)
+    rows = []
+    for k in range(20):
+        y = 20.0 + 25 * k
+        rows.append((0, 10.0, y, 50.0, y, -1, -1))
+        rows.append((1, 54.0, y, 90.0, y, -1, -1))   # 4px spread -- 4x too tight at eps 1
+    matches = fake_matches(orch.store, scene, [(0, 1), (1, 2)], rows,
+                           with_feature_index=False)
+
+    art = run_tracker(orch, scene, matches, merge_eps_px=1.0)
+    assert art.metric("merge_headroom") > 0.0
+    assert "under_merged" in [d.code for d in art.manifest.diagnostics]
+
+
+def test_the_probe_can_be_turned_off(orch):
+    scene = fake_scene(orch.store, 3)
+    matches = fake_matches(orch.store, scene, [(0, 1), (1, 2)],
+                           [(0, 10.0, 10.0, 50.0, 50.0, -1, -1),
+                            (1, 50.4, 50.3, 90.0, 90.0, -1, -1)],
+                           with_feature_index=False)
+    art = run_tracker(orch, scene, matches, merge_eps_px=1.5,
+                      probe_merge_headroom=False)
+    assert art.metric("merge_headroom") is None

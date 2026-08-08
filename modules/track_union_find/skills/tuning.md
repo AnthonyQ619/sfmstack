@@ -181,11 +181,50 @@ matters. Recorded rather than deleted, because the failure mode — a synthetic 
 that confirms a wrong default — is worth being able to recognise.
 
 **Practical guidance:** start at 3-4px for a ~640px working resolution and scale
-with the resize; that is roughly 8-10px at 1600px. Raise until
-`long_track_fraction` stops improving, then stop — the cost appears as
-`inconsistent_rate` (0.002 → 0.059 across this sweep) and as rising final
-reprojection error, and past some point the reconstruction fails outright.
+with the resize. Raise until `merge_headroom` reaches zero, then stop.
 
-The signature of **over**-merging is fewer tracks and more conflicts at the same
-time. **Under**-merging looks like more tracks, shorter, with conflicts unchanged —
-which is exactly the 1.5px row above.
+---
+
+## `merge_headroom` above 0.03
+
+`inconsistent_rate` detects **over**-merging and is structurally blind to the
+opposite error: splitting one physical point into several tracks produces no
+same-frame duplicate and no contradiction of any kind. It cannot see under-merging
+at all.
+
+`merge_headroom` is its counterpart. The module rebuilds the tracks at **twice**
+`merge_eps_px` and reports how much `long_track_fraction` would rise. Measured on
+the two cases above:
+
+| case | eps | `inconsistent_rate` | `merge_headroom` | reading |
+|---|---:|---:|---:|---|
+| stripped SIFT | 1.5 | 0.004 | **+0.003** | plateau — tolerance is not binding |
+| stripped SIFT | 3.0 | 0.030 | −0.017 | past the useful range |
+| stripped SIFT | 6.0 | **0.196** | −0.108 | over-merged |
+| real LoFTR | 1.5 | 0.002 | **+0.114** | **under-merged** |
+| real LoFTR | 3.0 | 0.009 | +0.097 | still under-merged |
+| real LoFTR | 6.0 | 0.059 | −0.227 | headroom closed |
+
+Read the two together:
+
+- **near zero on both** — a well-set tolerance.
+- **positive headroom** — under-merged. Raise `merge_eps_px`.
+- **high `inconsistent_rate`** — over-merged. Lower it.
+
+Note the LoFTR 1.5px row: `inconsistent_rate` is 0.002, an apparently *excellent*
+score, on the setting that leaves three of five images unregisterable. That is the
+blind spot, and it is why a second metric exists rather than a tighter threshold on
+the first one.
+
+Note also the stripped-SIFT 1.5px row: headroom +0.003. Had this metric existed
+when that experiment was run, it would have said the experiment contained nothing
+to measure.
+
+A cheaper probe on *cluster count* was tried first and discarded: cluster counts
+are dominated by endpoints seen in a single pair, which dilutes the signal to
+nothing exactly where it is needed. It reported 0.056 on the known-bad LoFTR
+setting and fired its diagnostic on the over-merged one instead — precisely
+backwards. Measuring the effect on track structure is the only thing that works.
+
+`probe_merge_headroom: false` turns the second pass off. It roughly doubles this
+module's runtime, which is negligible next to any matcher.

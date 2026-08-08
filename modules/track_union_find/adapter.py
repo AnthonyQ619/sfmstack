@@ -74,10 +74,11 @@ def build_nodes_by_proximity(xy, img_a, img_b, eps: float, ctx: Ctx):
 
     edges_a, edges_b = proximity_edges(frame, pts, eps)
     roots = union_all(edges_a, edges_b, 2 * n, ctx, label="clustering endpoints",
-                      lo=0.05, hi=0.2)
+                      lo=0.05, hi=0.15)
     cluster = np.unique(roots, return_inverse=True)[1].ravel()
+    n_clusters = int(cluster.max()) + 1
 
-    return cluster[:n], cluster[n:], int(cluster.max()) + 1
+    return cluster[:n], cluster[n:], n_clusters
 
 
 def union_all(
@@ -125,6 +126,128 @@ def union_all(
     return np.array([find(i) for i in range(n_nodes)], dtype=np.int64)
 
 
+def build_tracks(node_a, node_b, n_nodes, img_a, img_b, xy,
+                 min_track_len, on_conflict, ctx, *, lo, hi):
+    """Union the match edges, group into tracks, apply the conflict policy.
+
+    Factored out because the under-merge probe has to run the whole thing a second
+    time at a wider tolerance -- measuring the effect on TRACK structure, which is
+    the thing that matters, rather than on some cheaper proxy.
+    """
+    roots = union_all(node_a, node_b, n_nodes, ctx, lo=lo, hi=hi)
+
+    # One node is one observation: a keypoint sits in exactly one frame at one
+    # position, however many matches cite it. Building the table per NODE rather
+    # than per MATCH is what keeps duplicates out without a dedupe pass.
+    node_frame = np.full(n_nodes, -1, dtype=np.int64)
+    node_xy = np.zeros((n_nodes, 2), dtype=np.float32)
+    node_frame[node_a] = img_a
+    node_xy[node_a] = xy[:, :2]
+    node_frame[node_b] = img_b
+    node_xy[node_b] = xy[:, 2:]
+
+    live = np.flatnonzero(node_frame >= 0)
+    root, frame, point = roots[live], node_frame[live], node_xy[live]
+
+    order = np.lexsort((frame, root))
+    root, frame, point = root[order], frame[order], point[order]
+
+    # Group index per row: 0 for the first group, incrementing at each root change.
+    new_group = np.empty(len(root), dtype=bool)
+    new_group[0] = True
+    new_group[1:] = root[1:] != root[:-1]
+    gidx = np.cumsum(new_group) - 1
+    n_groups = int(gidx[-1]) + 1
+
+    # A repeat of (group, frame) means one scene point projected to two places in
+    # one view. At least one of the matches that built this track is wrong.
+    duplicate = np.zeros(len(root), dtype=bool)
+    duplicate[1:] = (~new_group[1:]) & (frame[1:] == frame[:-1])
+
+    conflicted = np.zeros(n_groups, dtype=bool)
+    conflicted[gidx[duplicate]] = True
+    inconsistent_rate = float(conflicted.mean()) if n_groups else 0.0
+
+    keep = ~conflicted[gidx] if on_conflict == "drop" else ~duplicate
+    gidx, frame, point = gidx[keep], frame[keep], point[keep]
+
+    # Re-count after conflict handling: dropping observations changes lengths.
+    lengths = np.bincount(gidx, minlength=n_groups)
+    survivor = (lengths >= min_track_len)[gidx]
+    gidx, frame, point = gidx[survivor], frame[survivor], point[survivor]
+
+    return gidx, frame, point, n_groups, conflicted, inconsistent_rate
+
+
+def long_fraction_of(gidx, n_groups, min_track_len) -> float:
+    """Fraction of surviving tracks seen in 3+ views."""
+    if len(gidx) == 0:
+        return 0.0
+    lengths = np.bincount(gidx, minlength=n_groups)
+    lengths = lengths[lengths >= min_track_len]
+    return float(np.mean(lengths >= 3)) if len(lengths) else 0.0
+
+
+HEADROOM_LADDER = (2.0, 4.0, 8.0)
+
+
+def measure_headroom(xy, img_a, img_b, p, ctx, current: float):
+    """How much long_track_fraction would rise at a wider merge tolerance.
+
+    Returns (best improvement, the multiplier that achieved it).
+
+    A LADDER rather than a single doubling. A one-step probe answers only "is the
+    tolerance too tight by about a factor of two" -- measured on synthetic data
+    with a 4px per-pair spread, a 2x probe reads exactly 0.0 at every tolerance
+    from 0.5 to 3.0px, all of which are badly too tight. A metric that is silent
+    when the parameter is wrong by an order of magnitude repeats the failure it
+    was written to prevent.
+
+    8x is still a bound, not a guarantee. It is a local gradient with a bounded
+    lookahead, and the honest way to use it is to follow it: raise the tolerance,
+    re-check, repeat until it reads zero.
+    """
+    best, best_at = 0.0, 0.0
+    for step, multiplier in enumerate(HEADROOM_LADDER):
+        ctx.progress(
+            0.61 + 0.02 * step, f"probing merge headroom at {multiplier:g}x tolerance"
+        )
+        try:
+            wide_a, wide_b, wide_n = build_nodes_by_proximity(
+                xy, img_a, img_b, multiplier * p.merge_eps_px, ctx
+            )
+            wide_gidx, _, _, wide_groups, _, _ = build_tracks(
+                wide_a, wide_b, wide_n, img_a, img_b, xy,
+                p.min_track_len, p.on_conflict, ctx,
+                lo=0.62 + 0.02 * step, hi=0.63 + 0.02 * step,
+            )
+        except (ValueError, IndexError):
+            # The probe must never fail the run it is only measuring.
+            continue
+        gain = long_fraction_of(wide_gidx, wide_groups, p.min_track_len) - current
+        if gain > best:
+            best, best_at = gain, multiplier
+
+    # A negative result is informative too: nothing improved, so report the 2x
+    # figure rather than a floor of zero, which would hide "already too wide".
+    if best <= 0.0:
+        try:
+            wide_a, wide_b, wide_n = build_nodes_by_proximity(
+                xy, img_a, img_b, 2.0 * p.merge_eps_px, ctx
+            )
+            wide_gidx, _, _, wide_groups, _, _ = build_tracks(
+                wide_a, wide_b, wide_n, img_a, img_b, xy,
+                p.min_track_len, p.on_conflict, ctx, lo=0.68, hi=0.69,
+            )
+            return (
+                long_fraction_of(wide_gidx, wide_groups, p.min_track_len) - current,
+                0.0,
+            )
+        except (ValueError, IndexError):
+            return 0.0, 0.0
+    return best, best_at
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -161,57 +284,31 @@ def run(ctx: Ctx):
         )
 
     ctx.progress(0.2, f"{len(xy)} matches over {n_nodes} nodes")
-    roots = union_all(node_a, node_b, n_nodes, ctx)
+    gidx, frame, point, n_groups, conflicted, inconsistent_rate = build_tracks(
+        node_a, node_b, n_nodes, img_a, img_b, xy,
+        p.min_track_len, p.on_conflict, ctx, lo=0.2, hi=0.6,
+    )
 
-    # One node is one observation: a keypoint sits in exactly one frame at one
-    # position, however many matches cite it. Building the table per NODE rather
-    # than per MATCH is what keeps duplicates out without a dedupe pass.
-    node_frame = np.full(n_nodes, -1, dtype=np.int64)
-    node_xy = np.zeros((n_nodes, 2), dtype=np.float32)
-    node_frame[node_a] = img_a
-    node_xy[node_a] = xy[:, :2]
-    node_frame[node_b] = img_b
-    node_xy[node_b] = xy[:, 2:]
-
-    live = np.flatnonzero(node_frame >= 0)
-    root = roots[live]
-    frame = node_frame[live]
-    point = node_xy[live]
-
-    ctx.progress(0.7, "grouping observations into tracks")
-
-    order = np.lexsort((frame, root))
-    root, frame, point = root[order], frame[order], point[order]
-
-    # Group index per row: 0 for the first group, incrementing at each root change.
-    new_group = np.empty(len(root), dtype=bool)
-    new_group[0] = True
-    new_group[1:] = root[1:] != root[:-1]
-    gidx = np.cumsum(new_group) - 1
-    n_groups = int(gidx[-1]) + 1
-
-    # A repeat of (group, frame) means one scene point projected to two places in
-    # one view. At least one of the matches that built this track is wrong.
-    duplicate = np.zeros(len(root), dtype=bool)
-    duplicate[1:] = (~new_group[1:]) & (frame[1:] == frame[:-1])
-
-    conflicted = np.zeros(n_groups, dtype=bool)
-    conflicted[gidx[duplicate]] = True
-    inconsistent_rate = float(conflicted.mean()) if n_groups else 0.0
-
-    if p.on_conflict == "drop":
-        keep = ~conflicted[gidx]
-    else:  # "first" -- keep the earliest observation per frame, discard the rest
-        keep = ~duplicate
-
-    gidx, frame, point = gidx[keep], frame[keep], point[keep]
-
-    # Re-count after conflict handling: dropping observations changes lengths.
-    lengths = np.bincount(gidx, minlength=n_groups)
-    long_enough = lengths >= p.min_track_len
-    survivor = long_enough[gidx]
-
-    gidx, frame, point = gidx[survivor], frame[survivor], point[survivor]
+    # Under-merge probe: rebuild the whole thing at twice the tolerance and see how
+    # much long_track_fraction would move.
+    #
+    # `inconsistent_rate` detects OVER-merging and is structurally blind to the
+    # opposite error -- splitting one physical point into several tracks produces
+    # no same-frame duplicate and no contradiction of any kind. This is its
+    # counterpart, and it is the metric that would have caught the synthetic
+    # experiment that set merge_eps_px's default: there the endpoints that should
+    # merge sat at distance exactly 0.0, so doubling the tolerance changes nothing
+    # and the headroom is ~0. On real detector-free input at too tight a tolerance
+    # it is strongly positive. See skills/tuning.md.
+    #
+    # A cheaper probe on CLUSTER COUNT was tried first and does not work: cluster
+    # counts are dominated by endpoints seen in a single pair, which dilutes the
+    # signal to nothing exactly where it is needed.
+    merge_headroom, headroom_at = None, 0.0
+    if not detector_based and p.probe_merge_headroom:
+        merge_headroom, headroom_at = measure_headroom(
+            xy, img_a, img_b, p, ctx, long_fraction_of(gidx, n_groups, p.min_track_len)
+        )
 
     out = ctx.output("tracks")
 
@@ -260,6 +357,11 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1.0, None))
     out.metric("inconsistent_rate", round(inconsistent_rate, 4),
                direction="lower_better", healthy=(None, 0.05))
+    out.metric(
+        "merge_headroom",
+        None if merge_headroom is None else round(merge_headroom, 4),
+        direction="lower_better", healthy=(None, 0.03),
+    )
 
     if track_count < 200:
         out.diagnostic(
@@ -303,6 +405,23 @@ def run(ctx: Ctx):
             see_also="limitations.md#contradictory-tracks-come-from-the-matcher",
         )
 
+    if merge_headroom is not None and merge_headroom > 0.03:
+        out.diagnostic(
+            "under_merged",
+            severity="warn",
+            message=(
+                f"Doubling merge_eps_px would raise long_track_fraction by "
+                f"{merge_headroom:+.3f} (from {long_fraction:.3f}) at "
+                f"{headroom_at:g}x the current tolerance. Endpoints that are one "
+                f"physical point are being split into separate tracks."
+            ),
+            suggested_actions=[
+                f"Raise merge_eps_px toward {p.merge_eps_px * headroom_at:g} and re-check.",
+                "inconsistent_rate cannot see this; it only detects over-merging.",
+            ],
+            see_also="tuning.md#merge_headroom-above-003",
+        )
+
     if min_frame_obs < 50:
         weakest = int(np.argmin(per_frame))
         name = str(scene.load("images", "names")[weakest])
@@ -321,6 +440,9 @@ def run(ctx: Ctx):
         )
 
     mode = "feature_index" if detector_based else f"proximity ({p.merge_eps_px}px)"
+    if merge_headroom is not None:
+        at = f" at {headroom_at:g}x" if headroom_at else ""
+        mode += f", merge headroom {merge_headroom:+.3f}{at}"
     out.note(
         f"Merged {len(xy)} matches over {n_nodes} nodes by {mode} into {n_groups} "
         f"groups; {int(conflicted.sum())} were contradictory "
