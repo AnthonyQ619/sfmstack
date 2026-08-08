@@ -1,0 +1,173 @@
+name: BundleAdjustmentLocal
+version: 1.0.0
+kind: optimization
+summary: >
+  Bundle adjustment over a window of cameras, holding the rest of the model fixed.
+  CPU-only, via pycolmap.
+
+description: |
+  Global bundle adjustment costs grow with the whole model; local BA refines a
+  contiguous window of cameras and the points they see, and holds everything else
+  constant. On a long sequence that is the difference between a refinement you can
+  afford to run repeatedly and one you can run once.
+
+  It is not a cheaper substitute for global BA. The cameras outside the window are
+  fixed, so accumulated drift *between* distant parts of the model cannot be
+  corrected — only the local geometry is improved. The usual shape is: local BA
+  repeatedly during registration, global BA once at the end.
+
+  The predecessor implemented this by taking a `BundleAdjustmentOptimizerLocal`
+  instance as a constructor argument to the pose estimator, so one module's
+  behaviour was a function of another module's object. Here it is an ordinary
+  module and the alternation is expressed at the orchestrator level, which the
+  driving agent can drive without either module knowing about the other.
+
+  `anchor` decides which cameras are constant. Fixing the cameras outside the
+  window is what makes the problem small; fixing nothing would be global BA with
+  extra steps, and pycolmap requires at least two fixed cameras to pin the gauge.
+
+image: sfmstack/ba-local:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 8
+  expected_duration_s: 40
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  sparse: {type: sparse_model/v1, required: true}
+
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  window_size:
+    type: integer
+    default: 8
+    minimum: 2
+    maximum: 500
+    description: Cameras to refine. The rest are held fixed.
+    tuning: >
+      The cost/benefit dial. Cost grows roughly with the square of the window for
+      the dense parts of the solve. 8 is a reasonable working value; below ~4 there
+      is too little freedom for the solve to do anything, and above ~30 you are
+      approaching global BA and should use that instead.
+
+  anchor:
+    type: string
+    default: last
+    enum: [last, first, largest_error]
+    description: Where the window sits in the sequence.
+    tuning: >
+      `last` refines the most recently registered cameras, which is the incremental
+      SfM use case. `first` refines around the seed pair, useful when you suspect
+      the initialisation. `largest_error` centres the window on the camera with the
+      worst mean reprojection error, which is the right choice when running this
+      as a targeted repair rather than as part of a sweep.
+
+  max_iterations:
+    type: integer
+    default: 50
+    minimum: 1
+    maximum: 1000
+    description: Ceres iteration cap.
+    tuning: >
+      Lower than the global default because a local problem converges faster and
+      because this is meant to be run repeatedly. Check `converged` before raising.
+
+  robust_loss:
+    type: boolean
+    default: true
+    description: Cauchy loss rather than plain squared error.
+    tuning: Leave on, for the same reason as in global BA.
+
+  loss_scale:
+    type: number
+    default: 1.0
+    minimum: 0.01
+    maximum: 100.0
+    description: Cauchy loss scale, in pixels.
+
+  min_track_length:
+    type: integer
+    default: 3
+    minimum: 2
+    maximum: 50
+    description: Points seen in fewer views are excluded from the solve.
+    tuning: >
+      Defaults to 3 here rather than 2, unlike global BA. In a window most points
+      are seen by few cameras, and a two-view point inside the window contributes
+      nothing a local solve can use.
+
+metrics:
+  reprojection_error_before:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: Mean pixel error over the WHOLE model on entry.
+  reprojection_error_after:
+    direction: lower_better
+    healthy: [null, 1.0]
+    meaning: >
+      Mean pixel error over the whole model after the solve. Improves less than
+      global BA does by construction -- most of the model was not touched.
+  window_error_before:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: Mean error over the refined cameras only, on entry.
+  window_error_after:
+    direction: lower_better
+    healthy: [null, 1.0]
+    meaning: >
+      Mean error over the refined cameras after the solve. THE metric for this
+      module -- the global figure dilutes it with cameras that were held fixed.
+  cameras_refined:
+    direction: neutral
+    meaning: Cameras in the window. Fewer than window_size means the model is smaller.
+  cameras_fixed:
+    direction: neutral
+    meaning: >
+      Cameras held constant. At least 2 is required to pin the gauge; if this is 2
+      on a large model, the window covered nearly everything and global BA is the
+      honest choice.
+  points_optimized:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: Points visible in the window after min_track_length filtering.
+  converged:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: 1 when Ceres reported CONVERGENCE, 0 otherwise.
+
+diagnostics:
+  - code: window_covers_model
+    severity: info
+    message: The window covers nearly the whole model; this is global BA with extra steps.
+    suggested_actions:
+      - Use BundleAdjustmentGlobal instead; it will do the same work and fix the gauge properly.
+      - Or lower window_size if you meant to refine a part.
+    see_also: tuning.md#window_covers_model
+
+  - code: did_not_converge
+    severity: warn
+    message: The solver stopped without converging.
+    suggested_actions:
+      - Raise max_iterations if it stopped at the cap.
+      - Check reprojection_error_before; local BA cannot rescue a badly wrong model.
+    see_also: tuning.md#converged-is-0
+
+  - code: no_improvement
+    severity: info
+    message: The window was already at a local minimum.
+    suggested_actions:
+      - Nothing, if window_error_after is low.
+      - "Try anchor: largest_error to refine somewhere that needs it."
+    see_also: tuning.md#window_error-does-not-move
+
+  - code: too_few_points
+    severity: warn
+    message: The window contains very few points to optimise.
+    suggested_actions:
+      - Raise window_size so more shared structure is included.
+      - Lower min_track_length to 2.
+    see_also: limitations.md#thin-windows

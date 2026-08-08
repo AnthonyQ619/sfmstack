@@ -346,11 +346,24 @@ def read_summary(summary) -> tuple[int, bool]:
     termination = getattr(summary, "termination_type", None)
     if termination is None:
         termination = getattr(ceres, "termination_type", None)
-    converged = termination is not None and "CONVERGENCE" in str(termination).upper()
+
+    # Compare the enum NAME exactly. A substring test is wrong here in a way that
+    # is easy to miss and always fails safe-looking: "CONVERGENCE" is a substring
+    # of "NO_CONVERGENCE", so `in` reports success on precisely the solves that
+    # ran out of iterations. That is the case this metric exists to catch.
+    converged = termination is not None and _termination_name(termination) == "CONVERGENCE"
 
     # is_solution_usable is the weaker but more reliable signal when the
-    # termination enum is not exposed.
+    # termination enum is not exposed at all.
     if termination is None and getattr(summary, "is_solution_usable", None):
         converged = bool(summary.is_solution_usable())
 
     return iterations, converged
+
+
+def _termination_name(termination) -> str:
+    """'TerminationType.NO_CONVERGENCE' / an enum / a bare string -> 'NO_CONVERGENCE'."""
+    name = getattr(termination, "name", None)
+    if isinstance(name, str):
+        return name.upper()
+    return str(termination).rsplit(".", 1)[-1].upper()

@@ -44,7 +44,7 @@ produced plausible numbers rather than errors):
 
 **Cheapest thing that usually works:** defaults. Reference run — DTU scan1, 12
 images, 6941 points, 22743 observations: **0.376px → 0.253px** (a 32.8% reduction)
-in 101 iterations, converged, 3.7s.
+in 154 iterations, converged, 5.3s.
 
 **Reading the output:** [artifact.md](artifact.md). Also writes a `colmap`
 sidecar, so a pycolmap consumer can open the model natively.

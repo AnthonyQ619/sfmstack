@@ -47,14 +47,16 @@ produces:
 params:
   max_iterations:
     type: integer
-    default: 100
+    default: 300
     minimum: 1
     maximum: 1000
     description: Ceres iteration cap.
     tuning: >
-      Rarely binding -- check `terminated_on` before raising it. If that says
-      CONVERGENCE, more iterations buy nothing. If it says NO_CONVERGENCE, the
-      problem is usually bad input rather than too few iterations.
+      More binding than it looks. On the DTU reference scene the solve needs 154
+      iterations to converge; the original default of 100 stopped it early, and
+      because the reprojection error was identical either way (0.2531) nothing but
+      the `converged` flag revealed it. Check `converged` before assuming a solve
+      finished, and raise this when it is 0 and `iterations` sits at the cap.
 
   robust_loss:
     type: boolean

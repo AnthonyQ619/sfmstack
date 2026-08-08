@@ -22,9 +22,9 @@ UnionFind → PoseEssentialToPnP → SparseTriangulation, all defaults:
 | `error_reduction` | 0.328 |
 | `points_optimized` | 6941 |
 | `observations_optimized` | 22743 |
-| `iterations` | 101 |
+| `iterations` | 154 |
 | `converged` | 1 |
-| runtime | 3.7 s |
+| runtime | 5.3 s |
 
 `reprojection_error_before` (0.3763) matches what `SparseTriangulation`
 independently reported (0.376) from a completely separate implementation. That
@@ -37,9 +37,10 @@ The solver stopped without reaching convergence.
 
 1. **Check `reprojection_error_before` first.** BA cannot rescue a badly wrong
    input; it will wander and stop. A "before" above ~5px means fix the poses.
-2. **Raise `max_iterations`** only if it stopped exactly at the cap. 101 iterations
-   against a cap of 100 on the reference run is Ceres counting one extra
-   evaluation, not a truncated solve — check `error_reduction` before assuming.
+2. **Raise `max_iterations`** if `iterations` sits at the cap. This bit on the
+   reference scene: the original default of 100 stopped a solve that needed 154,
+   and the reprojection error was *identical* either way (0.2531) — only the
+   `converged` flag showed it. Raising the cap cost 1.7s. The default is now 300.
 3. **Turn `refine_focal_length` off** if it was on. Free intrinsics destabilise
    short sequences badly.
 

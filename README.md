@@ -23,27 +23,59 @@ Early. Build order and progress:
 | 5 | Containerize: `sfm-runtime` base, per-module images, module server, GPU broker | **done** |
 | 6 | MCP server over the orchestrator | **done** |
 | 7b | `FeatureMatchNN`, `FeatureTrackUnionFind` — scene → features → pairs → tracks | **done** |
-| 7c | A learned matcher (first GPU module) + first driven session | next |
-| 8 | Port the remaining 19 modules | |
+| 7c | Pose, triangulation, bundle adjustment — a complete classical pipeline | **done** |
+| 7d | ORB, FLANN, SuperPoint, ALIKED, LightGlue | **done** |
+| 8 | The remaining 10 of the 23 legacy modules | in progress |
+| 9 | First agent-driven session over MCP | |
 
-226 tests, including the full four-container pipeline over DTU data.
-`.venv/bin/python -m pytest -q`
+13 modules, 246 tests. `.venv/bin/python -m pytest -q`
+
+A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
+images at 1024px, every stage in its own container:
+
+```
+SceneLoader           12 images, 0.64x downscale
+FeatureDetectionSIFT  3570 keypoints/image, coverage 0.81
+FeatureMatchNN        64 pairs, inlier ratio 0.96, 1 graph component
+FeatureTrackUnionFind 7014 tracks, 52% reaching 3+ views, conflicts 0.005
+PoseEssentialToPnP    12/12 registered, seeded on images 0 and 8 at 25 degrees
+SparseTriangulation   6941 points, 22743 observations, 0.376 px
+BundleAdjustmentGlobal                                 0.253 px, converged
+```
 
 ## Containers
 
 Every module gets its own image, even where two would be identical. All of them
-build `FROM sfmstack/runtime`, so Docker stores the shared layers once. Five
-images here cost 415 MB of base plus 21 MB (Pillow) and 179 MB (OpenCV) of unique
-layers — the two OpenCV modules share one copy, and the tracker needs nothing
-beyond `sfmkit` so its image *is* the base.
+build `FROM` a shared base, so Docker stores the common layers once:
+
+```
+sfmstack/runtime          415 MB   sfmkit only — the tracker's image IS this
+  + opencv                179 MB   shared by SIFT, ORB, NN, FLANN, pose, triangulation
+  + pycolmap                       shared by both bundle adjusters
+  + pillow                 21 MB   SceneLoader
+sfmstack/runtime-torch    5.8 GB   torch cu124 + git
+  runtime-lightglue       6.2 GB   + lightglue + baked weights
+                                   shared by SuperPoint, ALIKED, LightGlue
+```
+
+Thirteen module images cost two bases plus a few MB of unique layer each. That
+sharing is what makes strict one-image-per-module affordable.
 
 ```bash
-docker build -t sfmstack/runtime:1.0            -f docker/runtime/Dockerfile .
-docker build -t sfmstack/scene-loader:1.0.0     -f modules/scene_loader/Dockerfile .
-docker build -t sfmstack/feature-sift:1.0.0     -f modules/feature_sift/Dockerfile .
-docker build -t sfmstack/match-nn:1.0.0         -f modules/match_nn/Dockerfile .
-docker build -t sfmstack/track-union-find:1.0.0 -f modules/track_union_find/Dockerfile .
+docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .
+docker build -t sfmstack/runtime-torch:1.0   -f docker/runtime-torch/Dockerfile .
+docker build -t sfmstack/runtime-lightglue:1.0 -f docker/runtime-lightglue/Dockerfile .
+# then one per module, e.g.
+docker build -t sfmstack/feature-sift:1.0.0  -f modules/feature_sift/Dockerfile .
 ```
+
+### GPUs
+
+`resources.gpu: true` modules need the NVIDIA container toolkit wired into the
+Docker daemon — having GPUs on the host is not enough. Without it `DockerBackend`
+falls back to CPU with a warning naming the fix; pass `cpu_fallback=False` to make
+it an error. **This host currently has no toolkit installed**, so every learned
+module here has only been measured on CPU. See `docs/design/DECISIONS.md`.
 
 ```python
 runner = ContainerRunner(
@@ -54,8 +86,8 @@ orch = Orchestrator(store=store, registry=registry, runner=runner)
 ```
 
 `SceneLoader` has Pillow and no OpenCV; `FeatureDetectionSIFT` has OpenCV and no
-Pillow. Neither could run in the other's image, and they compose through the
-artifact store.
+Pillow; `FeatureTrackUnionFind` has neither. None could run in another's image,
+and they compose through the artifact store.
 
 ### Long jobs
 
