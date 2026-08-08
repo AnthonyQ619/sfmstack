@@ -1,0 +1,26 @@
+name: MakeScene
+version: 1.0.0
+kind: source
+summary: Synthesizes a scene/v1 with no images on disk. Test fixture only.
+
+image: sfm-fixture:1.0.0
+entrypoint: adapter:run
+resources: {gpu: false}
+
+produces:
+  scene: {type: scene/v1}
+
+params:
+  n_images:
+    type: integer
+    default: 3
+    minimum: 1
+    maximum: 100
+    description: How many synthetic images to describe.
+  calibrated:
+    type: boolean
+    default: true
+    description: Whether to emit the optional calibration file.
+
+metrics:
+  n_images: {direction: neutral, meaning: Images in the scene.}

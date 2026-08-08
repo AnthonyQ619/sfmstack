@@ -17,19 +17,21 @@ Early. Build order and progress:
 | --- | --- | --- |
 | 1 | `sfmkit` — artifact I/O, schemas, validation, module contract | **done** |
 | 2 | Artifact spec + core type registry | **done** |
-| 3 | Module contract proven in-process on one module | **done** (test suite) |
-| 4 | Orchestrator: registry, run DAG, type checking, store | next |
-| 5 | Containerize: `sfm-runtime` base, per-module images, GPU broker | |
+| 3 | Module contract proven in-process | **done** |
+| 4 | `sfmorch` — module registry, type checking, run DAG, replay, lineage | **done** |
+| 5 | Containerize: `sfm-runtime` base, per-module images, GPU broker | next |
 | 6 | MCP server over the orchestrator | |
 | 7 | Four pilot modules + curated skills + first driven session | |
 | 8 | Port the remaining 19 modules | |
+
+109 tests. `.venv/bin/python -m pytest packages -q`
 
 ## Layout
 
 ```
 packages/sfmkit/        the contract layer, installed into every module container
+packages/sfmorch/       registry, type checking, run DAG, scheduling, MCP server
 modules/                one directory per module: module.yaml, Dockerfile, adapter.py, skills/
-orchestrator/           registry, scheduler, GPU broker, MCP server
 skills/                 the knowledge base the driving agent reasons over
 docs/design/            the architecture, and why it is shaped this way
 ```
@@ -93,6 +95,39 @@ Provenance, timing, schema validation, and manifest rendering are handled for
 you. Validation runs when the artifact is sealed, in the **producing** process —
 a module that declares `tracks/v1` and writes something else fails there, not in
 a consumer three stages later.
+
+`module.yaml` alongside it declares identity, I/O types, parameters, metric
+meanings, and diagnostics. That one file feeds the MCP tool schema, the agent's
+documentation, plan validation, and metric interpretation, so those four cannot
+drift apart.
+
+## Running a pipeline
+
+```python
+orch = Orchestrator(store=ArtifactStore("store"), registry=registry)
+
+scene  = orch.run("MakeScene",   run_id="r1", params={"n_images": 6}).primary
+feats  = orch.run("SIFT",        run_id="r1", inputs={"scene": scene.id}).primary
+pairs  = orch.run("LightGlue",   run_id="r1", inputs={"scene": scene.id, "features": feats.id}).primary
+tracks = orch.run("UnionFind",   run_id="r1", inputs={"scene": scene.id, "pairs": pairs.id}).primary
+```
+
+The orchestrator refuses a step whose input types do not match **before** running
+anything, skips work whose recipe is already on disk, and records every attempt
+in `runs/<run_id>/run.md`.
+
+When the metrics say the problem is upstream, one call re-runs that step and
+everything downstream of it:
+
+```python
+results = orch.replay(run_id="r1", from_artifact=pairs.id, overrides={"keep_ratio": 1.0})
+```
+
+The original branch is untouched. Nothing is ever marked "stale" — a newer branch
+does not supersede an older one, it may well be worse. `orch.compare([a, b])`
+puts the metrics side by side **and** reports where the two lineages parted
+company, so a difference inherited from three stages up is not credited to the
+knob under test.
 
 ## Development
 

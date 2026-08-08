@@ -125,6 +125,7 @@ class Ctx:
             type=payload_type,
             module=self.module,
             module_version=self.module_version,
+            slot=name,
             params=self.params.as_dict(),
             inputs=[a.id for a in self.inputs.values()],
         )

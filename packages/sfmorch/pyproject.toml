@@ -1,0 +1,24 @@
+[project]
+name = "sfmorch"
+version = "0.1.0"
+description = "Module registry, type checking, run DAG, and scheduling for sfmstack."
+requires-python = ">=3.10"
+authors = [{name = "Anthony Quiroga", email = "aquiroga@ucsd.edu"}]
+
+# Unlike sfmkit, this package is NOT installed into module containers -- it runs
+# once, on the host. It may take dependencies freely. Container transport
+# (httpx) and the MCP server land here in later steps.
+dependencies = [
+    "sfmkit",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

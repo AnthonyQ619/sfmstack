@@ -1,0 +1,27 @@
+name: FakeDetector
+version: 1.0.0
+kind: detection
+summary: Emits a deterministic grid of keypoints per image. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+produces:
+  features: {type: features/v1}
+
+params:
+  max_keypoints:
+    type: integer
+    default: 16
+    minimum: 4
+    maximum: 4096
+    description: Keypoints per image.
+    tuning: Doubling is the largest single lever on downstream track survival.
+
+metrics:
+  keypoints_per_image:
+    direction: higher_better
+    healthy: [8, null]
+    meaning: Mean detections per image.

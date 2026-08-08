@@ -177,6 +177,14 @@ def test_module_version_bump_yields_a_different_id():
     assert a != b
 
 
+def test_two_outputs_of_the_same_type_do_not_collide():
+    """A module producing e.g. `forward` and `backward` tracks must not have the
+    second seal overwrite the first."""
+    a = artifact_id(type="tracks/v1", module="M", module_version="1", slot="forward")
+    b = artifact_id(type="tracks/v1", module="M", module_version="1", slot="backward")
+    assert a != b
+
+
 # --------------------------------------------------------------------------- #
 # Sidecars -- what replaces the live pycolmap.Reconstruction handoff
 # --------------------------------------------------------------------------- #

@@ -1,0 +1,44 @@
+name: FakeMatcher
+version: 1.0.0
+kind: matching
+summary: Matches consecutive images by keypoint index. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  features: {type: features/v1, required: true}
+produces:
+  pairs: {type: pairwise_matches/v1}
+
+params:
+  keep_ratio:
+    type: number
+    default: 1.0
+    minimum: 0.0
+    maximum: 1.0
+    description: Fraction of candidate correspondences retained per pair.
+    tuning: >
+      Lower values simulate a weak matcher. Inlier yield below ~0.15 is the
+      signal that downstream track survival is a MATCHING problem, not a
+      tracking one.
+
+metrics:
+  inlier_yield:
+    direction: higher_better
+    healthy: [0.15, null]
+    meaning: Retained correspondences over candidates.
+  matches_per_pair:
+    direction: higher_better
+    healthy: [8, null]
+    meaning: Mean correspondences per image pair.
+
+diagnostics:
+  - code: weak_matching
+    severity: warn
+    message: Inlier yield is below 0.15; tracking downstream will be starved.
+    suggested_actions:
+      - Raise the detector's max_keypoints.
+      - Loosen this module's keep_ratio.
+    see_also: tuning.md#inlier_yield-below-015

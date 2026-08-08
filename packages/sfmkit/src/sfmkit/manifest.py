@@ -230,6 +230,7 @@ def artifact_id(
     type: str,
     module: str,
     module_version: str,
+    slot: str = "",
     params: dict[str, Any] | None = None,
     inputs: list[str] | None = None,
     salt: str = "",
@@ -238,14 +239,21 @@ def artifact_id(
 
     Two identical recipes therefore land on the same id, which is what makes a
     `scene/v1` shared across five parallel pipelines cost one decode instead of
-    five. `salt` exists for the rare module that is genuinely non-deterministic
-    and must not be deduplicated.
+    five.
+
+    `slot` is the output name from the module's `produces` block. It is part of
+    the recipe because a module with two outputs of the SAME type would otherwise
+    give both the same id and the second seal would overwrite the first.
+
+    `salt` exists for the rare module that is genuinely non-deterministic and
+    must not be deduplicated.
     """
     recipe = _canonical(
         {
             "type": type,
             "module": module,
             "module_version": module_version,
+            "slot": slot,
             "params": params or {},
             "inputs": sorted(inputs or []),
             "salt": salt,

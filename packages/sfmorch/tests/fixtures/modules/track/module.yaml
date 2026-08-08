@@ -1,0 +1,43 @@
+name: FakeTracker
+version: 1.0.0
+kind: tracking
+summary: Chains pairwise correspondences into tracks by feature index. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  pairs: {type: pairwise_matches/v1, required: true}
+produces:
+  tracks: {type: tracks/v1}
+
+params:
+  min_track_len:
+    type: integer
+    default: 2
+    minimum: 2
+    maximum: 10
+    description: Minimum observations for a track to be kept.
+    tuning: >
+      Raising this improves the MEAN by deleting short tracks while making the
+      underlying problem worse. Judge alongside track_count, not on its own.
+
+metrics:
+  track_count:
+    direction: higher_better
+    healthy: [10, null]
+    meaning: Tracks surviving the length filter.
+  avg_track_length:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: Mean observations per track.
+
+diagnostics:
+  - code: too_few_tracks
+    severity: warn
+    message: Fewer than 10 tracks survived; reconstruction will fail.
+    suggested_actions:
+      - Raise the detector's max_keypoints.
+      - Check the matcher's inlier_yield before tuning anything here.
+    see_also: tuning.md#track_count-below-10

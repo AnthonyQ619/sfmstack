@@ -1,0 +1,228 @@
+import pytest
+import yaml
+
+from sfmorch import ManifestError, ModuleNotFound, ModuleRegistry, ModuleSpec
+
+
+def write_module(tmp_path, name, doc):
+    d = tmp_path / name
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "module.yaml").write_text(yaml.safe_dump(doc))
+    return d
+
+
+MINIMAL = {
+    "name": "Thing",
+    "version": "1.0.0",
+    "produces": {"out": {"type": "tracks/v1"}},
+}
+
+
+# --------------------------------------------------------------------------- #
+# Manifest parsing
+# --------------------------------------------------------------------------- #
+
+
+def test_fixture_modules_all_load(registry):
+    assert registry.names() == [
+        "FakeDetector",
+        "FakeMatcher",
+        "FakeReconstructor",
+        "FakeTracker",
+        "MakeScene",
+    ]
+
+
+def test_version_must_be_semver_because_it_is_part_of_every_artifact_id():
+    with pytest.raises(ManifestError, match="semver"):
+        ModuleSpec.from_doc({**MINIMAL, "version": "v1"})
+
+
+def test_module_name_must_be_a_bare_identifier():
+    with pytest.raises(ManifestError, match="bare identifier"):
+        ModuleSpec.from_doc({**MINIMAL, "name": "my-module"})
+
+
+def test_a_module_must_produce_something():
+    with pytest.raises(ManifestError, match="at least one output"):
+        ModuleSpec.from_doc({"name": "Thing", "version": "1.0.0"})
+
+
+def test_slot_without_a_type_is_rejected():
+    with pytest.raises(ManifestError, match="must declare a payload type"):
+        ModuleSpec.from_doc({**MINIMAL, "consumes": {"a": {}}})
+
+
+def test_unknown_metric_direction_is_rejected():
+    with pytest.raises(ManifestError, match="direction"):
+        ModuleSpec.from_doc({**MINIMAL, "metrics": {"m": {"direction": "bigger"}}})
+
+
+def test_diagnostic_needs_a_code():
+    with pytest.raises(ManifestError, match="needs a `code`"):
+        ModuleSpec.from_doc({**MINIMAL, "diagnostics": [{"message": "hi"}]})
+
+
+# --------------------------------------------------------------------------- #
+# Type wiring
+# --------------------------------------------------------------------------- #
+
+
+def test_unknown_payload_type_is_caught_at_registration(types):
+    reg = ModuleRegistry(types=types)
+    spec = ModuleSpec.from_doc({**MINIMAL, "produces": {"out": {"type": "bogus/v1"}}})
+    with pytest.raises(ManifestError, match="unknown payload type"):
+        reg.add(spec)
+
+
+def test_a_module_may_declare_its_own_custom_type(types):
+    reg = ModuleRegistry(types=types)
+    reg.add(
+        ModuleSpec.from_doc(
+            {
+                **MINIMAL,
+                "produces": {"out": {"type": "custom/gaussians/v1"}},
+                "types": [
+                    {
+                        "type": "custom/gaussians/v1",
+                        "files": {
+                            "splats": {
+                                "arrays": {"mu": {"shape": [None, 3], "dtype": ["float32"]}}
+                            }
+                        },
+                    }
+                ],
+            }
+        )
+    )
+    assert "custom/gaussians/v1" in types
+
+
+def test_duplicate_module_names_are_rejected(types):
+    reg = ModuleRegistry(types=types)
+    reg.add(ModuleSpec.from_doc(MINIMAL))
+    with pytest.raises(ManifestError, match="duplicate module name"):
+        reg.add(ModuleSpec.from_doc(MINIMAL))
+
+
+def test_unknown_module_lookup_lists_what_exists(registry):
+    with pytest.raises(ModuleNotFound, match="FakeDetector"):
+        registry.get("Nope")
+
+
+# --------------------------------------------------------------------------- #
+# Orphan types -- surfaced at registration, not discovered at runtime
+# --------------------------------------------------------------------------- #
+
+
+def test_terminal_output_is_flagged_as_an_orphan(registry):
+    """sparse_model/v1 is a final output here: nothing consumes it. Legal, but
+    the agent should learn it before spending a GPU hour, not after."""
+    orphans = {(w.module, w.type) for w in registry.warnings}
+    assert ("FakeReconstructor", "sparse_model/v1") in orphans
+
+
+def test_consumed_types_are_not_flagged(registry):
+    orphans = {w.type for w in registry.warnings}
+    assert "tracks/v1" not in orphans
+    assert "features/v1" not in orphans
+
+
+def test_adding_a_consumer_clears_the_orphan_warning(registry, types):
+    assert any(w.type == "sparse_model/v1" for w in registry.warnings)
+    registry.add(
+        ModuleSpec.from_doc(
+            {
+                "name": "Optimizer",
+                "version": "1.0.0",
+                "consumes": {"sparse": {"type": "sparse_model/v1"}},
+                "produces": {"out": {"type": "sparse_model/v1"}},
+            }
+        )
+    )
+    assert not any(w.type == "sparse_model/v1" for w in registry.warnings)
+
+
+# --------------------------------------------------------------------------- #
+# Capability queries -- what makes a limitations.md escape expressible
+# --------------------------------------------------------------------------- #
+
+
+def test_find_by_produced_type(registry):
+    assert [m.name for m in registry.find(produces="tracks/v1")] == ["FakeTracker"]
+
+
+def test_find_by_consumed_type(registry):
+    names = [m.name for m in registry.find(consumes="scene/v1")]
+    assert names == ["FakeDetector", "FakeMatcher", "FakeReconstructor", "FakeTracker"]
+
+
+def test_not_consuming_expresses_switch_to_a_direct_tracker(registry, types):
+    """The canonical escape: 'something producing tracks/v1 that does NOT consume
+    pairwise_matches/v1' -- i.e. stop feeding a matcher that isn't working."""
+    assert registry.find(produces="tracks/v1", not_consuming="pairwise_matches/v1") == []
+
+    registry.add(
+        ModuleSpec.from_doc(
+            {
+                "name": "DirectTracker",
+                "version": "1.0.0",
+                "consumes": {"scene": {"type": "scene/v1"}},
+                "produces": {"tracks": {"type": "tracks/v1"}},
+            }
+        )
+    )
+    found = registry.find(produces="tracks/v1", not_consuming="pairwise_matches/v1")
+    assert [m.name for m in found] == ["DirectTracker"]
+
+
+def test_excluding_drops_the_module_you_gave_up_on(registry):
+    found = registry.find(produces="tracks/v1", excluding="FakeTracker")
+    assert found == []
+
+
+def test_successors_answers_what_can_follow_this(registry):
+    detector = registry.get("FakeDetector")
+    assert [m.name for m in registry.successors(detector)] == ["FakeMatcher"]
+
+
+# --------------------------------------------------------------------------- #
+# describe() -- one call gives the machine contract and the curated guidance
+# --------------------------------------------------------------------------- #
+
+
+def test_describe_carries_the_param_schema_as_json_schema(registry):
+    doc = registry.get("FakeTracker").describe()
+    props = doc["params"]["properties"]
+    assert props["min_track_len"] == {
+        "type": "integer",
+        "description": "Minimum observations for a track to be kept.",
+        "default": 2,
+        "minimum": 2,
+        "maximum": 10,
+    }
+    assert doc["params"]["additionalProperties"] is False
+
+
+def test_describe_carries_metric_interpretation(registry):
+    doc = registry.get("FakeTracker").describe()
+    assert doc["metrics"]["avg_track_length"]["direction"] == "higher_better"
+    assert doc["metrics"]["avg_track_length"]["healthy"] == [3.0, None]
+
+
+def test_describe_carries_diagnostics_with_a_pointer_into_the_skills(registry):
+    doc = registry.get("FakeTracker").describe()
+    diag = doc["diagnostics"]["too_few_tracks"]
+    assert diag["see_also"] == "tuning.md#track_count-below-10"
+    assert diag["suggested_actions"]
+
+
+def test_describe_carries_per_param_tuning_notes(registry):
+    doc = registry.get("FakeTracker").describe()
+    assert "MEAN" in doc["param_tuning"]["min_track_len"]
+
+
+def test_summary_marks_terminal_modules(registry):
+    rows = {r["name"]: r for r in registry.summary()}
+    assert rows["FakeReconstructor"]["terminal"] is True
+    assert rows["FakeTracker"]["terminal"] is False

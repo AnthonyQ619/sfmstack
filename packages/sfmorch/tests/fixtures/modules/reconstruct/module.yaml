@@ -1,0 +1,40 @@
+name: FakeReconstructor
+version: 1.0.0
+kind: sparse
+summary: Emits one 3D point per track. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  tracks: {type: tracks/v1, required: true}
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  min_observe:
+    type: integer
+    default: 2
+    minimum: 2
+    maximum: 10
+    description: Minimum observations for a track to be triangulated.
+
+metrics:
+  num_points3d:
+    direction: higher_better
+    healthy: [10, null]
+    meaning: Triangulated points.
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 1.0]
+    meaning: Pixels. Low error on very few points is an overfit, not a good result.
+
+diagnostics:
+  - code: too_few_points
+    severity: error
+    message: Fewer than 10 points; the reconstruction is not usable.
+    suggested_actions:
+      - Lower min_observe (floor 2).
+      - Improve track survival upstream.
+    see_also: limitations.md#sparse-coverage
