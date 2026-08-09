@@ -134,7 +134,7 @@ diagnostics:
       - Lower contrast_threshold toward 0.01.
       - Enable grayscale_clahe if the set has strong exposure variation.
       - Check whether those frames are blurred or largely textureless.
-    see_also: tuning.md#keypoints_min-below-200
+    see_also: tuning.md#keypoints_min-below-200-while-the-mean-is-healthy
 
   - code: cap_binding
     severity: info

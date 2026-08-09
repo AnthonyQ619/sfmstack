@@ -146,7 +146,7 @@ diagnostics:
     suggested_actions:
       - Use BundleAdjustmentGlobal instead; it will do the same work and fix the gauge properly.
       - Or lower window_size if you meant to refine a part.
-    see_also: tuning.md#window_covers_model
+    see_also: tuning.md#when-to-use-global-ba-instead
 
   - code: did_not_converge
     severity: warn

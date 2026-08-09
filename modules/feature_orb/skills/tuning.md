@@ -83,3 +83,18 @@ ratio, for roughly a tenth of the detection time and much cheaper matching.
 
 Whether that trade is right depends on whether matching or detection is your
 bottleneck, and on whether the tracker's `long_track_fraction` survives it.
+
+## `suppression_ratio` near 1.0
+
+Spatial suppression kept nearly everything it was given, which means it did
+nothing. Two different causes, and they need opposite responses:
+
+- **The detector found fewer keypoints than `max_keypoints`.** There was nothing to
+  suppress. `saturation` will be well below 1.0 and the fix is upstream — lower
+  `fast_threshold`, raise `n_levels`, or accept that the scene is textureless.
+- **SSC is off.** `use_ssc: false` makes this metric meaningless rather than
+  informative; it will sit at 1.0 forever. Turn SSC on before reading it.
+
+Read it beside `spatial_coverage`. A ratio near 1.0 with healthy coverage is fine:
+the keypoints were already well spread. A ratio near 1.0 with poor coverage is the
+one to act on.

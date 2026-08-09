@@ -24,6 +24,21 @@ predecessor and it changes the failure mode: this module cannot be run without a
 tracker, but a single unregisterable frame no longer truncates everything after
 it. It gets `valid=False` and the run continues.
 
+**Local BA runs during registration, not after it** (`local_ba`, on by default).
+A sliding window of the last 8 registered cameras is refined with the two oldest
+held fixed. This is drift control: each new pose is estimated against structure
+earlier poses triangulated, so an early error becomes the frame everything later
+lives in. On the full 49-image DTU set with SuperPoint + LightGlue it is the
+difference between **34 and 48 images registered** — drift compounded until PnP ran
+out of correspondences and registration stalled. On the classical stack, where
+nothing stalls, it lowers pose error ~10% and the final post-BA number not at all.
+The [tuning file](tuning.md#local-ba--what-it-buys-measured) has the full table.
+
+This does not replace [BundleAdjustmentLocal](../../ba_local/skills/SKILL.md).
+That module repairs an existing `sparse_model/v1` at a window you choose; this
+happens while the model is being built, which is the only time the drift can still
+be removed cheaply.
+
 **Scale is arbitrary and unrecoverable.** The seed pair's baseline is fixed to
 unit length, so every distance downstream is in that unit. Nothing in an image-only
 pipeline can fix this; it needs a known length in the scene or metric depth.

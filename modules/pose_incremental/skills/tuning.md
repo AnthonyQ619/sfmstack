@@ -73,6 +73,86 @@ that is the trade, and it is the right one if you intend to measure anything.
 No parameter recovers missing parallax. See
 [limitations](limitations.md#degenerate-captures).
 
+## Local BA — what it buys, measured
+
+Registration is interleaved with a bundle adjustment over the last
+`local_ba_window` cameras in **registration order**. This is drift control, not
+polish: each new pose is estimated against structure that earlier poses
+triangulated, so an error early becomes the frame everything later lives in.
+
+Measured on DTU scan1 at `max_edge: 1024`, `pairing: exhaustive`, everything else
+at defaults. `final err` is after `BundleAdjustmentGlobal`:
+
+| stack | images | `local_ba` | registered | pose err | final err | points | pose time |
+|---|---:|---|---:|---:|---:|---:|---:|
+| SIFT + NN | 16 | off | 16 | 0.647 px | 0.236 px | 8749 | 3.0 s |
+| SIFT + NN | 16 | **on** | 16 | **0.551 px** | 0.248 px | 8878 | 10.2 s |
+| SIFT + NN | 49 | off | 49 | 0.728 px | 0.250 px | 18405 | 11.1 s |
+| SIFT + NN | 49 | **on** | 49 | **0.654 px** | 0.262 px | 19235 | 27.1 s |
+| SuperPoint + LightGlue | 16 | off | 16 | 1.068 px | 0.657 px | 1627 | 0.9 s |
+| SuperPoint + LightGlue | 16 | **on** | 16 | **0.843 px** | 0.669 px | 1672 | 2.5 s |
+| SuperPoint + LightGlue | 49 | off | **34** | 0.945 px | 0.628 px | 1014 | 0.9 s |
+| SuperPoint + LightGlue | 49 | **on** | **48** | 0.888 px | **0.600 px** | 1380 | 2.0 s |
+
+Read the last two rows first. On the full learned sequence, local BA is the
+difference between **34 and 48 of 49 images registered** — drift compounded until
+PnP could no longer find `min_pnp_inliers` correspondences, and registration
+stalled. That is the failure this parameter exists to prevent, and it is invisible
+in every other metric: the 34-image model's reprojection error (0.945 px) is
+*better* than the 48-image model's (0.888 px is close, and a smaller model is an
+easier one). `registered_images` is the metric that catches it.
+
+Two honest qualifications:
+
+- **`local_ba_gain_px` is four times larger on the learned stack** (0.34-0.39 px
+  per solve vs 0.08-0.17 px classical), which is the quantitative form of the
+  reason this matters most with learned detectors and trackers: their matches are
+  dense and confident enough that PnP reports healthy inlier counts on a pose that
+  is already drifting.
+- **After global BA the final error is a wash on the sets that fully register.**
+  Where every image registers either way, global BA absorbs the difference —
+  0.236 vs 0.248 px classical at 16 images, with the *on* run carrying 1.5% more
+  points, which is most of that gap. Local BA is not buying final accuracy on a
+  short well-connected set. It is buying the model that global BA gets to start
+  from, and on the long learned sequence that is 14 more cameras.
+
+So: leave it on, and do not expect the final number to move on an easy scene.
+
+## `local_ba_gain_px` at or below zero
+
+The solves are running and not lowering window reprojection error.
+
+- **If `mean_reprojection_error` is already low, this is the healthy end state.**
+  There is no drift to remove. It is an `info` diagnostic, not a warning, for
+  exactly this reason.
+- **With `local_ba_robust_loss: true` the metric can go slightly negative and the
+  solve still be correct.** Ceres is minimising the Cauchy cost; this metric reports
+  the raw mean. A solve that pulls the bulk of the residuals down while letting a
+  few outliers grow does the right thing and reads as a small negative here.
+- **If it is strongly negative** (worse than about -0.05 px consistently), suspect
+  the window instead: `local_ba_window` below ~5 leaves almost no freedom after the
+  two fixed cameras, so the solve can only move structure.
+
+Turning `local_ba` off because this metric is near zero saves runtime and gives up
+the protection on the frames where it *would* have mattered. Prefer raising
+`local_ba_interval`.
+
+## Local BA is not converging
+
+Ceres hit `local_ba_max_iterations` (default 25). Unlike the global module, this is
+often not worth fixing by raising the cap — the solve runs tens of times and a
+partial solve still removes most of the drift.
+
+Act on it when it fires on *most* runs rather than a few:
+
+1. **Narrow `local_ba_window`.** A wide window is a harder problem per solve, and
+   the drift it corrects is mostly local anyway. 8 → 6 is usually enough.
+2. **Then raise `local_ba_max_iterations`** to 50. Watch runtime: this multiplies
+   by the number of registrations.
+3. **Check `local_ba_loss_scale`.** A scale far above the residuals makes the loss
+   effectively quadratic and lets outliers dominate the solve, which is a common
+   way to make it converge slowly.
+
 ## `track_utilization` low
 
 With good reprojection error, the filters are simply strict — fine. With bad

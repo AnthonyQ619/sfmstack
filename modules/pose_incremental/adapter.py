@@ -8,6 +8,13 @@ undistorted and premultiplied by K^-1 once, up front. That is what lets a scene
 with per-image intrinsics (a mixed-resolution capture, or a multi-camera rig) work
 without special-casing: the projection matrices are plain [R|t] and no K appears
 again until reprojection error is reported, where it has to be in pixels.
+
+Registration is interleaved with LOCAL bundle adjustment over a sliding window of
+the most recently registered cameras (`local_ba`). Without it, every pose is
+estimated against structure triangulated from poses that were themselves never
+revised, so error compounds along the registration order -- the failure mode is a
+model whose reprojection error looks acceptable everywhere locally and whose
+cameras have drifted badly end to end.
 """
 
 from __future__ import annotations
@@ -16,7 +23,18 @@ import cv2
 import numpy as np
 from sfmkit import Ctx, module
 
+try:
+    import pycolmap
+except ImportError:  # local_ba: false still works without it
+    pycolmap = None
+
 DEG = 180.0 / np.pi
+
+# pycolmap needs two fixed cameras to pin the 7-dof gauge. The predecessor fixed
+# exactly one, which leaves scale free inside the window: each solve was then free
+# to rescale the local structure relative to the model it was being written back
+# into, which is a drift source rather than a drift fix.
+MIN_FIXED = 2
 
 
 def per_image_intrinsics(scene, n_images: int):
@@ -127,6 +145,146 @@ class Reconstruction:
         return camera_center(self.poses[frame])
 
 
+def _termination_name(termination) -> str:
+    """'TerminationType.NO_CONVERGENCE' / an enum / a bare string -> 'NO_CONVERGENCE'."""
+    name = getattr(termination, "name", None)
+    if isinstance(name, str):
+        return name.upper()
+    return str(termination).rsplit(".", 1)[-1].upper()
+
+
+def read_summary(summary) -> tuple[int, bool]:
+    if summary is None:
+        return 0, False
+    ceres = getattr(summary, "ceres_summary", None) or summary
+    iterations = 0
+    for attr in ("num_successful_steps", "iterations", "num_iterations"):
+        value = getattr(ceres, attr, None)
+        if isinstance(value, int):
+            iterations = value
+            break
+        if isinstance(value, (list, tuple)):
+            iterations = len(value)
+            break
+    termination = getattr(summary, "termination_type", None) or getattr(
+        ceres, "termination_type", None
+    )
+    # Exact name comparison, not a substring test: "CONVERGENCE" is a substring of
+    # "NO_CONVERGENCE", so `in` reports success on exactly the solves that ran out
+    # of iterations.
+    converged = termination is not None and _termination_name(termination) == "CONVERGENCE"
+    if termination is None and getattr(summary, "is_solution_usable", None):
+        converged = bool(summary.is_solution_usable())
+    return iterations, converged
+
+
+def bundle_adjust_window(rec, window, *, K_all, undist_in, tracks_in, row_of,
+                         sizes, names, min_track_len, max_iterations, robust_loss,
+                         loss_scale):
+    """Refine the cameras in `window` and the structure they see, in place.
+
+    `window` is in REGISTRATION order and its first MIN_FIXED entries are held
+    constant, which both pins the gauge and keeps the refined block attached to the
+    part of the model that is not in the solve. Only the window is put into the
+    pycolmap reconstruction: observations from cameras outside it would anchor the
+    points better, but the whole point of a local solve is that its cost does not
+    grow with the model.
+
+    Returns (error_before, error_after, iterations, converged) in pixels, or None
+    if the window carried too little structure to solve.
+    """
+    if len(window) <= MIN_FIXED:
+        return None
+
+    image_id_of = {frame: i + 1 for i, frame in enumerate(window)}
+    sub = pycolmap.Reconstruction()
+    elements: dict[int, list[tuple[int, int]]] = {}
+
+    for frame in window:
+        image_id = image_id_of[frame]
+        K = K_all[frame]
+        camera = pycolmap.Camera.create_from_model_id(
+            camera_id=image_id,
+            model=pycolmap.CameraModelId.PINHOLE,
+            focal_length=float(K[0, 0]),
+            width=int(sizes[frame][0]),
+            height=int(sizes[frame][1]),
+        )
+        camera.params = [float(K[0, 0]), float(K[1, 1]), float(K[0, 2]), float(K[1, 2])]
+        sub.add_camera_with_trivial_rig(camera)
+
+        points2D, seen = [], []
+        for track in tracks_in[frame]:
+            track = int(track)
+            if track not in rec.points:
+                continue
+            elements.setdefault(track, []).append((image_id, len(points2D)))
+            points2D.append(pycolmap.Point2D(undist_in[frame][row_of[frame][track]]))
+            seen.append(track)
+
+        image = pycolmap.Image(name=str(names[frame]), camera_id=image_id, points2D=points2D)
+        image.image_id = image_id
+        P = rec.poses[frame]
+        sub.add_image_with_trivial_frame(
+            image, pycolmap.Rigid3d(pycolmap.Rotation3d(P[:, :3]), P[:, 3])
+        )
+
+    point_id_of: dict[int, int] = {}
+    for track, obs in elements.items():
+        if len(obs) < max(min_track_len, 2):
+            continue
+        point_id_of[track] = sub.add_point3D(
+            rec.points[track],
+            pycolmap.Track([pycolmap.TrackElement(i, j) for i, j in obs]),
+            np.array([128, 128, 128], dtype=np.uint8),
+        )
+
+    if len(point_id_of) < 8:
+        return None
+
+    sub.update_point_3d_errors()  # COLMAP leaves per-point error unset until asked
+    before = float(sub.compute_mean_reprojection_error())
+
+    config = pycolmap.BundleAdjustmentConfig()
+    for image_id in image_id_of.values():
+        config.add_image(image_id)
+    for frame in window[:MIN_FIXED]:
+        config.set_constant_rig_from_world_pose(image_id_of[frame])
+
+    options = pycolmap.BundleAdjustmentOptions()
+    options.refine_focal_length = False
+    options.refine_principal_point = False
+    options.refine_extra_params = False
+    options.refine_points3D = True
+    options.refine_rig_from_world = True
+    options.ceres.solver_options.max_num_iterations = int(max_iterations)
+    if robust_loss:
+        options.ceres.loss_function_type = pycolmap.LossFunctionType.CAUCHY
+        options.ceres.loss_function_scale = float(loss_scale)
+    else:
+        options.ceres.loss_function_type = pycolmap.LossFunctionType.TRIVIAL
+
+    summary = pycolmap.create_default_bundle_adjuster(options, config, sub).solve()
+
+    sub.update_point_3d_errors()
+    after = float(sub.compute_mean_reprojection_error())
+    iterations, converged = read_summary(summary)
+
+    # Write back. The fixed cameras did not move, so skipping them is not an
+    # optimisation -- reading their pose back would round-trip a float for nothing.
+    for frame in window[MIN_FIXED:]:
+        pose = sub.image(image_id_of[frame]).cam_from_world()
+        rec.poses[frame] = np.hstack(
+            [pose.rotation.matrix(), pose.translation.reshape(3, 1)]
+        )
+    # Structure has to be written back too: the next PnP registers against these
+    # points, and refining poses against stale structure undoes the solve.
+    for track, point_id in point_id_of.items():
+        rec.points[track] = np.asarray(sub.point3D(point_id).xyz, dtype=np.float64)
+
+    return before, after, iterations, converged
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -134,7 +292,15 @@ def run(ctx: Ctx):
     p = ctx.params
 
     names = scene.load("images", "names")
+    sizes = scene.load("images", "size_current")
     n_images = len(names)
+
+    if p.local_ba and pycolmap is None:
+        raise ValueError(
+            "local_ba is on and pycolmap is not importable. Either install it "
+            "(`pip install pycolmap`) or set local_ba: false and run the "
+            "BundleAdjustmentLocal module afterwards instead."
+        )
 
     if not scene.has("calibration"):
         out = ctx.output("poses")
@@ -300,6 +466,43 @@ def run(ctx: Ctx):
 
     triangulate_new()
 
+    # ------------------------------------------------------------- local BA
+    # Registration ORDER, not frame order. The predecessor took the window to be
+    # frames [id-N, id] because it registered strictly in file order; here the next
+    # image is whichever has the most 2D-3D links, so frame index says nothing about
+    # what was solved recently and a frame-indexed window would fix cameras that had
+    # just moved.
+    order: list[int] = [i0, j0]
+    ba_runs, ba_gains, ba_iterations, ba_failures = 0, [], 0, 0
+
+    def refine():
+        nonlocal ba_runs, ba_iterations, ba_failures
+        if not p.local_ba:
+            return
+        n = len(order)
+        # Every registration while the model is small -- that is where a bad pose
+        # does the most damage, because everything after it is registered against
+        # structure it triangulated -- then every local_ba_interval.
+        if n > p.local_ba_warmup and n % p.local_ba_interval != 0:
+            return
+        result = bundle_adjust_window(
+            rec, order[-p.local_ba_window :],
+            K_all=K_all, undist_in=undist_in, tracks_in=tracks_in, row_of=row_of,
+            sizes=sizes, names=names, min_track_len=p.min_track_len,
+            max_iterations=p.local_ba_max_iterations,
+            robust_loss=p.local_ba_robust_loss, loss_scale=p.local_ba_loss_scale,
+        )
+        if result is None:
+            return
+        before, after, iterations, converged = result
+        ba_runs += 1
+        ba_gains.append(before - after)
+        ba_iterations += iterations
+        if not converged:
+            ba_failures += 1
+
+    refine()
+
     # Images PnP has already refused. Kept separate from `rec.poses` rather than
     # parked there as a None: everything that walks the pose dict -- triangulation,
     # camera centres, reprojection -- assumes every entry is a real 3x4.
@@ -345,15 +548,17 @@ def run(ctx: Ctx):
             object_points[idx], image_points[idx], np.eye(3), np.zeros(5), rvec, tvec
         )
         rec.poses[f] = np.hstack([cv2.Rodrigues(rvec)[0], tvec.reshape(3, 1)])
+        order.append(f)
 
         ctx.progress(
             0.15 + 0.75 * len(rec.poses) / n_images,
             f"registered {len(rec.poses)}/{n_images}, {len(rec.points)} points",
         )
         # A new view can make previously untriangulable tracks viable, and can
-        # give an existing one a wider baseline -- but points are never revised
-        # once accepted, which is what bundle adjustment is for.
+        # give an existing one a wider baseline. Points are never re-triangulated
+        # once accepted; local BA is what revises them.
         triangulate_new()
+        refine()
 
     # ------------------------------------------------------------- finalise
     ctx.progress(0.92, "filtering structure")
@@ -430,6 +635,11 @@ def run(ctx: Ctx):
     out.metric("init_pair_angle", round(float(init_angle), 2),
                direction="higher_better", healthy=(4.0, None))
 
+    mean_gain = float(np.mean(ba_gains)) if ba_gains else None
+    out.metric("local_ba_runs", ba_runs, direction="neutral")
+    out.metric("local_ba_gain_px", round(mean_gain, 4) if mean_gain is not None else None,
+               direction="higher_better", healthy=(0.0, None))
+
     if frac < 1.0:
         missing = [int(f) for f in range(n_images) if not valid[f]]
         out.diagnostic(
@@ -470,7 +680,50 @@ def run(ctx: Ctx):
             see_also="limitations.md#degenerate-captures",
         )
 
+    if ba_failures:
+        out.diagnostic(
+            "local_ba_not_converging",
+            severity="warn",
+            message=(
+                f"{ba_failures} of {ba_runs} local solves hit the "
+                f"{p.local_ba_max_iterations}-iteration cap without converging."
+            ),
+            suggested_actions=[
+                f"Raise local_ba_max_iterations above {p.local_ba_max_iterations}.",
+                "Or narrow local_ba_window; a wide window is a harder problem.",
+            ],
+            see_also="tuning.md#local-ba-is-not-converging",
+        )
+
+    if ba_runs and mean_gain is not None and mean_gain <= 0.0:
+        out.diagnostic(
+            "local_ba_not_helping",
+            severity="info",
+            message=(
+                f"Local BA moved window error by {mean_gain:+.4f}px on average "
+                f"over {ba_runs} solves."
+            ),
+            suggested_actions=[
+                "Nothing, if reprojection error is already low -- there is no drift to remove.",
+                "With robust_loss on, the robust cost can fall while the raw mean rises.",
+                "Set local_ba: false if the runtime is not worth it for this stack.",
+            ],
+            see_also="tuning.md#local_ba_gain_px-at-or-below-zero",
+        )
+
+    ba_note = (
+        f"Local BA ran {ba_runs} times over a {p.local_ba_window}-camera window "
+        f"({ba_iterations} Ceres iterations total), moving window reprojection "
+        f"error by {mean_gain:+.3f}px per solve on average. "
+        if ba_runs else
+        ("Local BA was enabled but never had a window with enough structure to solve. "
+         if p.local_ba else
+         "Local BA was disabled; poses were never revised after registration, so "
+         "error compounds along the registration order. ")
+    )
+
     out.note(
+        ba_note +
         f"Seeded on images ({i0}, {j0}) at {init_angle:.1f} degrees median parallax. "
         f"Registered {len(registered)}/{n_images} images and kept {len(rec.points)} "
         f"of {n_tracks_in} tracks as 3D points ({utilisation:.0%}). "

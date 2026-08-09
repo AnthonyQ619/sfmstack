@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pytest
 
@@ -59,6 +61,35 @@ def test_every_diagnostic_points_into_the_skills(registry):
             assert (spec.root / "skills" / doc).exists(), (
                 f"{name}.{code} points at skills/{doc}, which does not exist"
             )
+
+
+def _heading_slug(heading: str) -> str:
+    """GitHub's anchor rule: lowercase, drop punctuation, spaces to hyphens."""
+    return re.sub(r"\s+", "-", re.sub(r"[^\w\s-]", "", heading.lower()).strip())
+
+
+def test_every_diagnostic_anchor_resolves_to_a_real_heading(registry):
+    """The file existing is not enough. A diagnostic whose anchor is wrong lands the
+    agent at the top of a long tuning document with no indication that it missed --
+    which is worse than no pointer, because it looks like it worked. Eight of these
+    were wrong when this test was written."""
+    missing = []
+    for name in registry.names():
+        spec = registry.get(name)
+        for code, d in spec.diagnostics.items():
+            doc, _, anchor = d.see_also.partition("#")
+            if not anchor:
+                continue
+            text = (spec.root / "skills" / doc).read_text()
+            headings = {
+                _heading_slug(line.lstrip("#").strip())
+                for line in text.splitlines()
+                if line.startswith("#")
+            }
+            if anchor not in headings:
+                missing.append(f"{name}.{code} -> {d.see_also}")
+    assert not missing, "diagnostics point at headings that do not exist: " + \
+        ", ".join(missing)
 
 
 def test_curated_skills_are_present(registry):

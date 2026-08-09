@@ -138,7 +138,7 @@ def run(ctx: Ctx):
                 "Lower contrast_threshold toward 0.01.",
                 "Enable grayscale_clahe if exposure varies across the set.",
             ],
-            see_also="tuning.md#keypoints_min-below-200",
+            see_also="tuning.md#keypoints_min-below-200-while-the-mean-is-healthy",
         )
 
     if saturation > 0.8:

@@ -180,7 +180,7 @@ def run(ctx: Ctx):
             severity="info",
             message=f"{saturation:.0%} of images hit max_keypoints={p.max_keypoints}.",
             suggested_actions=["Raise max_keypoints if track survival is short."],
-            see_also="tuning.md#saturation-near-10",
+            see_also="tuning.md#which-parameter-is-binding",
         )
 
     if mean_cov < 0.35:

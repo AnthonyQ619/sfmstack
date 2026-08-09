@@ -20,6 +20,25 @@ description: |
   table, so registration is driven by evidence: the best-connected image goes
   next, and a frame that cannot be registered is skipped without ending the run.
 
+  Registration is interleaved with LOCAL bundle adjustment over a sliding window of
+  the most recently registered cameras. This is not an optimisation -- it is what
+  stops error compounding. Each new pose is estimated against structure that earlier
+  poses triangulated, so without in-loop refinement a small error early becomes the
+  frame that everything later is measured in. It matters most with learned detectors
+  and trackers, whose correspondences are dense and confident enough that PnP
+  reports healthy inlier counts on a pose that is already drifting.
+
+  The window is taken in REGISTRATION order, not frame order. The predecessor took
+  frames [id-N, id] because it registered strictly in file order; here the next
+  image is whichever has the most 2D-3D correspondences, so a frame-indexed window
+  would hold recently-moved cameras fixed and free ones that nothing had touched.
+
+  `BundleAdjustmentLocal` still exists as a separate module and is not made
+  redundant by this: that one refines an EXISTING sparse_model/v1 at a window you
+  choose, which is a repair tool. This is the in-loop drift control that has to
+  happen while the model is being built, because by the time the model exists the
+  drift is already baked into the structure.
+
   Scale is arbitrary and unrecoverable from images alone. The initial pair's
   baseline is fixed to unit length, so every distance downstream is in that unit.
 
@@ -128,6 +147,88 @@ params:
     maximum: 0.999999
     description: RANSAC confidence.
 
+  local_ba:
+    type: boolean
+    default: true
+    description: Refine a window of recent cameras and their structure during registration.
+    tuning: >
+      Leave on. Off is only correct when you are deliberately measuring how much
+      drift the registration itself produces, or when pycolmap is unavailable --
+      the module raises rather than silently skipping in that case. Turning it off
+      does not save as much as it looks like it does: the cost is roughly linear
+      in the number of registrations and each solve is small by construction.
+
+  local_ba_window:
+    type: integer
+    default: 8
+    minimum: 3
+    maximum: 100
+    description: Cameras in the sliding window. The two oldest are held fixed.
+    tuning: >
+      The cost/benefit dial. Cost grows faster than linearly, benefit does not.
+      Below 5 there is almost no freedom left after the two fixed cameras. Above
+      ~20 you are paying global-BA prices per registration to correct drift that
+      global BA at the end will correct anyway -- widen this only when
+      local_ba_gain_px stays high late in the sequence, which means drift is
+      outrunning the window.
+
+  local_ba_interval:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: Run a solve every N registrations, once past local_ba_warmup.
+    tuning: >
+      1 solves after every registration and is the right default for sets of a few
+      dozen images. Raise it to 3-5 on long sequences where the per-registration
+      solve dominates runtime; the drift it lets through is proportional, so watch
+      mean_reprojection_error when you do.
+
+  local_ba_warmup:
+    type: integer
+    default: 10
+    minimum: 0
+    maximum: 100
+    description: Solve after every registration until this many cameras are registered.
+    tuning: >
+      Early poses are the ones worth refining unconditionally -- a bad pose among
+      the first ten becomes the frame every later image is registered into, and no
+      later solve that holds it fixed can undo it. Lowering this below ~5 saves
+      almost nothing and gives up the cheapest accuracy in the module.
+
+  local_ba_max_iterations:
+    type: integer
+    default: 25
+    minimum: 1
+    maximum: 500
+    description: Ceres iteration cap per local solve.
+    tuning: >
+      Deliberately low: this runs tens of times, and a window that needs many
+      iterations is usually a window that is too wide. Check local_ba_runs against
+      the local_ba_not_converging diagnostic before raising it.
+
+  local_ba_robust_loss:
+    type: boolean
+    default: true
+    description: Cauchy loss instead of squared error in the local solves.
+    tuning: >
+      On is right while the model is being built, because that is exactly when
+      mistriangulated points are still in the structure and a squared loss lets one
+      of them move a camera. Note the interaction with local_ba_gain_px: a robust
+      solve can lower the robust cost while raising the raw mean, which is the
+      metric turning negative for a good reason.
+
+  local_ba_loss_scale:
+    type: number
+    default: 1.0
+    minimum: 0.01
+    maximum: 100.0
+    description: Cauchy loss scale, in working-resolution pixels.
+    tuning: >
+      Residuals beyond roughly this are downweighted. Keep it well below
+      max_reprojection_error -- a scale as loose as the filter means the robust
+      loss never engages before the filter would have removed the point anyway.
+
 metrics:
   registered_fraction:
     direction: higher_better
@@ -181,6 +282,26 @@ metrics:
       Median parallax of the seed pair, in degrees. Everything else is registered
       against structure this pair created, so a weak seed is not recoverable later.
 
+  local_ba_runs:
+    direction: neutral
+    meaning: >
+      Local bundle adjustments performed during registration. 0 with local_ba on
+      means no window ever carried enough structure to solve, which is a structure
+      problem, not a BA setting.
+
+  local_ba_gain_px:
+    direction: higher_better
+    healthy: [0.0, null]
+    meaning: >
+      Mean reduction in window reprojection error per local solve, in pixels; null
+      when local_ba is off. This is how much drift the in-loop refinement is
+      actually removing. Near zero late in a run is the healthy end state -- the
+      window is already consistent. Sustained large values mean the registrations
+      are producing poses that need substantial correction, so read it beside
+      mean_reprojection_error rather than alone. Can go slightly negative with
+      local_ba_robust_loss on, because Ceres is minimising the robust cost and this
+      metric reports the raw mean.
+
 diagnostics:
   - code: uncalibrated_scene
     severity: error
@@ -216,6 +337,23 @@ diagnostics:
       - Tighten max_reprojection_error.
       - Run bundle adjustment; this module does not refine globally.
     see_also: tuning.md#mean_reprojection_error-above-2
+
+  - code: local_ba_not_converging
+    severity: warn
+    message: Local solves are hitting the iteration cap.
+    suggested_actions:
+      - Raise local_ba_max_iterations.
+      - Or narrow local_ba_window; a wide window is a harder problem per solve.
+    see_also: tuning.md#local-ba-is-not-converging
+
+  - code: local_ba_not_helping
+    severity: info
+    message: Local BA is not lowering window reprojection error.
+    suggested_actions:
+      - Nothing, if mean_reprojection_error is already low; there is no drift to remove.
+      - With local_ba_robust_loss on, the robust cost can fall while the raw mean rises.
+      - Set local_ba false if the runtime is not worth it for this stack.
+    see_also: tuning.md#local_ba_gain_px-at-or-below-zero
 
   - code: weak_structure
     severity: warn

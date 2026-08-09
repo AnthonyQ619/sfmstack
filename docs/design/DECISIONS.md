@@ -480,3 +480,132 @@ No CDN, no external fonts, no runtime fetch — the point cloud is base64 inside
 the page. A report that needs the network is a blank page exactly when you most
 want to look at a result.
 
+
+## 2026-08-09 — Local BA moved back inside the pose estimator
+
+Requested directly: the predecessor's `CamPoseEstimatorEssentialToPnP` took an
+optimiser object and ran local BA inside the registration loop, and that had to
+survive the refactor.
+
+It did not survive by accident. When I split the predecessor into modules I turned
+its optimiser argument into `BundleAdjustmentLocal`, a module that refines an
+existing `sparse_model/v1`. That is a faithful translation of the *code* and a
+wrong translation of the *purpose*. A local BA that runs after the model exists is
+a repair tool. A local BA that runs during registration is drift control, and the
+two are not substitutes, because by the time the model exists the drift is already
+in the structure that every later pose was registered against.
+
+Both now exist. `PoseEssentialToPnP.local_ba` is the in-loop version and defaults
+to on; `BundleAdjustmentLocal` stays as the standalone repair tool.
+
+### What it is worth, measured
+
+DTU scan1, `max_edge: 1024`, `pairing: exhaustive`, defaults otherwise. `final` is
+after `BundleAdjustmentGlobal`:
+
+| stack | images | `local_ba` | registered | pose err | final err | points | pose time |
+|---|---:|---|---:|---:|---:|---:|---:|
+| SIFT + NN | 16 | off | 16 | 0.647 | 0.236 | 8749 | 3.0 s |
+| SIFT + NN | 16 | on | 16 | 0.551 | 0.248 | 8878 | 10.2 s |
+| SIFT + NN | 49 | off | 49 | 0.728 | 0.250 | 18405 | 11.1 s |
+| SIFT + NN | 49 | on | 49 | 0.654 | 0.262 | 19235 | 27.1 s |
+| SuperPoint + LightGlue | 16 | off | 16 | 1.068 | 0.657 | 1627 | 0.9 s |
+| SuperPoint + LightGlue | 16 | on | 16 | 0.843 | 0.669 | 1672 | 2.5 s |
+| SuperPoint + LightGlue | 49 | off | **34** | 0.945 | 0.628 | 1014 | 0.9 s |
+| SuperPoint + LightGlue | 49 | on | **48** | 0.888 | 0.600 | 1380 | 2.0 s |
+
+The last two rows are the result. On the full learned sequence, drift compounded
+until PnP could no longer reach `min_pnp_inliers` correspondences and registration
+stalled at 34 of 49 images. With in-loop refinement, 48 register. Nothing else in
+the run says this is happening: the stalled model's reprojection error (0.945px) is
+in the same range as the complete one's (0.888px), because a smaller model is an
+easier one. `registered_images` is the only metric that catches it.
+
+The claim that this matters most for learned front-ends is now quantified rather
+than asserted: `local_ba_gain_px` is 0.34–0.39px per solve on the learned stack
+against 0.08–0.17px classical, roughly 4x. Dense, confident correspondences let PnP
+report healthy inlier counts on a pose that is already drifting.
+
+**The honest qualification, which I would rather state than bury:** on the sets
+where every image registers either way, global BA absorbs the difference and the
+final error is a wash — 0.236 vs 0.248px at 16 images classical, most of that gap
+explained by the *on* run carrying 1.5% more points. Local BA is not buying final
+accuracy on a short well-connected set. It buys the model global BA starts from,
+and on a long learned sequence that is 14 more cameras.
+
+### Three implementation choices
+
+**The window is in registration order, not frame order.** The predecessor used
+frames `[id-N, id]` because it registered strictly in file order. Here the next
+image is whichever has the most 2D-3D correspondences, so frame index says nothing
+about what was solved recently — a frame-indexed window would hold recently-moved
+cameras fixed and free ones nothing had touched.
+
+**Two fixed cameras, not one.** The predecessor fixed `window[0]` only. Fixing one
+camera leaves scale free inside the window, so each solve could rescale the local
+structure relative to the model it was being written back into. That is a drift
+*source* dressed as a drift fix. `MIN_FIXED = 2`, matching `BundleAdjustmentLocal`.
+
+**Structure is written back, not just poses.** The next PnP registers against these
+points; refining poses against stale structure gives most of the solve back
+immediately.
+
+### A reporting trap this created, now written into the skill
+
+`mean_reprojection_error` cannot be compared between models with different
+`registered_images`. The 34-camera model looks *better* than the 48-camera one. I
+have now made this mistake once in this repository's own reporting (the eps-sweep
+table, corrected earlier), and the artifact skill says so explicitly.
+
+## Eight diagnostics pointed at headings that do not exist
+
+Found while adding the two new `local_ba` diagnostics. `test_every_diagnostic_-
+points_into_the_skills` checked that `see_also`'s *file* exists and never that its
+*anchor* resolves, so eight of the thirty-three anchors across the modules pointed
+at nothing.
+
+This fails worse than a missing pointer. The agent following
+`tuning.md#saturation-near-10` lands at the top of a long document with no signal
+that it missed the section it was sent to, and reads the wrong advice confidently.
+
+Fixed by repointing four at sections that already covered the topic and writing
+four new sections (ORB `suppression_ratio`, FLANN `inlier_ratio`, LoFTR
+`inlier_ratio` and `graph_components`) that were genuinely missing.
+`test_every_diagnostic_anchor_resolves_to_a_real_heading` now enforces it.
+
+## 2026-08-09 — Containers: everything builds, only GPU passthrough is blocked
+
+To be precise about what the missing NVIDIA container toolkit does and does not
+stop, because "GPU passthrough is broken" was too coarse:
+
+- **Building images: unaffected.** No GPU is touched at build time. All 14 module
+  images exist, including the four torch-based ones with weights baked in.
+- **Running CPU modules in containers: unaffected.** The full classical chain runs
+  end to end in containers — `SceneLoader → SIFT → NN → union-find → PnP →
+  triangulation → global BA`, 37s wall for 16 images, and it produces bit-identical
+  metrics to the host run (0.551px pose, 0.2476px final). That equality is worth
+  more than it looks: it means the container path is not quietly a different
+  computation.
+- **Running GPU modules in containers: blocked.** They fall back to CPU, which
+  works and is unusably slow for LoFTR.
+- **Running GPU modules at all: works via `SubprocessBackend`,** which gives up the
+  dependency isolation that is the point of the architecture but does use the real
+  A6000s.
+
+The block, exactly: `docker run --gpus all` returns `could not select device driver
+"" with capabilities: [[gpu]]`. The daemon lists `runc` only, `/etc/docker/` is
+empty, `nvidia-ctk` is not installed, and zero `nvidia-container-*` packages are
+present. The driver is fine (580.159.03, 8 GPUs visible to `nvidia-smi`); the
+missing piece is the container runtime shim, which is a separate package and needs
+root:
+
+```bash
+sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker   # writes /etc/docker/daemon.json
+sudo systemctl restart docker
+docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi  # verify
+```
+
+Nothing in this repository changes when that lands. `DockerBackend` already passes
+`--gpus`, and `GpuBroker` already leases devices; both have been exercised against
+real GPUs through the subprocess path.

@@ -164,6 +164,79 @@ def test_no_viable_seed_is_refused_with_the_numbers_that_explain_it(orch):
 
 
 # --------------------------------------------------------------------------- #
+# In-loop local bundle adjustment
+# --------------------------------------------------------------------------- #
+
+
+@needs_pycolmap
+def test_in_loop_local_ba_lowers_the_error_it_registers_against(orch):
+    """The whole point of refining during registration rather than after it.
+
+    Measured on 16 contiguous DTU frames: 0.647 -> 0.551px for SIFT+NN, and
+    1.068 -> 0.843px for SuperPoint+LightGlue, where the drift is four times
+    larger. On the full 49-frame set the learned stack registers 34/49 without it
+    and 48/49 with it -- that one is too slow to assert here, but it is the reason
+    the default is on.
+    """
+    built = build(orch, n=16, upto="tracks")
+    common = {"scene": built["scene"].id, "tracks": built["tracks"].id}
+
+    off = orch.run("PoseEssentialToPnP", run_id="rc", inputs=common,
+                   params={"local_ba": False}).primary
+    on = orch.run("PoseEssentialToPnP", run_id="rc", inputs=common,
+                  params={"local_ba": True}).primary
+
+    assert on.metric("mean_reprojection_error") < off.metric("mean_reprojection_error")
+    assert on.metric("registered_images") >= off.metric("registered_images")
+
+
+@needs_pycolmap
+def test_local_ba_reports_nothing_when_it_did_not_run(orch):
+    """A metric that reports 0.0 gain when it never ran reads as `tried, useless`.
+    None is the only honest value for a measurement that was not taken."""
+    built = build(orch, n=8, upto="tracks")
+    off = orch.run("PoseEssentialToPnP", run_id="rc",
+                   inputs={"scene": built["scene"].id, "tracks": built["tracks"].id},
+                   params={"local_ba": False}).primary
+
+    assert off.metric("local_ba_runs") == 0
+    assert off.metric("local_ba_gain_px") is None
+
+
+@needs_pycolmap
+def test_the_local_ba_schedule_is_what_the_parameters_say(orch):
+    """warmup solves after every registration, then every interval-th one. Getting
+    this wrong is invisible in the output model and shows up only as runtime."""
+    built = build(orch, n=16, upto="tracks")
+    common = {"scene": built["scene"].id, "tracks": built["tracks"].id}
+
+    every = orch.run("PoseEssentialToPnP", run_id="rc", inputs=common,
+                     params={"local_ba_warmup": 0, "local_ba_interval": 1}).primary
+    sparse_schedule = orch.run(
+        "PoseEssentialToPnP", run_id="rc", inputs=common,
+        params={"local_ba_warmup": 0, "local_ba_interval": 5},
+    ).primary
+
+    # 16 registrations, minus the seed pair that is already in place when the first
+    # refine() runs; the exact count depends only on the schedule, not the scene.
+    assert every.metric("local_ba_runs") > sparse_schedule.metric("local_ba_runs")
+    assert sparse_schedule.metric("local_ba_runs") >= 3
+
+
+@needs_pycolmap
+def test_local_ba_keeps_the_world_frame_pinned_to_the_seed_camera(orch):
+    """The two oldest cameras in each window are held constant, so the seed camera
+    is never written back and the gauge cannot drift. If it could, every downstream
+    consumer that assumes the first registered camera is the origin would be wrong
+    in a way no metric reports."""
+    poses = build(orch, n=16, upto="poses")["poses"]
+    P = poses.load("poses", "cam_from_world")[poses.load("poses", "valid")]
+
+    identity = np.hstack([np.eye(3), np.zeros((3, 1))])
+    assert sum(np.allclose(pose, identity, atol=1e-9) for pose in P) == 1
+
+
+# --------------------------------------------------------------------------- #
 # Structure
 # --------------------------------------------------------------------------- #
 

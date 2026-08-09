@@ -89,3 +89,34 @@ than any other here needs the toolkit installed. See `docs/design/DECISIONS.md`.
 
 `exhaustive` on more than ~15 images is a serious cost even on GPU. Raise `window`
 first.
+
+## `inlier_ratio` below 0.4
+
+Semi-dense output has a lower healthy band than a detector-based matcher (0.4
+rather than 0.5) because LoFTR proposes correspondences in regions a detector would
+have skipped, and some of those are genuinely ambiguous. Below 0.4, in order:
+
+1. **Raise `min_confidence`.** The most direct dial. 0.2 is the usual default; 0.4
+   removes most of the tail at a real cost in `matches_per_pair`, which is fine —
+   semi-dense output has matches to spare.
+2. **Check `planarity`.** A pair whose homography explains as many inliers as its
+   fundamental matrix is degenerate, and no matcher setting fixes it.
+3. **Check `setting` against the scene.** `outdoor` weights on an indoor scene
+   produce confident matches that fail geometry; see the section above.
+
+Do not respond by lowering `ransac_threshold`. In a semi-dense field that mostly
+converts a low inlier ratio into a low match count.
+
+## `graph_components` above 1
+
+The view graph is disconnected and no tracker can bridge it — the fix is `window`
+or `pairing: exhaustive`, exactly as in the detector-based matchers. What is
+specific here is the cost of that fix: `exhaustive` runs the network once per pair,
+so going from `window: 3` to `exhaustive` on 20 images is roughly a 30x runtime
+increase rather than the 30x cheap-descriptor-comparison increase it would be in
+`FeatureMatchNN`. Widen `window` one step at a time and re-read this metric.
+
+A second cause worth ruling out first: `min_matches` dropping marginal pairs. LoFTR
+produces thousands of matches on a good pair and can produce a handful on a bad
+one, so a threshold tuned for a detector-based matcher may be discarding the very
+pairs that would connect the graph.

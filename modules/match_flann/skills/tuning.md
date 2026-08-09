@@ -77,3 +77,21 @@ fault.
 because they are the same code operating on the search's output. Its
 [tuning file](../../match_nn/skills/tuning.md) applies unchanged, including the
 window sweep and the warning that `matches_per_pair` falls as the graph improves.
+
+## `inlier_ratio` below 0.3
+
+The geometric model kept less than a third of what the ratio test passed. Before
+reaching for the exact matcher, separate the two things that can cause it here:
+
+1. **Search error.** Check `match_agreement` first. Below ~0.9 the approximation is
+   returning genuinely different neighbours from the exact search, and those wrong
+   matches are exactly what RANSAC is rejecting. Raise `n_checks`, or `trees` for a
+   KD-tree index — this is the cause specific to this module.
+2. **Everything else.** With `match_agreement` healthy, the approximation is not at
+   fault and the [exact matcher's
+   guidance](../../match_nn/skills/tuning.md) applies unchanged: tighten
+   `ratio_test`, check `planarity` for a degenerate pair, and read
+   `ransac_threshold` in working-resolution pixels.
+
+The order matters. Tightening the ratio test to compensate for a bad index throws
+away correct matches to hide incorrect ones.

@@ -81,7 +81,7 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | | `FeatureMatchLightGlue` | lightglue | ✓ |
 | | `FeatureMatchLoFTR` | kornia, **detector-free** | ✓ |
 | tracking | `FeatureTrackUnionFind` | numpy only | |
-| pose | `PoseEssentialToPnP` | OpenCV | |
+| pose | `PoseEssentialToPnP` | OpenCV + pycolmap (in-loop local BA) | |
 | sparse | `SparseTriangulation` | OpenCV | |
 | optimization | `BundleAdjustmentGlobal` | pycolmap / Ceres | |
 | | `BundleAdjustmentLocal` | pycolmap / Ceres | |
@@ -102,8 +102,23 @@ docker build -t sfmstack/feature-sift:1.0.0  -f modules/feature_sift/Dockerfile 
 `resources.gpu: true` modules need the NVIDIA container toolkit wired into the
 Docker daemon — having GPUs on the host is not enough. Without it `DockerBackend`
 falls back to CPU with a warning naming the fix; pass `cpu_fallback=False` to make
-it an error. **This host currently has no toolkit installed**, so every learned
-module here has only been measured on CPU. See `docs/design/DECISIONS.md`.
+it an error.
+
+**This host has no toolkit installed.** What that does and does not block:
+building images and running CPU modules in containers are unaffected (the full
+classical chain runs containerized and produces metrics identical to the host run);
+only `docker run --gpus` is refused. GPU modules do run on the real hardware
+through `SubprocessBackend`, which trades away the dependency isolation. The fix
+needs root:
+
+```bash
+sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+```
+
+Nothing here changes when that lands — `DockerBackend` already passes `--gpus` and
+`GpuBroker` already leases devices. See `docs/design/DECISIONS.md`.
 
 ```python
 runner = ContainerRunner(

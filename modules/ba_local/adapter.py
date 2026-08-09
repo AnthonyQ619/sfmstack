@@ -336,7 +336,7 @@ def run(ctx: Ctx):
                 "Use BundleAdjustmentGlobal, which fixes the gauge properly.",
                 f"Or lower window_size below {p.window_size}.",
             ],
-            see_also="tuning.md#window_covers_model",
+            see_also="tuning.md#when-to-use-global-ba-instead",
         )
 
     if not converged:
