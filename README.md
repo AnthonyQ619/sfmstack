@@ -28,7 +28,7 @@ Early. Build order and progress:
 | 8 | The remaining 9 legacy modules | in progress |
 | 9 | First agent-driven session over MCP | |
 
-14 modules, 246 tests. `.venv/bin/python -m pytest -q`
+14 modules, 255 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -112,6 +112,7 @@ through `SubprocessBackend`, which trades away the dependency isolation. The fix
 needs root:
 
 ```bash
+# NOTE: needs NVIDIA's apt repo added first -- see docs/design/gpu-container-handoff.md
 sudo apt-get install -y nvidia-container-toolkit
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
