@@ -28,7 +28,7 @@ Early. Build order and progress:
 | 8 | The remaining 9 legacy modules | in progress |
 | 9 | First agent-driven session over MCP | |
 
-14 modules, 255 tests. `.venv/bin/python -m pytest -q`
+14 modules, 258 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -104,22 +104,18 @@ Docker daemon — having GPUs on the host is not enough. Without it `DockerBacke
 falls back to CPU with a warning naming the fix; pass `cpu_fallback=False` to make
 it an error.
 
-**This host has no toolkit installed.** What that does and does not block:
-building images and running CPU modules in containers are unaffected (the full
-classical chain runs containerized and produces metrics identical to the host run);
-only `docker run --gpus` is refused. GPU modules do run on the real hardware
-through `SubprocessBackend`, which trades away the dependency isolation. The fix
-needs root:
+**GPU passthrough works** (toolkit 1.19.1, 8 x RTX A6000, driver 580.159.03).
+A container is given exactly the device the `GpuBroker` leased it — `--gpus
+device=N`, never `all` — and a container with no lease sees no GPU at all. Measured
+module time in containers, DTU at 1024px:
 
-```bash
-# NOTE: needs NVIDIA's apt repo added first -- see docs/design/gpu-container-handoff.md
-sudo apt-get install -y nvidia-container-toolkit
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-```
+| module | CPU container | GPU container |
+| --- | ---: | ---: |
+| `FeatureDetectionSuperPoint` (10 images) | 10.1 s | 0.9 s |
+| `FeatureMatchLightGlue` (9 pairs) | 6.1 s | 0.7 s |
+| `FeatureMatchLoFTR` (17 pairs) | 80.0 s | 4.0 s |
 
-Nothing here changes when that lands — `DockerBackend` already passes `--gpus` and
-`GpuBroker` already leases devices. See `docs/design/DECISIONS.md`.
+If a host lacks the toolkit, see `docs/design/gpu-container-handoff.md`.
 
 ```python
 runner = ContainerRunner(

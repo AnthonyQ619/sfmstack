@@ -56,7 +56,12 @@ class ContainerRunner:
         job_timeout: float | None = None,
     ):
         self.backend = backend
-        self.gpus = gpus or GpuBroker()
+        # `is not None`, not `or`: GpuBroker.__len__ is the device count, so a
+        # deliberately empty broker -- "this runner gets no GPUs" -- is falsy and
+        # `or` silently replaced it with one that discovers every device on the
+        # host. Harmless while the daemon could not pass GPUs through at all;
+        # once it can, it means a caller who asked for no GPUs gets all of them.
+        self.gpus = gpus if gpus is not None else GpuBroker()
         self.idle_ttl = idle_ttl
         self.gpu_timeout = gpu_timeout
         self.job_timeout = job_timeout

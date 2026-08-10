@@ -609,3 +609,51 @@ docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi  # ver
 Nothing in this repository changes when that lands. `DockerBackend` already passes
 `--gpus`, and `GpuBroker` already leases devices; both have been exercised against
 real GPUs through the subprocess path.
+
+## 2026-08-10 — GPU passthrough works, and exposed a latent bug
+
+Toolkit 1.19.1 is installed, `/etc/docker/daemon.json` registers the `nvidia`
+runtime, and `docker run --gpus` succeeds. Verified beyond the smoke test:
+
+- torch in `sfmstack/runtime-lightglue:1.0` reports CUDA available, 8 devices,
+  and completes a real matmul;
+- `--gpus device=3` gives the container **one** device, not eight — exclusive
+  leasing depends on this and `--gpus all` would have passed a weaker check;
+- a container with no `--gpus` flag sees `torch.cuda.is_available() == False`,
+  so `gpu: false` modules cannot quietly take a device;
+- during a real LoFTR job leased device 5, `nvidia-smi` showed PID 91186 on
+  `GPU-58f906f1…` growing to 5394 MiB — the leased device and no other.
+
+Module time in containers, DTU at 1024px:
+
+| module | CPU | GPU |
+|---|---:|---:|
+| SuperPoint, 10 images | 10.1 s | 0.9 s |
+| LightGlue, 9 pairs | 6.1 s | 0.7 s |
+| LoFTR, 17 pairs | 80.0 s | 4.0 s |
+
+The full learned chain now runs end to end with every module in its own container
+on real GPUs: 28 s wall for 16 images including container starts, 16/16 registered,
+0.669 px after global BA — the same numbers the subprocess path produced, so the
+container path is not a different computation.
+
+### The bug it exposed
+
+`ContainerRunner.__init__` had `self.gpus = gpus or GpuBroker()`. `GpuBroker.__len__`
+is the device count, so `GpuBroker(devices=[])` — an explicit "this runner gets no
+GPUs" — is falsy, and `or` replaced it with a broker that discovers every device on
+the host.
+
+This was invisible for as long as passthrough was broken: the request for a device
+succeeded, `--gpus` then failed, and the run fell back to CPU either way. The first
+run after the toolkit landed, a comparison I had set up with `devices=[]` as the
+CPU arm, leased GPUs 0 and 1 and produced two GPU timings I nearly reported as
+"CPU is the same speed as GPU". The identical numbers are what gave it away.
+
+Now `gpus if gpus is not None else GpuBroker()`. An empty broker refuses a
+`gpu: true` module with the actionable error it always had.
+
+Worth naming the general shape: **a container that silently degrades to CPU hides
+every bug in the GPU path**, and those bugs surface all at once when passthrough
+starts working. `cpu_fallback=False` exists for exactly this and is the right
+setting once a host has the toolkit.

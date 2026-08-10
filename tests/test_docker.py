@@ -208,6 +208,54 @@ def test_artifacts_written_by_a_container_belong_to_the_host_user(orch):
     assert image.stat().st_uid == os.getuid()
 
 
+def _gpu_passthrough_works() -> bool:
+    if shutil.which("docker") is None:
+        return False
+    return subprocess.run(
+        ["docker", "run", "--rm", "--gpus", "device=0", "--entrypoint", "true",
+         "sfmstack/runtime-torch:1.0"],
+        capture_output=True,
+    ).returncode == 0
+
+
+needs_container_gpu = pytest.mark.skipif(
+    not _gpu_passthrough_works(),
+    reason="NVIDIA container toolkit not wired into the daemon",
+)
+
+
+@needs_container_gpu
+def test_a_gpu_module_in_a_container_gets_the_device_it_was_leased(orch, tmp_path):
+    """Three things at once, and only Docker can prove any of them: the daemon can
+    hand a device in, the container sees exactly the leased one rather than all of
+    them, and torch inside our image binds to it.
+
+    The middle one is the point. `--gpus all` would pass this test's first
+    assertion and break exclusive leasing, which is what keeps two modules off one
+    device."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", "--gpus", "device=5", "--entrypoint", "python",
+         "sfmstack/runtime-lightglue:1.0", "-c",
+         "import torch;print(torch.cuda.is_available(), torch.cuda.device_count())"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.split() == ["True", "1"], result.stdout
+
+
+@needs_container_gpu
+def test_a_container_without_a_lease_sees_no_gpu(orch):
+    """The default has to be off. A module that declares `gpu: false` and still
+    sees eight devices will use one, and the broker's accounting becomes fiction."""
+    result = subprocess.run(
+        ["docker", "run", "--rm", "--entrypoint", "python",
+         "sfmstack/runtime-torch:1.0", "-c",
+         "import torch;print(torch.cuda.is_available())"],
+        capture_output=True, text=True,
+    )
+    assert result.stdout.strip() == "False", result.stdout
+
+
 def test_shutdown_removes_the_containers(orch, runner):
     orch.run("SceneLoader", run_id="docker", params={
         "image_dir": str(DTU_SCAN1), "max_images": 3, "resize": "auto", "max_edge": 640,

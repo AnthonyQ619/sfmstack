@@ -76,6 +76,23 @@ def test_no_devices_gives_an_actionable_error():
         broker.acquire("a")
 
 
+def test_a_runner_given_an_empty_broker_keeps_it():
+    """`self.gpus = gpus or GpuBroker()` replaced a deliberately empty broker with
+    one that discovers every device on the host, because __len__ is the device
+    count and an empty broker is therefore falsy. It was invisible while the daemon
+    could not pass a GPU into a container at all -- the run fell back to CPU either
+    way. Once passthrough works, a caller who asked for no GPUs gets all of them,
+    and the first symptom is a test suite quietly occupying the machine's GPUs."""
+    from sfmorch import ContainerRunner
+    from sfmorch.backends import SubprocessBackend
+
+    runner = ContainerRunner(SubprocessBackend(), gpus=GpuBroker(devices=[]))
+    assert runner.gpus.devices == []
+
+    # Omitting it entirely still means "discover", which is the useful default.
+    assert ContainerRunner(SubprocessBackend()).gpus is not None
+
+
 def test_held_reports_who_has_what():
     broker = GpuBroker(devices=[0, 1])
     broker.acquire("vggt")
