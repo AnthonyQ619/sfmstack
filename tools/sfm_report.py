@@ -347,29 +347,57 @@ def attempts(store: ArtifactStore, final_id: str, used_ids: set[str]):
     }
 
 
+def _pose_source(store: ArtifactStore, art):
+    """The artifact whose `poses` file describes this cloud's cameras.
+
+    A sparse model carries its own. A dense one does not -- `dense_model/v1` has
+    no pose file -- so the cameras come from the nearest ancestor that has one,
+    which is by construction the model the dense stage was run against.
+    """
+    if art.has("poses"):
+        return art
+    for ancestor in reversed(lineage(store, art.id)):
+        if ancestor.has("poses"):
+            return ancestor
+    return None
+
+
 def cloud_payload(store: ArtifactStore, final_id: str, max_points: int):
     """The 3D data, as compact base64 arrays.
 
     Downsampled by keeping the LOWEST-error points rather than at random: the
     point of the viewer is to see the reconstruction, and a random sample of a
-    cloud with outliers shows you the outliers.
+    cloud with outliers shows you the outliers. A dense cloud has no per-point
+    error, so there the sample is a uniform stride -- which is the right choice
+    for it, since a dense cloud's outliers are spread evenly rather than
+    concentrated in a tail.
     """
     art = store.open(final_id)
-    if art.type != "sparse_model/v1":
+    if art.type not in ("sparse_model/v1", "dense_model/v1"):
         return None
+    dense = art.type == "dense_model/v1"
 
     points = art.load("points")
     xyz = np.asarray(points["xyz"], dtype=np.float64)
     rgb = np.asarray(points.get("rgb", np.full((len(xyz), 3), 160)), dtype=np.uint8)
     error = np.asarray(points.get("error", np.zeros(len(xyz))), dtype=np.float64)
 
-    if len(xyz) > max_points:
-        keep = np.argsort(error)[:max_points]
+    total = len(xyz)
+    if total > max_points:
+        if dense:
+            keep = np.linspace(0, total - 1, max_points).astype(int)
+        else:
+            keep = np.argsort(error)[:max_points]
         xyz, rgb, error = xyz[keep], rgb[keep], error[keep]
 
-    poses = art.load("poses")
-    P = np.asarray(poses["cam_from_world"], dtype=np.float64)
-    valid = np.asarray(poses["valid"], dtype=bool)
+    source = _pose_source(store, art)
+    if source is None:
+        P = np.zeros((0, 3, 4))
+        valid = np.zeros(0, dtype=bool)
+    else:
+        poses = source.load("poses")
+        P = np.asarray(poses["cam_from_world"], dtype=np.float64)
+        valid = np.asarray(poses["valid"], dtype=bool)
     # Camera centres in world coordinates, and the three axes of each camera.
     centres, axes = [], []
     for k in range(len(P)):
@@ -389,22 +417,67 @@ def cloud_payload(store: ArtifactStore, final_id: str, max_points: int):
     def b64(a, dtype):
         return base64.b64encode(np.ascontiguousarray(a, dtype=dtype).tobytes()).decode()
 
+    # A dense cloud has no per-point reprojection error, so the error colouring is
+    # not offered rather than being offered over an array of zeros -- a control
+    # that does nothing is worse than one that is absent.
+    has_error = bool(error.any())
+
     return {
         "count": int(len(xyz)),
+        "total": int(total),
+        "kind": "dense" if dense else "sparse",
         "xyz": b64((xyz - centre) / spread, "<f4"),
         "rgb": b64(rgb, "u1"),
         "error": b64(error, "<f4"),
-        "error_max": float(np.percentile(error, 95)) if len(error) else 1.0,
+        "error_max": (float(np.percentile(error, 95)) if has_error else None),
         "cameras": [
             {"c": ((np.asarray(c) - centre) / spread).tolist(), "R": np.asarray(a).tolist()}
             for c, a in zip(centres, axes)
         ],
-        "names": [str(n) for n in art.load("poses").get("image_index", [])][:0] or None,
     }
 
 
-def render(steps, cloud, tried, title: str) -> str:
+def downloads(store: ArtifactStore, final_id: str, max_embed_mb: float):
+    """Point-cloud sidecars in the lineage, embedded when small enough.
+
+    The `.ply` is the one artifact file that is useful outside this framework --
+    MeshLab, CloudCompare, Open3D and every evaluation script read it and none of
+    them read the npz. So the report carries it rather than merely mentioning it.
+
+    Embedded as a data: URI, which keeps the report a single self-contained file
+    that survives being emailed. Above `max_embed_mb` the path is given instead:
+    a 200 MB base64 blob is not a document, and a browser asked to hold one in a
+    string will say so.
+    """
+    found = []
+    for art in lineage(store, final_id):
+        if "ply" not in art.sidecars():
+            continue
+        directory = art.sidecar("ply")
+        if directory is None:
+            continue
+        for path in sorted(Path(directory).glob("*.ply")):
+            size = path.stat().st_size
+            produced = art.manifest.produced_by
+            entry = {
+                "artifact": art.id,
+                "module": produced.module if produced else "",
+                "type": art.type,
+                "name": f"{produced.module if produced else art.id}-{path.stem}.ply",
+                "bytes": int(size),
+                "points": art.metric("point_count"),
+                "path": str(path),
+                "data": None,
+            }
+            if size <= max_embed_mb * 2**20:
+                entry["data"] = base64.b64encode(path.read_bytes()).decode()
+            found.append(entry)
+    return found
+
+
+def render(steps, cloud, tried, title: str, clouds=None) -> str:
     data = json.dumps({"steps": steps, "cloud": cloud, "tried": tried,
+                       "downloads": clouds or [],
                        "palette": PALETTE, "stageSlot": STAGE_SLOT}, default=str)
     return TEMPLATE.replace("__TITLE__", title).replace("__DATA__", data)
 
@@ -500,6 +573,17 @@ button { font:inherit; font-size:13px; padding:5px 12px; border-radius:7px;
          border:1px solid var(--ring); background:var(--surface); color:var(--ink); cursor:pointer; }
 button[aria-pressed="true"] { background:var(--s1); border-color:var(--s1); color:#fff; }
 .legend { display:flex; gap:14px; align-items:center; font-size:12.5px; color:var(--ink2); margin-left:auto; }
+
+/* point-cloud downloads */
+.downloads { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+a.dl { display:inline-flex; align-items:baseline; gap:8px; font:inherit; font-size:13px;
+       padding:7px 14px; border-radius:7px; border:1px solid var(--s1);
+       background:var(--s1); color:#fff; text-decoration:none; }
+a.dl:hover { filter:brightness(1.08); }
+a.dl .meta { font-size:12px; opacity:0.85; font-variant-numeric:tabular-nums; }
+code.path { font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+            background:color-mix(in srgb, var(--ink) 7%, transparent);
+            padding:2px 6px; border-radius:5px; word-break:break-all; }
 .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
 
 /* what was tried */
@@ -537,6 +621,10 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
   <div class="hero" id="hero"></div>
 
   <h2>Reconstruction</h2>
+  <div class="card" id="downloads-card" hidden>
+    <div class="downloads" id="downloads"></div>
+    <p class="note" id="downloads-note"></p>
+  </div>
   <div class="card">
     <canvas id="viewer"></canvas>
     <div class="controls">
@@ -709,6 +797,30 @@ $("#table").innerHTML =
   `<thead><tr><th>module</th><th>metric</th><th>value</th><th>band</th><th>state</th></tr></thead>
    <tbody>${rows.join("")}</tbody>`;
 
+/* ---------- point-cloud downloads ---------- */
+(function () {
+  const files = DATA.downloads || [];
+  if (!files.length) return;
+  const mb = b => (b / 1048576).toFixed(b < 1048576 ? 2 : 1) + " MB";
+  const bar = $("#downloads");
+  const external = [];
+  bar.innerHTML = files.map((f, i) => {
+    if (!f.data) { external.push(f); return ""; }
+    return `<a class="dl" download="${esc(f.name)}"
+              href="data:application/octet-stream;base64,${f.data}">
+              ${esc(f.module)} point cloud
+              <span class="meta">${f.points ? Number(f.points).toLocaleString() + " pts · " : ""}${mb(f.bytes)}</span>
+            </a>`;
+  }).join("");
+  const notes = ["Binary PLY with per-point colour — opens in MeshLab, CloudCompare, "
+                 + "Open3D or any evaluation script. The artifact's npz stays authoritative."];
+  external.forEach(f => notes.push(
+    `${esc(f.module)}'s cloud is ${mb(f.bytes)} — too large to embed. It is on disk at `
+    + `<code class="path">${esc(f.path)}</code>`));
+  $("#downloads-note").innerHTML = notes.join("<br>");
+  $("#downloads-card").hidden = false;
+})();
+
 /* ---------- 3D viewer ---------- */
 (function () {
   const cloud = DATA.cloud;
@@ -832,10 +944,15 @@ $("#table").innerHTML =
     }
   }
 
+  const sampled = cloud.total > N
+    ? `${N.toLocaleString()} of ${cloud.total.toLocaleString()} points, `
+      + (cloud.kind === "dense" ? "evenly sampled" : "sampled by lowest error")
+    : `${N.toLocaleString()} points`;
+
   function setLegend() {
     $("#legend").innerHTML = mode === "rgb"
       ? `<span><span class="swatch" style="background:#eb6834"></span>camera</span>
-         <span>${N.toLocaleString()} points, sampled by lowest error</span>`
+         <span>${sampled}</span>`
       : `<span><span class="swatch" style="background:#cde2fb"></span>0 px</span>
          <span><span class="swatch" style="background:#0d366b"></span>${cloud.error_max.toFixed(2)} px</span>
          <span><span class="swatch" style="background:#eb6834"></span>camera</span>`;
@@ -863,10 +980,14 @@ $("#table").innerHTML =
     draw();
   }, {passive: false});
 
+  if (cloud.error_max == null) $("#c-err").remove();
+  if (!cloud.cameras.length) $("#c-cam").remove();
+
   const press = (id, on) => { $(id).setAttribute("aria-pressed", String(on)); };
-  $("#c-rgb").onclick = () => { mode = "rgb"; press("#c-rgb", true); press("#c-err", false); setLegend(); draw(); };
-  $("#c-err").onclick = () => { mode = "err"; press("#c-rgb", false); press("#c-err", true); setLegend(); draw(); };
-  $("#c-cam").onclick = () => { showCams = !showCams; press("#c-cam", showCams); draw(); };
+  $("#c-rgb").onclick = () => { mode = "rgb"; press("#c-rgb", true);
+                                if ($("#c-err")) press("#c-err", false); setLegend(); draw(); };
+  if ($("#c-err")) $("#c-err").onclick = () => { mode = "err"; press("#c-rgb", false); press("#c-err", true); setLegend(); draw(); };
+  if ($("#c-cam")) $("#c-cam").onclick = () => { showCams = !showCams; press("#c-cam", showCams); draw(); };
   $("#c-reset").onclick = () => {
     yaw = HOME.yaw; pitch = HOME.pitch; dist = HOME.dist; panX = panY = 0; draw();
   };
@@ -890,6 +1011,8 @@ def main() -> int:
     ap.add_argument("-o", "--output", type=Path, default=Path("report.html"))
     ap.add_argument("--title", default="SfM reconstruction report")
     ap.add_argument("--max-points", type=int, default=60000)
+    ap.add_argument("--max-embed-mb", type=float, default=48.0,
+                    help="largest .ply embedded in the report; larger ones are linked by path")
     args = ap.parse_args()
 
     store = ArtifactStore(args.store)
@@ -900,13 +1023,15 @@ def main() -> int:
     steps = collect(store, args.artifact)
     cloud = cloud_payload(store, args.artifact, args.max_points)
     tried = attempts(store, args.artifact, {s["id"] for s in steps})
-    args.output.write_text(render(steps, cloud, tried, args.title))
+    clouds = downloads(store, args.artifact, args.max_embed_mb)
+    args.output.write_text(render(steps, cloud, tried, args.title, clouds))
 
     size_kb = args.output.stat().st_size / 1024
     print(f"{args.output}  ({size_kb:.0f} KB, {len(steps)} steps, "
           f"{tried['counts']['total'] if tried else 0} attempts, "
           f"{cloud['count'] if cloud else 0} points, "
-          f"{len(cloud['cameras']) if cloud else 0} cameras)")
+          f"{len(cloud['cameras']) if cloud else 0} cameras, "
+          f"{sum(1 for c in clouds if c['data'])}/{len(clouds)} ply embedded)")
     return 0
 
 

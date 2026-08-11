@@ -17,6 +17,10 @@ from sfmorch import ModuleRegistry, Orchestrator
 from sfmorch.run_record import Step
 
 FIXTURES = REPO / "packages" / "sfmorch" / "tests" / "fixtures" / "modules"
+# FakeDensifier lives apart from the main fixture set: several registry, service
+# and MCP tests assert over that set directly -- counts, terminality, which types
+# have no consumer -- so adding a module to it changes what those assertions mean.
+EXTRA_FIXTURES = REPO / "packages" / "sfmorch" / "tests" / "fixtures" / "extra"
 
 
 def _load_report_module():
@@ -201,3 +205,120 @@ def test_a_store_with_no_run_record_still_renders(built, tmp_path):
 
     assert report.attempts(store, final, set()) is None
     assert report.render(report.collect(store, final), None, None, "test")
+
+
+# --------------------------------------------------------------------------- #
+# The dense cloud and its .ply
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def densified(built):
+    """The same run, carried one stage further into a dense_model/v1."""
+    store, sparse_id = built
+    registry = ModuleRegistry()
+    registry.load_dir(FIXTURES)
+    registry.load_dir(EXTRA_FIXTURES)
+    orch = Orchestrator(store=store, registry=registry)
+    scene_id = store.open(sparse_id).manifest.scene
+    dense = orch.run(
+        "FakeDensifier", run_id="r1",
+        inputs={"scene": scene_id, "sparse": sparse_id},
+    ).primary
+    return store, dense.id, sparse_id
+
+
+def test_a_dense_final_artifact_gets_a_cloud(densified):
+    """Before this the viewer handled sparse_model/v1 only, so a pipeline that
+    ended in a dense stage rendered a report with no reconstruction in it."""
+    store, dense_id, _ = densified
+    cloud = report.cloud_payload(store, dense_id, 60000)
+
+    assert cloud is not None
+    assert cloud["kind"] == "dense"
+    assert cloud["count"] > 0
+
+
+def test_a_dense_cloud_offers_no_error_colouring(densified):
+    """dense_model/v1 has no per-point error. A control that does nothing is
+    worse than one that is absent, so error_max is null and the JS drops it."""
+    store, dense_id, _ = densified
+    assert report.cloud_payload(store, dense_id, 60000)["error_max"] is None
+
+
+def test_a_sparse_cloud_still_offers_error_colouring(built):
+    store, sparse_id = built
+    cloud = report.cloud_payload(store, sparse_id, 60000)
+    assert cloud["kind"] == "sparse"
+    assert cloud["error_max"] is not None
+
+
+def test_dense_cameras_come_from_the_nearest_ancestor_with_poses(densified):
+    """A dense artifact carries no poses of its own. Taking them from the sparse
+    model it was run against is what puts the cameras in the same frame as the
+    points -- any other source would be a different world frame."""
+    store, dense_id, sparse_id = densified
+    dense = report.cloud_payload(store, dense_id, 60000)
+    sparse = report.cloud_payload(store, sparse_id, 60000)
+
+    assert len(dense["cameras"]) == len(sparse["cameras"]) > 0
+
+
+def test_downsampling_reports_what_it_dropped(densified):
+    """`total` beside `count`, so the legend can say the viewer is showing a
+    sample rather than implying the cloud is that size."""
+    store, dense_id, _ = densified
+    full = report.cloud_payload(store, dense_id, 60000)
+    sampled = report.cloud_payload(store, dense_id, 10)
+
+    assert sampled["count"] == 10
+    assert sampled["total"] == full["total"] == full["count"]
+
+
+def test_the_ply_sidecar_is_found_and_embedded(densified):
+    store, dense_id, _ = densified
+    files = report.downloads(store, dense_id, max_embed_mb=64)
+
+    assert len(files) == 1
+    assert files[0]["module"] == "FakeDensifier"
+    assert files[0]["name"].endswith(".ply")
+    assert files[0]["data"] is not None
+    assert files[0]["points"] == store.open(dense_id).metric("point_count")
+
+
+def test_an_embedded_ply_decodes_to_the_file_on_disk(densified):
+    """The download has to be the artifact's own bytes, not a re-serialisation:
+    the point of the link is that it is what an evaluation script would read."""
+    import base64
+
+    store, dense_id, _ = densified
+    entry = report.downloads(store, dense_id, max_embed_mb=64)[0]
+    assert base64.b64decode(entry["data"]) == Path(entry["path"]).read_bytes()
+
+
+def test_an_oversized_ply_is_linked_by_path_rather_than_embedded(densified):
+    """A 200 MB base64 blob is not a document. Above the cap the report says
+    where the file is instead of refusing or producing something unopenable."""
+    store, dense_id, _ = densified
+    entry = report.downloads(store, dense_id, max_embed_mb=0.0)[0]
+
+    assert entry["data"] is None
+    assert Path(entry["path"]).exists()
+
+
+def test_a_run_with_no_ply_offers_no_download(built):
+    store, sparse_id = built
+    assert report.downloads(store, sparse_id, max_embed_mb=64) == []
+
+
+def test_the_download_link_reaches_the_page(densified):
+    store, dense_id, _ = densified
+    steps = report.collect(store, dense_id)
+    html = report.render(
+        steps, report.cloud_payload(store, dense_id, 60000), None, "test",
+        report.downloads(store, dense_id, max_embed_mb=64),
+    )
+
+    assert "downloads-card" in html
+    assert 'data:application/octet-stream;base64' in html
+    assert not re.search(r'(src|href)\s*=\s*["\']https?://', html)

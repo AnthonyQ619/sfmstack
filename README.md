@@ -28,7 +28,7 @@ Early. Build order and progress:
 | 8 | The remaining 9 legacy modules | **done** |
 | 9 | First agent-driven session over MCP | |
 
-25 modules, 277 tests. `.venv/bin/python -m pytest -q`
+25 modules, 299 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:

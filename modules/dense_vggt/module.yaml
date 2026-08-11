@@ -106,6 +106,18 @@ params:
       Safe here as in SparseVGGT: depth is per-view, so chunking changes what the
       model attends to but not the frame the output lands in.
 
+  write_ply:
+    type: boolean
+    default: true
+    description: >
+      Write a binary `cloud.ply` sidecar beside the npz payload.
+    tuning: >
+      On. It is what a viewer, MeshLab, CloudCompare or an external evaluation
+      script opens without knowing anything about this framework, and the npz
+      stays authoritative either way. Roughly 15 bytes per point, so a 400k-point
+      cloud is 6 MB and a stride-1 run over 50 views is a few hundred. Turn it off
+      only when that matters.
+
 metrics:
   point_count:
     direction: higher_better
@@ -147,6 +159,13 @@ metrics:
   scale_samples:
     direction: higher_better
     meaning: Tracks that supported the scale estimate. 0 when the parameter was used.
+
+  ply_megabytes:
+    direction: neutral
+    meaning: >
+      Size of the `cloud.ply` sidecar, 0 when write_ply is off. Reported because
+      it is the number that decides whether the artifact is convenient to move,
+      and it is roughly 15 bytes times point_count.
 
   points_per_view:
     direction: neutral

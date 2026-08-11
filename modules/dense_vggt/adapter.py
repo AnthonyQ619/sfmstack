@@ -23,7 +23,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from sfmkit import Ctx, module
+from sfmkit import Ctx, module, write_ply
 from vggt.models.vggt import VGGT
 
 VGGT_SIZE = 518
@@ -303,6 +303,22 @@ def run(ctx: Ctx):
     # invite a consumer to index them with scene pixels. Left out deliberately.
     out.save("confidence", value=confidence)
 
+    # A .ply sidecar beside the npz, which is what dense_model/v1 calls
+    # conventional: it is what a viewer, MeshLab, CloudCompare or an external
+    # evaluation script opens without knowing anything about this repository. The
+    # npz stays authoritative -- a consumer that ignores the sidecar loses nothing.
+    ply_bytes = 0
+    if p.write_ply:
+        ply = write_ply(
+            out.sidecar_dir("ply") / "cloud.ply", xyz, rgb,
+            comments=[
+                f"produced by DenseVGGT {ctx.module_version}",
+                f"depth_scale {scale:.6f} from {source}",
+                "frame: the SUPPLIED poses' world frame, in their scale",
+            ],
+        )
+        ply_bytes = ply.stat().st_size
+
     out.metric("point_count", len(xyz), direction="higher_better", healthy=(10000, None))
     out.metric("views_contributing", contributing,
                direction="higher_better", healthy=(2, None))
@@ -314,6 +330,7 @@ def run(ctx: Ctx):
     out.metric("scale_samples", samples, direction="higher_better")
     out.metric("points_per_view", round(len(xyz) / max(contributing, 1), 1),
                direction="neutral")
+    out.metric("ply_megabytes", round(ply_bytes / 2**20, 2), direction="neutral")
 
     if source == "parameter":
         out.diagnostic(

@@ -1,0 +1,39 @@
+name: FakeDensifier
+version: 1.0.0
+kind: dense
+summary: Scatters points around a sparse model and writes a ply sidecar. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  sparse: {type: sparse_model/v1, required: true}
+produces:
+  dense: {type: dense_model/v1}
+
+params:
+  per_point:
+    type: integer
+    default: 8
+    minimum: 1
+    maximum: 64
+    description: Dense points emitted per sparse point.
+  write_ply:
+    type: boolean
+    default: true
+    description: Write the cloud.ply sidecar.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [10, null]
+    meaning: Points in the dense cloud.
+  views_contributing:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: Images that contributed at least one surviving point.
+  mean_depth_confidence:
+    direction: higher_better
+    nullable: true
+    meaning: Always null here; the fixture computes no confidence.

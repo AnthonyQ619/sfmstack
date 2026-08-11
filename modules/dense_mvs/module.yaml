@@ -230,6 +230,17 @@ params:
       roughly 120 MB of float32, several times the point cloud. Turn it on when a
       consumer wants depth rather than points, or to inspect where the filters bit.
 
+  write_ply:
+    type: boolean
+    default: true
+    description: >
+      Write a binary `cloud.ply` sidecar beside the npz payload.
+    tuning: >
+      On, and byte-compatible with DenseVGGT's -- both go through sfmkit's writer,
+      so an external tool sees one format whichever module produced the cloud.
+      Roughly 15 bytes per point. Turn it off only when the artifact has to be
+      small.
+
 metrics:
   point_count:
     direction: higher_better
@@ -261,6 +272,12 @@ metrics:
       The core MVS health number: it is how much of the imagery was photometrically
       and geometrically verifiable at all. Near zero means the filters rejected
       everything, and which filter did it is the diagnosis.
+
+  ply_megabytes:
+    direction: neutral
+    meaning: >
+      Size of the `cloud.ply` sidecar, 0 when write_ply is off. Roughly 15 bytes
+      times point_count.
 
   points_per_view:
     direction: neutral

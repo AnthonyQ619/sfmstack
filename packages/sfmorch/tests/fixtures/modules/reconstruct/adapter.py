@@ -34,7 +34,12 @@ def run(ctx: Ctx):
     poses = np.tile(np.hstack([np.eye(3), np.zeros((3, 1))]), (n_images, 1, 1))
 
     out = ctx.output("sparse")
-    out.save("points", xyz=xyz)
+    # A per-point error, as every real triangulator writes: the report offers
+    # error colouring only when the array is actually present, so a fixture
+    # without one would test the wrong branch.
+    error = (np.abs(np.sin(keep.astype(np.float64))) if len(keep)
+             else np.zeros(0, np.float64))
+    out.save("points", xyz=xyz, error=error)
     out.save("observations", obs=observations)
     out.save(
         "poses",

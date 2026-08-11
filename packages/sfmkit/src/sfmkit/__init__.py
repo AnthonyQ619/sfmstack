@@ -21,12 +21,15 @@ from .errors import (
 )
 from .manifest import Diagnostic, Manifest, Metric, Provenance, artifact_id
 from .module import Ctx, Params, module, run_module
+from .ply import read_ply_header, write_ply
 from .schema import TypeRegistry, TypeSchema, parse_schema, registry
 from .store import ArtifactStore
 
 __version__ = "0.2.0"
 
 __all__ = [
+    "write_ply",
+    "read_ply_header",
     "Artifact",
     "ArtifactNotFound",
     "ArtifactStore",

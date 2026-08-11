@@ -35,7 +35,7 @@ from pathlib import Path
 
 import numpy as np
 import pycolmap
-from sfmkit import Ctx, module
+from sfmkit import Ctx, module, write_ply
 
 
 def distort(xy: np.ndarray, K: np.ndarray, dist: np.ndarray) -> np.ndarray:
@@ -397,6 +397,21 @@ def run(ctx: Ctx):
         ctx.progress(0.95, f"{len(xyz)} points")
 
         out.save("points", xyz=xyz.astype(np.float32), rgb=rgb)
+
+        # A .ply sidecar beside the npz, the same one DenseVGGT writes and
+        # byte-compatible with it because both go through sfmkit's writer. This
+        # is what MeshLab, CloudCompare or an external evaluation script opens.
+        ply_bytes = 0
+        if p.write_ply:
+            ply = write_ply(
+                out.sidecar_dir("ply") / "cloud.ply", xyz, rgb,
+                comments=[
+                    f"produced by DenseMVS {ctx.module_version}",
+                    f"patch match {kind}, max_image_size {p.max_image_size or 0}",
+                    "frame: the sparse model's world frame, in its scale",
+                ],
+            )
+            ply_bytes = ply.stat().st_size
         if write_depth:
             # COLMAP marks invalid depth with 0; the type says non-finite, so the
             # translation happens here rather than leaving a real zero depth that
@@ -430,6 +445,7 @@ def run(ctx: Ctx):
         out.metric("fusion_ratio", round(valid_pixels / max(len(xyz), 1), 2),
                    direction="neutral")
         out.metric("input_registered_images", registered, direction="higher_better")
+        out.metric("ply_megabytes", round(ply_bytes / 2**20, 2), direction="neutral")
 
         if completeness < 0.05:
             out.diagnostic(
