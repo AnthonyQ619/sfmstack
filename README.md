@@ -28,7 +28,7 @@ Early. Build order and progress:
 | 8 | The remaining 9 legacy modules | in progress |
 | 9 | First agent-driven session over MCP | |
 
-16 modules, 277 tests. `.venv/bin/python -m pytest -q`
+18 modules, 277 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -79,7 +79,9 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | matching | `FeatureMatchNN` | OpenCV brute force | |
 | | `FeatureMatchFLANN` | OpenCV FLANN | |
 | | `FeatureMatchLightGlue` | lightglue | ✓ |
+| | `FeatureMatchSuperGlue` | magicleap SuperGlue | ✓ |
 | | `FeatureMatchLoFTR` | kornia, **detector-free** | ✓ |
+| | `FeatureMatchRoMa` | romatch, **detector-free** | ✓ |
 | tracking | `FeatureTrackUnionFind` | numpy only | |
 | pose | `PoseEssentialToPnP` | OpenCV + pycolmap (in-loop local BA) | |
 | sparse | `SparseTriangulation` | OpenCV | |
@@ -92,8 +94,8 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 directly, so the chain through it is scene → detect → match → reconstruct, with no
 tracker and no pose estimator in it.
 
-Still to port: SuperGlue, RoMa, VGGT (pose/sparse/dense), MapAnything, VGGSfM,
-Tapir, PatchMatch MVS.
+Still to port: VGGT (pose/sparse/dense), MapAnything, VGGSfM, Tapir,
+PatchMatch MVS.
 
 ```bash
 docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .

@@ -1,0 +1,267 @@
+name: FeatureMatchRoMa
+version: 1.0.0
+kind: matching
+summary: >
+  RoMa: dense warp plus per-pixel certainty from a DINOv2 backbone, sampled into
+  correspondences. Detector-free -- consumes no features at all. GPU required in
+  practice.
+
+description: |
+  The strongest detector-free matcher here. It regresses a DENSE warp between two
+  images — a correspondence for every pixel — together with a per-pixel certainty,
+  and correspondences are then sampled from that field. Nothing detects keypoints,
+  so nothing has to be repeatable.
+
+  That is the whole point. A sparse matcher can only match what a detector found,
+  and on a textureless wall or under a large illumination change the detector
+  finds nothing there. RoMa proposes correspondences anyway, weighted by a
+  certainty it estimated rather than by a descriptor distance.
+
+  It is the same family as `FeatureMatchLoFTR` and stronger: a frozen DINOv2
+  backbone for coarse matching, a specialised ConvNet for fine refinement, and a
+  regression head that models match uncertainty rather than pretending a
+  correspondence is either right or wrong. It is also several times slower and
+  needs far more memory.
+
+  **Its output carries no `feature_index`.** There is no global keypoint table to
+  index into: each pair is matched independently, so the same physical point gets
+  an independently estimated sub-pixel position in every pair it appears in. The
+  tracker must merge endpoints by proximity, and `merge_eps_px` becomes the
+  parameter that decides whether tracks chain at all. See
+  limitations.md#no-feature_index.
+
+  Everything after the correspondence step — geometric verification, view graph,
+  planarity — is shared with the other matchers, so all six differ in exactly one
+  stage.
+
+image: sfmstack/match-roma:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 16
+  # Hint for ~10 images, sequential pairing. Cost is per PAIR and dominated by the
+  # dense warp, which is independent of how many matches are sampled from it.
+  expected_duration_s: 180
+  timeout_s: 7200
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  matches: {type: pairwise_matches/v1}
+
+params:
+  setting:
+    type: string
+    default: outdoor
+    enum: [outdoor, indoor]
+    description: Which trained weight set to use.
+    tuning: >
+      Trained on different data, not tuned differently: `outdoor` on MegaDepth,
+      `indoor` on ScanNet. On a room interior the indoor weights are worth a run
+      even when the outdoor ones appear to work -- inlier_ratio is the metric that
+      separates them, not matches_per_pair.
+
+  max_matches:
+    type: integer
+    default: 5000
+    minimum: 100
+    maximum: 50000
+    description: Correspondences sampled from the dense warp per pair.
+    tuning: >
+      This samples an ALREADY COMPUTED field, so it is nearly free -- unlike every
+      other matcher here, raising it does not cost matching time. What it costs is
+      downstream: the tracker's union-find and bundle adjustment both pay per
+      correspondence. 5000 is generous; 2000 is reasonable when the tracker is the
+      bottleneck. Sampling is certainty-weighted, so the first 2000 are better than
+      a random 2000.
+
+  min_certainty:
+    type: number
+    default: 0.0
+    minimum: 0.0
+    maximum: 1.0
+    description: Drop sampled correspondences whose certainty is below this.
+    tuning: >
+      0.0 relies on certainty-weighted sampling alone, which is the authors'
+      intended use. Raise to 0.5-0.7 when inlier_ratio is poor: RoMa's certainty is
+      calibrated well enough that this trades count for precision cleanly, and it
+      is the first thing to try before touching the geometric threshold.
+
+  use_custom_corr:
+    type: boolean
+    default: false
+    description: >
+      Use RoMa's compiled `local_corr` CUDA extension instead of the pure-torch
+      fallback. Requires the extension to be present in the image.
+    tuning: >
+      Off, unless you have built the extension. It is not a pip dependency: with it
+      absent the model constructs successfully and raises ModuleNotFoundError on the
+      first forward pass, so turning this on without it fails a job rather than a
+      build. The fallback is numerically equivalent and slower; the authors quote a
+      large speedup for the kernel, which this image does not yet carry.
+
+  pairing:
+    type: string
+    default: sequential
+    enum: [sequential, exhaustive]
+    description: Which image pairs to match.
+    tuning: >
+      Cost is per pair and each pair is a full dense forward pass, so `exhaustive`
+      is far more expensive here than for any sparse matcher. On more than ~10
+      images it is rarely the right call; raise `window` instead and read
+      graph_components.
+
+  window:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: "For `pairing: sequential`, match each image to the next `window` images."
+    tuning: >
+      The main lever on track length, and the main cost lever. Each step costs a
+      full dense match per added pair.
+
+  geometric_model:
+    type: string
+    default: fundamental
+    enum: [fundamental, homography, none]
+    description: Two-view model used to reject outliers.
+
+  ransac_threshold:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Inlier distance in pixels of the WORKING resolution.
+    tuning: >
+      Dense correspondences are sub-pixel but not exact, and a semi-dense field has
+      a longer error tail than a sparse matcher's. Do not tighten this below 2 to
+      chase inlier_ratio -- raise min_certainty instead, which removes the tail at
+      its source.
+
+  ransac_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: Confidence the estimated model is correct.
+
+  min_matches:
+    type: integer
+    default: 15
+    minimum: 8
+    maximum: 10000
+    description: Pairs with fewer verified matches are dropped from the view graph.
+    tuning: >
+      RoMa produces thousands on a good pair and can produce very few on a bad one,
+      so a floor tuned for a sparse matcher may discard exactly the pairs that
+      would connect the graph. Check min_matches_per_pair before raising it.
+
+  measure_planarity:
+    type: boolean
+    default: true
+    description: Also fit a homography per pair to detect degenerate geometry.
+
+metrics:
+  pairs_matched:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: Pairs that survived min_matches. Zero means nothing downstream can run.
+
+  matches_per_pair:
+    direction: higher_better
+    healthy: [500, null]
+    meaning: >
+      Mean verified correspondences per kept pair. Bounded above by max_matches, so
+      it says as much about that parameter as about the scene.
+
+  min_matches_per_pair:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: The weakest surviving link, which bounds what tracks can cross.
+
+  inlier_ratio:
+    direction: higher_better
+    healthy: [0.4, null]
+    meaning: >
+      Verified over sampled correspondences. Lower band than the sparse matchers
+      because RoMa proposes correspondences in regions a detector would skip, and
+      some of those are genuinely ambiguous.
+
+  graph_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Connected components of the view graph. Above 1 means images no track can
+      ever link.
+
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of images in the biggest component.
+
+  planarity:
+    direction: lower_better
+    healthy: [null, 0.7]
+    nullable: true
+    meaning: >
+      Homography inliers over fundamental inliers. Near 1 the pair is planar or
+      rotation-only. Null when not measured.
+
+  weak_pairs:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: Attempted pairs dropped for falling under min_matches.
+
+  mean_certainty:
+    direction: higher_better
+    healthy: [0.5, null]
+    meaning: >
+      Mean of RoMa's own per-correspondence certainty over surviving matches. It is
+      a calibrated uncertainty estimate rather than a matching score, which is what
+      makes min_certainty a usable dial -- but it is still self-reported, and not
+      comparable to LoFTR's confidence or LightGlue's match score.
+
+  certainty_floor_effect:
+    direction: neutral
+    nullable: true
+    meaning: >
+      Fraction of sampled correspondences that min_certainty removed. Null when the
+      floor is 0. Large values with an unchanged inlier_ratio mean the floor is
+      discarding correspondences that were fine.
+
+diagnostics:
+  - code: no_pairs_matched
+    severity: error
+    message: No image pair survived matching.
+    suggested_actions:
+      - Lower min_certainty to 0.
+      - Lower min_matches.
+      - Try the other setting; indoor and outdoor are trained on different data.
+    see_also: tuning.md#nothing-matched
+
+  - code: broken_chain
+    severity: error
+    message: The view graph is disconnected; the reconstruction will come out in pieces.
+    suggested_actions:
+      - Raise window. Each step costs a full dense match per added pair.
+      - Lower min_matches if the missing links are thin but real.
+    see_also: tuning.md#graph_components-above-1
+
+  - code: low_inlier_ratio
+    severity: warn
+    message: Geometric verification is rejecting much of the sampled field.
+    suggested_actions:
+      - Raise min_certainty toward 0.5-0.7 before touching ransac_threshold.
+      - Check the setting matches the scene type.
+      - Check planarity; a degenerate pair fails verification correctly.
+    see_also: tuning.md#inlier_ratio-below-04
+
+  - code: detector_free_output
+    severity: info
+    message: These matches carry no feature_index; the tracker must merge by proximity.
+    suggested_actions:
+      - Set the tracker's merge_eps_px to 3-4px at 640px working resolution, scaled with the resize.
+      - Read the tracker's merge_headroom, which is the only signal for under-merging.
+    see_also: limitations.md#no-feature_index
