@@ -24,9 +24,17 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages" / "sfmkit" / "src"))
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_ROOT / "packages" / "sfmkit" / "src"))
+sys.path.insert(0, str(_ROOT / "packages" / "sfmorch" / "src"))
 
 from sfmkit import ArtifactStore  # noqa: E402
+from sfmkit.schema import registry as core_types  # noqa: E402
+
+try:
+    from sfmorch.run_record import Run  # noqa: E402
+except ImportError:  # the attempts section is omitted rather than the report failing
+    Run = None
 
 # The dataviz reference palette. Categorical slots in their validated order;
 # status colours are reserved and never reused for a series.
@@ -43,6 +51,21 @@ STAGE_SLOT = {
     "source": 0, "detection": 1, "matching": 2, "tracking": 3,
     "pose": 4, "sparse": 5, "optimization": 6, "dense": 7,
 }
+
+# Payload type -> where it sits in the pipeline. Used to place an ATTEMPT that
+# never produced anything: a step that failed still records the inputs it was
+# given, and those pin it to a stage as precisely as an output would have.
+TYPE_STAGE = [
+    ("scene/v1", "source"),
+    ("features/v1", "detection"),
+    ("pairwise_matches/v1", "matching"),
+    ("tracks/v1", "tracking"),
+    ("poses/v1", "pose"),
+    ("sparse_model/v1", "sparse"),
+    ("dense_model/v1", "dense"),
+]
+STAGE_ORDER = [name for _, name in TYPE_STAGE]
+STAGE_OF_TYPE = dict(TYPE_STAGE)
 
 
 def lineage(store: ArtifactStore, final_id: str) -> list:
@@ -121,6 +144,209 @@ def collect(store: ArtifactStore, final_id: str):
     return steps
 
 
+
+def _innermost(error: str) -> str:
+    """'RuntimeError: ValueError: no tracks survived...' -> the ValueError.
+
+    Crossing a container boundary re-raises the module's exception inside the
+    transport's own, and each hop prepends a class name. Only the innermost one
+    describes what went wrong.
+    """
+    line = (error or "").strip().splitlines()[0] if error else ""
+    while True:
+        head, sep, rest = line.partition(": ")
+        if sep and head.endswith(("Error", "Exception")) and ": " in rest:
+            nxt, _, _ = rest.partition(": ")
+            if nxt.endswith(("Error", "Exception")):
+                line = rest
+                continue
+        if len(line) <= 220:
+            return line
+        cut = line[:220]
+        return cut[: cut.rfind(" ")].rstrip(",;:") + "…"
+
+
+def attempts(store: ArtifactStore, final_id: str, used_ids: set[str]):
+    """Everything the run TRIED, not just what ended up in the lineage.
+
+    The lineage answers "what produced this model". It cannot answer "what else
+    was tried and why was it abandoned", because a module that failed produced no
+    artifact to walk back through, and a module that succeeded but lost a
+    comparison leaves an artifact nothing points at.
+
+    `runs/<id>/run.md` has both: it is an append-only record of every attempt,
+    including the failures, which is exactly what makes it worth reading here.
+    Without this section a report of a five-module chain looks like a pipeline
+    somebody knew in advance, when it was usually the third thing tried.
+    """
+    if Run is None:
+        return None
+
+    runs_dir = Path(store.runs_dir)
+    if not runs_dir.is_dir():
+        return None
+
+    scene_id = ""
+    try:
+        scene_id = store.open(final_id).manifest.scene
+    except Exception:
+        pass
+
+    records = []
+    for child in sorted(runs_dir.iterdir()):
+        if not (child / "run.md").exists():
+            continue
+        try:
+            run = Run.open(child)
+        except Exception:
+            continue
+        # Every run that touched this scene, not only the one that produced the
+        # final artifact: a scene is usually worked over several sessions, and
+        # the earlier ones are where the abandoned branches are.
+        if scene_id and run.scene and run.scene != scene_id:
+            continue
+        records.append(run)
+
+    if not records:
+        return None
+
+    entries: dict[tuple, dict] = {}
+    stage_of_module: dict[str, str] = {}
+    # Successful steps first, so a module that failed on one attempt and worked on
+    # another is placed by where it actually belongs regardless of run order.
+    ordered_steps = [
+        step for run in records for step in run.steps if step.outputs
+    ] + [
+        step for run in records for step in run.steps if not step.outputs
+    ]
+    for step in ordered_steps:
+        out_types, out_ids = [], []
+        for artifact_id in step.outputs.values():
+            out_ids.append(artifact_id)
+            try:
+                out_types.append(store.open(artifact_id).type)
+            except Exception:
+                pass
+
+        if out_types:
+            stage = STAGE_OF_TYPE.get(out_types[0], "")
+            stage_of_module.setdefault(step.module, stage)
+        else:
+            # No output to take a stage from. If this module succeeded at any
+            # point it belongs where that attempt did; otherwise fall back to
+            # one stage past the deepest thing it consumed, which is a guess --
+            # tracks/v1 feeds both pose and triangulation -- but a bounded one.
+            stage = stage_of_module.get(step.module, "")
+            if not stage:
+                depths = []
+                for artifact_id in step.inputs.values():
+                    try:
+                        in_type = store.open(artifact_id).type
+                    except Exception:
+                        continue
+                    if in_type in STAGE_OF_TYPE:
+                        depths.append(STAGE_ORDER.index(STAGE_OF_TYPE[in_type]))
+                if depths:
+                    stage = STAGE_ORDER[min(max(depths) + 1, len(STAGE_ORDER) - 1)]
+
+        key = (step.module, json.dumps(step.params, sort_keys=True, default=str))
+        entry = entries.get(key)
+        if entry is None:
+            entry = entries[key] = {
+                "seq": len(entries),
+                "module": step.module,
+                "stage": stage,
+                "params": dict(step.params),
+                "status": "ok",
+                "runs": 0,
+                "cached": 0,
+                "seconds": None,
+                "error": "",
+                "artifact": out_ids[0] if out_ids else "",
+                "used": False,
+                "metrics": [],
+            }
+        entry["runs"] += 1
+        if step.cached:
+            entry["cached"] += 1
+        if step.status == "failed":
+            entry["status"] = "failed"
+            # First line only. A traceback in a summary table is unreadable,
+            # and the message's first line is the part written for a human.
+            entry["error"] = _innermost(step.error)
+        elif step.duration_s is not None:
+            entry["seconds"] = step.duration_s
+        if any(a in used_ids for a in out_ids):
+            entry["used"] = True
+
+    # Headline numbers come from the artifact rather than the run record: run.md
+    # stores whatever the step reported, the artifact stores the metric with its
+    # direction and healthy band, and the band is what makes a number readable.
+    for entry in entries.values():
+        if not entry["artifact"]:
+            continue
+        try:
+            art = store.open(entry["artifact"])
+        except Exception:
+            continue
+        # The type's REQUIRED metrics first. Two attempts at one stage have to be
+        # compared on the same numbers, and declaration order is per-module: the
+        # bundle adjuster declares its before/after pair first, which says nothing
+        # about how its output compares to a triangulator's.
+        try:
+            required = list(core_types().get(art.type).metrics)
+        except Exception:
+            required = []
+        names = [n for n in required if n in art.manifest.metrics]
+        names += [n for n in art.manifest.metrics if n not in names]
+        entry["metrics"] = [
+            {"name": n, "value": art.manifest.metrics[n].value,
+             "health": health_of(art.manifest.metrics[n].value,
+                                 art.manifest.metrics[n].direction,
+                                 art.manifest.metrics[n].healthy)}
+            for n in names[:3]
+        ]
+
+    # Which parameters actually differ between two attempts of the same module --
+    # the only part of a fifteen-key param block worth putting in a summary row.
+    by_module: dict[str, list[dict]] = {}
+    for entry in entries.values():
+        by_module.setdefault(entry["module"], []).append(entry)
+    for group in by_module.values():
+        if len(group) < 2:
+            for entry in group:
+                entry["differs"] = {}
+            continue
+        keys = {k for entry in group for k in entry["params"]}
+        varying = {
+            k for k in keys
+            if len({json.dumps(e["params"].get(k), default=str) for e in group}) > 1
+        }
+        for entry in group:
+            entry["differs"] = {k: entry["params"].get(k) for k in sorted(varying)}
+
+    # Stage first, then the order they were actually attempted -- alphabetical
+    # within a stage would put the bundle adjuster above the triangulator that
+    # fed it, which reads as a pipeline nobody ran.
+    ordered = sorted(
+        entries.values(),
+        key=lambda e: (STAGE_ORDER.index(e["stage"]) if e["stage"] in STAGE_ORDER
+                       else len(STAGE_ORDER), e["seq"]),
+    )
+    return {
+        "runs": [r.id for r in records],
+        "entries": ordered,
+        "counts": {
+            "total": len(ordered),
+            "used": sum(1 for e in ordered if e["used"]),
+            "failed": sum(1 for e in ordered if e["status"] == "failed"),
+            "superseded": sum(
+                1 for e in ordered if e["status"] == "ok" and not e["used"]
+            ),
+        },
+    }
+
+
 def cloud_payload(store: ArtifactStore, final_id: str, max_points: int):
     """The 3D data, as compact base64 arrays.
 
@@ -177,9 +403,9 @@ def cloud_payload(store: ArtifactStore, final_id: str, max_points: int):
     }
 
 
-def render(steps, cloud, title: str) -> str:
-    data = json.dumps({"steps": steps, "cloud": cloud, "palette": PALETTE,
-                       "stageSlot": STAGE_SLOT}, default=str)
+def render(steps, cloud, tried, title: str) -> str:
+    data = json.dumps({"steps": steps, "cloud": cloud, "tried": tried,
+                       "palette": PALETTE, "stageSlot": STAGE_SLOT}, default=str)
     return TEMPLATE.replace("__TITLE__", title).replace("__DATA__", data)
 
 
@@ -275,6 +501,29 @@ button { font:inherit; font-size:13px; padding:5px 12px; border-radius:7px;
 button[aria-pressed="true"] { background:var(--s1); border-color:var(--s1); color:#fff; }
 .legend { display:flex; gap:14px; align-items:center; font-size:12.5px; color:var(--ink2); margin-left:auto; }
 .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+
+/* what was tried */
+.tried { width:100%; border-collapse:collapse; font-size:13px; }
+.tried th { white-space:nowrap; }
+.tried td { vertical-align:top; }
+.tried tr.failed td { background:color-mix(in srgb, var(--critical) 6%, transparent); }
+.tried .mod { font-weight:600; }
+.tried .why { color:var(--ink2); font-size:12.5px; }
+.tried code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+              color:var(--ink2); }
+.kv { display:inline-flex; gap:5px; align-items:baseline; margin:0 14px 3px 0;
+      white-space:nowrap; }
+.kv .k { color:var(--muted); font-size:11px; }
+.kv .v { font-variant-numeric:tabular-nums; font-weight:600; font-size:12.5px; }
+.varied { display:flex; flex-direction:column; gap:2px; }
+.stagerow td { color:var(--muted); font-size:11px; text-transform:uppercase;
+               letter-spacing:0.05em; padding-top:14px; border-bottom:none; }
+.verdict { font-size:11px; font-weight:600; padding:1px 7px; border-radius:999px;
+           border:1px solid var(--ring); white-space:nowrap; }
+.verdict.used { color:var(--good); border-color:color-mix(in srgb, var(--good) 40%, transparent); }
+.verdict.failed { color:var(--critical); border-color:color-mix(in srgb, var(--critical) 40%, transparent); }
+.verdict.superseded { color:var(--ink2); }
+.scroll { overflow-x:auto; }
 table { border-collapse:collapse; width:100%; font-size:13px; margin-top:8px; }
 th,td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--grid); }
 th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:0.04em; }
@@ -299,6 +548,10 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
     </div>
     <p class="note">Drag to orbit · wheel to zoom · shift-drag to pan</p>
   </div>
+
+  <h2>What was tried</h2>
+  <p class="sub" id="tried-sub"></p>
+  <div class="card scroll" id="tried"></div>
 
   <h2>Pipeline</h2>
   <div id="steps"></div>
@@ -351,6 +604,66 @@ const hero = [
 ].filter(Boolean);
 $("#hero").innerHTML = hero.map(h =>
   `<div><div class="n">${esc(h.n)}</div><div class="l">${esc(h.l)}</div></div>`).join("");
+
+
+/* ---------- what was tried ----------
+   The lineage below shows what produced the model. This shows what did not:
+   modules that failed leave no artifact to walk back through, and modules that
+   worked but lost a comparison leave one nothing points at. Both are in run.md. */
+(function () {
+  const tried = DATA.tried;
+  if (!tried || !tried.entries.length) {
+    $("#tried").parentElement && ($("#tried").style.display = "none");
+    $("#tried-sub").textContent = "No run record found beside this store.";
+    document.querySelectorAll("h2").forEach(h => {
+      if (h.textContent === "What was tried") h.style.display = "none";
+    });
+    $("#tried-sub").style.display = "none";
+    $("#tried").style.display = "none";
+    return;
+  }
+  const c = tried.counts;
+  $("#tried-sub").textContent =
+    `${c.total} module configuration${c.total === 1 ? "" : "s"} attempted across ` +
+    `${tried.runs.length} run${tried.runs.length === 1 ? "" : "s"} — ` +
+    `${c.used} in the final model, ${c.superseded} superseded, ${c.failed} failed.`;
+
+  const verdict = (e) =>
+    e.status === "failed" ? ["failed", "failed"]
+    : e.used ? ["used", "in final model"]
+    : ["superseded", "superseded"];
+
+  let html = `<table class="tried">
+    <thead><tr><th>module</th><th>outcome</th><th>time</th>
+    <th>varied</th><th>result</th></tr></thead><tbody>`;
+  let stage = null;
+  for (const e of tried.entries) {
+    if (e.stage !== stage) {
+      stage = e.stage;
+      html += `<tr class="stagerow"><td colspan="5">${esc(stage || "unplaced")}</td></tr>`;
+    }
+    const [cls, label] = verdict(e);
+    const varied = Object.keys(e.differs || {}).length
+      ? `<div class="varied">` + Object.entries(e.differs)
+          .map(([k, v]) => `<code>${esc(k)}=${esc(fmt(v))}</code>`).join("") + `</div>`
+      : "";
+    const result = e.status === "failed"
+      ? `<span class="why">${esc(e.error || "no error recorded")}</span>`
+      : e.metrics.map(m =>
+          `<span class="kv"><span class="k">${esc(m.name)}</span>` +
+          `<span class="v">${fmt(m.value)}</span>` +
+          (m.health === "warning" ? '<span class="flag warning">⚠</span>' : "") +
+          `</span>`
+        ).join("");
+    html += `<tr class="${cls === "failed" ? "failed" : ""}">
+      <td class="mod">${esc(e.module)}${e.runs > 1 ? `<span class="chip">×${e.runs}</span>` : ""}</td>
+      <td><span class="verdict ${cls}">${esc(label)}</span></td>
+      <td class="num">${e.seconds != null ? e.seconds.toFixed(1) + "s" : "—"}</td>
+      <td>${varied}</td>
+      <td>${result}</td></tr>`;
+  }
+  $("#tried").innerHTML = html + "</tbody></table>";
+})();
 
 /* ---------- pipeline ---------- */
 $("#steps").innerHTML = DATA.steps.map((s, i) => {
@@ -586,10 +899,12 @@ def main() -> int:
 
     steps = collect(store, args.artifact)
     cloud = cloud_payload(store, args.artifact, args.max_points)
-    args.output.write_text(render(steps, cloud, args.title))
+    tried = attempts(store, args.artifact, {s["id"] for s in steps})
+    args.output.write_text(render(steps, cloud, tried, args.title))
 
     size_kb = args.output.stat().st_size / 1024
     print(f"{args.output}  ({size_kb:.0f} KB, {len(steps)} steps, "
+          f"{tried['counts']['total'] if tried else 0} attempts, "
           f"{cloud['count'] if cloud else 0} points, "
           f"{len(cloud['cameras']) if cloud else 0} cameras)")
     return 0
