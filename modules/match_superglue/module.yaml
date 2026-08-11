@@ -1,0 +1,270 @@
+name: FeatureMatchSuperGlue
+version: 1.0.0
+kind: matching
+summary: >
+  SuperGlue: attentional GNN over both keypoint sets plus a Sinkhorn optimal
+  transport assignment. SuperPoint descriptors only. GPU strongly recommended.
+
+description: |
+  The learned matcher LightGlue was built to replace. It reasons about both
+  keypoint sets jointly through self- and cross-attention, then solves a partial
+  assignment with a differentiable Sinkhorn -- so a match is chosen against the
+  whole opposing set rather than against its own runner-up, which is the
+  information the ratio test discards.
+
+  LightGlue is the same idea made adaptive: it prunes points and exits layers
+  early, and is both faster and generally more accurate. SuperGlue is kept because
+  it is the published baseline the field is measured against, because its Sinkhorn
+  assignment is genuinely different from LightGlue's matchability head, and
+  because a second learned matcher is the cheapest way to tell "the matcher is
+  wrong" from "this scene is hard".
+
+  **It takes SuperPoint descriptors and nothing else.** The 256-dimensional
+  descriptor width is baked into the trained weights, so ALIKED or SIFT input is a
+  refusal rather than a degraded result.
+
+  Everything after the correspondence step -- geometric verification, the view
+  graph, planarity -- is shared with the classical matchers, so all five matchers
+  in this repository differ in exactly one stage and their metrics compare
+  directly.
+
+  Code and weights are Magic Leap's, under a research-only licence that forbids
+  redistribution, so the base image clones them from upstream at build time. The
+  predecessor kept a copy of both in its tree.
+
+image: sfmstack/match-superglue:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 8
+  # Hint for ~20 images, sequential pairing, 2048 keypoints. Cost is per PAIR and
+  # roughly quadratic in keypoint count -- the attention is over both sets.
+  expected_duration_s: 60
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  features: {type: features/v1, required: true}
+
+produces:
+  matches: {type: pairwise_matches/v1}
+
+params:
+  weights:
+    type: string
+    default: outdoor
+    enum: [outdoor, indoor]
+    description: Which trained weight set to use.
+    tuning: >
+      Trained on different data, not merely tuned: `indoor` on ScanNet,
+      `outdoor` on MegaDepth. The mismatch is not catastrophic but it is
+      measurable, and `outdoor` is the right default for object and scene captures.
+      Use `indoor` for room interiors with large planar surfaces and weak texture.
+
+  match_threshold:
+    type: number
+    default: 0.2
+    minimum: 0.0
+    maximum: 1.0
+    description: Minimum Sinkhorn assignment score for a match to be kept.
+    tuning: >
+      The quality dial, and the direct analogue of LightGlue's filter_threshold.
+      0.2 is the published default. Raise toward 0.4 when inlier_ratio is low --
+      the Sinkhorn score is calibrated well enough that this trades count for
+      precision cleanly. Lowering below 0.1 mostly admits matches the assignment
+      itself was unsure of.
+
+  sinkhorn_iterations:
+    type: integer
+    default: 20
+    minimum: 3
+    maximum: 200
+    description: Iterations of the optimal-transport solve.
+    tuning: >
+      20 is the inference default; the published training value is 100 and buys
+      almost nothing at test time. Raising it is the wrong place to look for
+      accuracy -- it refines an assignment whose costs are already fixed. Lower it
+      to 10 if matching cost matters and check matches_per_pair moved.
+
+  max_keypoints:
+    type: integer
+    default: 2048
+    minimum: 128
+    maximum: 8192
+    description: Keypoints per image fed to the matcher, highest score first.
+    tuning: >
+      Attention is quadratic in this, so it is the cost lever and it bites hard:
+      4096 is roughly 4x the time of 2048. It also truncates the detector's output
+      -- if the detector produced 4096 and this is 2048, half are discarded before
+      matching and the detector's keypoints_per_image no longer describes what was
+      matched.
+
+  pairing:
+    type: string
+    default: sequential
+    enum: [sequential, exhaustive]
+    description: Which image pairs to match.
+    tuning: >
+      Same meaning as in every other matcher here. `exhaustive` costs a network
+      forward pass per pair rather than a descriptor comparison, so the step from
+      sequential to exhaustive is far more expensive than it is for FeatureMatchNN.
+      Raise `window` first.
+
+  window:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: "For `pairing: sequential`, match each image to the next `window` images."
+    tuning: >
+      The largest lever on track length. 1 -> 3 typically lifts avg_track_length
+      more than any threshold change, because a track can only span frames that are
+      linked in the view graph.
+
+  geometric_model:
+    type: string
+    default: fundamental
+    enum: [fundamental, homography, none]
+    description: Two-view model used to reject outliers.
+    tuning: >
+      Keep `fundamental`. Learned matchers are good enough that verification
+      rejects little, which makes `none` tempting -- but the pairs where it rejects
+      a lot are exactly the degenerate ones, and that signal is what `planarity`
+      and `inlier_ratio` report.
+
+  ransac_threshold:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Inlier distance in pixels of the WORKING resolution.
+
+  ransac_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: Confidence the estimated model is correct.
+
+  min_matches:
+    type: integer
+    default: 15
+    minimum: 8
+    maximum: 1000
+    description: Pairs with fewer verified matches are dropped from the view graph.
+
+  measure_planarity:
+    type: boolean
+    default: true
+    description: Also fit a homography per pair to detect degenerate geometry.
+
+metrics:
+  pairs_matched:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: Pairs that survived min_matches. Zero means nothing downstream can run.
+
+  matches_per_pair:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: >
+      Mean verified matches per kept pair. Bounded above by max_keypoints, so a
+      low value with max_keypoints at 2048 means something different from a low
+      value at 8192.
+
+  min_matches_per_pair:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: The weakest surviving link, which bounds what tracks can cross.
+
+  inlier_ratio:
+    direction: higher_better
+    healthy: [0.7, null]
+    meaning: >
+      Verified matches over what the matcher proposed. Higher band than the
+      classical matchers because a learned matcher that needs heavy geometric
+      filtering is not working -- below 0.5, suspect the weight set or the scene
+      rather than the threshold.
+
+  graph_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Connected components of the view graph. Above 1 means images no track can
+      ever link, which no downstream module repairs.
+
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of images in the biggest component.
+
+  planarity:
+    direction: lower_better
+    healthy: [null, 0.7]
+    nullable: true
+    meaning: >
+      Homography inliers over fundamental inliers. Near 1 the pair is planar or
+      rotation-only and cannot give a baseline. Null when not measured.
+
+  weak_pairs:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: Attempted pairs dropped for falling under min_matches.
+
+  mean_match_score:
+    direction: higher_better
+    healthy: [0.4, null]
+    meaning: >
+      Mean Sinkhorn assignment score over surviving matches. The model's own
+      confidence, and not comparable to LightGlue's mean_match_score -- different
+      head, different calibration. Read it across settings WITHIN this module.
+
+  keypoints_used:
+    direction: neutral
+    meaning: >
+      Mean keypoints per image actually fed to the matcher after max_keypoints
+      truncation. Below the detector's keypoints_per_image means this module
+      discarded some, and the detector's metrics no longer describe what matched.
+
+diagnostics:
+  - code: wrong_descriptor_width
+    severity: error
+    message: SuperGlue is trained for 256-dimensional SuperPoint descriptors.
+    suggested_actions:
+      - Use FeatureDetectionSuperPoint upstream.
+      - Or use FeatureMatchLightGlue, which has weight sets for ALIKED and SIFT.
+    see_also: limitations.md#superpoint-only
+
+  - code: no_pairs_matched
+    severity: error
+    message: No image pair survived matching.
+    suggested_actions:
+      - Lower match_threshold toward 0.1.
+      - Check the detector's keypoints_min.
+      - Try the other weight set; indoor and outdoor are trained on different data.
+    see_also: tuning.md#nothing-matched
+
+  - code: broken_chain
+    severity: error
+    message: The view graph is disconnected; the reconstruction will come out in pieces.
+    suggested_actions:
+      - "Raise window, or switch to pairing: exhaustive."
+      - Lower min_matches if the missing links are thin but real.
+    see_also: tuning.md#graph_components-above-1
+
+  - code: low_inlier_ratio
+    severity: warn
+    message: Geometric verification is rejecting much of what the matcher proposed.
+    suggested_actions:
+      - Raise match_threshold toward 0.4.
+      - Check whether the weight set matches the scene type.
+      - Check planarity; a degenerate pair fails verification correctly.
+    see_also: tuning.md#inlier_ratio-below-05
+
+  - code: keypoints_truncated
+    severity: info
+    message: max_keypoints discarded part of the detector's output.
+    suggested_actions:
+      - Raise max_keypoints, at quadratic cost in matching time.
+      - Or lower the detector's max_keypoints so its metrics describe what matched.
+    see_also: tuning.md#keypoints_used-below-the-detectors-count
