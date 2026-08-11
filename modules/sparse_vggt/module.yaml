@@ -1,0 +1,232 @@
+name: SparseVGGT
+version: 1.0.0
+kind: sparse
+summary: >
+  Sparse structure from VGGT's learned depth, unprojected with the SUPPLIED poses
+  so any pose source works. Interchangeable with the geometric triangulators. GPU
+  required.
+
+description: |
+  A triangulator whose depth comes from a learned prior instead of ray
+  intersection. Same three inputs as `SparseTriangulation` and
+  `SparseTriangulationGTSAM`, same output type, so it drops into the classical
+  chain and can be fed SIFT tracks and PnP poses.
+
+  **It uses the DEPTH head, not the point maps, and that is the whole design.**
+  VGGT's point maps are in VGGT's own world frame at VGGT's own scale. Reading
+  them directly is correct only when the poses also came from VGGT, and silently
+  wrong when they came from anywhere else — cloud in one frame, cameras in
+  another, nothing reporting it. Depth is per-view and frame-agnostic:
+  unprojecting it with the supplied K and pose puts the point in the supplied
+  world frame by construction.
+
+  What survives is one scale ambiguity between VGGT's depth unit and the poses'
+  unit. It is estimated from the tracks — the ratio of the depth two-view
+  triangulation implies to the depth VGGT predicted, taken as a median over tracks
+  — and both the scale and its spread are reported. The spread is the honest
+  answer to "is this depth consistent with these poses at all", because a single
+  scalar can only relate them if the ratio is actually constant.
+
+  **It can produce structure from a single view.** A track seen once still gets a
+  3D point, because depth was predicted rather than intersected. That is the
+  capability no geometric triangulator has and it is unverified by construction;
+  `single_view_points` says how much of the cloud rests on it.
+
+image: sfmstack/sparse-vggt:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 24
+  expected_duration_s: 90
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  tracks: {type: tracks/v1, required: true}
+  poses: {type: poses/v1, required: true}
+
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  min_track_len:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: Minimum observations in POSED views for a track to be kept.
+    tuning: >
+      1 by default, unlike every geometric triangulator, because this module can
+      place a point from a single observation -- that is the capability it has and
+      they do not. Raise to 2 to keep only points a second view agrees with, which
+      trades the capability for verification and is the right call when the cloud
+      feeds bundle adjustment.
+
+  min_confidence:
+    type: number
+    default: 0.0
+    minimum: 0.0
+    maximum: 100.0
+    description: Reject tracks whose best observation has depth confidence below this.
+    tuning: >
+      VGGT's confidence is unbounded above and centred near 1 on data it handles
+      well, so this is NOT a 0-1 probability. Read mean_depth_confidence from a run
+      before setting it. Raising it is the cleanest way to trade cloud size for
+      accuracy in this module, since it filters on the model's own uncertainty
+      rather than on a geometric consequence of it.
+
+  max_reprojection_error:
+    type: number
+    default: 4.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Maximum pixel error in ANY observing view, at working resolution.
+    tuning: >
+      Same meaning and default as the geometric triangulators, deliberately, so the
+      three can be compared. Note it bites differently here: a geometric
+      triangulator MINIMISED this error when it placed the point, and this module
+      did not, so the same threshold rejects more.
+
+  min_scale_samples:
+    type: integer
+    default: 20
+    minimum: 2
+    maximum: 10000
+    description: Tracks needed to estimate the depth/pose scale before the module will run.
+    tuning: >
+      The module refuses rather than guessing a scale from too little evidence.
+      Lower it only on a very small set, and read depth_scale_spread when you do --
+      a scale from five tracks is a scale you should not trust.
+
+  dtype:
+    type: string
+    default: bfloat16
+    enum: [bfloat16, float16, float32]
+    description: Autocast dtype for the forward pass.
+
+  max_images_per_pass:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 1000
+    description: Split inference into chunks of this many images. 0 runs one pass.
+    tuning: >
+      Safe here in a way it is not in PoseVGGT: depth is per-view, so chunking
+      changes what the model attends to but not what frame the output lands in.
+      Expect slightly worse depth in small chunks, not a broken model.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Surviving 3D points.
+
+  observation_count:
+    direction: higher_better
+    healthy: [300, null]
+    meaning: Total 2D observations across all points.
+
+  mean_track_length:
+    direction: higher_better
+    healthy: [2.5, null]
+    meaning: >
+      Observations per point. Can legitimately fall below 2 here, unlike in a
+      geometric triangulator, because a single observation is enough to place a
+      point. Read single_view_points beside it.
+
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: >
+      Mean pixel error at working resolution. Expect it HIGHER than a geometric
+      triangulator's on the same tracks: that one placed each point to minimise
+      this error and this one did not. It measures agreement between a learned
+      depth and the supplied poses, which is a different and more honest quantity.
+
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: Cameras carrying a valid pose in this model, copied from the input.
+
+  depth_scale:
+    direction: neutral
+    meaning: >
+      The scalar relating VGGT's depth unit to the supplied poses' unit. Not
+      quality -- it is the number that makes the two comparable at all, and it
+      changes with the pose source.
+
+  depth_scale_spread:
+    direction: lower_better
+    healthy: [null, 0.25]
+    meaning: >
+      Robust coefficient of variation of that ratio across tracks. THE metric of
+      this module. Near zero means VGGT's depth and the supplied poses agree up to
+      one scale, which is the assumption everything here rests on. Large means they
+      do not, and no single scalar relates them -- the cloud will be locally right
+      and globally distorted.
+
+  scale_samples:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: Tracks that supported the scale estimate.
+
+  mean_depth_confidence:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: >
+      Mean of VGGT's own confidence at the chosen observation. Unbounded above and
+      near 1 on data it handles well. Self-reported and not comparable to any other
+      module's confidence.
+
+  yield:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: Surviving points over input tracks.
+
+  rejected_confidence:
+    direction: lower_better
+    meaning: Tracks dropped by min_confidence. 0 when the filter is off, which is the default.
+
+  rejected_cheirality:
+    direction: lower_better
+    meaning: >
+      Tracks whose point landed behind a camera. Here that means the depth prior
+      and the poses disagree about which side of the camera the scene is on.
+
+  rejected_reprojection:
+    direction: lower_better
+    meaning: Tracks exceeding max_reprojection_error in some view.
+
+  single_view_points:
+    direction: neutral
+    meaning: >
+      Points resting on exactly one observation. Real structure that no geometric
+      triangulator could produce, and unverified by construction -- nothing checked
+      it against a second view.
+
+diagnostics:
+  - code: no_points
+    severity: error
+    message: No track survived.
+    suggested_actions:
+      - Lower min_confidence to 0.
+      - Raise max_reprojection_error.
+      - Check depth_scale_spread; a large spread means no single scale fits.
+    see_also: tuning.md#nothing-survives
+
+  - code: depth_scale_inconsistent
+    severity: warn
+    message: The depth/pose scale ratio varies substantially across tracks.
+    suggested_actions:
+      - Use PoseVGGT so depth and poses come from the same model.
+      - Or use SparseTriangulation, which needs no depth prior.
+      - Check the pose estimator's mean_reprojection_error first.
+    see_also: limitations.md#one-scale-for-the-whole-scene
+
+  - code: mostly_single_view
+    severity: info
+    message: Most points rest on one observation and one depth prediction.
+    suggested_actions:
+      - That is this module's capability on short tracks, and it is unverified.
+      - Raise min_track_len to 2 to keep only points a second view agrees with.
+    see_also: artifact.md#single-view-points-are-real-structure-and-unverified
