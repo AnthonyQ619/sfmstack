@@ -1,0 +1,66 @@
+---
+module: SparseMapAnything
+module_version: 1.0.0
+upstream: facebookresearch/map-anything @ 3d10cf7, depth head
+curated_at: 2026-08-11
+sources: 2
+---
+
+Sparse structure from MapAnything's learned depth, unprojected with the **supplied**
+poses. Same three inputs and same output as `SparseTriangulation`,
+`SparseTriangulationGTSAM` and `SparseVGGT`, so all four are interchangeable. GPU
+required.
+
+**The capability no other module here has: it takes the poses and intrinsics as
+INPUT.** MapAnything is trained to accept whatever geometry is already known and
+predict the rest, so the pipeline's own calibration and camera positions become
+evidence rather than something the network must infer.
+
+## What conditioning buys, measured
+
+8 DTU views, SIFT tracks, poses from `PoseEssentialToPnP`, everything else equal:
+
+| | points | `yield` | `depth_scale_spread` | `mean_depth_confidence` |
+|---|---:|---:|---:|---:|
+| `condition_on_poses: true` | 3047 | **0.648** | **0.0059** | 13.97 |
+| `condition_on_poses: false` | 2198 | 0.467 | 0.0071 | 9.82 |
+
+**39% more structure survives** from information the pipeline already had. `yield`
+is the comparable number here — same tracks in, same filters, so the difference is
+depth quality alone.
+
+## What conditioning does NOT buy
+
+**It does not put the output in your frame.** The estimated depth scale is 1.9496
+conditioned and 1.9485 not — unmoved. MapAnything returns its own world frame at
+its own scale whatever it is told, so the depth is unprojected with the supplied
+poses exactly as in `SparseVGGT`, and the scale is measured from the tracks rather
+than assumed to be 1.
+
+## Against the other three triangulators
+
+Same 8 views, same tracks, same poses:
+
+| module | points | mean error | `yield` |
+|---|---:|---:|---:|
+| `SparseTriangulation` | 4671 | 0.280 px | 0.993 |
+| `SparseVGGT` | 3658 | 0.956 px | 0.778 |
+| `SparseMapAnything` | 3047 | 1.060 px | 0.648 |
+
+On a calibrated, well-textured scene the geometric triangulator wins on every
+axis, and that is expected — this is the case ray intersection is best at. The
+learned modules exist for the case where the correspondences are too few or the
+scene too weakly textured for intersection to work, which DTU is not.
+
+**The errors here are comparable in a way they are not after bundle adjustment**,
+because all three placed points against the same poses under the same
+`max_reprojection_error`. Read `yield` first regardless.
+
+## `mean_depth_confidence` is not comparable to `SparseVGGT`'s
+
+13.97 here against 60.60 there, same scene, same metric name. Both are unbounded
+self-reports on different scales. A `min_confidence` carried between the two
+modules is meaningless.
+
+**Reading the output:** [artifact.md](artifact.md) ·
+**Tuning:** [tuning.md](tuning.md) · **Limits:** [limitations.md](limitations.md)

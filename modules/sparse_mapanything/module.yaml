@@ -1,0 +1,322 @@
+name: SparseMapAnything
+version: 1.0.0
+kind: sparse
+summary: >
+  Sparse structure from MapAnything's learned depth, unprojected with the SUPPLIED
+  poses. Conditions the model on the poses and intrinsics it is given. GPU
+  required.
+
+description: |
+  The second learned triangulator, and a direct sibling of `SparseVGGT`: same three
+  inputs, same output type, same frame-agnostic construction. It drops into the
+  classical chain and can be fed SIFT tracks and PnP poses.
+
+  **What it does that VGGT cannot: take the poses and intrinsics as INPUT.**
+  MapAnything is trained to accept whatever geometry is already known and predict
+  the rest, so the calibration and the camera positions become evidence rather
+  than something the network has to infer. Measured on 8 DTU views, conditioning
+  raised the model's own mean confidence from 6.20 to 10.09 and tightened the
+  depth/pose scale spread from 0.0071 to 0.0059 — better depth, from information
+  the pipeline already had.
+
+  **What conditioning does NOT do is put the output in the supplied frame.** This
+  was measured and it is the design's whole hinge: with poses supplied, the
+  estimated depth scale came out at 1.9495 against 1.9485 without them — unchanged.
+  The model returns its own world frame and its own scale whatever it is told. So
+  the depth is unprojected with the supplied poses exactly as in `SparseVGGT`, and
+  the one remaining scale ambiguity is estimated from the tracks and reported.
+
+  **`is_metric_scale` is always false**, and that is not a default but a
+  correctness requirement. MapAnything is a *metric* reconstructor; telling it the
+  supplied poses are metric makes it rescale its depth to match a claim that is
+  false for any SfM reconstruction, whose units are arbitrary. The same measurement
+  with `is_metric_scale: true` moved the scale to 1.3205 and worsened the spread.
+
+  **It can produce structure from a single view**, like `SparseVGGT` and unlike any
+  geometric triangulator, because depth was predicted rather than intersected.
+  `single_view_points` says how much of the cloud rests on that.
+
+image: sfmstack/sparse-mapanything:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 24
+  # Hint for ~12 images. One forward pass over the whole set, so cost grows with
+  # image count rather than with pair count.
+  expected_duration_s: 90
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  tracks: {type: tracks/v1, required: true}
+  poses: {type: poses/v1, required: true}
+
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  condition_on_poses:
+    type: boolean
+    default: true
+    description: >
+      Feed the supplied camera poses into the model alongside the intrinsics.
+    tuning: >
+      On is better when the poses are good — it is the capability this module has
+      and SparseVGGT does not, and it measurably improves the depth. Turn it OFF
+      when the poses are suspect, because conditioning on a wrong pose propagates
+      that error into the depth and the two then agree with each other rather than
+      with the scene. If depth_scale_spread is worse with it on than off, the poses
+      are the problem.
+
+  condition_on_intrinsics:
+    type: boolean
+    default: true
+    description: Feed the supplied intrinsics into the model.
+    tuning: >
+      Leave on for a calibrated scene. Turning it off makes the model recover its
+      own focal length, which is worth doing only to check the calibration against
+      an independent estimate — the reported intrinsics are the SUPPLIED ones
+      either way, since those are what the unprojection used.
+
+  use_model_mask:
+    type: boolean
+    default: true
+    description: >
+      Drop observations MapAnything's own mask rejects — ambiguous regions such as
+      sky, and depth discontinuities at object edges.
+    tuning: >
+      On, but expect it to do little on a scene with no sky. Measured on 8 DTU
+      views it changed nothing at all — same 3047 points, same error, same
+      confidence — because the pixels it rejects are the ambiguous ones, which are
+      also the low-confidence ones, and the observation this module picks per track
+      is the highest-confidence one. Where it earns its place is a scene with sky or
+      with tracks sitting on object silhouettes, where a depth map straddles
+      foreground and background and a point sampled there lands between the two.
+      Turn it off to measure what it removed, via rejected_masked.
+
+  min_track_len:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 50
+    description: Minimum observations in POSED views for a track to be kept.
+    tuning: >
+      1 by default, matching SparseVGGT, because this module can place a point from
+      a single observation. Raise to 2 to keep only points a second view agrees
+      with, which is the right call when the cloud feeds bundle adjustment.
+
+  min_confidence:
+    type: number
+    default: 0.0
+    minimum: 0.0
+    maximum: 1000.0
+    description: Reject tracks whose best observation has confidence below this.
+    tuning: >
+      MapAnything's confidence is unbounded above and starts near 1, so this is NOT
+      a 0-1 probability — but its scale differs from VGGT's by nearly an order of
+      magnitude. Measured means here are 6.2 unconditioned and 10.1 conditioned,
+      against VGGT's 46.6 on the same scene. A threshold carried over from
+      SparseVGGT rejects everything. Read mean_depth_confidence from a run first,
+      and note it moves when condition_on_poses does.
+
+  max_reprojection_error:
+    type: number
+    default: 4.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Maximum pixel error in ANY observing view, at working resolution.
+    tuning: >
+      Same meaning and default as every other triangulator here, deliberately, so
+      the four can be compared. It bites harder on a learned triangulator than on a
+      geometric one: the geometric one MINIMISED this error when it placed the
+      point and this one did not.
+
+  min_scale_samples:
+    type: integer
+    default: 20
+    minimum: 2
+    maximum: 10000
+    description: Tracks needed to estimate the depth/pose scale before the module will run.
+    tuning: >
+      The module refuses rather than guessing a scale from too little evidence.
+      Lower it only on a very small set, and read depth_scale_spread when you do.
+
+  amp_dtype:
+    type: string
+    default: bf16
+    enum: [bf16, fp16, fp32]
+    description: Mixed-precision dtype for the forward pass.
+    tuning: >
+      bf16 on Ampere and later, which is upstream's default. fp32 roughly doubles
+      memory for no measurable accuracy gain here.
+
+  memory_efficient_inference:
+    type: boolean
+    default: false
+    description: >
+      Run the dense prediction heads in minibatches instead of all at once.
+    tuning: >
+      Off is faster. Turn it on when a large set will not fit in GPU memory — it
+      trades speed for peak memory and does not change the result. Prefer it to
+      max_images_per_pass, which does.
+
+  max_images_per_pass:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 1000
+    description: Split inference into chunks of this many images. 0 runs one pass.
+    tuning: >
+      Safe here in the way it is in SparseVGGT and not in PoseVGGT: depth is
+      per-view, so chunking changes what the model can attend to but not what frame
+      the output lands in. Expect slightly worse depth in small chunks. Try
+      memory_efficient_inference first.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Surviving 3D points.
+
+  observation_count:
+    direction: higher_better
+    healthy: [300, null]
+    meaning: Total 2D observations across all points.
+
+  mean_track_length:
+    direction: higher_better
+    healthy: [2.5, null]
+    meaning: >
+      Observations per point. Can legitimately fall below 2 here, as in SparseVGGT,
+      because one observation is enough to place a point. Read single_view_points
+      beside it.
+
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: >
+      Mean pixel error at working resolution. Expect it higher than a geometric
+      triangulator's on the same tracks — that one placed each point to minimise
+      this and this one did not. It measures agreement between a learned depth and
+      the supplied poses.
+
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: Cameras carrying a valid pose in this model, copied from the input.
+
+  depth_scale:
+    direction: neutral
+    meaning: >
+      The scalar relating MapAnything's depth unit to the supplied poses' unit. Not
+      quality. It does NOT go to 1.0 when the model is conditioned on the poses —
+      measured 1.9495 conditioned against 1.9485 not, on the same 8 views.
+
+  depth_scale_spread:
+    direction: lower_better
+    healthy: [null, 0.25]
+    meaning: >
+      Robust coefficient of variation of that ratio across tracks. THE metric of
+      this module: near zero means the learned depth and the supplied poses agree
+      up to one scale, which is what everything here rests on. It is also the
+      cleanest read on whether conditioning helped — 0.0059 conditioned against
+      0.0071 not, on the reference run.
+
+  scale_samples:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: Tracks that supported the scale estimate.
+
+  mean_depth_confidence:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: >
+      Mean of MapAnything's own confidence at the chosen observation. Unbounded
+      above, starting near 1. NOT on the same scale as SparseVGGT's identically
+      named metric — 10.1 here against 46.6 there on the same scene — so a
+      threshold cannot be carried between them.
+
+  yield:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: Surviving points over input tracks.
+
+  rejected_outside_frame:
+    direction: lower_better
+    meaning: >
+      Tracks every one of whose posed observations fell outside the model's centre
+      crop, or landed on a pixel with no predicted depth. Small and unavoidable —
+      upstream's resolution table crops a few pixels off the long side to reach an
+      exact aspect ratio. A large number means the scene's aspect ratio is far from
+      anything in that table.
+
+  rejected_masked:
+    direction: lower_better
+    meaning: >
+      Tracks dropped because MapAnything's own mask rejected every in-frame
+      observation. Mostly sky and depth discontinuities, and typically zero on a
+      scene with neither. 0 when use_model_mask is off. Kept apart from
+      rejected_outside_frame because the two have different fixes.
+
+  rejected_confidence:
+    direction: lower_better
+    meaning: Tracks dropped by min_confidence. 0 when the filter is off, which is the default.
+
+  rejected_cheirality:
+    direction: lower_better
+    meaning: >
+      Tracks whose point landed behind a camera — the depth prior and the poses
+      disagreeing about which side of the camera the scene is on.
+
+  rejected_reprojection:
+    direction: lower_better
+    meaning: Tracks exceeding max_reprojection_error in some view.
+
+  single_view_points:
+    direction: neutral
+    meaning: >
+      Points resting on exactly one observation. Real structure no geometric
+      triangulator could produce, and unverified by construction.
+
+  conditioned:
+    direction: neutral
+    meaning: >
+      1 when the model was given the supplied poses, 0 when it was not. Recorded as
+      a metric because every other number here moves with it, including
+      mean_depth_confidence, and two runs are not comparable across it.
+
+diagnostics:
+  - code: no_points
+    severity: error
+    message: No track survived.
+    suggested_actions:
+      - Lower min_confidence to 0.
+      - Raise max_reprojection_error.
+      - Turn off use_model_mask to see how much the model's own mask removed.
+      - Check depth_scale_spread; a large spread means no single scale fits.
+    see_also: tuning.md#nothing-survives
+
+  - code: depth_scale_inconsistent
+    severity: warn
+    message: The depth/pose scale ratio varies substantially across tracks.
+    suggested_actions:
+      - Turn condition_on_poses off; if the spread improves, the poses are wrong.
+      - Or use SparseTriangulation, which needs no depth prior at all.
+      - Check the pose estimator's mean_reprojection_error first.
+    see_also: limitations.md#one-scale-for-the-whole-scene
+
+  - code: heavily_masked
+    severity: info
+    message: The model's own mask rejected a large share of the tracks.
+    suggested_actions:
+      - Expected on a scene with sky, or with tracks concentrated on object edges.
+      - Set use_model_mask false to keep them, at the cost of points sampled across depth discontinuities.
+    see_also: artifact.md#the-model-masks-its-own-output
+
+  - code: mostly_single_view
+    severity: info
+    message: Most points rest on a single observation and a single depth prediction.
+    suggested_actions:
+      - That is this module's capability on short tracks, and it is unverified structure.
+      - Raise min_track_len to 2 to keep only points a second view agrees with.
+    see_also: artifact.md#single-view-points-are-real-structure-and-unverified

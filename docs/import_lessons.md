@@ -229,3 +229,69 @@ feature; it is the pass that removes depths which are photometrically plausible 
 one view and geometrically impossible across the set. And completeness *falls* as
 resolution rises — 0.717 at 600 px, 0.650 at 1200 px — so it is never comparable
 across `max_image_size`.
+
+---
+
+## 2026-08-11 — Telling a model your poses helps its depth, and does not move its frame
+
+**The question.** MapAnything accepts camera poses and intrinsics as *inputs*.
+Does conditioning it on the pipeline's own poses (a) improve the depth, and (b)
+put the output in the pipeline's frame — which would remove the scale ambiguity
+`SparseVGGT` has to estimate?
+
+**What was run.** 8 DTU views, SIFT tracks, poses from `PoseEssentialToPnP`, one
+variable. The scale below is measured by the same estimator `SparseVGGT` uses —
+the ratio of triangulated depth to predicted depth, median over tracks.
+
+| input to the model | `depth_scale` | spread | mean conf | points | `yield` |
+|---|---:|---:|---:|---:|---:|
+| images + intrinsics | 1.9485 | 0.0071 | 9.82 | 2198 | 0.467 |
+| **+ poses, `is_metric_scale=False`** | **1.9496** | **0.0059** | **13.97** | **3047** | **0.648** |
+| + poses, `is_metric_scale=True` | 1.3205 | 0.0082 | — | — | — |
+
+**Conclusions.**
+
+1. **(a) is yes, and it is worth a lot. `yield` 0.467 → 0.648 — 39% more surviving
+   structure** from information the pipeline already had. Same tracks, same
+   filters, so the difference is depth quality alone. Confidence rose 42% and the
+   scale spread tightened 17%.
+
+2. **(b) is no, and this is the finding that decided the design. The scale is
+   unmoved: 1.9496 conditioned against 1.9485 not.** The model returns its own
+   world frame at its own scale whatever it is told. So the frame-agnostic
+   construction stays exactly as it is in `SparseVGGT`: unproject `depth_z` with
+   the supplied poses, measure the scale from the tracks. Had I assumed (b)
+   followed from (a), the cloud would have been in the wrong frame with nothing
+   reporting it.
+
+3. **`is_metric_scale=True` is a trap on any SfM pipeline.** MapAnything is a
+   *metric* reconstructor, so `true` asserts the supplied poses are in metres and
+   the model rescales its depth to honour the claim. SfM units are arbitrary, so
+   the claim is always false. It moved the scale to 1.3205 and worsened the spread.
+   Hardcoded false rather than exposed.
+
+4. **Conditioning defeats the metric that would catch bad poses.**
+   `depth_scale_spread` measures agreement between the depth and the poses, and
+   conditioning makes the depth agree with the poses *by construction*. A wrong
+   pose produces depth wrong in the same way and a spread that still looks healthy.
+   The only signal left is running it both ways: worse conditioned than
+   unconditioned means the poses are the problem. That is why `conditioned` is
+   reported as a metric rather than left in the parameter block.
+
+**Where all four triangulators land on this scene**, same tracks and poses:
+
+| module | points | mean error | `yield` |
+|---|---:|---:|---:|
+| `SparseTriangulation` | 4671 | 0.280 px | 0.993 |
+| `SparseVGGT` | 3658 | 0.956 px | 0.778 |
+| `SparseMapAnything` | 3047 | 1.060 px | 0.648 |
+
+Ray intersection wins on every axis, as it should — DTU is calibrated and
+well-textured, the case it is best at. The learned pair are for the case where
+correspondences are too few for intersection to work at all, which still has not
+been measured here.
+
+**One more thing that does not transfer.** `mean_depth_confidence` is 13.97 here
+and 60.60 in `SparseVGGT` on the same scene. Same metric name, both unbounded
+self-reports, different scales — a `min_confidence` carried between the two
+modules rejects everything.
