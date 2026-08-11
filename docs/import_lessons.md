@@ -124,3 +124,108 @@ the error the other catches.
 Both runs above still reconstructed. The RoMa one registered 8/8 at 0.33 px *while
 over-merging*, which is why the conflict rate is worth reading rather than
 inferring health from the final error.
+
+---
+
+## 2026-08-11 — A wrong depth scale splays the cloud, it does not shrink it
+
+**The question.** `DenseVGGT` unprojects VGGT's depth with poses from elsewhere,
+and one scalar relates the two units. Without a `tracks/v1` input that scalar is a
+parameter. How bad is getting it wrong?
+
+**What was run.** 8 DTU views, classical poses from `PoseEssentialToPnP`, stride
+2, identical in every respect except the tracks input.
+
+| | `depth_scale` | `spread` | points | `mean_depth_confidence` |
+|---|---:|---:|---:|---:|
+| without tracks | 1.0000 *(parameter)* | null | 401 968 | 46.63 |
+| with tracks | **4.4460** *(measured, 20+ tracks)* | 0.0039 | 401 968 | 46.63 |
+
+**Every metric is identical.** The depth filter (`depth > 0`) and the confidence
+filter are both scale-invariant, so exactly the same pixels survive. Nothing in
+the artifact's numbers distinguishes a correct scale from a 4.4x wrong one.
+
+**The geometry, measured afterwards on the two clouds.**
+
+```
+X_world(f) = C_f + R_fᵀ · ray · depth · s
+```
+
+A wrong `s` scales each view's cloud **about that view's own camera centre**, and
+the centres differ. So it is not a similarity transform of the reconstruction.
+
+| | correct (4.4460) | wrong (1.0) |
+|---|---:|---:|
+| bbox diagonal | 7.2506 | 3.8996 |
+| median distance to nearest camera | 4.4633 | 1.0553 |
+
+Pure shrink predicts a bbox ratio of `1/k` = 0.225. Measured: **0.538**. The gap
+is eight shrunken shells sitting on eight different camera positions. Predicted
+two-view disagreement at the median baseline of 1.7033 is `1.7033 · (1 − 1/4.446)`
+= **1.32**, or 78% of the baseline.
+
+**Conclusions.**
+
+1. **A wrong scale looks like bad depth.** The failure renders as a smeared or
+   doubled surface, not a small one. Anyone debugging it will suspect the depth
+   prior, which is innocent.
+2. **This is why `scale_unverified` is `warn` and not `info`.** It is the only
+   signal, since no metric moves.
+3. **The estimator was validated by the case that must return unity.** Fed
+   `SparseVGGT` the poses from `PoseVGGT` — same model, same units — it returned
+   **1.0044**, spread 0.004. Fed classical poses it returned 2.1164 at the same
+   spread. A scale estimator that cannot recover 1.0 on its own model's poses is
+   measuring something else.
+4. **VGGT's depth confidence is unbounded.** Mean 46.63, not 0.4663. A
+   `min_confidence` chosen as though it were a probability is either a no-op or a
+   wall with nothing in between.
+
+---
+
+## 2026-08-11 — More dense points is not more scene
+
+**The question.** `DenseMVS` (COLMAP PatchMatch) leaves holes and `DenseVGGT` does
+not. Is the hole-free cloud better?
+
+**What was run.** 8 DTU views, one pipeline, branching only at the dense stage so
+both modules got **the same poses**:
+
+```
+SceneLoader → SIFT → NN → UnionFind → PoseEssentialToPnP
+                                        ├─ SparseTriangulation ─ 4671 points ─┬─ DenseMVS (1200 px)
+                                        └────────────────────────────────────-┴─ DenseVGGT (stride 3)
+```
+
+The 4671 triangulated points are the reference: multi-view verified, so a dense
+point far from all of them is a point nothing else confirms. Units are the
+reconstruction's, where the object's bbox diagonal is 4.6 and the median camera
+separation 1.7.
+
+| | points | secs | bbox diag | verified→cloud p50 | cloud→verified p95 | cloud >0.2 from anything verified |
+|---|---:|---:|---:|---:|---:|---:|
+| **DenseMVS** | 122 814 | 131 | 4.26 | **0.0077** | **0.223** | **7.5%** |
+| DenseVGGT | 179 920 | 2 | 7.24 | 0.0142 | 0.585 | 26.6% |
+
+**Conclusions.**
+
+1. **VGGT produced 47% more points and covered the verified structure half as
+   tightly.** More points, worse coverage — so point count is not a coverage
+   measure. It measures willingness to guess at least as much.
+2. **A quarter of VGGT's cloud sits far from anything triangulation confirmed,
+   against 7.5% for MVS.** Some of that is real surface SIFT never found. The
+   distinction is that MVS's extra points were photometrically verified across
+   views and VGGT's were predicted, and nothing in either artifact's metrics
+   separates the two.
+3. **The bounding box is the cheapest tell.** 7.24 against the sparse model's 4.59.
+   VGGT predicts depth everywhere, including background and empty space, and it
+   lands outside the volume anything else supports.
+4. **The holes are the honest part.** A dense reconstructor that never leaves one
+   is not more complete; it is less willing to say it does not know. Which of the
+   two is wanted is a real choice — 131 s against 2 s is the other half of it.
+
+**Also settled by the same runs.** `geom_consistency` costs 5% of completeness
+(0.717 → 0.679 at 600 px) and 44 s, and gains 610 points. It is not a point-count
+feature; it is the pass that removes depths which are photometrically plausible in
+one view and geometrically impossible across the set. And completeness *falls* as
+resolution rises — 0.717 at 600 px, 0.650 at 1200 px — so it is never comparable
+across `max_image_size`.

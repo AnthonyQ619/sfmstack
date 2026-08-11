@@ -52,6 +52,7 @@ build `FROM` a shared base, so Docker stores the common layers once:
 sfmstack/runtime          415 MB   sfmkit only — the tracker's image IS this
   + opencv                179 MB   shared by SIFT, ORB, NN, FLANN, pose, triangulation
   + pycolmap                       shared by both bundle adjusters
+  + pycolmap-cuda12       327 MB   DenseMVS -- CUDA PatchMatch, no CPU path exists
   + pillow                 21 MB   SceneLoader
 sfmstack/runtime-torch    5.8 GB   torch cu124 + git
   runtime-lightglue       6.2 GB   + lightglue + baked weights
@@ -71,7 +72,7 @@ fused correlation kernel is a wheel built against CUDA 13, so taking it means
 torch 2.6.0+cu124 → 2.11.0 for that module. It buys 40% of peak GPU memory and 3%
 of runtime, and nothing else in the repository has to move to get it.
 
-Fourteen module images cost four bases plus a few MB of unique layer each. That
+Fifteen module images cost four bases plus a few MB of unique layer each. That
 sharing is what makes strict one-image-per-module affordable — and kornia is
 deliberately *not* in the lightglue base, because the predecessor's two conda
 environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
@@ -99,6 +100,7 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | | `SparseVGGT` | VGGT depth, unprojected with supplied poses | ✓ |
 | | `SparseGlobalCOLMAP` | pycolmap global mapping (GLOMAP) | |
 | dense | `DenseVGGT` | VGGT depth, unprojected with supplied poses | ✓ |
+| | `DenseMVS` | COLMAP PatchMatch stereo + fusion | ✓ |
 | optimization | `BundleAdjustmentGlobal` | pycolmap / Ceres | |
 | | `BundleAdjustmentLocal` | pycolmap / Ceres | |
 
@@ -110,7 +112,13 @@ The three VGGT modules each fill exactly one payload type and each run their own
 forward pass. That recompute is deliberate: `SparseVGGT` takes tracks and poses
 from anywhere, which a module emitting all three types could not.
 
-Still to port: MapAnything, VGGSfM, Tapir, PatchMatch MVS.
+`DenseMVS` is the only module here that verifies geometry against pixels, and it
+is the reason its cloud has holes. On 8 DTU views with the same poses it produced
+47% *fewer* points than `DenseVGGT` while covering the triangulated structure twice
+as tightly, in a bounding box 40% smaller — see
+[`docs/import_lessons.md`](docs/import_lessons.md).
+
+Still to port: MapAnything, VGGSfM, Tapir.
 
 ```bash
 docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .

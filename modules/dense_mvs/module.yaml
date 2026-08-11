@@ -1,0 +1,316 @@
+name: DenseMVS
+version: 1.0.0
+kind: dense
+summary: >
+  COLMAP PatchMatch stereo and depth-map fusion. Photometric multi-view stereo
+  over a posed sparse model. CUDA required.
+
+description: |
+  The classical dense reconstructor, and the only module here that actually
+  *verifies* geometry against the pixels. For every pixel of every image it
+  searches for the depth and normal that best correlate the patch around it with
+  the same patch seen in neighbouring views, then keeps only the pixels several
+  views agree on, then fuses the agreeing pixels into points.
+
+  That verification is what separates it from `DenseVGGT`. VGGT predicts a plausible
+  depth everywhere, including where the evidence is absent; PatchMatch returns
+  nothing where the evidence is absent. A DenseMVS cloud with holes and a
+  DenseVGGT cloud without them are not the same claim about the scene — the holes
+  are the honest part.
+
+  **It consumes a `sparse_model/v1` and reads three things from it:** camera poses,
+  intrinsics, and which images see which points. It does *not* use the 2D
+  observation coordinates — COLMAP derives each image's depth search range and its
+  set of source images from track membership alone. Cameras with no valid pose are
+  dropped, so coverage follows the sparse model's `registered_images`.
+
+  **Images are undistorted first.** The reconstruction handed to COLMAP is built in
+  the scene's native, distorted pixel frame with the scene's real camera model, so
+  `undistort_images` produces images and cameras that agree. Since `sparse_model/v1`
+  stores observations already undistorted, this module re-applies the distortion on
+  the way in — a closed-form step, unlike undistortion.
+
+  Runtime is the thing to plan around. Cost is roughly `views × pixels ×
+  source_views × num_samples × num_iterations`, and it is measured in minutes per
+  view at full resolution, not seconds. `max_image_size` is the parameter that
+  matters most for that, and it is a quality/time trade rather than a free win.
+
+image: sfmstack/dense-mvs:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 16
+  # Hint for ~12 views at max_image_size 1600 with geometric consistency on --
+  # i.e. two PatchMatch sweeps per view. Scale it linearly in view count and
+  # quadratically in max_image_size.
+  expected_duration_s: 900
+  timeout_s: 21600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  sparse: {type: sparse_model/v1, required: true}
+
+produces:
+  dense: {type: dense_model/v1}
+
+params:
+  max_image_size:
+    type: integer
+    default: 1600
+    minimum: 0
+    maximum: 8000
+    description: >
+      Longest image dimension PatchMatch runs at. 0 uses the undistorted image at
+      full resolution.
+    tuning: >
+      The dominant runtime knob and a genuine trade, not a free win: cost is
+      roughly quadratic in this, and so is the point count. Start at 1600. Drop to
+      800 to find out in minutes whether a pipeline works at all, then raise it for
+      the run that matters. Above ~2400 the memory per view starts to matter more
+      than the detail gained, because PatchMatch holds several full-resolution
+      float images per source view.
+
+  window_radius:
+    type: integer
+    default: 5
+    minimum: 1
+    maximum: 30
+    description: Half-width of the NCC correlation window, in pixels.
+    tuning: >
+      Larger windows are more robust on weak texture and blur out depth
+      discontinuities; smaller ones keep edges and fail sooner on flat regions.
+      5 (an 11x11 window) is COLMAP's default and is right for most scenes. Raise
+      to 7-9 on a noisy or low-texture capture, and expect the object silhouettes
+      to thicken.
+
+  window_step:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 4
+    description: Pixels skipped inside the correlation window.
+    tuning: >
+      2 samples a quarter of the window and is roughly 2x faster with a modest
+      accuracy cost. Worth it at high `max_image_size`, where neighbouring pixels
+      are nearly redundant anyway; not worth it below ~1000 px.
+
+  num_samples:
+    type: integer
+    default: 15
+    minimum: 1
+    maximum: 100
+    description: Monte-Carlo samples drawn per pixel per iteration.
+    tuning: >
+      Directly proportional to runtime. Below ~10 the depth estimates get visibly
+      noisy; above ~20 the return is small. This is the second knob to reach for
+      after max_image_size when a run is too slow.
+
+  num_iterations:
+    type: integer
+    default: 5
+    minimum: 1
+    maximum: 20
+    description: Coordinate-descent sweeps over the image.
+    tuning: >
+      Each sweep propagates good hypotheses further across the image. 5 is
+      COLMAP's default and converges on most scenes; 3 is a reasonable fast
+      setting. Raising it above ~7 rarely changes anything the filters then keep.
+
+  geom_consistency:
+    type: boolean
+    default: true
+    description: >
+      Run a second PatchMatch pass that penalises forward-backward reprojection
+      disagreement between views.
+    tuning: >
+      Roughly doubles runtime and is the single biggest quality gain available
+      here — it is what removes the depth hypotheses that are photometrically
+      plausible in one view and geometrically impossible across the set. Turn it
+      off only for a fast structural check that the pipeline runs at all. With it
+      off, fusion reads the photometric maps instead, and both
+      `depth_map_completeness` and the noise go up.
+
+  geom_consistency_max_cost:
+    type: number
+    default: 3.0
+    minimum: 0.1
+    maximum: 50.0
+    description: >
+      Cap on the geometric term's contribution during the consistency pass, in
+      pixels.
+    tuning: >
+      This is a robustness cap inside the optimisation, not a filter. Leave it
+      unless poses are known to be imprecise, in which case raising it stops the
+      geometric term from dominating NCC everywhere.
+
+  filter_min_ncc:
+    type: number
+    default: 0.1
+    minimum: -1.0
+    maximum: 1.0
+    description: Minimum photo-consistency correlation for a pixel to survive.
+    tuning: >
+      The texture gate. On a well-textured scene raise it to 0.2-0.3 to shed the
+      noisy tail; on a low-texture one lowering it below 0.1 mostly admits noise
+      rather than recovering surface. If `depth_map_completeness` is near zero
+      this is one of two suspects, the other being
+      filter_min_triangulation_angle.
+
+  filter_min_triangulation_angle:
+    type: number
+    default: 3.0
+    minimum: 0.0
+    maximum: 30.0
+    description: >
+      Minimum angle, in degrees, between the views supporting a pixel's depth.
+    tuning: >
+      Depth from a narrow baseline is badly conditioned however good the
+      correlation is. 3 degrees suits a normal capture; a drone or handheld
+      sequence with small steps between frames may need 1.0-1.5, and the depth it
+      then keeps is correspondingly softer along the ray.
+
+  filter_min_num_consistent:
+    type: integer
+    default: 2
+    minimum: 1
+    maximum: 20
+    description: Source views that must agree before a pixel is kept.
+    tuning: >
+      The strictest of the filters in effect. Raising it to 3-4 on a set with
+      heavy overlap cleans the cloud substantially; keeping it at 2 is right for a
+      sparse capture where most surface is seen three times in total. At 1 there is
+      no multi-view verification left and the result is closer to monocular depth.
+
+  fusion_min_num_pixels:
+    type: integer
+    default: 5
+    minimum: 1
+    maximum: 100
+    description: Consistent pixels that must fuse before a point is emitted.
+    tuning: >
+      Trades point count against reliability at the fusion stage rather than the
+      filtering stage. 5 is a good default; 3 recovers thin structure and rim
+      geometry at the cost of noise; 10 gives a markedly cleaner cloud on a dense
+      capture and erodes anything seen from few views.
+
+  fusion_max_reproj_error:
+    type: number
+    default: 2.0
+    minimum: 0.1
+    maximum: 20.0
+    description: Reprojection agreement required to fuse two pixels, in pixels.
+
+  fusion_max_depth_error:
+    type: number
+    default: 0.01
+    minimum: 0.0001
+    maximum: 1.0
+    description: >
+      Relative depth agreement required to fuse two pixels, as a fraction of depth.
+    tuning: >
+      Relative, so it is scale-free and needs no adjustment for a reconstruction in
+      arbitrary units. Raise toward 0.05 when poses are imprecise and the cloud
+      comes out layered rather than fused.
+
+  fusion_max_normal_error:
+    type: number
+    default: 10.0
+    minimum: 1.0
+    maximum: 90.0
+    description: Maximum angle between fused pixels' normals, in degrees.
+
+  write_depth_maps:
+    type: boolean
+    default: false
+    description: >
+      Write the per-view depth maps into the artifact, when every view shares a
+      resolution.
+    tuning: >
+      Off by default because the arrays are large — a 12-view set at 1600 px is
+      roughly 120 MB of float32, several times the point cloud. Turn it on when a
+      consumer wants depth rather than points, or to inspect where the filters bit.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [10000, null]
+    meaning: Points in the fused cloud.
+
+  views_contributing:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: >
+      Views whose filtered depth map still held at least one valid pixel. Below the
+      sparse model's registered_images means some views were photometrically
+      rejected outright, which is different from being unregistered.
+
+  mean_depth_confidence:
+    direction: higher_better
+    nullable: true
+    meaning: >
+      Always null. PatchMatch expresses its confidence by deleting pixels rather
+      than by scoring them, so there is no per-point number to report. Read
+      depth_map_completeness instead — it is the same information, expressed as
+      what survived.
+
+  depth_map_completeness:
+    direction: higher_better
+    healthy: [0.2, null]
+    meaning: >
+      Fraction of pixels across all filtered depth maps that carry a valid depth.
+      The core MVS health number: it is how much of the imagery was photometrically
+      and geometrically verifiable at all. Near zero means the filters rejected
+      everything, and which filter did it is the diagnosis.
+
+  points_per_view:
+    direction: neutral
+    meaning: Fused points over contributing views.
+
+  fusion_ratio:
+    direction: neutral
+    meaning: >
+      Valid depth pixels per fused point. Roughly how many views' pixels merged
+      into each point, so it tracks effective overlap. Near 1 means fusion merged
+      almost nothing and each view contributed its own copy of the surface.
+
+  input_registered_images:
+    direction: higher_better
+    meaning: >
+      Cameras the sparse model supplied a pose for. Carried through because this
+      module's coverage cannot exceed it, and a thin dense cloud is far more often
+      an upstream registration failure than an MVS one.
+
+diagnostics:
+  - code: sparse_too_thin
+    severity: warn
+    message: The sparse model has too few points to give PatchMatch usable depth ranges.
+    suggested_actions:
+      - COLMAP derives each view's depth search range from the sparse points it sees.
+      - Triangulate more points, or bundle-adjust before running MVS.
+    see_also: limitations.md#it-inherits-the-sparse-models-depth-range
+
+  - code: low_completeness
+    severity: warn
+    message: Most pixels were filtered out of the depth maps.
+    suggested_actions:
+      - Lower filter_min_ncc if the scene is low-texture.
+      - Lower filter_min_triangulation_angle if the baselines are small.
+      - Lower filter_min_num_consistent if each surface is seen by few views.
+      - Check the poses first — bad poses fail the geometric pass, not the photometric one.
+    see_also: tuning.md#nothing-survives-the-filters
+
+  - code: views_dropped
+    severity: warn
+    message: Some posed views contributed no points.
+    suggested_actions:
+      - Read the sparse model's per-image point counts; a view seeing no structure gets no depth range.
+      - Check those images for blur, exposure change, or being an outlier viewpoint.
+    see_also: limitations.md#only-posed-views-contribute
+
+  - code: no_points
+    severity: error
+    message: Fusion produced nothing.
+    suggested_actions:
+      - Read depth_map_completeness — if it is zero the filters are the cause, not fusion.
+      - If completeness is healthy, lower fusion_min_num_pixels.
+    see_also: tuning.md#nothing-survives-the-filters
