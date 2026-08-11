@@ -551,6 +551,33 @@ which blocks starting work.
    [scene-analysis.md](scene-analysis.md#open-question). Low-stakes; affects only
    what it costs to revise a threshold.
 
+### Parked idea: a weights cache keyed on (module, weights, scene)
+
+**Not implemented. Recorded so it can be reached for if it becomes a bottleneck.**
+
+Artifact ids are derived from the RECIPE — module, version, slot, params, inputs —
+which is what makes caching correct: the same recipe is the same artifact. It also
+means two different modules share nothing, even when they run the same network
+over the same images.
+
+That is the price of one-role-per-module, and it is paid most visibly by the
+feed-forward models. `PoseVGGT`, `SparseVGGT` and `DenseVGGT` each run a full VGGT
+forward pass over the scene; the second and third recompute what the first already
+had. The same applies to any pair of modules sharing a backbone.
+
+**The fix, if needed:** a second cache layer INSIDE the module, keyed on
+`(module_family, weights_hash, scene_id)` and holding the raw network output
+rather than an artifact. The three VGGT modules would declare the same family and
+the second run would find the tensors already computed. Storage is at a different
+level from the artifact store, which stays recipe-addressed and unchanged.
+
+**Why not now:** it adds a second notion of identity to a system whose single
+notion of identity is its main simplification, and the cost it removes has not
+been measured. Merging the modules to avoid the recompute would be the wrong
+trade -- it is exactly the fixed-pipeline coupling this architecture exists to
+remove, and `SparseVGGT` in particular must be able to accept tracks and poses
+from other modules, which a merged module cannot.
+
 ## Build order
 
 1. `sfmkit` — artifact I/O, manifest, schema validation, metrics, server harness.
