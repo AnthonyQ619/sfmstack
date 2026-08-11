@@ -28,6 +28,11 @@ Measured here: at 1024 px, `merge_eps_px: 4.0` gives `inconsistent_rate` 0.20 an
 precise enough that 2–3 px is the right neighbourhood, unlike LoFTR where 1.5 px
 was too tight.
 
+**This asymmetry is a property of the module and is fine.** A tolerance carried
+over from LoFTR over-merges here; one carried from here under-merges there. The
+tolerance belongs to the matcher/resolution pair and has to be set per stack —
+[tuning.md](tuning.md#the-tracker-tolerance-this-module-needs) has the table.
+
 ## The compiled kernel is not installed
 
 `use_custom_corr` needs a CUDA extension the authors ship separately and pip does

@@ -60,7 +60,15 @@ sfmstack/runtime-torch    5.8 GB   torch cu124 + git
 
 ```
 sfmstack/runtime-kornia          + kornia + LoFTR weights
+sfmstack/runtime-superglue       + upstream SuperGlue clone (research licence)
+sfmstack/runtime-roma            + romatch + both weight sets
+sfmstack/runtime-roma-fused      + the fused local-corr kernel, on torch 2.11/CUDA 13
 ```
+
+`runtime-roma-fused` is the clearest case for one-image-per-module so far. RoMa's
+fused correlation kernel is a wheel built against CUDA 13, so taking it means
+torch 2.6.0+cu124 → 2.11.0 for that module. It buys 40% of peak GPU memory and 3%
+of runtime, and nothing else in the repository has to move to get it.
 
 Fourteen module images cost four bases plus a few MB of unique layer each. That
 sharing is what makes strict one-image-per-module affordable — and kornia is

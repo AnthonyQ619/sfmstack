@@ -26,10 +26,13 @@ pose estimator: **8/8 registered at 0.33 px**.
 
 **Two things to know before using it:**
 
-1. **No `feature_index`.** Each pair is matched independently, so a physical point
-   has a different sub-pixel position in every pair. The tracker merges by
-   proximity, and `merge_eps_px` decides whether tracks chain at all —
-   see [limitations.md](limitations.md#no-feature_index).
+1. **No `feature_index`, and RoMa wants a TIGHTER `merge_eps_px` than LoFTR.**
+   Each pair is matched independently, so a physical point has a different
+   sub-pixel position in every pair and the tracker merges by proximity. The
+   tolerance that works is *specific to this module*: at 1024 px, 4 px is already
+   over-merged (`inconsistent_rate` 0.20, `merge_headroom` −0.21) where LoFTR at
+   1.5 px was under-merged. **Start at 2–3 px for RoMa**, and see
+   [tuning.md](tuning.md#the-tracker-tolerance-this-module-needs).
 2. **`use_custom_corr` is off by default.** RoMa's fast local-correlation kernel
    is a compiled CUDA extension pip does not install. With it missing, the model
    *builds* and then raises on the first forward pass. The default here is the

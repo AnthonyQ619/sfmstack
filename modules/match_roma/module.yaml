@@ -95,11 +95,14 @@ params:
       Use RoMa's compiled `local_corr` CUDA extension instead of the pure-torch
       fallback. Requires the extension to be present in the image.
     tuning: >
-      Off, unless you have built the extension. It is not a pip dependency: with it
-      absent the model constructs successfully and raises ModuleNotFoundError on the
-      first forward pass, so turning this on without it fails a job rather than a
-      build. The fallback is numerically equivalent and slower; the authors quote a
-      large speedup for the kernel, which this image does not yet carry.
+      Off in the default image, which does not carry the kernel. The kernel comes
+      from `pip install romatch[fused-local-corr]`; the sfmstack/runtime-roma-fused
+      base has it. Turning this on WITHOUT the kernel fails a job rather than a
+      build -- the model constructs and raises ModuleNotFoundError on the first
+      forward pass. Measured at 1024px on an A6000, the kernel is worth 3% of
+      runtime (0.64 vs 0.65 s/pair) and 40% of PEAK MEMORY (2.58 vs 4.26 GiB). Turn
+      it on for memory, not for speed: at higher resolution or on a smaller card the
+      fallback is what runs out of memory.
 
   pairing:
     type: string

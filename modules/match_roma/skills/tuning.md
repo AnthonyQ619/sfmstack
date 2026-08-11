@@ -13,6 +13,31 @@ compensates. See [limitations.md](limitations.md#no-feature_index).
 Then, in order: `graph_components`, `inlier_ratio`, `mean_certainty`,
 `matches_per_pair`.
 
+## The tracker tolerance this module needs
+
+**`merge_eps_px` is per-matcher, and RoMa's value is not LoFTR's.** This is the
+single most important thing to carry over from one detector-free matcher to the
+other, and it does not carry over.
+
+Measured on the same 8 DTU frames at 1024 px:
+
+| matcher | `merge_eps_px` | `inconsistent_rate` | `merge_headroom` | reading |
+|---|---:|---:|---:|---|
+| LoFTR (640 px) | 1.5 | 0.002 | +0.211 | under-merged; tracks never chain |
+| RoMa (1024 px) | 4.0 | 0.196 | −0.207 | **over-merged**; distinct points fused |
+
+RoMa's dense field is precise enough that a *narrower* merge is correct. Both runs
+above still reconstructed — the RoMa one registered 8/8 at 0.33 px while
+over-merging — which is exactly why this is worth checking rather than inferring
+from the final error.
+
+**This is expected behaviour for this module, not a defect.** A more accurate
+matcher needs a tighter merge, and the two metrics disagreeing in opposite
+directions across the two matchers is the system working. Start RoMa at **2–3 px**
+for a 1024 px working resolution and scale with the resize; read `merge_headroom`
+and `inconsistent_rate` together, since each is blind to the error the other
+catches.
+
 ## Reference run
 
 DTU scan1, 8 contiguous images, `max_edge: 1024`, `pairing: sequential`,
