@@ -1,0 +1,165 @@
+name: PoseVGGT
+version: 1.0.0
+kind: pose
+summary: >
+  Feed-forward camera poses and intrinsics from images alone, via VGGT's camera
+  head. No correspondences, no tracks, no seed pair. GPU required.
+
+description: |
+  The learned alternative to incremental SfM. VGGT is a transformer that attends
+  across the whole image set at once and reads camera parameters straight off the
+  aggregated tokens. There is no matching, no triangulation and no registration
+  order, so none of the classical failure modes apply: it cannot stall on an
+  unregisterable frame, and a textureless scene is not a special case.
+
+  It consumes `scene/v1` and nothing else. **It also estimates intrinsics**, and
+  writes them into the artifact — for an uncalibrated scene that is the whole
+  point, and it is why the classical pose estimator names this module when it
+  refuses one.
+
+  This module fills `poses/v1` and only `poses/v1`. VGGT's forward pass also
+  produces point maps and depth, and those belong to `SparseVGGT` and `DenseVGGT`
+  — separate modules, because a module that emitted all three could only ever be
+  swapped for another module emitting all three, and `SparseVGGT` in particular
+  has to be able to take tracks and poses from anywhere. The three each run their
+  own forward pass; that recompute is the accepted cost.
+
+  **What it gives up:** every per-image diagnostic the classical estimator has.
+  There is no seed pair to inspect, no inlier count, no `min_pnp_inliers` to
+  relax. `mean_reprojection_error` is null because there are no correspondences to
+  measure against — the null is informative and is not faked.
+
+  Accuracy is initialisation-grade rather than final. Follow it with
+  `SparseTriangulation` and `BundleAdjustmentGlobal` when precision matters.
+
+image: sfmstack/pose-vggt:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 24
+  # Hint for ~20 images. Cost is one forward pass over the whole set, so it grows
+  # with image count rather than with pair count -- unlike everything classical.
+  expected_duration_s: 60
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  poses: {type: poses/v1}
+
+params:
+  max_images_per_pass:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 1000
+    description: >
+      Split the set into chunks of this many images. 0 runs the whole set in one
+      pass, which is what makes the poses globally consistent.
+    tuning: >
+      Leave at 0 unless the set does not fit in GPU memory. Attention is quadratic
+      in image count, so a 200-image set can exceed 48 GB. Chunking is NOT free and
+      is not a transparent optimisation: each chunk gets its own world frame and
+      its own scale, and this module does not stitch them -- it reports
+      `chunks` above 1 and marks the seam, and the poses across chunks are not
+      comparable. Prefer sampling fewer images.
+
+  dtype:
+    type: string
+    default: bfloat16
+    enum: [bfloat16, float16, float32]
+    description: Autocast dtype for the forward pass.
+    tuning: >
+      bfloat16 on Ampere and later, which is what the model was trained and
+      released with. float16 saves nothing over bfloat16 and has a narrower range;
+      float32 roughly doubles memory for no measurable accuracy gain. Change this
+      only if the card predates bfloat16 support.
+
+metrics:
+  registered_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: >
+      Fraction of images given a pose. VGGT poses every image it is shown, so
+      anything below 1.0 means images were dropped before the forward pass, not
+      that registration failed.
+
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: Absolute count of posed cameras.
+
+  mean_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Always null here. This module has no correspondences to measure against, and
+      a number invented from its own point maps would report how self-consistent
+      the network is, not how accurate the poses are. Triangulate against these
+      poses and read the triangulator's error instead.
+
+  median_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: Always null, for the same reason as the mean.
+
+  median_camera_separation:
+    direction: neutral
+    meaning: >
+      Median distance between camera centres, in the model's own arbitrary scale
+      unit. Not accuracy -- it is the number that says what the scale unit MEANS
+      for anything downstream that takes a distance, notably
+      SparseTriangulationGTSAM's max_landmark_distance.
+
+  baseline_span:
+    direction: higher_better
+    healthy: [0.1, null]
+    meaning: >
+      Largest camera-centre separation over the median one. Near 1 means every
+      camera sits at nearly the same distance from its neighbours -- a turntable.
+      Near 0 means the cameras are nearly coincident and no triangulation against
+      these poses will condition well.
+
+  estimated_focal_ratio:
+    direction: neutral
+    nullable: true
+    meaning: >
+      Estimated focal length over the scene's calibrated focal length, averaged
+      over images. Null on an uncalibrated scene, where there is nothing to compare
+      against. Far from 1.0 on a CALIBRATED scene is the single most useful
+      warning this module produces: the two disagree, and the poses were computed
+      with the estimate.
+
+  chunks:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Forward passes the set was split into. Above 1, poses in different chunks
+      are in different world frames at different scales and are not comparable.
+
+diagnostics:
+  - code: intrinsics_disagree
+    severity: warn
+    message: The estimated focal length differs substantially from the scene's calibration.
+    suggested_actions:
+      - Trust the calibration and use PoseEssentialToPnP instead.
+      - Or trust VGGT and note that downstream modules will read ITS intrinsics.
+      - Check the scene's calibration was scaled to the working resolution.
+    see_also: artifact.md#it-writes-its-own-intrinsics
+
+  - code: chunked
+    severity: error
+    message: The set was split across forward passes; the poses are not in one frame.
+    suggested_actions:
+      - Set max_images_per_pass to 0 and sample fewer images instead.
+      - Or reconstruct each chunk as its own scene.
+    see_also: limitations.md#chunking-does-not-stitch
+
+  - code: degenerate_baseline
+    severity: warn
+    message: The cameras are nearly coincident.
+    suggested_actions:
+      - Check the capture actually has translation, not just rotation.
+      - Nothing triangulated against these poses will condition well.
+    see_also: limitations.md#what-it-cannot-tell-you
