@@ -755,3 +755,71 @@ needs a global keypoint table and is therefore null for detector-free matchers.
 Both are per-matcher work rather than a contract edit, and adding them to the
 contract before implementing them in five matchers would be a promise the modules
 do not keep.
+
+## 2026-08-11 — A silent preprocessing bug in PoseVGGT, and the metric that caught it
+
+Worth recording in full because nothing raised, the output looked complete, and
+the only evidence was a metric added for an unrelated reason.
+
+### What the code did
+
+VGGT takes a fixed 518x518 input. `load_batch` resized each image with
+`F.interpolate(tensor, size=(518, 518))` — an **anisotropic squeeze**. DTU at
+`max_edge: 1024` is 1024x768, so width scaled by 518/1024 = 0.506 and height by
+518/768 = 0.674. Different factors per axis. To undo it, the returned K was scaled
+per axis: `K[0,:] *= 1024/518`, `K[1,:] *= 768/518`.
+
+### Why it is wrong
+
+VGGT predicts a SINGLE focal length — it assumes square pixels, `fx == fy` — and
+has no way to know the aspect ratio was changed before it saw the image. It
+returned `fx ≈ fy` in the 518-square, and multiplying the two rows of K by
+different numbers manufactured an anisotropy that was never in the camera:
+
+```
+VGGT K as written:  fx 2837.0  fy 2136.2   fx/fy = 1.329
+DTU calibration:    fx 1856.1  fy 1850.0   fx/fy = 1.003
+                                            1.329 = 1024/768 exactly
+```
+
+### How it surfaced
+
+Nothing raised. All 12 images were posed, `registered_fraction` 1.0, the artifact
+validated. The only signal was `estimated_focal_ratio` = **1.48**, firing the
+`intrinsics_disagree` diagnostic — and it read as "VGGT disagrees with DTU's
+calibration" rather than "this module mangled its input".
+
+That metric exists because a feed-forward pose module has no reprojection error of
+its own: `mean_reprojection_error` is null by construction, so something else had
+to be comparable against a known quantity. **It was added to satisfy the metric
+contract and it caught a bug in the module reporting it.** That is the strongest
+argument for the contract in this repository so far — the requirement to be
+comparable forced a measurement that would otherwise not have existed.
+
+### The fix
+
+Letterbox instead of squeeze, matching upstream's
+`load_and_preprocess_images(mode="pad")`: aspect preserved, long side 518, short
+side padded WHITE (upstream's value — black reads as scene content the aggregator
+attends to). One scale inverts it and the pad offset comes out of the principal
+point, so `fx == fy` survives.
+
+| | anisotropic squeeze | letterbox |
+|---|---:|---:|
+| `estimated_focal_ratio` | 1.48 | **1.095** |
+| points triangulated | 1315 | **5899** |
+| reprojection error | 1.943 px | **1.051 px** |
+| `yield` | 0.187 | **0.841** |
+
+4.5x the points at half the error, from fixing preprocessing alone. The residual
+9.5% focal difference is a genuine model/calibration disagreement and no longer
+trips the warning band.
+
+### The general lesson
+
+**A fixed-resolution model has a preprocessing convention, and getting it wrong
+degrades results without raising anything.** Every feed-forward module here —
+VGGT's three, MapAnything, VGGSfM, Tapir — has one, and each needs a metric
+comparing its estimate against something independently known. Where a module
+estimates intrinsics and the scene has calibration, that comparison is free and
+should always be reported.
