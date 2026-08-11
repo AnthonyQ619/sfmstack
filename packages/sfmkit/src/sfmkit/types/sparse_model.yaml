@@ -130,3 +130,11 @@ metrics:
       Mean pixel error at working resolution. Null only for a producer with no
       observation set of its own. Not comparable between models with different
       camera counts.
+
+  registered_images:
+    direction: higher_better
+    meaning: >
+      Cameras carrying a valid pose in this model. The predecessor's "Num Camera
+      Poses", and the metric that catches a reconstruction which stalled: error can
+      IMPROVE as cameras drop out, because a smaller model is an easier one, so
+      point_count and error are never comparable across differing counts.

@@ -165,6 +165,14 @@ metrics:
       Mean pixel error after the solve, at working resolution. The same number as
       reprojection_error_after, under the name every sparse_model/v1 producer uses.
 
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: >
+      Cameras carrying a valid pose in this model. Required by sparse_model/v1:
+      point_count and reprojection error are not comparable between models with
+      different camera counts, and this is what says whether they are.
+
 diagnostics:
   - code: window_covers_model
     severity: info

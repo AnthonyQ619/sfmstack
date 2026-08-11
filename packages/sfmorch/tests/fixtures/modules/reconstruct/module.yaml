@@ -41,6 +41,10 @@ metrics:
     direction: higher_better
     healthy: [2.5, null]
     meaning: Observations per point.
+  registered_images:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: Cameras carrying a valid pose in this model.
 
 diagnostics:
   - code: too_few_points

@@ -81,3 +81,12 @@ metrics:
       Mean pixel error at working resolution over whatever observations the module
       used. Null for feed-forward estimators, which have no correspondences to
       measure against -- that null is informative and must not be faked.
+
+  median_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Median pixel error, beside the mean. The predecessor reported both and the
+      pair is what separates "a few bad observations" from "everything is off":
+      mean much larger than median is outliers, the two together is a systematic
+      problem. Null wherever mean_reprojection_error is null.

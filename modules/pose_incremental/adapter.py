@@ -617,6 +617,9 @@ def run(ctx: Ctx):
 
     frac = len(registered) / n_images
     mean_err = float(np.mean(errors)) if errors else float("nan")
+    # The mean/median pair separates a few bad observations from a systematically
+    # wrong model: mean well above median is outliers, the two together is neither.
+    median_err = float(np.median(errors)) if errors else float("nan")
     median_angle = float(np.median(angles_final)) if angles_final else 0.0
     utilisation = len(rec.points) / max(n_tracks_in, 1)
 
@@ -627,6 +630,8 @@ def run(ctx: Ctx):
     out.metric("points_triangulated", len(rec.points),
                direction="higher_better", healthy=(100, None))
     out.metric("mean_reprojection_error", round(mean_err, 3) if errors else None,
+               direction="lower_better", healthy=(None, 2.0))
+    out.metric("median_reprojection_error", round(median_err, 3) if errors else None,
                direction="lower_better", healthy=(None, 2.0))
     out.metric("median_triangulation_angle", round(median_angle, 2),
                direction="higher_better", healthy=(3.0, None))

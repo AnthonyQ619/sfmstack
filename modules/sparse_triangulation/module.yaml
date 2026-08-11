@@ -123,6 +123,14 @@ metrics:
       the signature of a wrong pose, not of a bad threshold -- no filter setting
       fixes it.
 
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: >
+      Cameras carrying a valid pose in this model. Required by sparse_model/v1:
+      point_count and reprojection error are not comparable between models with
+      different camera counts, and this is what says whether they are.
+
 diagnostics:
   - code: no_points
     severity: error

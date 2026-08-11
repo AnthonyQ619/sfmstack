@@ -70,6 +70,13 @@ def build_tracks(ctx: Ctx):
     out.metric("min_frame_observations", 4, direction="higher_better", healthy=(4, None))
     out.metric("frames_covered", 1.0, direction="higher_better", healthy=(1.0, None))
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.05))
+    out.metric("max_track_length", n_images, direction="neutral")
+    out.metric("median_track_length", float(n_images),
+               direction="higher_better", healthy=(3.0, None))
+    out.metric("track_survival_5", 1.0 if n_images >= 5 else 0.0,
+               direction="higher_better", healthy=(0.0, None))
+    out.metric("track_survival_10", 1.0 if n_images >= 10 else 0.0,
+               direction="higher_better", healthy=(0.0, None))
     if n_images < min_len:
         out.diagnostic(
             "too_few_views",

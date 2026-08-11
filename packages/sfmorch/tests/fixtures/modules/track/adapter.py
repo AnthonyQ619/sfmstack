@@ -89,6 +89,16 @@ def run(ctx: Ctx):
     # Observations are collected into a per-frame dict, so a second observation in
     # one frame overwrites rather than conflicting -- structurally zero here.
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.05))
+    out.metric("max_track_length", max(lengths) if lengths else 0, direction="neutral")
+    out.metric(
+        "median_track_length", float(np.median(lengths)) if lengths else 0.0,
+        direction="higher_better", healthy=(3.0, None),
+    )
+    for views, name in ((5, "track_survival_5"), (10, "track_survival_10")):
+        out.metric(
+            name, sum(1 for n in lengths if n >= views) / len(lengths) if lengths else 0.0,
+            direction="higher_better", healthy=(0.0, None),
+        )
 
     if track_id < 10:
         out.diagnostic(

@@ -54,6 +54,7 @@ def run(ctx: Ctx):
     )
     # The sparse_model/v1 contract.
     out.metric("point_count", len(xyz), direction="higher_better", healthy=(10, None))
+    out.metric("registered_images", n_images, direction="higher_better", healthy=(2, None))
     out.metric(
         "observation_count", len(observations),
         direction="higher_better", healthy=(20, None),

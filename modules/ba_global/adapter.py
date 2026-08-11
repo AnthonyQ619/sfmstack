@@ -287,6 +287,8 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(2.5, None))
     out.metric("mean_reprojection_error", round(error_after, 4),
                direction="lower_better", healthy=(None, 1.0))
+    out.metric("registered_images", int(np.asarray(valid, dtype=bool).sum()),
+               direction="higher_better", healthy=(3, None))
 
     if not converged:
         out.diagnostic(

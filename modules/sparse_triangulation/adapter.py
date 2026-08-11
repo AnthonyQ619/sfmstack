@@ -251,6 +251,8 @@ def run(ctx: Ctx):
     out.metric("median_triangulation_angle", round(median_angle, 2),
                direction="higher_better", healthy=(3.0, None))
     out.metric("yield", round(yield_, 3), direction="higher_better", healthy=(0.3, None))
+    out.metric("registered_images", int(np.asarray(valid, dtype=bool).sum()),
+               direction="higher_better", healthy=(3, None))
     out.metric("rejected_cheirality", round(cheirality_rate, 4),
                direction="lower_better", healthy=(None, 0.05))
 

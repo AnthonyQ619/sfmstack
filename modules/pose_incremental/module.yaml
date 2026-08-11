@@ -302,6 +302,14 @@ metrics:
       local_ba_robust_loss on, because Ceres is minimising the robust cost and this
       metric reports the raw mean.
 
+  median_reprojection_error:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: >
+      Median pixel error beside the mean. Mean well above median means a few bad
+      observations; the two together means a systematic problem. Null when
+      local_ba never ran and no observations were measured.
+
 diagnostics:
   - code: uncalibrated_scene
     severity: error

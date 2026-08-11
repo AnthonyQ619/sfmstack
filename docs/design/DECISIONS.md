@@ -711,3 +711,47 @@ not — different modules have different recipe ids. That cost is accepted.
 pose block of `sparse_model/v1` because the TYPE requires it, not because the
 module is doing two jobs. The test is what the output type declares, not what the
 implementation happens to compute.
+
+## The predecessor's metrics as the contract baseline
+
+Asked directly: use the scene_agent metric set as the baseline for the type
+contracts, and keep anything uncommon at the module level.
+
+What the audit found, per stage:
+
+| stage | predecessor reported | in the contract now |
+|---|---|---|
+| matching | Average Corresponding Features; mean + median Inlier Yield per Frame; Repeatability; GRIC-F; GRIC-H | `matches_per_pair`, `inlier_ratio`, + 5 more |
+| tracking | avg / max / median track length; survival ≥3, ≥5, ≥10; Fragmentation; Obs. per Track | all of them except two — see below |
+| pose | Number of Camera Poses; Average Reprojection Error per Frame; Average Median Reprojection Error per Frame | `registered_images`, `mean_` + `median_reprojection_error` |
+| sparse | **nothing** | `point_count`, `observation_count`, `mean_track_length`, `mean_reprojection_error`, `registered_images` |
+
+**The sparse stage had no metrics at all.** `SparseSceneEstimation` sets
+`use_base_metrics = True` and registers no providers, so a sparse reconstruction
+reported nothing. The closest thing was the OPTIMIZER base, which reported
+"Num Points3D" and "Num Camera Poses" — those two are now `point_count` and
+`registered_images`, and `registered_images` was a genuine gap here: three of the
+five sparse producers were not reporting how many cameras their model contained,
+which is the number that says whether the other metrics are comparable at all.
+
+**Added from the predecessor's tracking set:** `median_track_length`,
+`track_survival_5`, `track_survival_10`. The mean/median pair matters — a mean well
+above the median is a few very long tracks carrying the average, which reads as a
+healthy tracker and is not one.
+
+**Deliberately not adopted:** "Fragmentation" (tracks per observation) and
+"Obs. per Track". The second is `avg_track_length` under another name and the
+first is its exact reciprocal. Three names for one measurement is worse than one,
+because a reader comparing two modules has to work out that they agree.
+
+**Added from the predecessor's pose set:** `median_reprojection_error`, for the
+same mean/median reason.
+
+**Not yet adopted, and worth saying so plainly:** the matching stage's
+`Repeatability` and the `GRIC-F` / `GRIC-H` pair. `planarity` is the successor to
+the GRIC pair and is cruder — GRIC is a proper model-selection score that accounts
+for model complexity, where `planarity` is an inlier-count ratio. Repeatability
+needs a global keypoint table and is therefore null for detector-free matchers.
+Both are per-matcher work rather than a contract edit, and adding them to the
+contract before implementing them in five matchers would be a promise the modules
+do not keep.

@@ -87,3 +87,36 @@ metrics:
       Fraction of tracks observed twice in the same image, i.e. built from
       contradictory correspondences. Detects OVER-merging only; it is structurally
       blind to one physical point being split across several tracks.
+
+  max_track_length:
+    direction: neutral
+    meaning: >
+      Longest surviving track. Approaching the image count on a sequential capture
+      usually means real loop closure; exceeding what the view graph can support
+      means over-merging.
+
+  median_track_length:
+    direction: higher_better
+    meaning: >
+      Median observations per track, beside the mean. The pair separates "a few
+      very long tracks" from "uniformly long tracks", and a mean well above the
+      median is the signature of the former -- which reads as a healthy tracker
+      and is not one.
+
+  track_survival_5:
+    direction: higher_better
+    meaning: >
+      Fraction of tracks seen in 5+ views. The survival curve at its second point;
+      long_track_fraction is the same measurement at 3.
+
+  track_survival_10:
+    direction: higher_better
+    meaning: >
+      Fraction of tracks seen in 10+ views. Necessarily 0 on a set of fewer than 10
+      images, which is a fact about the capture rather than the tracker.
+
+# Deliberately NOT required, though the predecessor reported them: "Fragmentation"
+# (tracks per observation) and "Obs. per Track". The second is avg_track_length
+# under another name and the first is its exact reciprocal, so requiring them adds
+# two numbers and no information -- and three names for one measurement is worse
+# than one, because a reader comparing two modules has to work out they agree.

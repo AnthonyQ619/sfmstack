@@ -341,6 +341,12 @@ def run(ctx: Ctx):
     avg_len = float(final_lengths.mean())
     long_fraction = float(np.mean(final_lengths >= 3))
     max_len = int(final_lengths.max())
+    # The survival curve the predecessor reported, at 3/5/10 views. Its
+    # "Fragmentation" and "Obs. per Track" are deliberately absent: the second is
+    # avg_track_length renamed and the first is its exact reciprocal.
+    median_len = float(np.median(final_lengths))
+    survival_5 = float(np.mean(final_lengths >= 5))
+    survival_10 = float(np.mean(final_lengths >= 10))
     min_frame_obs = int(per_frame.min())
     frames_covered = float(np.mean(per_frame > 0))
 
@@ -351,6 +357,12 @@ def run(ctx: Ctx):
     out.metric("long_track_fraction", round(long_fraction, 3),
                direction="higher_better", healthy=(0.3, None))
     out.metric("max_track_length", max_len, direction="neutral")
+    out.metric("median_track_length", round(median_len, 2),
+               direction="higher_better", healthy=(3.0, None))
+    out.metric("track_survival_5", round(survival_5, 3),
+               direction="higher_better", healthy=(0.1, None))
+    out.metric("track_survival_10", round(survival_10, 3),
+               direction="higher_better", healthy=(0.0, None))
     out.metric("min_frame_observations", min_frame_obs,
                direction="higher_better", healthy=(50, None))
     out.metric("frames_covered", round(frames_covered, 3),
