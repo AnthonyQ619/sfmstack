@@ -1,0 +1,180 @@
+name: DenseVGGT
+version: 1.0.0
+kind: dense
+summary: >
+  Dense point cloud from VGGT's per-pixel depth, unprojected with the SUPPLIED
+  poses. Optional tracks input resolves the depth scale. GPU required.
+
+description: |
+  Every pixel of every posed view, placed with the cameras you give it. Same
+  frame-agnostic design as `SparseVGGT`: depth is per-view, so unprojecting it
+  with the supplied K and pose lands in the supplied world frame whatever produced
+  that pose.
+
+  **The scale is the thing this module cannot measure by itself.** It has no
+  correspondences, so nothing relates VGGT's depth unit to the poses' unit. Pass a
+  `tracks/v1` input and the scale is estimated from it exactly as `SparseVGGT`
+  does, and reported with its spread. Without one, the scale is the `depth_scale`
+  parameter, whose default of 1.0 is correct only when the poses came from VGGT
+  too — and getting it wrong does not fail, it produces a correctly-shaped cloud
+  at the wrong size in front of cameras at the wrong distance. The module says
+  which case it is in.
+
+  It is not MVS. There is no photometric consistency check and no cross-view
+  fusion — every view contributes its own points independently, so a surface seen
+  from four views appears four times. That is cheap and complete where MVS is
+  expensive and precise, and the right tool depends on which you need.
+
+image: sfmstack/dense-vggt:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 24
+  expected_duration_s: 120
+  timeout_s: 7200
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  poses: {type: poses/v1, required: true}
+  tracks: {type: tracks/v1, required: false}
+
+produces:
+  dense: {type: dense_model/v1}
+
+params:
+  stride:
+    type: integer
+    default: 2
+    minimum: 1
+    maximum: 32
+    description: Unproject every Nth pixel of the 518-square, in both axes.
+    tuning: >
+      The size dial, and it is quadratic: stride 2 is a quarter the points of
+      stride 1. 1 gives ~268k points per view before filtering, which is more than
+      most consumers want and is dominated by redundancy between overlapping views
+      rather than by detail. Raise to 4 for a quick look, drop to 1 only when the
+      cloud is the deliverable.
+
+  min_confidence:
+    type: number
+    default: 1.0
+    minimum: 0.0
+    maximum: 100.0
+    description: Reject pixels whose depth confidence is below this.
+    tuning: >
+      VGGT's confidence is UNBOUNDED above and centred near 1 on data it handles
+      well -- it is not a 0-1 probability, and a threshold set as if it were
+      rejects everything. 1.0 removes roughly the worse half. Read
+      mean_depth_confidence from a run before changing it, and raise it rather than
+      lowering stride when the cloud is noisy: this filters on the model's own
+      uncertainty, where stride just samples less of the same noise.
+
+  depth_scale:
+    type: number
+    default: 1.0
+    minimum: 0.000001
+    maximum: 1000000.0
+    description: >
+      Scalar relating VGGT's depth unit to the supplied poses' unit. IGNORED when
+      a tracks input is given, which is the way to get it measured.
+    tuning: >
+      1.0 is correct only when the poses came from VGGT. With any other pose source
+      and no tracks, this is a guess, and a wrong one is invisible in every metric
+      -- the cloud is correctly shaped and wrongly sized. Pass tracks instead of
+      tuning this.
+
+  min_scale_samples:
+    type: integer
+    default: 20
+    minimum: 2
+    maximum: 10000
+    description: Tracks needed before an estimated scale is used instead of the parameter.
+
+  dtype:
+    type: string
+    default: bfloat16
+    enum: [bfloat16, float16, float32]
+    description: Autocast dtype for the forward pass.
+
+  max_images_per_pass:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 1000
+    description: Split inference into chunks of this many images. 0 runs one pass.
+    tuning: >
+      Safe here as in SparseVGGT: depth is per-view, so chunking changes what the
+      model attends to but not the frame the output lands in.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [10000, null]
+    meaning: >
+      Points in the cloud after filtering. Governed as much by `stride` as by the
+      scene, so read the parameter beside it.
+
+  views_contributing:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: >
+      Views that contributed at least one surviving point. Below the posed count,
+      some view's depth was rejected wholesale -- usually min_confidence.
+
+  mean_depth_confidence:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: >
+      Mean of VGGT's own confidence over surviving points. Unbounded above,
+      centred near 1 on data it handles well, self-reported and not comparable to
+      any other method's confidence.
+
+  depth_scale:
+    direction: neutral
+    meaning: >
+      The scalar applied to VGGT's depth. Not quality. Whether it was measured or
+      assumed is the important part, and the scale_unverified diagnostic says so.
+
+  depth_scale_spread:
+    direction: lower_better
+    healthy: [null, 0.25]
+    nullable: true
+    meaning: >
+      Robust coefficient of variation of the depth/pose ratio across tracks. Null
+      when no tracks were supplied -- which is exactly the case where the scale is
+      unverified, so a null here is a warning rather than an absence.
+
+  scale_samples:
+    direction: higher_better
+    meaning: Tracks that supported the scale estimate. 0 when the parameter was used.
+
+  points_per_view:
+    direction: neutral
+    meaning: >
+      Mean surviving points per contributing view. The cloud is per-view and
+      unfused, so this times views_contributing is point_count by construction.
+
+diagnostics:
+  - code: no_points
+    severity: error
+    message: No pixel survived the confidence filter.
+    suggested_actions:
+      - Lower min_confidence; VGGT's confidence is not a 0-1 probability.
+      - Check the pose artifact has valid poses at all.
+    see_also: tuning.md#nothing-survives
+
+  - code: scale_unverified
+    severity: warn
+    message: The depth scale was assumed, not measured.
+    suggested_actions:
+      - Pass a tracks/v1 input so the scale is estimated and reported.
+      - The default 1.0 is correct ONLY when the poses came from VGGT too.
+    see_also: limitations.md#the-scale-it-cannot-measure-alone
+
+  - code: depth_scale_inconsistent
+    severity: warn
+    message: The depth/pose scale ratio varies substantially across tracks.
+    suggested_actions:
+      - Use PoseVGGT so depth and poses come from the same model.
+      - Check the pose estimator's mean_reprojection_error.
+    see_also: limitations.md#the-scale-it-cannot-measure-alone
