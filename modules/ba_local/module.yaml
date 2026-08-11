@@ -139,6 +139,32 @@ metrics:
     healthy: [1, null]
     meaning: 1 when Ceres reported CONVERGENCE, 0 otherwise.
 
+  point_count:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: >
+      Surviving 3D points. Required by sparse_model/v1: it describes the artifact,
+      where the before/after pair describes this module's own work.
+
+  observation_count:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Total 2D observations across all points.
+
+  mean_track_length:
+    direction: higher_better
+    healthy: [2.5, null]
+    meaning: >
+      Observations per point. At 2.0 nothing is multi-view constrained, which is
+      the condition under which bundle adjustment has least to work with.
+
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 1.0]
+    meaning: >
+      Mean pixel error after the solve, at working resolution. The same number as
+      reprojection_error_after, under the name every sparse_model/v1 producer uses.
+
 diagnostics:
   - code: window_covers_model
     severity: info

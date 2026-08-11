@@ -26,4 +26,6 @@ def run(ctx: Ctx):
         )
 
     out.metric("n_images", n, direction="neutral")
+    out.metric("megapixels", 800 * 600 / 1e6, direction="neutral")
+    out.metric("mixed_resolution", 0, direction="neutral")
     out.note(f"Synthetic scene with {n} images.")

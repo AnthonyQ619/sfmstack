@@ -66,6 +66,30 @@ def run(ctx: Ctx):
         "avg_track_length", avg_len, direction="higher_better", healthy=(3.0, None)
     )
 
+    # The tracks/v1 contract, computed from the observation table that was just
+    # written -- the same source a consumer would recompute them from.
+    lengths = [len(o) for o in groups.values() if len(o) >= min_len]
+    frames = [int(r[1]) for r in rows]
+    n_images = int(image_pair.max()) + 1 if len(image_pair) else 0
+    per_frame = [frames.count(f) for f in range(n_images)]
+    out.metric(
+        "long_track_fraction",
+        sum(1 for n in lengths if n >= 3) / len(lengths) if lengths else 0.0,
+        direction="higher_better", healthy=(0.3, None),
+    )
+    out.metric(
+        "min_frame_observations", min(per_frame) if per_frame else 0,
+        direction="higher_better", healthy=(4, None),
+    )
+    out.metric(
+        "frames_covered",
+        sum(1 for n in per_frame if n) / n_images if n_images else 0.0,
+        direction="higher_better", healthy=(1.0, None),
+    )
+    # Observations are collected into a per-frame dict, so a second observation in
+    # one frame overwrites rather than conflicting -- structurally zero here.
+    out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.05))
+
     if track_id < 10:
         out.diagnostic(
             "too_few_tracks",

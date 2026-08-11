@@ -27,4 +27,11 @@ def run(ctx: Ctx):
     out.metric(
         "keypoints_per_image", float(k), direction="higher_better", healthy=(8, None)
     )
+    # The features/v1 contract. Every image gets the same grid, so the weakest
+    # frame is the mean and coverage is whatever fraction of the grid k fills.
+    out.metric("keypoints_min", float(k), direction="higher_better", healthy=(8, None))
+    out.metric(
+        "spatial_coverage", min(1.0, k / 16.0),
+        direction="higher_better", healthy=(0.35, None),
+    )
     out.note(f"{k} keypoints in each of {n_images} images.")

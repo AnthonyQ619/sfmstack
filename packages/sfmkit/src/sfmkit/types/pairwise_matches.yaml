@@ -59,3 +59,51 @@ invariants:
     args: {file: matches, array: xy}
   - check: values_within
     args: {file: matches, array: pair_index, minimum: 0}
+
+# Required of every matcher. These describe the VIEW GRAPH and its quality, which
+# is what makes a brute-force matcher, an approximate one, a learned one and a
+# detector-free one comparable at this stage.
+metrics:
+  pairs_matched:
+    direction: higher_better
+    meaning: >
+      Pairs that survived min_matches. Read against the pairing policy: a
+      sequential window and an exhaustive sweep are not the same denominator.
+
+  matches_per_pair:
+    direction: higher_better
+    meaning: >
+      Mean surviving matches per kept pair. Rises when the matcher is permissive
+      as readily as when it is good, so never read it without inlier_ratio.
+
+  min_matches_per_pair:
+    direction: higher_better
+    meaning: >
+      The weakest kept pair. A pair at the floor is a hinge in the view graph and
+      the likeliest place for the reconstruction to break.
+
+  inlier_ratio:
+    direction: higher_better
+    meaning: >
+      Fraction of matches consistent with the estimated two-view geometry, over
+      kept pairs. The primary correctness signal of the stage.
+
+  graph_components:
+    direction: lower_better
+    meaning: >
+      Connected components of the view graph. Anything above 1 means images that
+      no track can ever link, and no downstream module can repair it.
+
+  largest_component_fraction:
+    direction: higher_better
+    meaning: >
+      Fraction of images in the biggest component. Says how bad a split is:
+      graph_components of 2 is one stray frame or two half-scenes.
+
+  planarity:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Homography inliers over fundamental inliers, averaged over pairs. Near 1
+      means the pair is planar or rotation-only and cannot give a baseline. Null
+      when the matcher was asked not to measure it.

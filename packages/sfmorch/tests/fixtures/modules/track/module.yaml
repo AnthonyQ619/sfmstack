@@ -32,6 +32,22 @@ metrics:
     direction: higher_better
     healthy: [3.0, null]
     meaning: Mean observations per track.
+  long_track_fraction:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: Fraction of tracks seen in 3+ views.
+  min_frame_observations:
+    direction: higher_better
+    healthy: [4, null]
+    meaning: Observations in the weakest frame.
+  frames_covered:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of frames carrying an observation.
+  inconsistent_rate:
+    direction: lower_better
+    healthy: [null, 0.05]
+    meaning: Tracks observed twice in one frame.
 
 diagnostics:
   - code: too_few_tracks

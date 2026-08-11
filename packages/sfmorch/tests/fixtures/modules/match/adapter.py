@@ -43,6 +43,37 @@ def run(ctx: Ctx):
     out.metric("inlier_yield", float(keep), direction="higher_better", healthy=(0.15, None))
     out.metric("matches_per_pair", per_pair, direction="higher_better", healthy=(8, None))
 
+    # The pairwise_matches/v1 contract. Consecutive pairing over n_images gives a
+    # single chain when every pair survives, and one component per gap when they
+    # do not -- computed rather than asserted, so a keep_ratio that drops pairs is
+    # visible here exactly as it would be in a real matcher.
+    kept = {tuple(p) for p in pair_list}
+    parent = list(range(n_images))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    for a, b in kept:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+    roots = [find(i) for i in range(n_images)]
+    sizes = {r: roots.count(r) for r in set(roots)}
+    out.metric("pairs_matched", len(pair_list), direction="higher_better", healthy=(1, None))
+    out.metric(
+        "min_matches_per_pair", min((len(r) for r in rows), default=0),
+        direction="higher_better", healthy=(8, None),
+    )
+    out.metric("inlier_ratio", float(keep), direction="higher_better", healthy=(0.5, None))
+    out.metric("graph_components", len(sizes), direction="lower_better", healthy=(None, 1))
+    out.metric(
+        "largest_component_fraction", max(sizes.values()) / n_images,
+        direction="higher_better", healthy=(1.0, None),
+    )
+    # Null, not zero: this fixture does not fit a homography, and reporting 0.0
+    # would claim it measured perfectly general geometry.
+    out.metric("planarity", None, direction="lower_better", healthy=(None, 0.7))
+
     if keep < 0.15:
         out.diagnostic(
             "weak_matching",

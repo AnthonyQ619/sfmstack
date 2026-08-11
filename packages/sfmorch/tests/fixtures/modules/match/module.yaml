@@ -33,6 +33,30 @@ metrics:
     direction: higher_better
     healthy: [8, null]
     meaning: Mean correspondences per image pair.
+  pairs_matched:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: Consecutive pairs that produced any correspondence.
+  min_matches_per_pair:
+    direction: higher_better
+    healthy: [8, null]
+    meaning: The weakest surviving pair.
+  inlier_ratio:
+    direction: higher_better
+    healthy: [0.5, null]
+    meaning: Fixture correspondences are exact, so this is keep_ratio by construction.
+  graph_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: Connected components of the consecutive-pair chain.
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of images in the biggest component.
+  planarity:
+    direction: lower_better
+    healthy: [null, 0.7]
+    meaning: Not measured by this fixture, which is what the null is for.
 
 diagnostics:
   - code: weak_matching

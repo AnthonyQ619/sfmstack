@@ -64,6 +64,7 @@ def test_the_surface_does_not_grow_with_the_module_count(server):
     mcp, service = server
     before = len(asyncio.run(mcp.list_tools()))
 
+    from conftest import contract_metrics
     from sfmorch import ModuleSpec
 
     for i in range(20):
@@ -71,6 +72,7 @@ def test_the_surface_does_not_grow_with_the_module_count(server):
             "name": f"Extra{i}",
             "version": "1.0.0",
             "produces": {"out": {"type": "tracks/v1"}},
+            "metrics": contract_metrics("tracks/v1"),
         }))
 
     assert len(asyncio.run(mcp.list_tools())) == before

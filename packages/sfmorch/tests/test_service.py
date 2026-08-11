@@ -215,6 +215,7 @@ def test_find_alternatives_resolves_a_capability_escape(service):
     )
     assert empty["matches"] == []
 
+    from conftest import contract_metrics
     from sfmorch import ModuleSpec
 
     service.registry.add(ModuleSpec.from_doc({
@@ -222,6 +223,7 @@ def test_find_alternatives_resolves_a_capability_escape(service):
         "version": "1.0.0",
         "consumes": {"scene": {"type": "scene/v1"}},
         "produces": {"tracks": {"type": "tracks/v1"}},
+        "metrics": contract_metrics("tracks/v1"),
     }))
     found = service.find_alternatives(
         produces="tracks/v1", not_consuming="pairwise_matches/v1"

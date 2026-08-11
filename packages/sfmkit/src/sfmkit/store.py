@@ -75,6 +75,7 @@ class ArtifactStore:
         scene: str = "",
         inputs: list[str] | None = None,
         provenance: Provenance | None = None,
+        enforce_metric_contract: bool = False,
     ) -> ArtifactWriter:
         return ArtifactWriter(
             root=self.path_for(artifact_id),
@@ -85,6 +86,7 @@ class ArtifactStore:
             inputs=inputs,
             provenance=provenance,
             type_registry=self.registry,
+            enforce_metric_contract=enforce_metric_contract,
         )
 
     # ---------------------------------------------------------------- lineage

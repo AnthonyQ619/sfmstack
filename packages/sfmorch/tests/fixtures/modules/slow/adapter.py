@@ -26,4 +26,6 @@ def run(ctx: Ctx):
         content_hash=np.array(f"slow-{steps}"),
     )
     out.metric("n_images", n, direction="neutral")
+    out.metric("megapixels", 640 * 480 / 1e6, direction="neutral")
+    out.metric("mixed_resolution", 0, direction="neutral")
     out.note(f"Slept through {steps} steps.")

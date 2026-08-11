@@ -47,3 +47,43 @@ invariants:
       scalar: track_count
   - check: values_within
     args: {file: observations, array: obs, column: 1, minimum: 0}
+
+# Required of every tracker, whether it chains pairwise matches (union-find) or
+# predicts tracks directly (Tapir, VGGSfM). A track table is judged by its length
+# distribution, its frame coverage and its self-consistency regardless of how it
+# was built.
+metrics:
+  track_count:
+    direction: higher_better
+    meaning: >
+      Tracks surviving the module's filters. Incremental SfM needs hundreds to
+      seed reliably.
+
+  avg_track_length:
+    direction: higher_better
+    meaning: >
+      Mean observations per track. 2.0 means nothing merged beyond a single pair,
+      which is a view-graph problem rather than a tracker one.
+
+  long_track_fraction:
+    direction: higher_better
+    meaning: >
+      Fraction of tracks seen in 3+ views. These are the only tracks constraining
+      pose beyond one pair, so this matters more than the mean.
+
+  min_frame_observations:
+    direction: higher_better
+    meaning: >
+      Observations in the weakest frame. A frame below the registration floor
+      drops out of the reconstruction whatever the totals say.
+
+  frames_covered:
+    direction: higher_better
+    meaning: Fraction of scene images carrying at least one observation.
+
+  inconsistent_rate:
+    direction: lower_better
+    meaning: >
+      Fraction of tracks observed twice in the same image, i.e. built from
+      contradictory correspondences. Detects OVER-merging only; it is structurally
+      blind to one physical point being split across several tracks.

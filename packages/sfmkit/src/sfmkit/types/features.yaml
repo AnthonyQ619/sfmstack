@@ -65,3 +65,29 @@ invariants:
     args: {file: keypoints, array: xy}
   - check: values_within
     args: {file: keypoints, array: image_index, minimum: 0}
+
+# Every module producing features/v1 must report these. The point is
+# cross-implementation comparability: SIFT, ORB, SuperPoint and ALIKED are
+# interchangeable at this stage only if "did the detector cover the scene" has one
+# answer with one name. Direction is fixed here; the healthy band is not, because
+# it is method-specific -- 200 keypoints is thin for SIFT and ordinary for a
+# learned detector at default thresholds.
+metrics:
+  keypoints_per_image:
+    direction: higher_better
+    meaning: >
+      Mean keypoints per image. The headline capacity number, and the one to read
+      first when a downstream stage is starved.
+
+  keypoints_min:
+    direction: higher_better
+    meaning: >
+      Keypoints in the WEAKEST image. Reconstruction fails per-frame, not on
+      average: one starved image drops out however healthy the mean is.
+
+  spatial_coverage:
+    direction: higher_better
+    meaning: >
+      Fraction of a coarse image grid containing at least one keypoint, averaged
+      over images. Keypoints clustered on one textured object give excellent counts
+      and a reconstruction that is unconstrained everywhere else.

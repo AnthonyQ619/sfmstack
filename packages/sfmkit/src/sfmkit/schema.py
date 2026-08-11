@@ -13,6 +13,18 @@ Two rules make the type set open without letting it fragment:
     it does NOT invent a new type. Consumers ignore what they do not know.
 
 2.  **A new version means a required field changed.** Anything else is additive.
+
+A type also declares the metrics every producer of it MUST report. Payload shape
+alone does not make two modules comparable: SIFT and SuperPoint both emit
+`features/v1`, and if one reports `keypoints_per_image` while the other reports
+`n_features` there is no way to ask which detector covered the scene better
+without special-casing each module. The required set is the vocabulary the driving
+agent can rely on across every implementation of a stage.
+
+`direction` is fixed by the type -- a metric that means "higher is better" in one
+module and the reverse in another is not one metric. `healthy` is deliberately NOT
+fixed, because the band is method-specific: 200 keypoints is thin for SIFT and
+normal for a learned detector at default thresholds.
 """
 
 from __future__ import annotations
@@ -31,6 +43,25 @@ from .invariants import REGISTRY as INVARIANT_REGISTRY
 TYPE_NAME_RE = re.compile(r"^(custom/)?[a-z][a-z0-9_]*/v[0-9]+$")
 
 _CORE_TYPES_DIR = Path(__file__).parent / "types"
+
+
+DIRECTIONS = ("higher_better", "lower_better", "neutral")
+
+
+@dataclass(frozen=True)
+class MetricRequirement:
+    """A metric every producer of a type must report.
+
+    `nullable` marks a metric that is legitimately not measurable on some inputs --
+    a merge tolerance has no meaning for a detector-based tracker, for instance. It
+    must still be REPORTED, as null; silently omitting it is indistinguishable from
+    a module that forgot.
+    """
+
+    name: str
+    direction: str = "neutral"
+    meaning: str = ""
+    nullable: bool = False
 
 
 @dataclass(frozen=True)
@@ -101,10 +132,44 @@ class TypeSchema:
     description: str = ""
     files: dict[str, FileSpec] = field(default_factory=dict)
     invariants: tuple[dict[str, Any], ...] = ()
+    metrics: dict[str, MetricRequirement] = field(default_factory=dict)
 
     @property
     def is_custom(self) -> bool:
         return self.type.startswith("custom/")
+
+    def validate_metrics(self, reported: dict[str, Any]) -> None:
+        """Raise ValidationError unless every metric this type requires is present.
+
+        Checked at seal time rather than only at registry load, because a manifest
+        can declare a metric the adapter never actually emits -- and a metric that
+        is documented and absent is worse than one that is neither, since the agent
+        has been told to expect it.
+        """
+        problems: list[str] = []
+        for name, spec in self.metrics.items():
+            if name not in reported:
+                problems.append(
+                    f"missing required metric '{name}' ({spec.direction}): "
+                    f"{spec.meaning.strip().splitlines()[0] if spec.meaning else ''}"
+                )
+                continue
+            metric = reported[name]
+            if getattr(metric, "value", None) is None and not spec.nullable:
+                problems.append(
+                    f"required metric '{name}' is null, and the type does not "
+                    f"allow that. Report the measurement or fail the run."
+                )
+            got = getattr(metric, "direction", "unknown")
+            if got != spec.direction:
+                problems.append(
+                    f"metric '{name}' declares direction '{got}'; type "
+                    f"'{self.type}' fixes it at '{spec.direction}'. A metric that "
+                    f"points one way here and the other way in a sibling module "
+                    f"cannot be compared across the stage."
+                )
+        if problems:
+            raise ValidationError(self.type, problems)
 
     def validate(self, payload: dict[str, dict[str, np.ndarray]]) -> None:
         """Raise ValidationError unless `payload` conforms.
@@ -228,12 +293,34 @@ def parse_schema(doc: dict[str, Any], origin: str = "<memory>") -> TypeSchema:
             arrays=arrays,
         )
 
+    metrics: dict[str, MetricRequirement] = {}
+    for mname, mdoc in (doc.get("metrics") or {}).items():
+        mdoc = mdoc or {}
+        direction = str(mdoc.get("direction", "neutral"))
+        if direction not in DIRECTIONS:
+            raise SchemaError(
+                f"{origin}: metric '{mname}' has direction {direction!r}; "
+                f"expected one of {list(DIRECTIONS)}"
+            )
+        if not str(mdoc.get("meaning", "")).strip():
+            raise SchemaError(
+                f"{origin}: metric '{mname}' has no meaning. A required metric "
+                f"without one cannot be acted on by whatever reads it."
+            )
+        metrics[mname] = MetricRequirement(
+            name=mname,
+            direction=direction,
+            meaning=str(mdoc.get("meaning", "")),
+            nullable=bool(mdoc.get("nullable", False)),
+        )
+
     return TypeSchema(
         type=str(name),
         summary=str(doc.get("summary", "")),
         description=str(doc.get("description", "")),
         files=files,
         invariants=tuple(doc.get("invariants") or ()),
+        metrics=metrics,
     )
 
 

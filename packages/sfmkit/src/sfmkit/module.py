@@ -167,6 +167,7 @@ class Ctx:
                 started_at=self._started_at,
                 device=self.device,
             ),
+            enforce_metric_contract=True,
         )
         self._writers[name] = writer
         return writer

@@ -176,7 +176,7 @@ metrics:
     healthy: [null, 0]
     meaning: Pairs dropped for falling under min_matches.
   planarity:
-    direction: neutral
+    direction: lower_better
     meaning: Homography inliers over fundamental inliers. Near 1.0 is degenerate.
   mean_match_score:
     direction: higher_better

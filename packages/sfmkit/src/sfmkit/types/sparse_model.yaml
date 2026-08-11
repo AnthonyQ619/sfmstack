@@ -97,3 +97,36 @@ invariants:
     args: {file: observations, array: obs, column: 1, minimum: 0}
   - check: same_length
     args: {file: poses, arrays: [cam_from_world, valid, image_index]}
+
+# Required of every producer of a sparse model: triangulators, bundle adjusters,
+# COLMAP's mappers, and the feed-forward reconstructors alike.
+#
+# These describe the ARTIFACT, not the process. A bundle adjuster's interesting
+# numbers are before/after; a triangulator's are yield and rejection counts;
+# neither is comparable to the other. What is comparable is what came out, which
+# is what a consumer choosing between two sparse models actually needs.
+metrics:
+  point_count:
+    direction: higher_better
+    meaning: Surviving 3D points.
+
+  observation_count:
+    direction: higher_better
+    meaning: >
+      Total 2D observations across all points. Read with point_count: the ratio is
+      mean track length, and a large cloud of two-view points is weaker than a
+      small one with deep tracks.
+
+  mean_track_length:
+    direction: higher_better
+    meaning: >
+      Mean observations per point. At 2.0 nothing is multi-view constrained and
+      bundle adjustment has almost nothing to work with.
+
+  mean_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Mean pixel error at working resolution. Null only for a producer with no
+      observation set of its own. Not comparable between models with different
+      camera counts.

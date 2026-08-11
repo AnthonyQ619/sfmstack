@@ -145,8 +145,15 @@ class ArtifactWriter:
         inputs: list[str] | None = None,
         provenance: Provenance | None = None,
         type_registry: TypeRegistry | None = None,
+        enforce_metric_contract: bool = False,
     ):
         self.root = Path(root)
+        # The metric contract binds MODULES, not the payload format. An artifact
+        # assembled by hand -- a repair script, a fixture, an import from another
+        # tool -- is still a valid tracks/v1 even with no metrics on it. Only the
+        # Ctx.output path sets this, because only there is there a module that
+        # promised the numbers.
+        self.enforce_metric_contract = enforce_metric_contract
         self.registry = type_registry or registry()
         self.schema = self.registry.get(type)  # fails fast on an unknown type
 
@@ -242,6 +249,8 @@ class ArtifactWriter:
             raise ManifestError("artifact is already sealed")
 
         self.schema.validate(self._payload)  # raises ValidationError
+        if self.enforce_metric_contract:
+            self.schema.validate_metrics(self.manifest.metrics)
 
         data_dir = self.root / DATA_DIR
         staged = self._staged_sidecars

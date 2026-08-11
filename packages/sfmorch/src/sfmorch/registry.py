@@ -79,9 +79,45 @@ class ModuleRegistry:
                         f"'custom/<name>/v1'. Known: {self.types.names()}"
                     )
 
+        self._check_metric_contract(spec)
+
         self._modules[spec.name] = spec
         self._recompute_warnings()
         return spec
+
+    def _check_metric_contract(self, spec: ModuleSpec) -> None:
+        """Every produced type's required metrics must be declared, same direction.
+
+        Caught at load rather than only at seal time so that a module which is
+        missing them fails when the registry is built -- before a forty-minute
+        dense reconstruction runs and is then refused on the way out.
+
+        Modules add whatever else they measure; this is a floor, not a ceiling. The
+        floor is what makes two implementations of a stage interchangeable: payload
+        shape alone does not let an agent ask which detector covered the scene
+        better if each reports it under a different name.
+        """
+        problems: list[str] = []
+        for slot in spec.produces.values():
+            if slot.type not in self.types:
+                continue
+            for name, required in self.types.get(slot.type).metrics.items():
+                declared = spec.metrics.get(name)
+                if declared is None:
+                    problems.append(
+                        f"'{name}' ({required.direction}) required by "
+                        f"{slot.type}: {required.meaning.split('.')[0].strip()}"
+                    )
+                elif declared.direction != required.direction:
+                    problems.append(
+                        f"'{name}' declares direction '{declared.direction}'; "
+                        f"{slot.type} fixes it at '{required.direction}'"
+                    )
+        if problems:
+            raise ManifestError(
+                f"module '{spec.name}' does not meet the metric contract of the "
+                f"types it produces:\n  - " + "\n  - ".join(problems)
+            )
 
     def load_dir(self, directory: str | Path) -> list[ModuleSpec]:
         """Load every `<directory>/*/module.yaml`."""

@@ -11,12 +11,25 @@ def write_module(tmp_path, name, doc):
     return d
 
 
+# tracks/v1 fixes a required metric set, and these tests are about manifest
+# parsing rather than about that contract -- so MINIMAL produces a module-declared
+# custom type, which has no required metrics. The contract itself is tested by
+# test_a_module_must_report_the_metrics_its_output_type_requires.
 MINIMAL = {
     "name": "Thing",
     "version": "1.0.0",
-    "produces": {"out": {"type": "tracks/v1"}},
+    "produces": {"out": {"type": "custom/thing/v1"}},
+    "types": [
+        {
+            "type": "custom/thing/v1",
+            "summary": "Test-only payload.",
+            "files": {"blob": {"required": True, "arrays": {"x": {"shape": [None]}}}},
+        }
+    ],
 }
 
+
+from conftest import contract_metrics  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # Manifest parsing
@@ -138,10 +151,47 @@ def test_adding_a_consumer_clears_the_orphan_warning(registry, types):
                 "version": "1.0.0",
                 "consumes": {"sparse": {"type": "sparse_model/v1"}},
                 "produces": {"out": {"type": "sparse_model/v1"}},
+                "metrics": contract_metrics("sparse_model/v1"),
             }
         )
     )
     assert not any(w.type == "sparse_model/v1" for w in registry.warnings)
+
+
+
+def test_a_module_must_report_the_metrics_its_output_type_requires(tmp_path):
+    """The floor that makes two implementations of a stage comparable.
+
+    Payload shape alone does not: SIFT and SuperPoint both emit features/v1, and if
+    one reports `keypoints_per_image` while the other reports `n_features` there is
+    no way to ask which covered the scene better without knowing both modules. The
+    error has to name every missing metric at once -- a module author fixing them
+    one registry-load at a time is the failure mode this replaces."""
+    with pytest.raises(ManifestError, match="metric contract") as e:
+        ModuleRegistry().add(ModuleSpec.from_doc({
+            "name": "Thing",
+            "version": "1.0.0",
+            "produces": {"out": {"type": "features/v1"}},
+        }))
+    for name in ("keypoints_per_image", "keypoints_min", "spatial_coverage"):
+        assert name in str(e.value)
+
+
+def test_a_metric_may_not_point_the_opposite_way_from_its_type(tmp_path):
+    """Direction is fixed by the type and the band is not. `healthy` is
+    method-specific -- 200 keypoints is thin for SIFT and ordinary for a learned
+    detector -- but a metric that means 'higher is better' in one module and the
+    reverse in its sibling is not one metric, and nothing comparing them can tell."""
+    doc = {
+        "name": "Thing",
+        "version": "1.0.0",
+        "produces": {"out": {"type": "features/v1"}},
+        "metrics": contract_metrics("features/v1"),
+    }
+    doc["metrics"]["keypoints_min"]["direction"] = "lower_better"
+
+    with pytest.raises(ManifestError, match="fixes it at 'higher_better'"):
+        ModuleRegistry().add(ModuleSpec.from_doc(doc))
 
 
 # --------------------------------------------------------------------------- #
@@ -170,6 +220,7 @@ def test_not_consuming_expresses_switch_to_a_direct_tracker(registry, types):
                 "version": "1.0.0",
                 "consumes": {"scene": {"type": "scene/v1"}},
                 "produces": {"tracks": {"type": "tracks/v1"}},
+                "metrics": contract_metrics("tracks/v1"),
             }
         )
     )

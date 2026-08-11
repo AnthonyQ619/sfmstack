@@ -201,7 +201,7 @@ metrics:
     meaning: Pairs dropped for falling under min_matches.
 
   planarity:
-    direction: neutral
+    direction: lower_better
     meaning: >
       Mean over pairs of homography inliers / fundamental inliers. Near 1.0 means
       a homography explains the pair as well as epipolar geometry does, i.e. the

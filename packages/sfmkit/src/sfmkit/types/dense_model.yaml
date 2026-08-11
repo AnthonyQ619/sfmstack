@@ -50,3 +50,24 @@ invariants:
     args: {file: points, array: xyz}
   - check: finite
     args: {file: points, array: xyz}
+
+# Required of every dense reconstructor -- MVS and feed-forward depth alike.
+metrics:
+  point_count:
+    direction: higher_better
+    meaning: Points in the dense cloud, after whatever filtering the module applies.
+
+  views_contributing:
+    direction: higher_better
+    meaning: >
+      Images that contributed at least one surviving point. A dense method that
+      silently drops half the views produces a cloud that looks fine and covers
+      half the scene.
+
+  mean_depth_confidence:
+    direction: higher_better
+    nullable: true
+    meaning: >
+      Mean of the module's own confidence, normalised to 0-1. Null for methods
+      that produce no confidence. Self-reported and not cross-comparable between
+      methods -- read it WITHIN a method, across settings.

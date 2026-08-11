@@ -28,3 +28,9 @@ params:
 
 metrics:
   n_images: {direction: neutral, meaning: Images in the scene.}
+  megapixels:
+    direction: neutral
+    meaning: Working-resolution megapixels per image.
+  mixed_resolution:
+    direction: neutral
+    meaning: 1 when the source images differ in size; this fixture is uniform.

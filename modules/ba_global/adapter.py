@@ -274,6 +274,20 @@ def run(ctx: Ctx):
     out.metric("iterations", iterations, direction="neutral")
     out.metric("converged", int(converged), direction="higher_better", healthy=(1, None))
 
+    # The sparse_model/v1 contract: metrics describing the ARTIFACT, so a consumer
+    # can compare this model against one from a triangulator or a feed-forward
+    # reconstructor. The before/after pair above describes the PROCESS and is
+    # comparable only against another bundle adjustment.
+    out.metric("point_count", len(point_ids),
+               direction="higher_better", healthy=(50, None))
+    out.metric("observation_count", len(obs_rows),
+               direction="higher_better", healthy=(100, None))
+    out.metric("mean_track_length",
+               round(len(obs_rows) / len(point_ids), 3) if point_ids else 0.0,
+               direction="higher_better", healthy=(2.5, None))
+    out.metric("mean_reprojection_error", round(error_after, 4),
+               direction="lower_better", healthy=(None, 1.0))
+
     if not converged:
         out.diagnostic(
             "did_not_converge",

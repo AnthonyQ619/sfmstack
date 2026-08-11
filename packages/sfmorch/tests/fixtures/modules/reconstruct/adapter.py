@@ -52,6 +52,17 @@ def run(ctx: Ctx):
     out.metric(
         "mean_reprojection_error", 0.42, direction="lower_better", healthy=(None, 1.0)
     )
+    # The sparse_model/v1 contract.
+    out.metric("point_count", len(xyz), direction="higher_better", healthy=(10, None))
+    out.metric(
+        "observation_count", len(observations),
+        direction="higher_better", healthy=(20, None),
+    )
+    out.metric(
+        "mean_track_length",
+        len(observations) / len(xyz) if len(xyz) else 0.0,
+        direction="higher_better", healthy=(2.5, None),
+    )
 
     if len(xyz) < 10:
         out.diagnostic(

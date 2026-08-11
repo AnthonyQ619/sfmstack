@@ -8,7 +8,15 @@ or orchestrator exists.
 import numpy as np
 import pytest
 
-from sfmkit import ArtifactStore, Ctx, InputError, Params, module, run_module
+from sfmkit import (
+    ArtifactStore,
+    Ctx,
+    InputError,
+    Params,
+    ValidationError,
+    module,
+    run_module,
+)
 
 
 @pytest.fixture
@@ -31,7 +39,9 @@ def scene(store):
     return w.seal()
 
 
-# A module author writes exactly this much.
+# A module author writes exactly this much. The metric block is not optional
+# boilerplate: tracks/v1 requires it, and seal() refuses an output slot without it.
+# That is the floor which makes two trackers comparable at all.
 @module
 def build_tracks(ctx: Ctx):
     n_images = int(ctx.inputs["scene"].load("images", "size_current").shape[0])
@@ -52,6 +62,14 @@ def build_tracks(ctx: Ctx):
         direction="higher_better",
         healthy=(3.0, None),
     )
+    out.metric("track_count", 4, direction="higher_better", healthy=(10, None))
+    out.metric(
+        "long_track_fraction", 1.0 if n_images >= 3 else 0.0,
+        direction="higher_better", healthy=(0.3, None),
+    )
+    out.metric("min_frame_observations", 4, direction="higher_better", healthy=(4, None))
+    out.metric("frames_covered", 1.0, direction="higher_better", healthy=(1.0, None))
+    out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.05))
     if n_images < min_len:
         out.diagnostic(
             "too_few_views",
@@ -164,3 +182,28 @@ def test_missing_param_error_points_at_the_manifest(store, scene):
     ctx = Ctx(store=store, module="M", params=Params({}), output_types={})
     with pytest.raises(AttributeError, match="module.yaml"):
         _ = ctx.params.nope
+
+
+def test_an_output_slot_missing_a_required_metric_is_refused(store, scene):
+    """The registry check verifies the manifest DECLARES them; this verifies the
+    adapter EMITS them. Both are needed: a metric that is documented and absent is
+    worse than one that is neither, because the agent has been told to expect it.
+
+    Only the Ctx.output path is bound. An artifact assembled by hand -- a repair
+    script, an import from another tool -- is still a valid tracks/v1."""
+
+    @module
+    def forgetful(ctx: Ctx):
+        out = ctx.output("tracks")
+        out.save("observations", obs=np.zeros((4, 4), np.float32), track_count=np.int64(1))
+        out.metric("track_count", 1, direction="higher_better")
+
+    with pytest.raises(ValidationError, match="missing required metric"):
+        run_module(forgetful, make_ctx(store, scene))
+
+
+def test_a_hand_built_artifact_is_not_bound_by_the_metric_contract(store):
+    """The contract binds modules, not the payload format."""
+    w = store.writer(artifact_id="art_byhand", type="tracks/v1")
+    w.save("observations", obs=np.zeros((4, 4), np.float32), track_count=np.int64(1))
+    assert w.seal().type == "tracks/v1"

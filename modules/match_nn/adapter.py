@@ -296,7 +296,7 @@ def run(ctx: Ctx):
     out.metric(
         "planarity",
         None if mean_planarity is None else round(mean_planarity, 3),
-        direction="neutral",
+        direction="lower_better",
     )
 
     if len(components) > 1:

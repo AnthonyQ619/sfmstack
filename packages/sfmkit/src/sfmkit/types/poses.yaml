@@ -51,3 +51,33 @@ invariants:
     args: {file: poses, arrays: [cam_from_world, valid, image_index]}
   - check: values_within
     args: {file: poses, array: image_index, minimum: 0}
+
+# Required of every pose estimator, geometric or feed-forward.
+#
+# The set is deliberately small. A module that recovers poses from correspondences
+# can report reprojection error; VGGT and MapAnything predict poses from pixels
+# with no correspondence set to measure against, and demanding it of them would
+# force either a fabricated number or a second type. It is required-but-nullable
+# instead, which makes "this estimator cannot self-assess" a fact the agent reads
+# off the artifact rather than an absence it has to infer.
+metrics:
+  registered_fraction:
+    direction: higher_better
+    meaning: >
+      Fraction of scene images given a pose. Below 1.0 some images have none, and
+      every consumer must honour the `valid` array rather than the pose block.
+
+  registered_images:
+    direction: higher_better
+    meaning: >
+      Absolute count. The metric that catches a reconstruction which stalled:
+      error can IMPROVE as images drop out, because a smaller model is an easier
+      one, so error is never comparable across differing counts.
+
+  mean_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Mean pixel error at working resolution over whatever observations the module
+      used. Null for feed-forward estimators, which have no correspondences to
+      measure against -- that null is informative and must not be faked.

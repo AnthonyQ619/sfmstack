@@ -29,6 +29,18 @@ metrics:
     direction: lower_better
     healthy: [null, 1.0]
     meaning: Pixels. Low error on very few points is an overfit, not a good result.
+  point_count:
+    direction: higher_better
+    healthy: [10, null]
+    meaning: Surviving 3D points; the same measurement as num_points3d, under the contract name.
+  observation_count:
+    direction: higher_better
+    healthy: [20, null]
+    meaning: Total 2D observations.
+  mean_track_length:
+    direction: higher_better
+    healthy: [2.5, null]
+    meaning: Observations per point.
 
 diagnostics:
   - code: too_few_points

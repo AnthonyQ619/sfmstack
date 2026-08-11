@@ -25,3 +25,11 @@ metrics:
     direction: higher_better
     healthy: [8, null]
     meaning: Mean detections per image.
+  keypoints_min:
+    direction: higher_better
+    healthy: [8, null]
+    meaning: Detections in the weakest image. The grid is uniform, so equal to the mean.
+  spatial_coverage:
+    direction: higher_better
+    healthy: [0.35, null]
+    meaning: Fraction of a coarse grid holding a keypoint.

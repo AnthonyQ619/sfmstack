@@ -91,3 +91,23 @@ invariants:
     args: {file: images, array: size_current, minimum: 1}
   - check: finite
     args: {file: calibration, array: intrinsics}
+
+# Required of every scene source: a directory loader, a video decoder, a dataset
+# adapter. What a downstream module needs to know about the input before it can
+# judge anything it computes from it.
+metrics:
+  n_images:
+    direction: neutral
+    meaning: Images in the scene.
+
+  megapixels:
+    direction: neutral
+    meaning: >
+      Mean working-resolution megapixels per image. The cost driver for every
+      stage downstream, and the unit reprojection errors are quoted in.
+
+  mixed_resolution:
+    direction: neutral
+    meaning: >
+      1 when the source images differ in size, 0 otherwise. Anything applying a
+      single scale factor across the scene is wrong when this is 1.
