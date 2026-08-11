@@ -1,0 +1,297 @@
+name: FeatureTrackVGGSfM
+version: 1.0.0
+kind: tracking
+summary: >
+  Learned multi-view tracking: keypoints from selected query frames are propagated
+  to every other frame in one pass. No pairwise matching stage at all. GPU
+  required.
+
+description: |
+  The other way to build `tracks/v1`. `FeatureTrackUnionFind` chains two-view
+  matches into chains; this predicts, for a keypoint in one frame, where it lands
+  in every other frame directly.
+
+  **It consumes `features/v1`, not `pairwise_matches/v1`** — no matcher runs at
+  all. The chain is scene → detect → track, three stages instead of four, and the
+  matcher's failure modes (ratio tests, a view graph that fragments, tracks that
+  die at every missing edge) simply do not arise.
+
+  What replaces them is a different failure. Union-find's characteristic error is
+  **over-merging**: two scene points fused into one track, which
+  `inconsistent_rate` detects. This module cannot over-merge — each query point
+  yields at most one position per frame — so `inconsistent_rate` is structurally
+  zero here and carries no information. Its characteristic error is the opposite
+  one, **splitting**: the same physical point tracked from two query frames
+  becomes two tracks, which union-find's metric is blind to and which this module
+  measures as `duplicate_track_rate`.
+
+  The predecessor did not deduplicate at all, so with five query frames a well-seen
+  point entered bundle adjustment up to five times, quietly overweighted.
+  `dedupe_eps_px` merges tracks whose observations coincide, and the merge rate is
+  reported.
+
+  **Query frame choice dominates the result.** Measured on 8 DTU views with 2048
+  SIFT keypoints: tracking from frame 0 leaves each point visible in a mean of
+  **1.77** frames; from frame 4, **4.40**. The predecessor always forced frame 0
+  into the query set "matching the VGGT demo behavior", which on a sequential
+  capture is the worst available choice — an endpoint sees the least of the scene.
+  Here the selection is `dino` by default and frame 0 gets no special treatment.
+
+image: sfmstack/track-vggsfm:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 16
+  # Hint for ~12 images with 5 query frames at 2048 points. Cost is roughly
+  # query_frames * points * frames, so it grows with the SQUARE of the image count
+  # on a fixed query fraction -- unlike a sequential matcher and like an
+  # exhaustive one.
+  expected_duration_s: 120
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  features: {type: features/v1, required: true}
+
+produces:
+  tracks: {type: tracks/v1}
+
+params:
+  query_selection:
+    type: string
+    default: dino
+    enum: [dino, interval, midpoint]
+    description: How the query frames are chosen.
+    tuning: >
+      `dino` ranks frames by DINOv2 feature similarity and picks a spread that
+      covers the scene — the best default and the only one that adapts to an
+      unordered set. `midpoint` works outwards from the centre and, measured on 8
+      DTU views, matched dino's track quality with three query frames instead of
+      five and a third of the runtime. `interval` samples evenly spaced bins, which
+      necessarily reaches the ends of the set and did worst here — mean visibility
+      0.23 against 0.35. The rule behind all three: an endpoint of a sequential
+      capture sees the least of the scene, and tracking from frame 0 of this set
+      left points visible in 1.77 frames against 4.40 from frame 4.
+
+  query_frame_num:
+    type: integer
+    default: 5
+    minimum: 1
+    maximum: 100
+    description: Number of frames whose keypoints are tracked.
+    tuning: >
+      Directly proportional to runtime AND to duplication — every extra query
+      frame re-tracks points other query frames already found, which is why
+      dedupe matters. 5 covers a normal capture. Raise it when the set is long
+      enough that no five frames see all of it; watch duplicate_track_rate rather
+      than track_count when you do, since track_count rises either way.
+
+  max_query_points_per_frame:
+    type: integer
+    default: 2048
+    minimum: 16
+    maximum: 65536
+    description: Keypoints taken from each query frame, highest-scoring first.
+    tuning: >
+      The memory and time knob. 2048 points over 8 frames peaked at 6.9 GiB.
+      Detectors here return up to 4096 by default, so this halves them; raise it
+      if the detector's spatial_coverage is high and the cloud comes out thin.
+
+  visibility_threshold:
+    type: number
+    default: 0.5
+    minimum: 0.0
+    maximum: 1.0
+    description: Minimum predicted visibility for an observation to be kept.
+    tuning: >
+      This is a real 0-1 probability, unlike the confidences elsewhere in this
+      repository — the tracker predicts per-frame visibility directly. 0.5 is
+      upstream's default. Raise toward 0.7 to shed observations in frames where
+      the point is occluded or out of view, which shortens tracks and improves
+      what survives; lower it only if avg_track_length is collapsing.
+
+  min_track_len:
+    type: integer
+    default: 2
+    minimum: 1
+    maximum: 100
+    description: Minimum visible frames for a track to be kept.
+    tuning: >
+      2 is the floor for triangulation. 3 if the tracks feed pose estimation
+      directly, since a two-view track constrains nothing beyond its own pair.
+
+  fine_tracking:
+    type: boolean
+    default: true
+    description: Run the fine refinement stage after coarse tracking.
+    tuning: >
+      On. The coarse tracker works on a stride-8 feature map, so without
+      refinement the positions are accurate to several pixels and triangulation
+      inherits that. Turning it off is a speed check, not a setting.
+
+  coarse_iters:
+    type: integer
+    default: 6
+    minimum: 1
+    maximum: 20
+    description: Iterations of the coarse tracking loop.
+    tuning: >
+      Upstream's default. Below 4 the coarse positions have not converged and fine
+      refinement starts too far away to recover; above ~8 nothing changes.
+
+  max_points_num:
+    type: integer
+    default: 163840
+    minimum: 1024
+    maximum: 2000000
+    description: >
+      Points times frames processed at once. Query points are split into chunks of
+      `max_points_num / frames`.
+    tuning: >
+      Purely a memory control — the result is identical whatever it is set to.
+      Lower it if the run runs out of GPU memory; there is no reason to raise it.
+
+  dedupe_eps_px:
+    type: number
+    default: 1.5
+    minimum: 0.0
+    maximum: 20.0
+    description: >
+      Merge tracks whose observations fall within this distance in a shared frame.
+      0 disables deduplication.
+    tuning: >
+      This module's version of FeatureTrackUnionFind's merge_eps_px, and it has
+      the same character: too small leaves the same point split across query
+      frames, too large fuses genuinely distinct points. 1.5 px at 1024 px works
+      here. Read duplicate_track_rate with it — a rate near zero at a sane eps
+      means the query frames are seeing disjoint parts of the scene, which is
+      usually a sign there are too few of them.
+
+metrics:
+  track_count:
+    direction: higher_better
+    healthy: [200, null]
+    meaning: Tracks after visibility filtering, length filtering and deduplication.
+
+  avg_track_length:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: >
+      Mean observations per track. Higher than a union-find tracker's on the same
+      scene is the expected outcome and the reason to use this module — it
+      predicts through frames where a matcher would have found nothing.
+
+  long_track_fraction:
+    direction: higher_better
+    healthy: [0.5, null]
+    meaning: Fraction of tracks seen in 3+ views.
+
+  min_frame_observations:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: >
+      Observations in the weakest frame. Worth more attention here than in a
+      union-find tracker: a frame no query frame tracks well gets thin, and the
+      fix is the query selection rather than any threshold.
+
+  frames_covered:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of scene images carrying at least one observation.
+
+  inconsistent_rate:
+    direction: lower_better
+    healthy: [null, 0.0]
+    meaning: >
+      Structurally ZERO for this module and therefore uninformative. Each query
+      point yields at most one position per frame, so a track cannot contradict
+      itself the way a union-find track can. Read duplicate_track_rate instead —
+      that is this module's analogous failure, and it is the one union-find's
+      metric is blind to.
+
+  max_track_length:
+    direction: neutral
+    meaning: Longest surviving track.
+
+  median_track_length:
+    direction: higher_better
+    meaning: >
+      Median observations per track. Read with the mean: a mean well above the
+      median means a few long tracks are carrying the average.
+
+  track_survival_5:
+    direction: higher_better
+    meaning: Fraction of tracks seen in 5+ views.
+
+  track_survival_10:
+    direction: higher_better
+    meaning: Fraction of tracks seen in 10+ views. Necessarily 0 below 10 images.
+
+  duplicate_track_rate:
+    direction: lower_better
+    healthy: [null, 0.5]
+    meaning: >
+      Fraction of raw tracks that deduplication merged away. THE metric of this
+      module. It rises with query_frame_num by construction — every extra query
+      frame re-finds points others already had — so it is a measure of redundancy,
+      not of error. Near zero at a sane dedupe_eps_px usually means the query
+      frames see disjoint parts of the scene and there are too few of them.
+
+  query_frames:
+    direction: neutral
+    meaning: >
+      How many frames contributed query points, and implicitly the runtime. Not
+      quality: which frames were chosen matters far more than how many.
+
+  mean_visibility:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: >
+      Mean predicted visibility over every query point and every frame, before
+      thresholding. The tracker's own view of how much of the scene each query
+      frame can see, and the number that catches a bad query selection: 0.22
+      tracking from an endpoint against 0.54 from the middle, on the same 8 views.
+
+  observations_outside_frame:
+    direction: lower_better
+    meaning: >
+      Predicted positions that landed outside the image and were dropped. The
+      tracker extrapolates rather than refusing, so this is normal and not an
+      error; a large share means query points are being tracked into frames that
+      do not contain them, which the visibility threshold should already be
+      catching.
+
+diagnostics:
+  - code: no_tracks
+    severity: error
+    message: No track survived.
+    suggested_actions:
+      - Lower visibility_threshold.
+      - Lower min_track_len to 1 to see whether anything was tracked at all.
+      - Check the detector produced keypoints in the chosen query frames.
+    see_also: tuning.md#nothing-survives
+
+  - code: poor_query_selection
+    severity: warn
+    message: The query frames see little of the scene.
+    suggested_actions:
+      - Switch query_selection to dino, which ranks frames by coverage.
+      - Raise query_frame_num.
+      - On a sequential capture, avoid the endpoints — they see the least.
+    see_also: tuning.md#query-frames-are-the-whole-game
+
+  - code: thin_frame
+    severity: warn
+    message: Some frame carries very few observations.
+    suggested_actions:
+      - That frame will fail to register whatever the totals say.
+      - Add a query frame near it rather than lowering thresholds.
+    see_also: limitations.md#coverage-follows-the-query-frames
+
+  - code: heavy_duplication
+    severity: info
+    message: Deduplication merged a large share of the raw tracks.
+    suggested_actions:
+      - Expected with several query frames viewing the same structure.
+      - Lower query_frame_num if the runtime matters more than the coverage.
+    see_also: artifact.md#duplicate_track_rate-is-redundancy-not-error

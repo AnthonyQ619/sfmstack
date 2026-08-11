@@ -66,6 +66,8 @@ sfmstack/runtime-roma            + romatch + both weight sets
 sfmstack/runtime-roma-fused      + the fused local-corr kernel, on torch 2.11/CUDA 13
 sfmstack/runtime-vggt            + vggt + the 5 GB VGGT-1B checkpoint
 sfmstack/runtime-mapanything     + mapanything + its checkpoint and DINOv2 hub cache
+(FeatureTrackVGGSfM builds on runtime-lightglue: it needs vggt's vendored tracker,
+ not the 5 GB VGGT-1B checkpoint.)
 ```
 
 `runtime-roma-fused` is the clearest case for one-image-per-module so far. RoMa's
@@ -73,7 +75,7 @@ fused correlation kernel is a wheel built against CUDA 13, so taking it means
 torch 2.6.0+cu124 → 2.11.0 for that module. It buys 40% of peak GPU memory and 3%
 of runtime, and nothing else in the repository has to move to get it.
 
-Sixteen module images cost five bases plus a few MB of unique layer each. That
+Seventeen module images cost five bases plus a few MB of unique layer each. That
 sharing is what makes strict one-image-per-module affordable — and kornia is
 deliberately *not* in the lightglue base, because the predecessor's two conda
 environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
@@ -94,6 +96,7 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | | `FeatureMatchLoFTR` | kornia, **detector-free** | ✓ |
 | | `FeatureMatchRoMa` | romatch, **detector-free** | ✓ |
 | tracking | `FeatureTrackUnionFind` | numpy only | |
+| | `FeatureTrackVGGSfM` | VGGSfM v2 tracker, no matcher in the chain | ✓ |
 | pose | `PoseEssentialToPnP` | OpenCV + pycolmap (in-loop local BA) | |
 | | `PoseVGGT` | VGGT-1B camera head, feed-forward | ✓ |
 | sparse | `SparseTriangulation` | OpenCV | |
@@ -120,7 +123,7 @@ is the reason its cloud has holes. On 8 DTU views with the same poses it produce
 as tightly, in a bounding box 40% smaller — see
 [`docs/import_lessons.md`](docs/import_lessons.md).
 
-Still to port: VGGSfM, Tapir.
+Still to port: Tapir.
 
 ```bash
 docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .
