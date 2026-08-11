@@ -25,10 +25,10 @@ Early. Build order and progress:
 | 7b | `FeatureMatchNN`, `FeatureTrackUnionFind` — scene → features → pairs → tracks | **done** |
 | 7c | Pose, triangulation, bundle adjustment — a complete classical pipeline | **done** |
 | 7d | ORB, FLANN, SuperPoint, ALIKED, LightGlue, LoFTR | **done** |
-| 8 | The remaining 9 legacy modules | in progress |
+| 8 | The remaining 9 legacy modules | **done** |
 | 9 | First agent-driven session over MCP | |
 
-21 modules, 277 tests. `.venv/bin/python -m pytest -q`
+25 modules, 277 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -75,7 +75,7 @@ fused correlation kernel is a wheel built against CUDA 13, so taking it means
 torch 2.6.0+cu124 → 2.11.0 for that module. It buys 40% of peak GPU memory and 3%
 of runtime, and nothing else in the repository has to move to get it.
 
-Seventeen module images cost five bases plus a few MB of unique layer each. That
+Eighteen module images cost five bases plus a few MB of unique layer each. That
 sharing is what makes strict one-image-per-module affordable — and kornia is
 deliberately *not* in the lightglue base, because the predecessor's two conda
 environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
@@ -97,6 +97,7 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | | `FeatureMatchRoMa` | romatch, **detector-free** | ✓ |
 | tracking | `FeatureTrackUnionFind` | numpy only | |
 | | `FeatureTrackVGGSfM` | VGGSfM v2 tracker, no matcher in the chain | ✓ |
+| | `FeatureTrackTapir` | BootsTAPIR, the set treated as video | ✓ |
 | pose | `PoseEssentialToPnP` | OpenCV + pycolmap (in-loop local BA) | |
 | | `PoseVGGT` | VGGT-1B camera head, feed-forward | ✓ |
 | sparse | `SparseTriangulation` | OpenCV | |
@@ -123,7 +124,19 @@ is the reason its cloud has holes. On 8 DTU views with the same poses it produce
 as tightly, in a bounding box 40% smaller — see
 [`docs/import_lessons.md`](docs/import_lessons.md).
 
-Still to port: Tapir.
+The three trackers sit at different points on one trade. On 8 DTU views with the
+same SIFT keypoints:
+
+| | `avg_track_length` | `track_survival_5` | triangulated points | error |
+| --- | ---: | ---: | ---: | ---: |
+| `FeatureTrackUnionFind` | 2.85 | 0.116 | 4671 | 0.280 px |
+| `FeatureTrackVGGSfM` | 3.85 | 0.345 | 3982 | 0.502 px |
+| `FeatureTrackTapir` | 5.98 | 0.754 | 1548 | 1.581 px |
+
+Longer tracks, less accurate positions, monotonically. Length and precision are
+separate axes and no `tracks/v1` metric measures the second.
+
+**All 25 legacy modules are ported.**
 
 ```bash
 docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .

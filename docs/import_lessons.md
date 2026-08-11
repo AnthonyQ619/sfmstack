@@ -295,3 +295,78 @@ been measured here.
 and 60.60 in `SparseVGGT` on the same scene. Same metric name, both unbounded
 self-reports, different scales — a `min_confidence` carried between the two
 modules rejects everything.
+
+---
+
+## 2026-08-11 — The three trackers are one trade, and no track metric shows both ends
+
+**The question.** `tracks/v1` can be built three ways — chaining two-view matches,
+predicting correspondence from a geometry model, or following points through the
+set as video. How do they actually differ?
+
+**What was run.** 8 DTU views, the same SIFT keypoints, the same pose estimator
+and triangulator behind each.
+
+| tracker | tracks | `avg_track_length` | `long_track_fraction` | `track_survival_5` |
+|---|---:|---:|---:|---:|
+| `FeatureTrackUnionFind` | 4702 | 2.85 | 0.431 | 0.116 |
+| `FeatureTrackVGGSfM` | 4033 | 3.85 | 0.712 | 0.345 |
+| `FeatureTrackTapir` | 2736 | **5.98** | **0.927** | **0.754** |
+
+| tracker | triangulated points | mean error | `yield` |
+|---|---:|---:|---:|
+| `FeatureTrackUnionFind` | 4671 | **0.280 px** | 0.993 |
+| `FeatureTrackVGGSfM` | 3982 | 0.502 px | 0.987 |
+| `FeatureTrackTapir` | 1548 | 1.581 px | 0.566 |
+
+**Conclusions.**
+
+1. **It is one monotonic trade: longer tracks, less accurate positions.** Union-find
+   → VGGSfM → TAPIR moves `track_survival_5` from 0.116 to 0.754 and mean
+   reprojection error from 0.280 px to 1.581 px, in step, with no crossover.
+
+2. **No `tracks/v1` metric measures the second axis.** Every metric in the type
+   describes length, coverage and self-consistency. A tracker can look excellent on
+   all of them and be four pixels off everywhere. The triangulator's reprojection
+   error is the first number that sees it — which is an argument for reading the
+   *pipeline*, not the stage.
+
+3. **The characteristic failure flips between the routes, and each metric is blind
+   to the other's.** Union-find can fuse two scene points into one track and detects
+   that with `inconsistent_rate`. The learned trackers cannot — one query point
+   yields one position per frame — so `inconsistent_rate` is structurally zero for
+   both. What they do instead is SPLIT one physical point across query frames, which
+   union-find's metric cannot see. Both learned modules now report
+   `duplicate_track_rate` for it: **45%** for VGGSfM, **50%** for TAPIR. The
+   predecessor deduplicated in neither, so a well-seen point entered bundle
+   adjustment once per query frame that found it.
+
+4. **Query frame choice dominates both learned trackers, and endpoints are the
+   trap.** Tracking from frame 0 of the 8-frame set leaves each point visible in
+   1.77 frames against 4.40 from frame 4. The predecessor forced frame 0 into every
+   VGGSfM query set "matching the VGGT demo behavior". It also applied
+   `sorted(ranking)[:n]`, which returns the numerically smallest frame indices
+   rather than the best-ranked ones — so its `query_selection` did less than it
+   appeared to.
+
+5. **TAPIR's resolution is a downstream parameter that upstream metrics cannot
+   see.** BootsTAPIR trains at 256 square; at that size on a 1024px scene, one model
+   pixel is four scene pixels across.
+
+   | `input_size` | tracks | `track_survival_5` | tri points | tri error | `yield` |
+   |---:|---:|---:|---:|---:|---:|
+   | 256 | 2629 | 0.738 | 887 | 1.715 | 0.337 |
+   | **384** | 2736 | 0.754 | 1548 | 1.581 | **0.566** |
+   | 512 | 2683 | 0.739 | 1445 | **1.434** | 0.539 |
+   | 768 | 2728 | 0.692 | 1433 | 1.470 | 0.525 |
+
+   The track metrics barely move while the yield nearly doubles from 256 to 384.
+   Past 384 it regresses — the model is being taken away from its training
+   distribution. Default set to 384, not to the training resolution.
+
+6. **The anisotropic squeeze is fine here and was a bug in VGGT.** TAPIR resizes to a
+   square regardless of aspect, exactly the operation that broke the VGGT modules.
+   The difference is that TAPIR predicts positions and the inverse map is exact,
+   while VGGT predicts intrinsics with `fx == fy` and cannot express what a
+   non-uniform squeeze does to a camera. The same operation is a quality question
+   for one and a correctness bug for the other.

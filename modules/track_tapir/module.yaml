@@ -1,0 +1,309 @@
+name: FeatureTrackTapir
+version: 1.0.0
+kind: tracking
+summary: >
+  Point tracking with BootsTAPIR. Keypoints from selected query frames are followed
+  through the set as though it were video. No pairwise matching stage. GPU
+  required.
+
+description: |
+  The third route to `tracks/v1`, and the one that comes from a different field.
+  `FeatureTrackUnionFind` chains two-view matches; `FeatureTrackVGGSfM` predicts
+  correspondence from a geometry model; this treats the images as **video** and
+  applies a tracking-any-point model trained for exactly that.
+
+  That provenance is the thing to keep in mind. TAPIR was trained on video, where
+  consecutive frames are close together and motion is smooth, and it reasons about
+  a point's trajectory over time rather than about the geometry relating two views.
+  On a video-like capture — a walk-through, a drone pass, a turntable sampled
+  finely — that prior is exactly right. On an unordered internet collection, it is
+  not: image *order* is meaningful input here in a way it is not for the other two
+  trackers, and a shuffled set is a different problem from the one the model was
+  trained on.
+
+  **It consumes `features/v1`, not `pairwise_matches/v1`**, so the chain is scene →
+  detect → track. Query keypoints come from any detector.
+
+  **Occlusion is a first-class output**, which is what distinguishes it from
+  VGGSfM's tracker. TAPIR predicts both an occlusion logit and an expected-distance
+  logit per frame; the confidence written here is `(1 − σ(occlusion)) · (1 −
+  σ(expected_dist))`, so a point behind an object scores low for being occluded and
+  a point the model cannot localise scores low for being uncertain, separately.
+
+  Deduplication and query-frame selection work exactly as in `FeatureTrackVGGSfM`,
+  and for the same reasons — see `duplicate_track_rate` below.
+
+image: sfmstack/track-tapir:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 12
+  # Hint for ~12 images with 3 query frames at 2048 points. TAPIR runs at a fixed
+  # small resolution, so cost is nearly independent of the scene's, unlike
+  # FeatureTrackVGGSfM.
+  expected_duration_s: 90
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  features: {type: features/v1, required: true}
+
+produces:
+  tracks: {type: tracks/v1}
+
+params:
+  query_selection:
+    type: string
+    default: midpoint
+    enum: [midpoint, interval]
+    description: How the query frames are chosen.
+    tuning: >
+      `midpoint` works outwards from the centre of the set, which is the right
+      default for a video-like capture: TAPIR tracks bidirectionally in time, so a
+      central query frame reaches both ends. `interval` samples evenly spaced bins
+      and necessarily includes frames near the ends, which see the least. There is
+      no `dino` option here as there is in FeatureTrackVGGSfM — that ranker lives
+      in the vggt package, and pulling it in for one function would double the
+      image.
+
+  query_frame_num:
+    type: integer
+    default: 3
+    minimum: 1
+    maximum: 100
+    description: Number of frames whose keypoints are tracked.
+    tuning: >
+      3 rather than VGGSfM's 5, because TAPIR tracks in both temporal directions
+      from each query frame and so covers more of the set per query. Each extra
+      frame costs a full pass over the set AND raises duplicate_track_rate, since
+      it re-finds points the others already had.
+
+  max_query_points_per_frame:
+    type: integer
+    default: 2048
+    minimum: 16
+    maximum: 65536
+    description: Keypoints taken from each query frame, highest-scoring first.
+    tuning: >
+      Linear in time and memory. Raise it before raising query_frame_num — more
+      points from one good query frame is cheaper than the same points from two,
+      and produces no duplicates.
+
+  input_size:
+    type: integer
+    default: 384
+    minimum: 128
+    maximum: 1024
+    description: >
+      Square resolution TAPIR runs at. Images are resized to it and predicted
+      positions are mapped back.
+    tuning: >
+      **The parameter that decides whether this module is usable for SfM**, and
+      384 rather than BootsTAPIR's training resolution of 256 because of what
+      happens downstream. Track statistics barely move with it; triangulation
+      moves a great deal, because at 256 one model pixel is four scene pixels
+      across and the positional error that carries is what the reprojection filter
+      rejects. Measured on 8 DTU views at 1024px, tracks through
+      SparseTriangulation:
+
+        size   tracks   avg   surv5     pts     err   yield
+         256     2629  5.95   0.738     887   1.715   0.337
+         384     2736  5.98   0.754    1548   1.581   0.566
+         512     2683  5.85   0.739    1445   1.434   0.539
+         768     2728  5.62   0.692    1433   1.470   0.525
+
+      256 to 384 nearly doubles the yield. Past 384 it plateaus and then regresses
+      — 768 tracks worse than 384 on every track metric — because the model is
+      further from the distribution it was trained on. Do not read "bigger is
+      better" into the first row.
+
+  min_confidence:
+    type: number
+    default: 0.5
+    minimum: 0.0
+    maximum: 1.0
+    description: >
+      Minimum `(1 − σ(occlusion)) · (1 − σ(expected_dist))` for an observation to be
+      kept.
+    tuning: >
+      A genuine 0-1 probability — unlike the unbounded confidences in the VGGT and
+      MapAnything modules — because it is a product of two sigmoids. It is
+      conservative by construction: both factors must be high, so a point that is
+      visible but hard to localise is rejected as readily as an occluded one.
+      Lower it toward 0.3 when avg_track_length is collapsing; raise it toward 0.7
+      to keep only observations the model is sure of on both counts.
+
+  min_track_len:
+    type: integer
+    default: 2
+    minimum: 1
+    maximum: 100
+    description: Minimum visible frames for a track to be kept.
+
+  query_chunk_size:
+    type: integer
+    default: 1024
+    minimum: 32
+    maximum: 65536
+    description: Query points processed per forward pass.
+    tuning: >
+      Purely a memory control — the result is identical whatever it is set to.
+      Lower it if the run runs out of GPU memory.
+
+  pyramid_level:
+    type: integer
+    default: 1
+    minimum: 0
+    maximum: 3
+    description: Feature pyramid levels used for correlation.
+    tuning: >
+      1 is what the BootsTAPIR v2 checkpoint was trained with and the only value it
+      is guaranteed to match. Changing it changes the architecture, and the
+      checkpoint loads with `strict=False`, so a mismatch shows up as degraded
+      tracking rather than as an error.
+
+  dedupe_eps_px:
+    type: number
+    default: 1.5
+    minimum: 0.0
+    maximum: 20.0
+    description: >
+      Merge tracks whose observations fall within this distance in a shared frame.
+      0 disables deduplication.
+    tuning: >
+      Same mechanism and same character as in FeatureTrackVGGSfM. Note the working
+      unit is scene pixels, not TAPIR's 256-square, so the same value means the
+      same thing across the two trackers even though they run at different
+      resolutions.
+
+metrics:
+  track_count:
+    direction: higher_better
+    healthy: [200, null]
+    meaning: Tracks after confidence filtering, length filtering and deduplication.
+
+  avg_track_length:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: >
+      Mean observations per track. TAPIR tracks bidirectionally from each query
+      frame, so this should exceed a union-find tracker's on a video-like capture.
+
+  long_track_fraction:
+    direction: higher_better
+    healthy: [0.5, null]
+    meaning: Fraction of tracks seen in 3+ views.
+
+  min_frame_observations:
+    direction: higher_better
+    healthy: [50, null]
+    meaning: >
+      Observations in the weakest frame. The fix for a thin frame is the query
+      selection, not a lower confidence threshold.
+
+  frames_covered:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: Fraction of scene images carrying at least one observation.
+
+  inconsistent_rate:
+    direction: lower_better
+    healthy: [null, 0.0]
+    meaning: >
+      Structurally ZERO here, exactly as in FeatureTrackVGGSfM: one query point
+      yields one position per frame, so a track cannot contradict itself. Read
+      duplicate_track_rate instead.
+
+  max_track_length:
+    direction: neutral
+    meaning: Longest surviving track.
+
+  median_track_length:
+    direction: higher_better
+    meaning: Median observations per track, beside the mean.
+
+  track_survival_5:
+    direction: higher_better
+    meaning: Fraction of tracks seen in 5+ views.
+
+  track_survival_10:
+    direction: higher_better
+    meaning: Fraction of tracks seen in 10+ views. Necessarily 0 below 10 images.
+
+  duplicate_track_rate:
+    direction: lower_better
+    healthy: [null, 0.5]
+    meaning: >
+      Fraction of raw tracks deduplication merged away. Rises with query_frame_num
+      by construction, so it measures redundancy rather than error. Near zero at a
+      sane dedupe_eps_px means the query frames see disjoint parts of the scene.
+
+  query_frames:
+    direction: neutral
+    meaning: How many frames contributed query points.
+
+  mean_confidence:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: >
+      Mean of the occlusion/distance product over every query point and every
+      frame, before thresholding. Reads the query selection rather than the quality
+      of what survived, and it is a product of two sigmoids so it sits lower than a
+      single-factor confidence would.
+
+  mean_occlusion:
+    direction: lower_better
+    meaning: >
+      Mean predicted occlusion probability, `σ(occlusion)`, over all predictions.
+      Reported beside mean_confidence to separate the two reasons a point is
+      dropped: high here means points genuinely leave view; low here with a low
+      mean_confidence means the model sees them and cannot localise them, which is
+      a resolution or texture problem instead.
+
+  observations_outside_frame:
+    direction: lower_better
+    meaning: >
+      Predicted positions that landed outside the image and were dropped. TAPIR
+      extrapolates rather than refusing, so a nonzero count is normal.
+
+diagnostics:
+  - code: no_tracks
+    severity: error
+    message: No track survived.
+    suggested_actions:
+      - Lower min_confidence -- it is a product of two sigmoids and is conservative.
+      - Read mean_occlusion to tell "the points left view" from "the model could not localise them".
+      - Check the detector produced keypoints in the chosen query frames.
+    see_also: tuning.md#nothing-survives
+
+  - code: poor_query_selection
+    severity: warn
+    message: The query frames see little of the scene.
+    suggested_actions:
+      - Use midpoint rather than interval on a sequential capture.
+      - Raise query_frame_num.
+    see_also: tuning.md#query-frames-and-image-order
+
+  - code: thin_frame
+    severity: warn
+    message: Some frame carries very few observations.
+    suggested_actions:
+      - That frame will fail to register whatever the totals say.
+      - Add a query frame near it rather than lowering thresholds.
+    see_also: limitations.md#coverage-follows-the-query-frames
+
+  - code: heavy_duplication
+    severity: info
+    message: Deduplication merged a large share of the raw tracks.
+    suggested_actions:
+      - Expected with several query frames viewing the same structure.
+      - Lower query_frame_num, or raise max_query_points_per_frame instead.
+    see_also: artifact.md#duplicate_track_rate-is-redundancy-not-error
+
+  - code: mostly_occluded
+    severity: info
+    message: The model predicts most points are out of view in most frames.
+    suggested_actions:
+      - Normal on a capture that orbits an object -- half the surface is behind it.
+      - Unexpected on a forward walk-through, where it suggests the image order does not match the capture order.
+    see_also: limitations.md#image-order-is-input
