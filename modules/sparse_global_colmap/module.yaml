@@ -1,0 +1,296 @@
+name: SparseGlobalCOLMAP
+version: 1.0.0
+kind: sparse
+summary: >
+  GLOMAP-style global reconstruction: rotation averaging, global positioning,
+  triangulation and bundle adjustment in one solve. Estimates poses itself.
+  CPU-only, via pycolmap.
+
+description: |
+  The alternative to incremental SfM, not a stage of it. Incremental
+  reconstruction registers one image at a time against structure built so far, so
+  its answer depends on the order it chose and its cost grows with repeated
+  bundle adjustment. Global reconstruction averages all relative rotations at
+  once, positions every camera in one solve, and triangulates afterwards. On a
+  large unordered collection it is dramatically faster and does not care about
+  registration order at all.
+
+  **It estimates poses internally**, so nothing upstream should. It consumes
+  `pairwise_matches/v1` directly -- not `tracks/v1`, not `poses/v1` -- because
+  the view graph IS its input: rotation averaging operates on relative poses
+  between image pairs, and a tracker has already thrown that structure away.
+
+  This is the module to reach for when `PoseEssentialToPnP` reports a low
+  `registered_fraction` on an unordered set. Incremental registration stalls when
+  the next image has too few correspondences with what is already built; global
+  positioning has no such notion and either places a camera or does not.
+
+  What it gives up: the incremental pipeline's per-image evidence. There is no
+  `min_pnp_inliers` to relax, no seed pair to inspect, and when a camera comes out
+  in the wrong place the diagnosis is in the view graph rather than in this
+  module. Read the matcher's `graph_components` and `inlier_ratio` first.
+
+image: sfmstack/sparse-global-colmap:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 16
+  # Hint for ~40 images with an exhaustive view graph. Cost grows with the number
+  # of verified pairs rather than with the image count, so a sequential window is
+  # far cheaper than this and an exhaustive sweep on 200 images far dearer.
+  expected_duration_s: 120
+  timeout_s: 7200
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  matches: {type: pairwise_matches/v1, required: true}
+
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  min_num_matches:
+    type: integer
+    default: 30
+    minimum: 8
+    maximum: 1000
+    description: Pairs with fewer verified matches are left out of the view graph.
+    tuning: >
+      Higher than a matcher's own floor on purpose: a thin pair contributes a
+      badly conditioned relative rotation, and rotation averaging spreads that
+      error over the whole graph rather than confining it to one image. Raise
+      toward 100 when `mean_reprojection_error` is poor on a well-connected set;
+      lower toward 15 only when `registered_fraction` is low AND the matcher's
+      `min_matches_per_pair` says the pairs are genuinely thin.
+
+  min_track_len:
+    type: integer
+    default: 3
+    minimum: 2
+    maximum: 50
+    description: Minimum observations for a track to be triangulated and optimised.
+    tuning: >
+      3 rather than 2, because a two-view point contributes nothing to a global
+      solve that the pair's own relative pose did not already contribute. Lower to
+      2 only to raise `point_count` on a set you do not intend to measure with.
+
+  max_epipolar_error:
+    type: number
+    default: 1.0
+    minimum: 0.1
+    maximum: 20.0
+    description: Inlier threshold for two-view verification, in working-resolution pixels.
+    tuning: >
+      In pixels of the WORKING resolution, so scale it with the scene's resize.
+      Tighter than a matcher's usual RANSAC threshold because this verification is
+      what the whole global solve trusts. Raise toward 4 on a heavily downscaled
+      scene where `verified_pairs` is far below `pairs_matched`.
+
+  min_inlier_ratio:
+    type: number
+    default: 0.25
+    minimum: 0.0
+    maximum: 1.0
+    description: Pairs whose verification keeps less than this fraction are dropped.
+    tuning: >
+      The filter that keeps a repetitive-structure mismatch out of rotation
+      averaging. Raise toward 0.5 on scenes with repeated facades; a wrong
+      relative rotation admitted here is not recoverable downstream.
+
+  verification_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: RANSAC confidence for two-view verification.
+
+  min_tri_angle_deg:
+    type: number
+    default: 1.0
+    minimum: 0.1
+    maximum: 30.0
+    description: Minimum ray angle for a triangulated point, in degrees.
+    tuning: >
+      Lower default than SparseTriangulation's 2.0 because the global solve
+      triangulates after positioning every camera and can use wider baselines than
+      any single pair offers. Raise to 2-3 if `mean_reprojection_error` is fine
+      while the cloud looks stretched in depth.
+
+  max_angular_reproj_error_deg:
+    type: number
+    default: 1.0
+    minimum: 0.01
+    maximum: 20.0
+    description: Angular reprojection error bound used when filtering points.
+    tuning: >
+      Angular rather than pixel error, which is what makes it resolution
+      independent -- unlike every other error threshold in this repository. Do not
+      scale it with the resize.
+
+  max_normalized_reproj_error:
+    type: number
+    default: 0.01
+    minimum: 0.0001
+    maximum: 1.0
+    description: Reprojection error bound in normalised camera coordinates.
+
+  ba_num_iterations:
+    type: integer
+    default: 3
+    minimum: 1
+    maximum: 20
+    description: Rounds of global bundle adjustment inside the pipeline.
+    tuning: >
+      Rounds, not Ceres iterations: each round re-triangulates and re-filters
+      between solves. 3 is GLOMAP's default. Raising to 5-6 is the first thing to
+      try when reprojection error is high and the camera count is complete.
+
+  refine_focal_length:
+    type: boolean
+    default: false
+    description: Let bundle adjustment refine focal length.
+    tuning: >
+      Off when the scene carries real calibration. On when the intrinsics came
+      from an EXIF guess -- but then read `intrinsics_refined` in the output and
+      compare against what you supplied before trusting anything metric.
+
+  refine_principal_point:
+    type: boolean
+    default: false
+    description: Let bundle adjustment refine the principal point.
+    tuning: >
+      Leave off. The principal point is weakly observable and refining it absorbs
+      error that belongs to the pose, which improves reprojection error while
+      making the reconstruction worse.
+
+  num_threads:
+    type: integer
+    default: -1
+    minimum: -1
+    maximum: 256
+    description: CPU threads. -1 uses all of them.
+
+  random_seed:
+    type: integer
+    default: 0
+    minimum: -1
+    maximum: 2147483647
+    description: RANSAC seed. -1 is non-deterministic.
+    tuning: >
+      Fixed at 0 so a re-run reproduces. Set -1 only when you are deliberately
+      sampling the variance of the solve, and note that the artifact id will then
+      be identical for genuinely different outputs.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Points in the reconstructed model after filtering.
+
+  observation_count:
+    direction: higher_better
+    healthy: [300, null]
+    meaning: >
+      Total 2D observations. Read against point_count -- their ratio is the mean
+      track length, and global reconstruction can produce a large cloud of thin
+      tracks when the view graph is sparse.
+
+  mean_track_length:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: >
+      Observations per point. Near min_track_len means nothing chained further
+      than the floor allowed, which points at the view graph.
+
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: >
+      Mean pixel error at working resolution. Not comparable against a model with
+      a different registered_images -- a smaller model is an easier one.
+
+  registered_fraction:
+    direction: higher_better
+    healthy: [0.9, null]
+    meaning: >
+      Images placed by the global solve. Unlike incremental SfM there is no
+      per-image evidence to relax when this is low; the cause is in the view
+      graph.
+
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: Absolute count of placed cameras.
+
+  verified_pairs:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: >
+      Pairs that survived two-view verification and entered the view graph. The
+      gap between this and the matcher's `pairs_matched` is what this module
+      rejected, and a large gap is the first thing to look at.
+
+  largest_component_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: >
+      Fraction of images in the biggest component of the VERIFIED graph. This can
+      be well below the matcher's figure for the same scene, because verification
+      here is stricter than the matcher's own.
+
+  models_found:
+    direction: neutral
+    meaning: >
+      Reconstructions the pipeline produced. More than 1 means the scene split
+      into components that could not be related; only the largest is returned, and
+      the rest of the images come back with valid=False.
+
+diagnostics:
+  - code: uncalibrated_scene
+    severity: error
+    message: This module needs intrinsics and the scene carries none.
+    suggested_actions:
+      - Pass calibration_path to SceneLoader.
+      - Or use a pose estimator that estimates intrinsics itself; see limitations.md.
+    see_also: limitations.md#uncalibrated-scenes
+
+  - code: no_verified_pairs
+    severity: error
+    message: No image pair survived two-view verification.
+    suggested_actions:
+      - Raise max_epipolar_error; it is in working-resolution pixels.
+      - Lower min_num_matches, after checking the matcher's min_matches_per_pair.
+      - Lower min_inlier_ratio only if the matcher's inlier_ratio is genuinely low.
+    see_also: tuning.md#verified_pairs-is-zero
+
+  - code: graph_thinned_by_verification
+    severity: warn
+    message: Verification rejected a large share of the matcher's pairs.
+    suggested_actions:
+      - Raise max_epipolar_error if the scene was heavily downscaled.
+      - Check the matcher's planarity -- degenerate pairs fail verification correctly.
+    see_also: tuning.md#verified_pairs-far-below-pairs_matched
+
+  - code: partial_registration
+    severity: warn
+    message: Some images were not placed by the global solve.
+    suggested_actions:
+      - Check largest_component_fraction; a split graph cannot be one model.
+      - Widen the matcher's window or use pairing exhaustive.
+    see_also: limitations.md#what-global-cannot-recover-from
+
+  - code: split_into_models
+    severity: warn
+    message: The pipeline produced more than one reconstruction; only the largest is returned.
+    suggested_actions:
+      - The scene has disconnected components; link them in the matcher.
+      - Or reconstruct the components separately as two scenes.
+    see_also: limitations.md#what-global-cannot-recover-from
+
+  - code: high_reprojection_error
+    severity: warn
+    message: Surviving observations have high reprojection error.
+    suggested_actions:
+      - Raise ba_num_iterations to 5-6.
+      - Raise min_num_matches so thin pairs stop feeding rotation averaging.
+    see_also: tuning.md#mean_reprojection_error-above-2

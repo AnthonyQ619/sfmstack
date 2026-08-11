@@ -28,7 +28,7 @@ Early. Build order and progress:
 | 8 | The remaining 9 legacy modules | in progress |
 | 9 | First agent-driven session over MCP | |
 
-14 modules, 258 tests. `.venv/bin/python -m pytest -q`
+16 modules, 277 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -83,11 +83,17 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | tracking | `FeatureTrackUnionFind` | numpy only | |
 | pose | `PoseEssentialToPnP` | OpenCV + pycolmap (in-loop local BA) | |
 | sparse | `SparseTriangulation` | OpenCV | |
+| | `SparseTriangulationGTSAM` | GTSAM LOST, multi-view | |
+| | `SparseGlobalCOLMAP` | pycolmap global mapping (GLOMAP) | |
 | optimization | `BundleAdjustmentGlobal` | pycolmap / Ceres | |
 | | `BundleAdjustmentLocal` | pycolmap / Ceres | |
 
+`SparseGlobalCOLMAP` estimates poses itself and consumes `pairwise_matches/v1`
+directly, so the chain through it is scene → detect → match → reconstruct, with no
+tracker and no pose estimator in it.
+
 Still to port: SuperGlue, RoMa, VGGT (pose/sparse/dense), MapAnything, VGGSfM,
-Tapir, COLMAP global mapper, gtsam incremental sparse, PatchMatch MVS.
+Tapir, PatchMatch MVS.
 
 ```bash
 docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .

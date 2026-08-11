@@ -1,0 +1,238 @@
+name: SparseTriangulationGTSAM
+version: 1.0.0
+kind: sparse
+summary: >
+  Triangulates tracks against known poses using GTSAM's LOST estimator with
+  optional nonlinear refinement, plus cheirality, angle, distance and
+  reprojection filtering. CPU-only.
+
+description: |
+  Interchangeable with `SparseTriangulation`: same inputs, same output type, same
+  filtering vocabulary. What differs is the estimator, and the difference is worth
+  a module rather than a parameter because it changes which points survive.
+
+  The OpenCV path is DLT on the widest-baseline PAIR of views. That is the right
+  cheap answer and it discards evidence: a track seen in eight views is
+  triangulated from two of them. GTSAM's LOST estimator (Linear Optimal Sine
+  Triangulation) solves over ALL observing views at once with the weighting that
+  makes the linear solution statistically optimal, which is exactly the case where
+  the pairwise answer is worst — long tracks with one wide baseline and several
+  near-coincident views.
+
+  `optimize` then runs a nonlinear refinement from that starting point. LOST is
+  usually close enough that it changes little, which is itself the useful signal:
+  when it moves points a lot, the linear solution was poorly conditioned.
+
+  It also carries GTSAM's far-landmark rejection (`max_landmark_distance`), which
+  the pairwise path has no equivalent of. A point triangulated from near-parallel
+  rays escapes to a huge distance while reprojecting perfectly into every view
+  that created it; an angle threshold catches most of those and a distance bound
+  catches the rest.
+
+image: sfmstack/sparse-gtsam:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 8
+  # Hint for ~40 images and a few thousand tracks. Roughly 3-5x SparseTriangulation
+  # per track: LOST is a solve over every observing view, not a 2-view DLT.
+  expected_duration_s: 90
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  tracks: {type: tracks/v1, required: true}
+  poses: {type: poses/v1, required: true}
+
+produces:
+  sparse: {type: sparse_model/v1}
+
+params:
+  use_lost:
+    type: boolean
+    default: true
+    description: Use the LOST estimator instead of plain multi-view DLT.
+    tuning: >
+      On. The whole reason to prefer this module over SparseTriangulation is that
+      it weights observations optimally rather than treating a wide baseline and a
+      near-coincident view as equal evidence. Turn it off only to measure what LOST
+      is buying on your data -- compare point_count and mean_reprojection_error
+      with it on and off, on the same tracks.
+
+  optimize:
+    type: boolean
+    default: true
+    description: Nonlinear refinement after the linear solve.
+    tuning: >
+      Cheap next to the linear solve and never harmful. If turning it off changes
+      the cloud noticeably, the linear solutions were poorly conditioned -- raise
+      min_triangulation_angle_deg rather than relying on refinement to rescue them.
+
+  min_triangulation_angle_deg:
+    type: number
+    default: 2.0
+    minimum: 0.0
+    maximum: 30.0
+    description: Minimum widest ray angle for a point to be kept, in degrees.
+    tuning: >
+      Same meaning and same default as SparseTriangulation, deliberately, so the
+      two modules can be swapped without re-tuning. Measured as the WIDEST angle
+      any pair of observing views subtends, not the mean.
+
+  max_reprojection_error:
+    type: number
+    default: 4.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Maximum pixel error in ANY observing view, at working resolution.
+    tuning: >
+      A maximum over views rather than a mean, so one bad observation kills the
+      point instead of being averaged away. In working-resolution pixels; scale it
+      with the scene's resize.
+
+  max_landmark_distance:
+    type: number
+    default: 0.0
+    minimum: 0.0
+    maximum: 1000000.0
+    description: >
+      Reject points further than this from any observing camera. 0 disables it.
+      In the reconstruction's arbitrary scale unit.
+    tuning: >
+      The filter with no counterpart in the OpenCV path. Scale is arbitrary -- the
+      seed pair's baseline is 1.0 -- so this is a multiple of that baseline, not a
+      distance in metres. On a turntable capture 50-200 is a reasonable bound;
+      leave it at 0 until `median_distance` in the note says points are escaping.
+
+  rank_tolerance:
+    type: number
+    default: 1.0e-9
+    minimum: 1.0e-15
+    maximum: 1.0
+    description: Rank tolerance for the linear system.
+    tuning: >
+      Rarely the answer. Raising it rejects more degenerate configurations before
+      they produce a point, which the angle filter also does and reports more
+      legibly.
+
+  min_track_len:
+    type: integer
+    default: 2
+    minimum: 2
+    maximum: 50
+    description: Ignore tracks shorter than this.
+    tuning: >
+      2 uses everything. 3 is where this module earns its cost -- LOST and a
+      2-view DLT are the same computation on a two-view track, so a purely
+      two-view set gets nothing from being triangulated here.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: Surviving 3D points after every filter.
+
+  observation_count:
+    direction: higher_better
+    healthy: [300, null]
+    meaning: Total 2D observations across all surviving points.
+
+  mean_track_length:
+    direction: higher_better
+    healthy: [2.5, null]
+    meaning: >
+      Observations per surviving point. This module's advantage over a pairwise
+      triangulator grows with this number; at 2.0 there is no advantage at all.
+
+  mean_reprojection_error:
+    direction: lower_better
+    healthy: [null, 2.0]
+    meaning: >
+      Mean pixel error over surviving observations, at working resolution. Not
+      comparable against a model with a different point count.
+
+  median_triangulation_angle:
+    direction: higher_better
+    healthy: [3.0, null]
+    meaning: >
+      Median widest ray angle over surviving points, in degrees. Low means the
+      structure is poorly conditioned in depth even where reprojection error is
+      fine -- the two disagree, and this is the more honest.
+
+  yield:
+    direction: higher_better
+    healthy: [0.3, null]
+    meaning: >
+      Surviving points over input tracks. Low with good error means the filters
+      are strict; low with poor error means the tracks or poses are wrong.
+
+  rejected_angle:
+    direction: lower_better
+    meaning: Tracks dropped for insufficient parallax.
+
+  rejected_reprojection:
+    direction: lower_better
+    meaning: Tracks dropped for exceeding max_reprojection_error in some view.
+
+  rejected_cheirality:
+    direction: lower_better
+    meaning: >
+      Tracks dropped for landing behind a camera. A large count with healthy
+      matching usually means a pose is wrong, not the tracks.
+
+  rejected_distance:
+    direction: lower_better
+    meaning: >
+      Tracks dropped by max_landmark_distance. Always 0 when the filter is off,
+      which is the default.
+
+  refinement_shift:
+    direction: lower_better
+    healthy: [null, 0.05]
+    nullable: true
+    meaning: >
+      Median distance a point moved between the linear solve and the nonlinear
+      refinement, relative to the scene's extent. Null when optimize is off. Near
+      zero means the linear solution was already good; large means it was poorly
+      conditioned and the angle filter is what to raise.
+
+diagnostics:
+  - code: uncalibrated_scene
+    severity: error
+    message: This module needs intrinsics and the scene carries none.
+    suggested_actions:
+      - Pass calibration_path to SceneLoader.
+    see_also: limitations.md#uncalibrated-scenes
+
+  - code: no_points
+    severity: error
+    message: No track survived triangulation.
+    suggested_actions:
+      - Lower min_triangulation_angle_deg toward 1.0.
+      - Raise max_reprojection_error.
+      - Check the pose estimator's registered_fraction first.
+    see_also: tuning.md#nothing-survives
+
+  - code: mostly_two_view
+    severity: info
+    message: The tracks are mostly two-view, where this module has no advantage.
+    suggested_actions:
+      - Use SparseTriangulation; it computes the same answer far more cheaply.
+      - Or widen the matcher's window so tracks reach more views.
+    see_also: limitations.md#two-view-tracks
+
+  - code: bad_poses_suspected
+    severity: warn
+    message: Many tracks landed behind a camera.
+    suggested_actions:
+      - Check the pose estimator's mean_reprojection_error and registered_fraction.
+      - Nothing in this module can fix a wrong pose.
+    see_also: limitations.md#it-cannot-fix-poses
+
+  - code: weak_structure
+    severity: warn
+    message: Surviving points are triangulated from near-parallel rays.
+    suggested_actions:
+      - Raise min_triangulation_angle_deg.
+      - Set max_landmark_distance to bound escaping points.
+    see_also: tuning.md#median_triangulation_angle-below-3

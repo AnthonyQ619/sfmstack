@@ -425,3 +425,114 @@ def test_a_local_window_improves_its_window_more_than_the_whole_model(orch):
     window_gain = ba.metric("window_error_before") - ba.metric("window_error_after")
     model_gain = ba.metric("reprojection_error_before") - ba.metric("reprojection_error_after")
     assert window_gain > model_gain
+
+
+# --------------------------------------------------------------------------- #
+# The two alternatives to the classical chain
+# --------------------------------------------------------------------------- #
+
+
+needs_gtsam = needs("gtsam")
+
+
+@needs_pycolmap
+def test_global_reconstruction_needs_no_pose_module(orch):
+    """The point of SparseGlobalCOLMAP: it consumes pairs and estimates poses
+    itself, so the chain is scene -> detect -> match -> reconstruct, with no
+    tracker and no pose estimator in it at all."""
+    built = build(orch, n=12, upto="tracks")
+    sparse = orch.run(
+        "SparseGlobalCOLMAP", run_id="rc",
+        inputs={"scene": built["scene"].id, "matches": built["matches"].id},
+    ).primary
+
+    assert sparse.type == "sparse_model/v1"
+    assert sparse.metric("registered_fraction") == 1.0
+    assert sparse.metric("mean_reprojection_error") < 1.0
+    assert sparse.load("poses", "valid").all()
+
+
+@needs_pycolmap
+def test_the_global_mapper_writes_its_own_intrinsics(orch):
+    """It may refine focal length, so a downstream module reading the scene's
+    calibration would disagree with these poses."""
+    built = build(orch, n=12, upto="tracks")
+    sparse = orch.run(
+        "SparseGlobalCOLMAP", run_id="rc",
+        inputs={"scene": built["scene"].id, "matches": built["matches"].id},
+    ).primary
+
+    assert sparse.has("intrinsics")
+    assert sparse.load("intrinsics", "K").shape == (12, 3, 3)
+
+
+@needs_pycolmap
+def test_the_global_mapper_colours_points_from_the_pixels(orch):
+    """COLMAP reads the images itself, and a scene artifact stores resized copies
+    under sequential filenames. Passing it the scene's display names produces a
+    uniformly grey cloud with nothing to indicate anything went wrong."""
+    built = build(orch, n=12, upto="tracks")
+    sparse = orch.run(
+        "SparseGlobalCOLMAP", run_id="rc",
+        inputs={"scene": built["scene"].id, "matches": built["matches"].id},
+    ).primary
+
+    rgb = sparse.load("points", "rgb")
+    assert len(np.unique(rgb, axis=0)) > 100
+
+
+@needs_gtsam
+def test_gtsam_triangulation_is_a_drop_in_for_the_opencv_one(orch):
+    """Same inputs, same output type, same filter defaults. Swapping them changes
+    the estimator and nothing else, which is what makes the comparison meaningful."""
+    built = build(orch, n=12, upto="poses")
+    common = {"scene": built["scene"].id, "tracks": built["tracks"].id,
+              "poses": built["poses"].id}
+
+    opencv = orch.run("SparseTriangulation", run_id="rc", inputs=common).primary
+    gtsam_out = orch.run("SparseTriangulationGTSAM", run_id="rc", inputs=common).primary
+
+    assert gtsam_out.type == opencv.type
+    # Poses pass through untouched in both, which is what "pure structure stage"
+    # means and what lets the two clouds be compared at all.
+    assert np.array_equal(
+        opencv.load("poses", "cam_from_world"), gtsam_out.load("poses", "cam_from_world")
+    )
+    # Measured on 12 DTU frames: 6900 points at 0.365px vs 6949 at 0.391px. The
+    # multi-view estimator keeps tracks whose widest PAIR alone could not support
+    # a point, and those harder points raise the mean -- so more points with
+    # slightly worse error is the expected direction, not a regression.
+    assert gtsam_out.metric("point_count") >= opencv.metric("point_count")
+    assert gtsam_out.metric("mean_reprojection_error") < 2.0
+
+
+@needs_gtsam
+def test_the_landmark_distance_bound_only_removes_points(orch):
+    """The filter with no counterpart in the pairwise path. Its threshold is in
+    the reconstruction's arbitrary scale unit, so the test asserts the direction
+    rather than a number."""
+    built = build(orch, n=8, upto="poses")
+    common = {"scene": built["scene"].id, "tracks": built["tracks"].id,
+              "poses": built["poses"].id}
+
+    unbounded = orch.run("SparseTriangulationGTSAM", run_id="rc", inputs=common).primary
+
+    # The bound is DERIVED from the cloud rather than hardcoded, because the unit
+    # is the seed pair's baseline and the seed pair differs between reconstructions:
+    # 3.0 keeps everything on 12 DTU frames and rejects everything on 8. That is a
+    # property of the parameter worth encoding in the test rather than working
+    # around with a magic number.
+    xyz = unbounded.load("points", "xyz")
+    P = unbounded.load("poses", "cam_from_world")[unbounded.load("poses", "valid")]
+    centers = np.array([-pose[:, :3].T @ pose[:, 3] for pose in P])
+    furthest = np.linalg.norm(xyz[:, None, :] - centers[None], axis=2).max(axis=1)
+    median = float(np.median(furthest))
+
+    bounded = orch.run(
+        "SparseTriangulationGTSAM", run_id="rc", inputs=common,
+        params={"max_landmark_distance": median},
+    ).primary
+
+    assert bounded.metric("point_count") < unbounded.metric("point_count")
+    assert bounded.metric("rejected_distance") > 0
+    assert unbounded.metric("rejected_distance") == 0
