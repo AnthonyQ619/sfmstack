@@ -657,3 +657,57 @@ Worth naming the general shape: **a container that silently degrades to CPU hide
 every bug in the GPU path**, and those bugs surface all at once when passthrough
 starts working. `cpu_fallback=False` exists for exactly this and is the right
 setting once a host has the toolkit.
+
+## 2026-08-10 — Types fix the metric vocabulary; modules fix the bands
+
+Asked directly: metric guidance lived only in each `module.yaml`, and nothing made
+two implementations of a stage comparable.
+
+Each type in `sfmkit/types/` now declares the metrics every producer must report,
+with a fixed `direction` and a canonical `meaning`. `healthy` is deliberately NOT
+fixed — the band is method-specific, 200 keypoints being thin for SIFT and
+ordinary for a learned detector at default thresholds.
+
+Enforced twice, because the two catch different mistakes:
+
+- **Registry load** refuses a manifest that does not declare them. Caught when the
+  registry is built rather than after a forty-minute dense run.
+- **`seal()`** refuses an output slot that declares them and never emits them.
+  Bound to the `Ctx.output` path only: the contract binds MODULES, not the payload
+  format, and an artifact assembled by a repair script is still a valid tracks/v1.
+
+**The gap this exposed.** `sparse_model/v1` had no metric in common across its
+three producers. The bundle adjusters reported before/after, the triangulator
+reported yield and rejection counts, and neither described the artifact — so two
+sparse models could not be compared at all. All producers now also report
+`point_count`, `observation_count`, `mean_track_length` and
+`mean_reprojection_error`. In the report's attempt table the triangulator and the
+bundle adjuster below it now show the same three numbers.
+
+Also found: `planarity` was declared `neutral` in all four matchers while its own
+meaning text says lower is healthier.
+
+## The nine remaining modules keep one role each
+
+Requested explicitly, and it settles a question I had been treating as open. VGGT
+predicts poses, sparse structure and dense depth in one forward pass, so it is
+tempting to emit all three from one module. It will not:
+`PoseVGGT` fills `poses/v1` and nothing else, `SparseVGGT` fills
+`sparse_model/v1`, `DenseVGGT` fills `dense_model/v1`.
+
+The reason is interchangeability at every stage. A module that emits three types
+can only be swapped for another module that emits the same three, and there is no
+such module — so a combined VGGT would be usable only as a whole pipeline, which
+is the fixed-pipeline problem this repository exists to remove. Three
+single-role modules can each be swapped for a classical counterpart independently,
+which is what makes "use VGGT for pose and the classical stack for everything
+else" expressible at all.
+
+The cost is real: three modules means three forward passes of the same network
+over the same images unless the artifact store's caching absorbs it, and it does
+not — different modules have different recipe ids. That cost is accepted.
+
+`SparseGlobalCOLMAP` is the shape of the exception worth allowing: it fills the
+pose block of `sparse_model/v1` because the TYPE requires it, not because the
+module is doing two jobs. The test is what the output type declares, not what the
+implementation happens to compute.
