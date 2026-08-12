@@ -525,3 +525,23 @@ they agree in against how many frames they share.
    too noisy to call, because the metric's sampled triples change when the table
    does. The claim above is about the evidence behind the merges, not about a
    downstream win.
+
+**Next — and this runs BEFORE the first agent-driven MCP session.** The one arm
+worth repeating is Arm B, on three ETH3D scenes rather than one. All 13 are already
+on disk under `datasets/ETH/` with ground-truth `images.txt`; `courtyard`,
+`electro` and `delivery_area` are the natural three. Protocol: ≥12 images each,
+full chain to bundle adjustment, relative pose against ground truth, both learned
+trackers, the same eps grid — **and discard any eps row whose `registered` count
+differs from the others**, because half of what looked like signal in the
+replication arms was registration changing underneath the comparison.
+
+The decision rule, fixed in advance:
+
+- **The optimum sits in a consistent band across all three scenes** → keep
+  `dedupe_eps_px` with per-module defaults, guarded by `trifocal_transfer_px`.
+- **The optimum moves scene to scene, for both trackers** → **remove it as a
+  parameter.** A knob whose correct value requires a per-scene diagnostic as input
+  is not a parameter, it is a sub-problem, and that cost is not payable by a
+  step-by-step module an agent has to drive.
+
+Until that runs, the current defaults stand and the derivation idea stays rejected.
