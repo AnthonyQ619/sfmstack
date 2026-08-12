@@ -91,9 +91,6 @@ likely to reach five views. Read `track_survival_5`.
 **`avg_track_length` rises when deduplication merges**, because merging
 concatenates: 3.46 without, 3.85 with. That is not the tracker getting better.
 
-**`track_survival_10` is 0 on any set of fewer than 10 images.** A fact about the
-capture.
-
 **Nothing here measures positional accuracy.** Visibility is a confidence about
 *whether* a point is seen, not *where*. The first number that measures where is the
 triangulator's reprojection error.

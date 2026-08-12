@@ -257,10 +257,6 @@ metrics:
       the table as written still holds apart, comparably with every other tracker.
       A high value with dedupe on means dedupe_eps_px is too tight.
 
-  max_track_length:
-    direction: neutral
-    meaning: Longest surviving track.
-
   median_track_length:
     direction: higher_better
     meaning: Median observations per track, beside the mean.
@@ -268,10 +264,6 @@ metrics:
   track_survival_5:
     direction: higher_better
     meaning: Fraction of tracks seen in 5+ views.
-
-  track_survival_10:
-    direction: higher_better
-    meaning: Fraction of tracks seen in 10+ views. Necessarily 0 below 10 images.
 
   duplicate_track_rate:
     direction: lower_better

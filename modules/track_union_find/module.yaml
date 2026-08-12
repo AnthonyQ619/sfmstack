@@ -233,13 +233,6 @@ metrics:
     healthy: [0.1, null]
     meaning: Fraction of tracks seen in 5+ views.
 
-  track_survival_10:
-    direction: higher_better
-    healthy: [0.0, null]
-    meaning: >
-      Fraction of tracks seen in 10+ views. Necessarily 0 on fewer than 10 images,
-      which is a fact about the capture rather than the tracker.
-
 diagnostics:
   - code: too_few_tracks
     severity: error

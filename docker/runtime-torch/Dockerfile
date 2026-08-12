@@ -18,8 +18,16 @@
 
 FROM sfmstack/runtime:1.0
 
+# `--index-url` REPLACES the default index; PyPI has to be added back explicitly.
+# Without the extra index this build stopped working in August 2026: torch 2.6.0
+# hard-pins nvidia-cudnn-cu12==9.1.0.70, and the cu124 index was pruned of it
+# (it now jumps 9.0.0.312 -> 9.1.1.17) while PyPI still carries it. The pin is
+# torch's, not ours, so the fix is to let pip see both indexes rather than to
+# move torch. Nothing here was noticed for months because the layer was cached --
+# see the note in tools/build_images.sh about what invalidates it.
 RUN pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cu124 \
+        --extra-index-url https://pypi.org/simple \
         "torch==2.6.0" "torchvision==0.21.0"
 
 # git, because "pip install git+https://..." is how research code ships and the

@@ -217,7 +217,11 @@ def run(ctx: Ctx):
 
     # Original track ids survive the round trip so a consumer can still relate a
     # point back to the tracks artifact that produced it.
-    source_track = np.asarray(sparse.load("points").get("track_id"))
+    # NOT np.asarray(...) on the get(): np.asarray(None) is a 0-d object array,
+    # which is not None, so the guard below would pass and the indexing would
+    # raise. track_id is OPTIONAL in sparse_model/v1 and most producers omit it.
+    source_track = sparse.load("points").get("track_id")
+    source_track = None if source_track is None else np.asarray(source_track)
     inverse = {pid: idx for idx, pid in enumerate(point_ids)}
     original_index = {v: k for k, v in kept_point_ids.items()}
     track_id = np.array(

@@ -155,13 +155,6 @@ metrics:
       triple are both capped -- so it does not grow with the scene. Measured at
       0.07-0.7 s on 8- and 20-image sets, reported per run as trifocal_seconds.
 
-  max_track_length:
-    direction: neutral
-    meaning: >
-      Longest surviving track. Approaching the image count on a sequential capture
-      usually means real loop closure; exceeding what the view graph can support
-      means over-merging.
-
   median_track_length:
     direction: higher_better
     meaning: >
@@ -176,14 +169,19 @@ metrics:
       Fraction of tracks seen in 5+ views. The survival curve at its second point;
       long_track_fraction is the same measurement at 3.
 
-  track_survival_10:
-    direction: higher_better
-    meaning: >
-      Fraction of tracks seen in 10+ views. Necessarily 0 on a set of fewer than 10
-      images, which is a fact about the capture rather than the tracker.
-
 # Deliberately NOT required, though the predecessor reported them: "Fragmentation"
 # (tracks per observation) and "Obs. per Track". The second is avg_track_length
 # under another name and the first is its exact reciprocal, so requiring them adds
 # two numbers and no information -- and three names for one measurement is worse
 # than one, because a reader comparing two modules has to work out they agree.
+#
+# Also deliberately NOT required, and removed after review:
+#   track_survival_10 -- necessarily 0 on any set of fewer than 10 images, which is
+#     every reference run in this repository. A metric that is constant across the
+#     cases you actually have is not informative, and track_survival_5 already
+#     carries the tail of the survival curve.
+#   max_track_length -- a single order statistic of a distribution already
+#     described by its mean, its median and two survival points. It remains a
+#     module-specific metric of FeatureTrackUnionFind, where a track longer than
+#     the view graph can support is that module's over-merge signal; nothing else
+#     at this stage has a use for it.

@@ -453,6 +453,29 @@ def test_global_reconstruction_needs_no_pose_module(orch):
 
 
 @needs_pycolmap
+def test_bundle_adjustment_accepts_a_model_that_carries_no_track_ids(orch):
+    """`points.track_id` is OPTIONAL in sparse_model/v1 and four of the five
+    producers omit it. Bundle adjustment read it as
+    `np.asarray(points.get("track_id"))`, and `np.asarray(None)` is a 0-d object
+    array rather than None -- so the "is not None" guard passed and the indexing
+    raised. Every BA-after-anything-but-SparseTriangulation chain was broken.
+    """
+    built = build(orch, n=12, upto="tracks")
+    sparse = orch.run(
+        "SparseGlobalCOLMAP", run_id="rc",
+        inputs={"scene": built["scene"].id, "matches": built["matches"].id},
+    ).primary
+    assert "track_id" not in sparse.load("points"), "this test needs a producer that omits it"
+
+    ba = orch.run("BundleAdjustmentGlobal", run_id="rc",
+                  inputs={"scene": built["scene"].id, "sparse": sparse.id}).primary
+
+    assert ba.metric("point_count") > 0
+    # Absent upstream means -1 here, not a crash and not a wrong id.
+    assert (ba.load("points", "track_id") == -1).all()
+
+
+@needs_pycolmap
 def test_the_global_mapper_writes_its_own_intrinsics(orch):
     """It may refine focal length, so a downstream module reading the scene's
     calibration would disagree with these poses."""

@@ -105,5 +105,29 @@ metrics:
     nullable: true
     meaning: >
       Homography inliers over fundamental inliers, averaged over pairs. Near 1
-      means the pair is planar or rotation-only and cannot give a baseline. Null
-      when the matcher was asked not to measure it.
+      means the correspondences are explained by a PLANE as well as by a BASELINE,
+      and a baseline is what every geometric stage downstream needs. Null when the
+      matcher was asked not to measure it.
+
+      THIS IS NOT A MATCHING FAILURE and no matcher parameter fixes it --
+      inlier_ratio is often excellent alongside it. It is the signal to change what
+      the pipeline does, not how well this stage did it. Two causes hide behind the
+      one number:
+
+      PURE ROTATION -- the camera turned without translating. There is no parallax,
+      so there is no structure to recover from these views at any quality of
+      matching. Drop the offending frames or use views that do have translation; if
+      most of the set is like this, the capture cannot be reconstructed and saying
+      so is the correct answer.
+
+      PLANAR SCENE -- there is a real baseline, but the two-view essential-matrix
+      decomposition is ill-conditioned on coplanar structure. The fix is to avoid
+      bootstrapping from two views: a global reconstructor solves the view graph at
+      once, and a feed-forward pose estimator never decomposes an essential matrix
+      at all. Staying incremental means raising the pose module's
+      init_min_angle_deg so the seed comes from whatever non-planar pair exists.
+
+      This metric cannot separate the two -- it is per-pair and averaged. What
+      separates them is whether OTHER pairs in the set carry parallax, which is
+      scene_analysis/v1's degeneracy group (pure_rotation_risk beside
+      planar_dominance). See skills/families/matching.md.

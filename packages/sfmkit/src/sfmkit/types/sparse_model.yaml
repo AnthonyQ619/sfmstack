@@ -117,12 +117,6 @@ metrics:
       mean track length, and a large cloud of two-view points is weaker than a
       small one with deep tracks.
 
-  mean_track_length:
-    direction: higher_better
-    meaning: >
-      Mean observations per point. At 2.0 nothing is multi-view constrained and
-      bundle adjustment has almost nothing to work with.
-
   mean_reprojection_error:
     direction: lower_better
     nullable: true
@@ -138,3 +132,9 @@ metrics:
       Poses", and the metric that catches a reconstruction which stalled: error can
       IMPROVE as cameras drop out, because a smaller model is an easier one, so
       point_count and error are never comparable across differing counts.
+
+# Deliberately NOT required, and removed after review: mean_track_length. It is
+# EXACTLY observation_count / point_count, both of which are required, so it added
+# a third name for a quantity already fully determined by two others. Producers
+# that route on it -- the two triangulators pick between themselves by it, and
+# bundle adjustment warns on it -- still report it as a module-specific metric.

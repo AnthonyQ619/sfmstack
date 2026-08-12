@@ -92,4 +92,3 @@ single-factor confidence would. 0.71 here is healthy.
 quality of what survived — both are computed over all predictions, before
 thresholding.
 
-**`track_survival_10` is 0 on any set of fewer than 10 images.**

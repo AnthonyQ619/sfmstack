@@ -196,12 +196,26 @@ would report how self-consistent the network is rather than how accurate it is.
 | `scene/v1` | `n_images`, `megapixels`, `mixed_resolution` |
 | `features/v1` | `keypoints_per_image`, `keypoints_min`, `spatial_coverage` |
 | `pairwise_matches/v1` | `pairs_matched`, `matches_per_pair`, `min_matches_per_pair`, `inlier_ratio`, `graph_components`, `largest_component_fraction`, `planarity`\* |
-| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `frames_covered`, `inconsistent_rate`, `split_rate`, `trifocal_transfer_px`\*, `max_track_length`, `median_track_length`, `track_survival_5`, `track_survival_10` |
+| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `frames_covered`, `inconsistent_rate`, `split_rate`, `trifocal_transfer_px`\*, `median_track_length`, `track_survival_5` |
 | `poses/v1` | `registered_fraction`, `registered_images`, `mean_reprojection_error`\*, `median_reprojection_error`\* |
-| `sparse_model/v1` | `point_count`, `observation_count`, `mean_track_length`, `mean_reprojection_error`\*, `registered_images` |
+| `sparse_model/v1` | `point_count`, `observation_count`, `mean_reprojection_error`\*, `registered_images` |
 | `dense_model/v1` | `point_count`, `views_contributing`, `mean_depth_confidence`\* |
 
 \* nullable.
+
+Three metrics were required and were removed after review, and the reasoning is
+the rule for anything proposed next: `track_survival_10` is necessarily 0 on any
+set under ten images, `max_track_length` is one order statistic of a distribution
+already described four ways, and `mean_track_length` is EXACTLY
+`observation_count / point_count`. **A required metric has to add a degree of
+freedom, not a name.** Each survives as a module-specific metric where a module
+actually routes on it.
+
+The `healthy` bands are the softest part of this contract: each is one author's
+reference run, mostly DTU scan1 at eight images. They are an orientation, not a
+validated threshold, and a `warning` means "look at this", never "this failed".
+**They are due a revision pass from the agent-driven runs**, which will be the
+first evidence spanning more than one scene per module.
 
 Modules add whatever else they measure. The contract is a floor, not a ceiling.
 
@@ -216,6 +230,9 @@ obligations that are specific to the stage.
 ### Feature detection
 
 `scene/v1` → `features/v1`
+
+**Needs** `scene.images` — `paths`, `size_current`. **No calibration.** A
+detector reads pixels and reports where things are; intrinsics play no part.
 
 **Fills** `keypoints` (`xy`, `image_index`, optional `scores`/`scale`/`orientation`)
 and optionally `descriptors`.
@@ -234,6 +251,11 @@ and optionally `descriptors`.
 ### Feature matching
 
 `scene/v1` (+ `features/v1`) → `pairwise_matches/v1`
+
+**Needs** `scene.images` — `paths`, `size_current`. **No calibration**, including
+for geometric verification: the fundamental matrix is estimated in pixels and needs
+no K. Detector-free matchers (`FeatureMatchLoFTR`, `FeatureMatchRoMa`) take no
+`features/v1` at all and read the images directly.
 
 **Fills** `pairs` (`image_pair`) and `matches` (`xy`, `pair_index`, optionally
 `feature_index`).
@@ -255,6 +277,13 @@ and optionally `descriptors`.
 ### Feature tracking
 
 `scene/v1` + (`pairwise_matches/v1` | `features/v1`) → `tracks/v1`
+
+**Needs** `scene.images` — `size_current`, and `paths` for the predictive
+trackers, which re-read the pixels. **`scene.calibration` is OPTIONAL for all
+three**, and used for exactly one thing: `trifocal_transfer_px`, which reports null
+without it. Which second input is required is the family's real fork —
+`FeatureTrackUnionFind` needs `pairwise_matches/v1`, the two learned trackers need
+`features/v1` and no matcher runs at all.
 
 **Fills** `observations` (`obs` as `[track_id, frame_idx, x, y]`, `track_count`,
 optional `visibility`).
@@ -289,6 +318,13 @@ optional `visibility`).
 
 `scene/v1` + (`tracks/v1` | nothing else) → `poses/v1`
 
+**Needs** `scene.images` — `size_current`, and `paths` for a module that looks at
+pixels. **Calibration splits the family in two:** `PoseEssentialToPnP` REQUIRES
+`scene.calibration` and raises a named diagnostic without it; `PoseVGGT` treats it
+as optional, estimates its own intrinsics, and measurably does better without a
+supplied K. That split is the reason an uncalibrated scene is a first-class state
+rather than an error.
+
 **Fills** `poses` (`cam_from_world` as (N, 3, 4), `valid`, `image_index`), and
 optionally `intrinsics`.
 
@@ -307,6 +343,13 @@ optionally `intrinsics`.
 ### Sparse reconstruction
 
 `scene/v1` + … → `sparse_model/v1`
+
+**Needs** `scene.images.size_current`, plus `paths` for a module that looks at
+pixels. **Calibration is required by every geometric member and optional for every
+feed-forward one**: `SparseTriangulationGTSAM`, `SparseGlobalCOLMAP` and
+`DenseMVS`'s upstream raise without it, `SparseTriangulation` accepts it *or*
+`poses.intrinsics` — the one module with a genuine fallback — and `SparseVGGT` /
+`SparseMapAnything` prefer their own estimate.
 
 **Fills** `points` (`xyz`, optional `rgb`/`error`/`track_id`), `observations`
 (`obs` as `[frame_idx, point_index, x, y]`), `poses`, and optionally `intrinsics`.
@@ -330,6 +373,11 @@ optionally `intrinsics`.
 
 `sparse_model/v1` → `sparse_model/v1`
 
+**Needs** the `sparse_model/v1` it refines, plus `scene.images.size_current`.
+`scene.calibration` is OPTIONAL — the model's own intrinsics take precedence when
+present, and the scene is the fallback. Note that `points.track_id` is optional in
+the type and most producers omit it; a consumer must handle its absence.
+
 Same type in and out, which is what makes it composable and what makes its
 metrics tricky.
 
@@ -345,6 +393,11 @@ metrics tricky.
 ### Dense reconstruction
 
 `scene/v1` + (`sparse_model/v1` | `poses/v1`) → `dense_model/v1`
+
+**Needs** `scene.images.paths` — dense methods re-read the pixels, always.
+`DenseMVS` REQUIRES `scene.calibration` (an uncalibrated scene supplies neither
+intrinsics nor a model that carries them); `DenseVGGT` treats it as optional and
+prefers its own.
 
 **Fills** `points` (`xyz`, optional `rgb`/`normals`), optionally `depth`, and by
 convention a `ply` sidecar.
@@ -366,6 +419,10 @@ convention a `ply` sidecar.
 ### Scene analysis
 
 `scene/v1` → `scene_analysis/v1`
+
+**Needs** `scene.images.paths` for anything reading pixels; the `metadata` group
+needs only the paths themselves. **No calibration** — the point is to characterise
+a scene before anything is known about it.
 
 Designed, not yet built. The type exists with no producer.
 

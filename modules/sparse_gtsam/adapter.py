@@ -138,6 +138,7 @@ def run(ctx: Ctx):
     ctx.progress(0.15, f"{len(groups)} tracks, {len(pose_of)} posed cameras")
 
     xyz_out, obs_out, angles, errors, shifts, lengths = [], [], [], [], [], []
+    kept_track: list[int] = []  # tracks/v1 id per surviving point, as the type allows
     rejected = {"angle": 0, "reprojection": 0, "cheirality": 0, "distance": 0, "solve": 0}
 
     for gi, rows in enumerate(groups):
@@ -224,6 +225,7 @@ def run(ctx: Ctx):
 
         index = len(xyz_out)
         xyz_out.append(point)
+        kept_track.append(int(track_id[seen[0]]))
         lengths.append(len(seen))
         angles.append(angle)
         errors.extend(per_view)
@@ -307,7 +309,11 @@ def run(ctx: Ctx):
     point_error = point_error / np.maximum(counts, 1)
 
     out = ctx.output("sparse")
-    out.save("points", xyz=xyz, rgb=rgb, error=point_error)
+    # track_id makes this module actually interchangeable with SparseTriangulation:
+    # without it a consumer cannot relate a point back to the track that made it,
+    # and the two modules' outputs cannot be compared point for point.
+    out.save("points", xyz=xyz, rgb=rgb, error=point_error,
+             track_id=np.array(kept_track, dtype=np.int32))
     out.save("observations", obs=obs_array)
     out.save(
         "poses",

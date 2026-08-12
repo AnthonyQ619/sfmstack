@@ -13,6 +13,16 @@
 # a module running last week's sfmkit against this week's artifacts is exactly the
 # skew containers exist to prevent -- but it means "rebuild the one image I
 # touched" is usually wrong, and the order below is not optional.
+#
+# The cost of that layout, learned the hard way: because sfmkit sits UNDER the
+# dependency installs, a one-line change to the contract layer forces every base
+# above it to re-resolve its dependencies from the network. In August 2026 that
+# turned a docstring edit into a failed build, when the cu124 index had been pruned
+# of a wheel torch 2.6.0 hard-pins. The cached layer had been hiding it for months.
+# Two consequences worth remembering: a green build here is not evidence the images
+# are REPRODUCIBLE, only that they are current; and putting the contract layer on
+# TOP of the dependency layers instead of under them would make an sfmkit change
+# cost a 2 MB rebuild instead of a 10 GB one.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."

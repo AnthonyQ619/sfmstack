@@ -391,12 +391,9 @@ def run(ctx: Ctx):
     out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(split_rate(observations, track_count), 4),
                direction="lower_better", healthy=(None, 0.1))
-    out.metric("max_track_length", int(lengths.max()), direction="neutral")
     out.metric("median_track_length", float(np.median(lengths)),
                direction="higher_better")
     out.metric("track_survival_5", round(float((lengths >= 5).mean()), 4),
-               direction="higher_better")
-    out.metric("track_survival_10", round(float((lengths >= 10).mean()), 4),
                direction="higher_better")
     out.metric("duplicate_track_rate", round(duplicate_rate, 4),
                direction="lower_better", healthy=(None, 0.5))
