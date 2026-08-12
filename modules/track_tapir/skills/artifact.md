@@ -32,6 +32,38 @@ thing to worry about** — it means the query frames see disjoint parts of the s
 Structural, not a health signal. See
 [limitations](limitations.md#inconsistent_rate-cannot-detect-anything-here).
 
+## `split_rate` beside `duplicate_track_rate`
+
+They are not the same number and the difference is the point.
+
+- **`duplicate_track_rate`** is what deduplication REMOVED, at this module's own
+  `dedupe_eps_px`.
+- **`split_rate`** is what the table as written still holds apart, at a tolerance
+  **fixed by `tracks/v1`** so it is comparable with every other tracker.
+
+Read together they say whether `dedupe_eps_px` is set right. A high `split_rate`
+with deduplication on means the module's tolerance is tighter than the type's test
+and duplicates are surviving.
+
+`split_rate` is also the number that makes this module comparable with a chaining
+tracker at all: `inconsistent_rate` is structurally zero here and carries no
+information, and this is its dual.
+
+## `trifocal_transfer_px` — the only metric here that measures position
+
+Everything else in `tracks/v1` is about length, coverage or self-consistency, and
+this module's characteristic weakness is precision — the positions are predictions
+at reduced resolution, not detected keypoints. No other metric can see that.
+
+It is a held-out three-view prediction: relative pose and a third camera are fitted
+from half the tracks common to a frame triple, and the *other* half's points are
+predicted into the third view and measured there. Nothing about a measured track's
+third-view observation took part in the fit.
+
+**This is the number to compare against a chaining tracker**, and the one that
+should move when the model's working resolution does. Null on an uncalibrated
+scene.
+
 ## Metrics that mislead
 
 **Every track metric here flatters this module.** `avg_track_length` 5.98 against

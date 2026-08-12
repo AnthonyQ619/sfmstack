@@ -71,6 +71,7 @@ def build_tracks(ctx: Ctx):
     out.metric("frames_covered", 1.0, direction="higher_better", healthy=(1.0, None))
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.05))
     out.metric("split_rate", 0.0, direction="lower_better", healthy=(None, 0.1))
+    out.metric("trifocal_transfer_px", None, direction="lower_better")
     out.metric("max_track_length", n_images, direction="neutral")
     out.metric("median_track_length", float(n_images),
                direction="higher_better", healthy=(3.0, None))

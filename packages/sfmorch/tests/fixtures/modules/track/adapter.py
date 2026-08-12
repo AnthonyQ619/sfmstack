@@ -89,6 +89,10 @@ def run(ctx: Ctx):
     # Observations are collected into a per-frame dict, so a second observation in
     # one frame overwrites rather than conflicting -- structurally zero here.
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.05))
+    # Null rather than computed: the fixture has no calibration and no real
+    # geometry, and a fabricated value would make the metric look measurable here.
+    out.metric("trifocal_transfer_px", None, direction="lower_better")
+    out.metric("trifocal_samples", 0, direction="higher_better")
     out.metric("split_rate", round(split_rate(obs_array, track_id), 4),
                direction="lower_better", healthy=(None, 0.1))
     out.metric("max_track_length", max(lengths) if lengths else 0, direction="neutral")

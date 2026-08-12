@@ -102,3 +102,14 @@ the model's confidence is well separated rather than borderline.
 Same mechanism as `FeatureTrackVGGSfM`'s. It works in **scene pixels**, not
 TAPIR's square, so a value carries between the two trackers even though they run
 at different resolutions. 0.50 of raw tracks merged on the reference run.
+
+## Reading `trifocal_transfer_px`
+
+The only metric here that measures where the observations are rather than how many
+there are, and this module's characteristic weakness is exactly that. Read it
+against a chaining tracker's on the same scene: the gap is what predicting rather
+than matching costs.
+
+**It is the number that should move when the working resolution does.** Where a
+resolution parameter exists it is the one to reach for; where it does not, this
+metric is a property of the model rather than a knob.

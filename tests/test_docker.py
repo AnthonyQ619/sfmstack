@@ -74,13 +74,18 @@ def test_modules_do_not_share_dependencies(orch):
     OpenCV; SIFT has OpenCV and no Pillow. Neither could run in the other's
     image, and they still compose.
 
-    The tracker has neither, which is the cheaper half of the same claim: a
-    module that needs nothing beyond sfmkit pays for nothing beyond sfmkit."""
+    The union-find tracker used to assert `cv2` absent as well -- a module needing
+    nothing beyond sfmkit paying for nothing beyond sfmkit. It acquired OpenCV when
+    `trifocal_transfer_px` became a required metric of `tracks/v1`, which is a real
+    cost honestly recorded rather than a property quietly dropped: 415 MB to
+    557 MB, for a measurement rather than for the algorithm. What it still does not
+    carry is the learned stack, which is the expensive half.
+    """
     for image, present, absent in (
         ("sfmstack/scene-loader:1.0.0", "PIL", "cv2"),
         ("sfmstack/feature-sift:1.0.0", "cv2", "PIL"),
         ("sfmstack/match-nn:1.0.0", "cv2", "PIL"),
-        ("sfmstack/track-union-find:1.0.0", "numpy", "cv2"),
+        ("sfmstack/track-union-find:1.0.0", "cv2", "torch"),
     ):
         probe = subprocess.run(
             ["docker", "run", "--rm", "--entrypoint", "python", image, "-c",

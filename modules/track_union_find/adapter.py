@@ -6,8 +6,10 @@ explicit handling of tracks that contradict themselves.
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
-from sfmkit import Ctx, module, split_rate
+from sfmkit import Ctx, module, scene_intrinsics, split_rate, trifocal_transfer
 
 PROGRESS_EVERY = 50_000  # union steps between progress reports
 
@@ -374,8 +376,25 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(50, None))
     out.metric("frames_covered", round(frames_covered, 3),
                direction="higher_better", healthy=(1.0, None))
+    # Positional accuracy -- the one axis no other metric here touches. Timed and
+    # reported, because it is the only part of this module that could grow with the
+    # scene in a way the rest does not.
+    transfer_started = time.monotonic()
+    K_all = scene_intrinsics(scene, n_images)
+    transfer, transfer_n, transfer_triples = (
+        trifocal_transfer(obs, K_all) if K_all is not None else (None, 0, 0)
+    )
+    transfer_seconds = time.monotonic() - transfer_started
+
     out.metric("inconsistent_rate", round(inconsistent_rate, 4),
                direction="lower_better", healthy=(None, 0.05))
+    out.metric(
+        "trifocal_transfer_px",
+        round(transfer, 4) if transfer is not None else None,
+        direction="lower_better", healthy=(None, 3.0),
+    )
+    out.metric("trifocal_samples", transfer_n, direction="higher_better")
+    out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(fragmentation, 4),
                direction="lower_better", healthy=(None, 0.1))
     out.metric(

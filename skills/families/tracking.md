@@ -32,41 +32,25 @@ The ordering is not a coincidence of one dataset. Predicting rather than matchin
 buys reach and costs precision, and the further a model runs from the image's
 native resolution the more of both you get.
 
----
-
-## Measured — DTU scan1, 8 images at 1024 px
-
-One scene. Same SIFT keypoints into all three; same `PoseEssentialToPnP` and
-`SparseTriangulation` behind all three.
-
-| tracker | `avg_track_length` | `long_track_fraction` | `track_survival_5` |
-| --- | ---: | ---: | ---: |
-| `FeatureTrackUnionFind` | 2.85 | 0.431 | 0.116 |
-| `FeatureTrackVGGSfM` | 3.85 | 0.712 | 0.345 |
-| `FeatureTrackTapir` | **5.98** | **0.927** | **0.754** |
-
-| tracker | triangulated points | mean error | `yield` |
-| --- | ---: | ---: | ---: |
-| `FeatureTrackUnionFind` | 4671 | **0.280 px** | 0.993 |
-| `FeatureTrackVGGSfM` | 3982 | 0.502 px | 0.987 |
-| `FeatureTrackTapir` | 1548 | 1.581 px | 0.566 |
-
-Monotonic, with no crossover on any column.
-
----
-
-## What this means for reading a `tracks/v1` artifact
-
-**No metric in the type measures the precision axis.** Every one of them —
+**One metric measures the precision axis and the rest do not.**
 `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`,
-`frames_covered`, `inconsistent_rate`, `split_rate`, the survival curve — is about
-length, coverage or self-consistency. A tracker can look excellent on all of them
-and be four pixels off everywhere.
+`frames_covered`, `inconsistent_rate`, `split_rate` and the survival curve are all
+about length, coverage or self-consistency — a tracker can look excellent on every
+one of them and be several pixels off everywhere.
 
-**The first number that sees it is downstream**: the triangulator's
-`mean_reprojection_error`, and more usefully its `yield`, which is the fraction of
-tracks that survived the geometric filters. Comparing trackers means reading past
-the tracker.
+**`trifocal_transfer_px`** is the exception, and it is the number to compare
+trackers on. It is a held-out three-view prediction: relative pose and a third
+camera fitted from half the tracks common to a frame triple, and the other half's
+points predicted into the third view and measured there.
+
+Two views would not do. A matcher verifies pairs *independently*, so a chaining
+tracker's observations satisfy every epipolar constraint by construction; three
+lines meeting pairwise need not meet at a point, and that is the error which
+survives pairwise verification.
+
+Read it **within one scene, across trackers**. It is not comparable across scenes
+or image counts — the absolute value depends on the baselines of the sampled
+triples.
 
 ---
 
@@ -95,16 +79,22 @@ On an ordered capture TAPIR reaches furthest; on an unordered one, prefer VGGSfM
 
 ## What has NOT been measured
 
-**The case the predictive trackers exist for.** Every number above is DTU:
-calibrated, well-textured, sequential, turntable — the case chaining is *best* at.
-The table says what the predictive trackers cost where the matcher already works.
+**Nothing here is quantified, deliberately.** The trade above is structural — it
+follows from where the observations come from, not from any dataset — and the
+guidance is keyed on upstream metrics you have before choosing. The magnitudes are
+not, and a single scene's numbers are not a pass-down.
 
-It does not say what they buy where it does not. On a scene whose view graph
-fragments, `FeatureTrackUnionFind`'s tracks would be short for a reason the table
-above cannot show, and the ordering on `yield` could compress or invert. That
-experiment needs a textureless or weakly-overlapped scene and has not been run.
+The three questions this file should eventually answer, and the evidence each
+needs:
 
-**Treat the ordering as established and the magnitudes as one data point.**
+| Question | Needs |
+| --- | --- |
+| **How much precision does predictive cost, where chaining works?** | Several calibrated, well-overlapped scenes across datasets — not one. |
+| **How much reach does chaining lose, where it does not?** | A scene whose view graph genuinely fragments: textureless, weakly overlapped, or wide-baseline. This is the case the predictive trackers exist for and it has not been run at all. |
+| **Where is the crossover?** | Both of the above, on scenes that span the range between them. Until then "reach for predictive when the view graph fragments" is a rule with a direction and no threshold. |
+
+Until those are answered, treat the ordering as structural and the magnitudes as
+unknown.
 
 ---
 

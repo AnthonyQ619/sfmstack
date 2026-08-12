@@ -32,13 +32,15 @@ no camera here.
 
 from __future__ import annotations
 
+import time
+
 import os
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from sfmkit import Ctx, module, split_rate
+from sfmkit import Ctx, module, scene_intrinsics, split_rate, trifocal_transfer
 from tapnet.torch import tapir_model
 
 CHECKPOINT = os.environ.get("TAPIR_CHECKPOINT", "/opt/weights/bootstapir_v2.pt")
@@ -367,9 +369,26 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1.0, None))
     # Structurally zero, as in FeatureTrackVGGSfM: one query point yields one
     # position per frame, so a track cannot contradict itself.
+    # Positional accuracy -- the one axis no other metric here touches. Timed and
+    # reported, because it is the only part of this module that could grow with the
+    # scene in a way the rest does not.
+    transfer_started = time.monotonic()
+    K_all = scene_intrinsics(scene, n_images)
+    transfer, transfer_n, transfer_triples = (
+        trifocal_transfer(observations, K_all) if K_all is not None else (None, 0, 0)
+    )
+    transfer_seconds = time.monotonic() - transfer_started
+
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.0))
     # See FeatureTrackVGGSfM: duplicate_track_rate is what dedupe removed at this
     # module's tolerance, split_rate is what remains at the type's fixed one.
+    out.metric(
+        "trifocal_transfer_px",
+        round(transfer, 4) if transfer is not None else None,
+        direction="lower_better", healthy=(None, 3.0),
+    )
+    out.metric("trifocal_samples", transfer_n, direction="higher_better")
+    out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(split_rate(observations, track_count), 4),
                direction="lower_better", healthy=(None, 0.1))
     out.metric("max_track_length", int(lengths.max()), direction="neutral")

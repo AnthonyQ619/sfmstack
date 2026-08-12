@@ -28,7 +28,7 @@ Early. Build order and progress:
 | 8 | The remaining 9 legacy modules | **done** |
 | 9 | First agent-driven session over MCP | |
 
-25 modules, 322 tests. `.venv/bin/python -m pytest -q`
+25 modules, 335 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -49,7 +49,7 @@ Every module gets its own image, even where two would be identical. All of them
 build `FROM` a shared base, so Docker stores the common layers once:
 
 ```
-sfmstack/runtime          415 MB   sfmkit only — the tracker's image IS this
+sfmstack/runtime          415 MB   sfmkit only
   + opencv                179 MB   shared by SIFT, ORB, NN, FLANN, pose, triangulation
   + pycolmap                       shared by both bundle adjusters
   + pycolmap-cuda12       327 MB   DenseMVS -- CUDA PatchMatch, no CPU path exists

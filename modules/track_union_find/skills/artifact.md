@@ -84,6 +84,48 @@ artifact's `inputs`.
 triangulation, no depth, no reprojection error — those belong to whatever consumes
 this.
 
+## `split_rate` — the other half of `inconsistent_rate`
+
+`inconsistent_rate` catches this module OVER-merging: one track holding two scene
+points. It is structurally blind to the opposite error, and so is every other
+metric here — splitting one physical point across several tracks produces no
+contradiction of any kind, and shows up only as tracks that are shorter than they
+should be, indistinguishable from tracks that are genuinely short.
+
+`split_rate` is that measurement. Tracks whose observations coincide within a
+tolerance **fixed by `tracks/v1`** in at least two distinct frames are the same
+point; the metric is the fraction that would disappear if they were merged.
+
+For this module it reads the **view graph**: a fragmented graph leaves one point in
+several disconnected chains. That is not fixable here — it is the matcher's pairing
+and verification that decides it.
+
+Two pitfalls:
+
+- **It is not `merge_headroom`.** That probe rebuilds the whole thing at twice
+  `merge_eps_px` to ask what a looser merge WOULD have changed. This measures the
+  table as written, at a tolerance this module does not control, so the two answer
+  different questions and neither substitutes.
+- **Nothing in this module currently acts on it.** It is a reading, not a control.
+
+## `trifocal_transfer_px` — the only metric here that measures position
+
+Everything else in `tracks/v1` is about length, coverage or self-consistency. A
+track table can be excellent on all of them and be several pixels off everywhere.
+
+This is a held-out three-view prediction: relative pose and a third camera are
+fitted from half the tracks common to a frame triple, and the *other* half's points
+are predicted into the third view and measured there. Nothing about a measured
+track's third-view observation took part in the fit.
+
+**Expect it to be low for this module and to stay low**, because its observations
+are the detector's keypoints and the matcher already verified them pairwise. It is
+not a flattering number here so much as a baseline the predictive trackers are read
+against.
+
+It is null on an uncalibrated scene, and null when no frame triple shares enough
+tracks — which is itself a statement about the table.
+
 ## Metrics that mislead
 
 `avg_track_length` rises both when the pipeline improves and when the matcher gets

@@ -19,26 +19,36 @@ make after running all the candidates is not a selection aid.
 
 1. **The axis or axes the family trades along** — the thing that is structurally
    true and does not depend on the dataset.
-2. **A measured table**, with the scene stated.
-3. **What each end is for**, in terms a scene's traits can be matched against.
-4. **What has NOT been measured**, explicitly. This tier is worth more for being
-   honest about its coverage than for being complete.
+2. **What each end is for**, keyed on metrics available *before* the choice is
+   made, so it can be read while planning rather than after running everything.
+3. **What has NOT been measured**, and what evidence each open question needs.
+
+A **measured table** may be added to any of those, and must state its scene. One
+scene's numbers are not a pass-down: they say what happened once, and a reader
+cannot tell from them what will happen on their own capture. Structure generalises;
+magnitudes do not until several scenes agree.
 
 ## Status
 
-| Family | File | Evidence |
-| --- | --- | --- |
-| Feature detection | — | not written |
-| Feature matching | — | not written |
-| Feature tracking | [tracking.md](tracking.md) | one scene (DTU scan1), all three trackers |
-| Pose estimation | — | not written |
-| Sparse reconstruction | — | not written; data exists from module bring-up |
-| Optimization | — | not written |
-| Dense reconstruction | — | not written; data exists from module bring-up |
+One file per stage of the pipeline, because each stage is a family.
 
-Empty files are deliberately absent rather than stubbed. A stub invites being
-filled with a guess, and a guess here is worse than a gap: it is read at the
-moment nothing has been measured yet.
+| Family | File | Produces |
+| --- | --- | --- |
+| Feature detection | [detection.md](detection.md) | `features/v1` |
+| Feature matching | [matching.md](matching.md) | `pairwise_matches/v1` |
+| Feature tracking | [tracking.md](tracking.md) | `tracks/v1` |
+| Pose estimation | [pose.md](pose.md) | `poses/v1` |
+| Sparse reconstruction | [sparse.md](sparse.md) | `sparse_model/v1` |
+| Optimization | [optimization.md](optimization.md) | `sparse_model/v1` |
+| Dense reconstruction | [dense.md](dense.md) | `dense_model/v1` |
+
+Scene analysis has no file because it has no modules yet.
+
+**Everything currently written here is structural and nothing is quantified.** The
+axes follow from where each family's numbers come from, not from any dataset, and
+the guidance is keyed on upstream metrics available *before* the choice is made.
+Every file ends with what it would take to put numbers on it — that section is the
+map of what is still unknown, and it is the more useful half today.
 
 ## Recording protocol
 

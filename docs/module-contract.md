@@ -196,7 +196,7 @@ would report how self-consistent the network is rather than how accurate it is.
 | `scene/v1` | `n_images`, `megapixels`, `mixed_resolution` |
 | `features/v1` | `keypoints_per_image`, `keypoints_min`, `spatial_coverage` |
 | `pairwise_matches/v1` | `pairs_matched`, `matches_per_pair`, `min_matches_per_pair`, `inlier_ratio`, `graph_components`, `largest_component_fraction`, `planarity`\* |
-| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `frames_covered`, `inconsistent_rate`, `split_rate`, `max_track_length`, `median_track_length`, `track_survival_5`, `track_survival_10` |
+| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `frames_covered`, `inconsistent_rate`, `split_rate`, `trifocal_transfer_px`\*, `max_track_length`, `median_track_length`, `track_survival_5`, `track_survival_10` |
 | `poses/v1` | `registered_fraction`, `registered_images`, `mean_reprojection_error`\*, `median_reprojection_error`\* |
 | `sparse_model/v1` | `point_count`, `observation_count`, `mean_track_length`, `mean_reprojection_error`\*, `registered_images` |
 | `dense_model/v1` | `point_count`, `views_contributing`, `mean_depth_confidence`\* |
@@ -271,7 +271,14 @@ optional `visibility`).
   splitting (one scene point across several tracks). A chaining tracker can do
   both; a predictive one structurally cannot over-merge, so its `inconsistent_rate`
   is zero and carries no information — which its skills must say rather than
-  presenting as a clean bill of health.
+  presenting as a clean bill of health. Both are computed by sfmkit at tolerances
+  the TYPE fixes, not the module, because their purpose is cross-tracker comparison.
+- **`trifocal_transfer_px` is the only positional metric.** Everything else in the
+  type is length, coverage or self-consistency, and a track table can be excellent
+  on all of them while being several pixels off. It is a held-out three-view
+  prediction — two views are not enough, because a matcher verifies pairs
+  independently and a chaining tracker's observations satisfy every epipolar
+  constraint by construction. Nullable: an uncalibrated scene cannot support it.
 
 *Members:* `FeatureTrackUnionFind`, `FeatureTrackVGGSfM`, `FeatureTrackTapir`.
 

@@ -36,11 +36,23 @@ Trait thresholds live here too: the analysis modules emit numbers, and
 > along and the evidence for it. Read before running anything, beside
 > `judgment/triage.md`. Nothing is recorded here without being asked for first.
 
+- **[detection.md](families/detection.md)** — invariance by construction or by
+  training; the descriptor type decides the matcher; coverage beats count
+- **[matching.md](families/matching.md)** — detector-based or detector-free, and
+  that choice reaches forward into how the tracker must merge
 - **[tracking.md](families/tracking.md)** — track length and positional precision
-  move in opposite directions; no `tracks/v1` metric measures the second
+  move in opposite directions
+- **[pose.md](families/pose.md)** — geometric or feed-forward; and a third option
+  that skips the stage entirely
+- **[sparse.md](families/sparse.md)** — ray intersection or a learned prior; poses
+  as input or as output; the scale a prior carries
+- **[optimization.md](families/optimization.md)** — scope against cost, and the
+  trap that error is never comparable across differing model sizes
+- **[dense.md](families/dense.md)** — verification against prediction; holes are
+  the honest part
 
-Everything else is unwritten; see [families/README.md](families/README.md) for
-what is measured and what is not.
+All structural, none quantified. Each file ends with what it would take to put
+numbers on it.
 
 ## Workflow guides
 

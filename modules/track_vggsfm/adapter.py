@@ -37,12 +37,14 @@ and that is what `duplicate_track_rate` measures.
 
 from __future__ import annotations
 
+import time
+
 import os
 
 import numpy as np
 import torch
 from PIL import Image
-from sfmkit import Ctx, module, split_rate
+from sfmkit import Ctx, module, scene_intrinsics, split_rate, trifocal_transfer
 from vggt.dependency.vggsfm_utils import (
     build_vggsfm_tracker,
     calculate_index_mappings,
@@ -376,11 +378,28 @@ def run(ctx: Ctx):
     # Structurally zero: one query point yields at most one position per frame, so
     # a track cannot contradict itself. Reported because the type requires it, and
     # documented as uninformative HERE rather than quietly emitted as a success.
+    # Positional accuracy -- the one axis no other metric here touches. Timed and
+    # reported, because it is the only part of this module that could grow with the
+    # scene in a way the rest does not.
+    transfer_started = time.monotonic()
+    K_all = scene_intrinsics(scene, n_images)
+    transfer, transfer_n, transfer_triples = (
+        trifocal_transfer(observations, K_all) if K_all is not None else (None, 0, 0)
+    )
+    transfer_seconds = time.monotonic() - transfer_started
+
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.0))
     # What deduplication did NOT catch, at the tolerance tracks/v1 fixes rather
     # than at dedupe_eps_px. duplicate_track_rate says what was merged; this says
     # what is still split in the table as written, comparably with every other
     # tracker.
+    out.metric(
+        "trifocal_transfer_px",
+        round(transfer, 4) if transfer is not None else None,
+        direction="lower_better", healthy=(None, 3.0),
+    )
+    out.metric("trifocal_samples", transfer_n, direction="higher_better")
+    out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(split_rate(observations, track_count), 4),
                direction="lower_better", healthy=(None, 0.1))
     out.metric("max_track_length", int(lengths.max()), direction="neutral")

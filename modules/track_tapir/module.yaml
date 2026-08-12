@@ -214,6 +214,33 @@ metrics:
       yields one position per frame, so a track cannot contradict itself. Read
       duplicate_track_rate instead.
 
+  trifocal_transfer_px:
+    direction: lower_better
+    nullable: true
+    healthy: [null, 3.0]
+    meaning: >
+      Median held-out three-view transfer error, in pixels. The only metric here
+      that measures POSITIONAL accuracy rather than length, coverage or
+      self-consistency, and therefore the only one that separates a tracker whose
+      tracks are long from one whose tracks are right. Null on an uncalibrated
+      scene. See sfmkit.trifocal_transfer for the construction.
+
+      Comparable across trackers on ONE scene -- which is what it is for -- and not
+      across scenes or image counts, because the absolute value depends on the
+      baselines of the sampled triples.
+
+  trifocal_samples:
+    direction: higher_better
+    meaning: >
+      Held-out observations the transfer error was measured over. Small means few
+      frame triples shared enough tracks, which makes the median above soft.
+
+  trifocal_seconds:
+    direction: lower_better
+    meaning: >
+      Wall clock spent on the transfer measurement, reported because it is the one
+      part of this module whose cost is not obvious from its parameters.
+
   split_rate:
     direction: lower_better
     healthy: [null, 0.1]

@@ -15,6 +15,14 @@
 
 FROM sfmstack/runtime-torch:1.0
 
+# opencv-python-headless is here only for the trifocal_transfer_px metric, which
+# needs a robust essential-matrix and PnP solve. sfmkit does not depend on OpenCV
+# -- it is installed in every image including this one's 415 MB base -- so a module
+# that calls that measurement provides it. It costs ~180 MB, which on this image is
+# noticeable and on the learned trackers' multi-gigabyte ones is not.
+RUN pip install --no-cache-dir "opencv-python-headless==4.10.0.84"
+
+
 ARG TAPNET_COMMIT=c2cbab81cc06092b5f05bfe2da7bfec54e2079c9
 
 RUN pip install --no-cache-dir "dm-tree" "einshape" \

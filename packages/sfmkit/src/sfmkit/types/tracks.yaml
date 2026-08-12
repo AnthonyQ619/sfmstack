@@ -109,6 +109,43 @@ metrics:
       leaves one point in several disconnected chains. A predictive tracker's
       reads its query frames, which re-find each other's points.
 
+  trifocal_transfer_px:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Median HELD-OUT three-view transfer error, in pixels at working resolution.
+      The only measurement of positional accuracy available at this stage, and the
+      only metric here that is not about length, coverage or self-consistency.
+
+      Computed by sfmkit.trifocal_transfer: for sampled frame triples, the relative
+      pose of two views and the position of the third are fitted from HALF the
+      common tracks, and the other half's points are then predicted into the third
+      view and measured there. Nothing about a measured track's third-view
+      observation took part in the fit.
+
+      Three views rather than two on purpose. A matcher verifies pairs
+      independently, so a chaining tracker's observations satisfy every epipolar
+      constraint by construction and a two-view residual would read zero for that
+      family and meaningfully for the others -- a metric of one family, not a
+      comparison. Three lines meeting pairwise need not meet at a point, and that
+      is the error which survives pairwise verification.
+
+      Null on an uncalibrated scene, and null when no frame triple shares enough
+      tracks -- which is itself a statement about the track table.
+
+      COMPARABLE ACROSS TRACKERS ON ONE SCENE, which is what it is for. NOT
+      comparable across scenes or across image counts: the absolute value depends
+      on the baselines of the sampled triples, and a wider-baseline set transfers
+      less accurately for reasons that have nothing to do with the tracker.
+
+      It does NOT see an error consistent across every view of a track: the fitted
+      geometry absorbs that. Three views absorb far less than two, which is the
+      gain, but it is not immunity.
+
+      Bounded cost by construction -- the triples and the correspondences per
+      triple are both capped -- so it does not grow with the scene. Measured at
+      0.07-0.7 s on 8- and 20-image sets, reported per run as trifocal_seconds.
+
   max_track_length:
     direction: neutral
     meaning: >

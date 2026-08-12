@@ -48,6 +48,13 @@ metrics:
     direction: lower_better
     healthy: [null, 0.05]
     meaning: Tracks observed twice in one frame.
+  trifocal_transfer_px:
+    direction: lower_better
+    nullable: true
+    meaning: Held-out three-view transfer error; null in this fixture.
+  trifocal_samples:
+    direction: higher_better
+    meaning: Observations behind it.
   split_rate:
     direction: lower_better
     healthy: [null, 0.1]

@@ -228,3 +228,15 @@ backwards. Measuring the effect on track structure is the only thing that works.
 
 `probe_merge_headroom: false` turns the second pass off. It roughly doubles this
 module's runtime, which is negligible next to any matcher.
+
+## Reading `trifocal_transfer_px`
+
+The only metric here that measures where the observations are rather than how many
+there are. It should be low for this module and stay low — the observations are the
+detector's keypoints and the matcher verified them pairwise — so a value that is
+*not* low is a signal about the matcher or the calibration rather than about
+chaining.
+
+It cannot be tuned from this module. Nothing here moves an observation; the
+positions come from the detector and the merge only decides which ones belong
+together.
