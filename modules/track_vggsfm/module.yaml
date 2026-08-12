@@ -220,6 +220,12 @@ metrics:
       tracks are long from one whose tracks are right. Null on an uncalibrated
       scene. See sfmkit.trifocal_transfer for the construction.
 
+      One measurement is one observation of one track in one image: the distance,
+      in that image's pixels at the scene's working resolution, between where this
+      module put the point and where geometry fitted from OTHER tracks says it
+      belongs. The metric is the median over those distances, so it moves with the
+      working resolution and reads 0 for a tracker whose positions are exact.
+
       Comparable across trackers on ONE scene -- which is what it is for -- and not
       across scenes or image counts, because the absolute value depends on the
       baselines of the sampled triples.

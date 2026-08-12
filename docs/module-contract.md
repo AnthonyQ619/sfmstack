@@ -278,7 +278,10 @@ optional `visibility`).
   on all of them while being several pixels off. It is a held-out three-view
   prediction — two views are not enough, because a matcher verifies pairs
   independently and a chaining tracker's observations satisfy every epipolar
-  constraint by construction. Nullable: an uncalibrated scene cannot support it.
+  constraint by construction. One measurement is one observation in one image — the
+  distance between where the tracker put the point and where geometry fitted from
+  *other* tracks says it belongs, in that image's pixels at working resolution —
+  and the metric is their median. Nullable: an uncalibrated scene cannot support it.
 
 *Members:* `FeatureTrackUnionFind`, `FeatureTrackVGGSfM`, `FeatureTrackTapir`.
 

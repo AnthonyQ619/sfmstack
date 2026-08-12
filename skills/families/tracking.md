@@ -43,6 +43,12 @@ trackers on. It is a held-out three-view prediction: relative pose and a third
 camera fitted from half the tracks common to a frame triple, and the other half's
 points predicted into the third view and measured there.
 
+One measurement is one observation of one track in one image — the distance
+between where the tracker put the point and where geometry fitted from *other*
+tracks says it belongs, in that image's pixels at the working resolution. The
+metric is their median. It is the precision axis of the trade above, expressed in
+the same units the trade is caused by.
+
 Two views would not do. A matcher verifies pairs *independently*, so a chaining
 tracker's observations satisfy every epipolar constraint by construction; three
 lines meeting pairwise need not meet at a point, and that is the error which
@@ -51,6 +57,32 @@ survives pairwise verification.
 Read it **within one scene, across trackers**. It is not comparable across scenes
 or image counts — the absolute value depends on the baselines of the sampled
 triples.
+
+### Use it as a guard when you move a merge tolerance
+
+Every tracker here has a tolerance that decides when two tracks are one point —
+`dedupe_eps_px` on the predictive ones, `merge_eps_px` on the chaining one for
+detector-free input. Set it too wide and distinct scene points get fused, which
+`track_count` and `avg_track_length` report as an *improvement*: fewer tracks, and
+longer ones, because merging concatenates.
+
+**`trifocal_transfer_px` is the metric that sees the fusion.** A merge of two
+copies of one point leaves the geometry consistent; a merge of two different points
+cannot, so the transfer error climbs. The procedure:
+
+> Raise the tolerance, re-read `trifocal_transfer_px`, and stop when it starts
+> climbing.
+
+This runs at the tracker stage, before a reconstruction is spent on the answer.
+
+**It guards a tolerance; it does not choose one.** The reading is flat across a
+broad band of usable values and only turns once the tolerance is too wide, so it
+tells you where the ceiling is and not where the optimum sits. In particular a
+tolerance derived from it — scaling the merge distance by the tracker's own
+measured noise — was tested and does not hold: the tolerance that best recovers
+known duplicates grows *sub-linearly* in that noise, so the ratio is not a
+constant to multiply by. See
+[`docs/import_lessons.md`](../../docs/import_lessons.md).
 
 ---
 

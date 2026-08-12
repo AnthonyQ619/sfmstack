@@ -117,6 +117,15 @@ metrics:
       The only measurement of positional accuracy available at this stage, and the
       only metric here that is not about length, coverage or self-consistency.
 
+      WHAT ONE PIXEL IS. One measurement is one observation of one track in one
+      image: the tracker says the point is at (x, y) there, and three-view geometry
+      fitted from OTHER tracks says it should be at (x', y'). The measurement is the
+      Euclidean distance between those two, in that image's pixels at the scene's
+      working resolution -- so 2.5 means "the tracker's positions sit two and a half
+      pixels from where the rest of the table says they belong", and halving the
+      working resolution roughly halves the reading for an unchanged tracker. The
+      metric is the median over every such held-out measurement.
+
       Computed by sfmkit.trifocal_transfer: for sampled frame triples, the relative
       pose of two views and the position of the third are fitted from HALF the
       common tracks, and the other half's points are then predicted into the third

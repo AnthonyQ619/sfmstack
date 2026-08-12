@@ -60,6 +60,14 @@ from half the tracks common to a frame triple, and the *other* half's points are
 predicted into the third view and measured there. Nothing about a measured track's
 third-view observation took part in the fit.
 
+**What one pixel is.** A single measurement is one observation of one track in one
+image: this module says the point is at (x, y) there, and geometry fitted from
+*other* tracks says it should be at (x', y'). The measurement is the distance
+between those two, in that image's pixels at the scene's working resolution. The
+metric is the median over every held-out measurement, so a reading of 2.5 means
+"typical observation sits 2½ px from where the rest of the table says it belongs",
+and the same tracker on the same scene at half the resolution reads about half.
+
 **This is the number to compare against a chaining tracker**, and the one that
 should move when the model's working resolution does. Null on an uncalibrated
 scene.

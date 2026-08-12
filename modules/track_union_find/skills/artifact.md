@@ -118,6 +118,14 @@ fitted from half the tracks common to a frame triple, and the *other* half's poi
 are predicted into the third view and measured there. Nothing about a measured
 track's third-view observation took part in the fit.
 
+**What one pixel is.** A single measurement is one observation of one track in one
+image: this module says the point is at (x, y) there, and geometry fitted from
+*other* tracks says it should be at (x', y'). The measurement is the distance
+between those two, in that image's pixels at the scene's working resolution. The
+metric is the median over every held-out measurement, so a reading of 2.5 means
+"typical observation sits 2½ px from where the rest of the table says it belongs",
+and the same tracker on the same scene at half the resolution reads about half.
+
 **Expect it to be low for this module and to stay low**, because its observations
 are the detector's keypoints and the matcher already verified them pairwise. It is
 not a flattering number here so much as a baseline the predictive trackers are read

@@ -370,3 +370,158 @@ and triangulator behind each.
    while VGGT predicts intrinsics with `fx == fy` and cannot express what a
    non-uniform squeeze does to a camera. The same operation is a quality question
    for one and a correctness bug for the other.
+
+---
+
+## 2026-08-12 — A merge tolerance does not scale with a tracker's noise, and the metric that would set it can only guard it
+
+**The question.** `split_rate` says a track table still holds copies of one point
+apart; `dedupe_eps_px` is the tolerance that merges them. VGGSfM and TAPIR
+disagreed about whether deduplication helps, and the tidy explanation was that the
+tolerance should scale with each tracker's own positional noise — which
+`trifocal_transfer_px` now measures. So: is `dedupe_eps_px ≈ c · trifocal_transfer_px`
+a real rule?
+
+**Why this needed four experiments.** Deduplication changes how many points exist,
+and reprojection error over different point sets is not comparable — the trap
+already recorded twice in this file. Each arm below is blind to a different
+confound, and no single one of them would have answered the question.
+
+### Arm A — structure only, poses held fixed
+
+DTU `scan1` and `scan24`, 8 images, `max_edge: 1024`. One pose set per scene, from
+a chain the sweep does not touch:
+
+```
+SceneLoader → FeatureDetectionSIFT → FeatureMatchNN (exhaustive)
+            → FeatureTrackUnionFind → PoseEssentialToPnP     ── the fixed frame
+SceneLoader → FeatureDetectionSIFT → tracker(dedupe_eps_px) → SparseTriangulation
+                                                              (against that frame)
+```
+
+Only the structure moves. Reprojection error is read at a **fixed track length**
+so the point-count trap does not apply.
+
+| `scan1`, VGGSfM | 0 | 0.5 | 1.0 | 1.5 | 2.0 | 3.0 | 4.0 | 6.0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `split_rate` | 0.421 | 0.140 | 0.057 | 0.015 | 0.000 | 0.000 | 0.000 | 0.000 |
+| `trifocal_transfer_px` | **0.584** | 0.829 | 0.857 | 0.757 | 0.994 | 1.538 | 1.987 | 4.048 |
+| err @ 3 obs | **0.411** | 0.464 | 0.484 | 0.478 | 0.477 | 0.506 | 0.538 | 0.526 |
+| `yield` | **0.994** | 0.992 | 0.991 | 0.989 | 0.982 | 0.940 | 0.879 | 0.778 |
+
+`scan24`/VGGSfM and `scan24`/TAPIR have the same shape — every eps > 0 is worse on
+every outcome. `scan1`/TAPIR is the only mixed case (err @ 5 obs bottoms at eps 3.0,
+err @ 3 obs at 2.0, `yield` at 0).
+
+### Arm B — poses, against ground truth
+
+ETH3D `courtyard`, 12 images (`DSC_0286`–`DSC_0297`), `resize: fixed [1024, 682]` —
+both learned trackers stack the set into one tensor and ETH3D's captures are
+6208×4134, 6200×4134 and 6205×4135. Full chain per eps, then scored against
+`dslr_calibration_undistorted/images.txt` on **relative** pose over all 66 pairs, so
+no gauge alignment and no scale enters:
+
+```
+SceneLoader → SIFT → tracker(dedupe_eps_px) → PoseEssentialToPnP
+            → SparseTriangulation → BundleAdjustmentGlobal   → vs ground truth
+```
+
+This is the only arm that can see the actual argument for deduplication — *a
+duplicated point enters bundle adjustment once per copy* — because camera poses are
+a fixed-size output whatever the merge does. **Arm A is structurally blind to it.**
+
+| VGGSfM, after BA | 0 | 0.5 | 1.0 | 1.5 | 2.0 | 3.0 | 4.0 | 6.0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `trifocal_transfer_px` | 1.470 | 1.449 | 1.903 | 1.366 | 1.459 | 1.733 | 2.265 | 2.313 |
+| rotation, median ° | 0.123 | 0.119 | 0.120 | 0.116 | 0.113 | **0.108** | 0.143 | 0.171 |
+| translation, median ° | 0.110 | 0.110 | 0.092 | **0.081** | 0.091 | 0.094 | 0.184 | 0.238 |
+
+A real but shallow benefit over a **broad** optimum from 1.5 to 3.0, then a collapse
+at 4. TAPIR on the same scene has no coherent optimum: its rotation error improves
+only where its track count has collapsed, and its translation error moves the other
+way. `FeatureTrackUnionFind` on the same 12 images reaches 0.106° / 0.081° with no
+dedupe knob at all.
+
+*Null control:* `PoseEssentialToPnP` re-rolled at six `confidence` /
+`max_iterations` settings on an unchanged track table gave **exactly zero** spread.
+The estimator is deterministic here, so differences between eps values are real
+functions of the input rather than sampling noise.
+
+### Arm C — synthetic, where the duplicates are known
+
+1200 points, 8 cameras on an arc, 45% of points split into two tracks, every
+observation the true projection plus N(0, σ). Merges scored by pair-counting
+precision and recall against the truth. This is what separates "the rule is wrong"
+from "real duplicates are not what the rule assumes".
+
+| σ | `trifocal_transfer_px` | best eps | eps/σ | eps / transfer | best F1 |
+|---:|---:|---:|---:|---:|---:|
+| 0.25 | 0.918 | 0.50 | 2.00 | 0.54 | 0.966 |
+| 0.50 | 1.700 | 0.75 | 1.50 | 0.44 | 0.899 |
+| 1.00 | 3.200 | 1.00 | 1.00 | 0.31 | 0.749 |
+| 2.00 | 5.348 | 1.50 | 0.75 | 0.28 | 0.526 |
+| 4.00 | 10.392 | 2.00 | 0.50 | 0.19 | 0.263 |
+
+### Arm D — replication
+
+At 8 images the effect is mixed (rotation 0.101 → 0.092 → 0.084 → 0.104 across eps
+0/1.5/3/6; translation 0.149 → 0.164 → 0.155 → 0.191). At 16 images `eps=0` produced
+a **broken** reconstruction — median relative translation error 99.1° — where 1.5 and
+3.0 did not; the largest single effect seen, on a marginal scene where the
+registration counts also differ, so it is not an effect size. The disjoint window
+`DSC_0300`–`DSC_0311` registers **3 of 12** images for union-find and 4 for VGGSfM,
+so it measures nothing about eps. That is a fact about the courtyard capture, not
+about deduplication, and the replication is honestly partial.
+
+### How much evidence is behind each merge
+
+Measured on the raw tables: for pairs a merge at 1.5 px would fuse, how many frames
+they agree in against how many frames they share.
+
+| scene / tracker | merges | backed by 1 frame only | median agreeing / shared |
+|---|---:|---:|---:|
+| `scan1` / VGGSfM | 5006 | 20.4% | **1.00** |
+| `scan24` / VGGSfM | 6539 | 17.9% | **1.00** |
+| `scan1` / UnionFind | 860 | 24.8% | **1.00** |
+| `scan1` / TAPIR | 3886 | 29.4% | **0.50** |
+| `scan24` / TAPIR | 3057 | 41.5% | **0.40** |
+
+**Conclusions.**
+
+1. **`dedupe_eps_px ≈ c · trifocal_transfer_px` is not a rule.** VGGSfM's optimum on
+   ETH3D is 1.5–3.0 at a transfer of 1.47 (c ≈ 1–2); the same c predicts 2–4 for
+   TAPIR at 1.92, where nothing is better than 0.5. On DTU, VGGSfM's optimum is 0 at
+   a transfer of 0.58, which no positive c produces. The ratio is not constant across
+   trackers, scenes, or outcome.
+
+2. **Arm C says the rule scales in the wrong direction, not merely with the wrong
+   constant.** The best tolerance grows *sub-linearly* in the noise — roughly √σ —
+   so the ratio the rule assumes fixed falls 2.8× over the range tested. And the
+   achievable merge quality collapses: at σ = 4 the *best possible* F1 is 0.26. A
+   noisier tracker cannot be compensated by merging more loosely, because the
+   tolerance wide enough to catch its duplicates also fuses distinct points.
+
+3. **`trifocal_transfer_px` detects a wrong tolerance; it does not choose a right
+   one.** It rises monotonically once eps begins fusing distinct points — `scan24`
+   VGGSfM goes 0.96 → 12.14 across the sweep — and on ETH3D the two eps values where
+   it exceeded ~2.2 are exactly the two where bundle adjustment blew out. **The
+   usable procedure is: raise the tolerance, re-read the metric, stop when it starts
+   climbing** — available at the tracker stage, before spending a reconstruction.
+
+4. **`split_rate` and `duplicate_track_rate` stay separate metrics.** The first is
+   what the table still holds apart at a tolerance the *type* fixes; the second is
+   what a module's own `dedupe_eps_px` removed. Collapsing them would lose exactly
+   the comparison that made this experiment possible.
+
+5. **The evidence behind a merge separates the two learned trackers better than the
+   tolerance does.** VGGSfM's merged pairs agree in *every* frame they share — those
+   are one physical point. TAPIR's agree in half or fewer — those are two points that
+   coincided once. A fifth of VGGSfM's merges and two-fifths of TAPIR's rest on a
+   single frame's coincidence, which `split_rate` already refuses to treat as
+   evidence (`SPLIT_MIN_SHARED_FRAMES = 2`) and which both trackers' merges accept.
+
+6. **What was NOT established.** Whether requiring two shared frames improves the
+   *reconstruction*. Reading that comparison through `trifocal_transfer_px` came back
+   too noisy to call, because the metric's sampled triples change when the table
+   does. The claim above is about the evidence behind the merges, not about a
+   downstream win.
