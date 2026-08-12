@@ -209,6 +209,16 @@ metrics:
       that is this module's analogous failure, and it is the one union-find's
       metric is blind to.
 
+  split_rate:
+    direction: lower_better
+    healthy: [null, 0.1]
+    meaning: >
+      Fraction of tracks that still coincide with another track after
+      deduplication, at the tolerance tracks/v1 fixes rather than at this module's
+      dedupe_eps_px. duplicate_track_rate says what dedupe REMOVED; this says what
+      the table as written still holds apart, comparably with every other tracker.
+      A high value with dedupe on means dedupe_eps_px is too tight.
+
   max_track_length:
     direction: neutral
     meaning: Longest surviving track.

@@ -1,7 +1,7 @@
 """Union-find over pairwise correspondences -- the real algorithm, on fixture data."""
 
 import numpy as np
-from sfmkit import Ctx, module
+from sfmkit import Ctx, module, split_rate
 
 
 def _find(parent, x):
@@ -89,6 +89,8 @@ def run(ctx: Ctx):
     # Observations are collected into a per-frame dict, so a second observation in
     # one frame overwrites rather than conflicting -- structurally zero here.
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.05))
+    out.metric("split_rate", round(split_rate(obs_array, track_id), 4),
+               direction="lower_better", healthy=(None, 0.1))
     out.metric("max_track_length", max(lengths) if lengths else 0, direction="neutral")
     out.metric(
         "median_track_length", float(np.median(lengths)) if lengths else 0.0,

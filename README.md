@@ -28,7 +28,7 @@ Early. Build order and progress:
 | 8 | The remaining 9 legacy modules | **done** |
 | 9 | First agent-driven session over MCP | |
 
-25 modules, 299 tests. `.venv/bin/python -m pytest -q`
+25 modules, 322 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -138,7 +138,14 @@ separate axes and no `tracks/v1` metric measures the second.
 
 **All 25 legacy modules are ported.**
 
+`tools/build_images.sh` builds everything in dependency order — and it has to be
+everything: sfmkit is COPYed into `sfmstack/runtime`, the first layer of every
+other image, so any change to the package invalidates all of them at once.
+
 ```bash
+tools/build_images.sh            # all bases and all modules
+tools/build_images.sh track_     # only matching module directories
+
 docker build -t sfmstack/runtime:1.0         -f docker/runtime/Dockerfile .
 docker build -t sfmstack/runtime-torch:1.0   -f docker/runtime-torch/Dockerfile .
 docker build -t sfmstack/runtime-lightglue:1.0 -f docker/runtime-lightglue/Dockerfile .

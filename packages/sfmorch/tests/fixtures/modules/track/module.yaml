@@ -48,6 +48,10 @@ metrics:
     direction: lower_better
     healthy: [null, 0.05]
     meaning: Tracks observed twice in one frame.
+  split_rate:
+    direction: lower_better
+    healthy: [null, 0.1]
+    meaning: Tracks that coincide with another track; the dual of inconsistent_rate.
   max_track_length:
     direction: neutral
     meaning: Longest surviving track.

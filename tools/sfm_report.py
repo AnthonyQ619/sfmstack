@@ -362,21 +362,28 @@ def _pose_source(store: ArtifactStore, art):
     return None
 
 
-def cloud_payload(store: ArtifactStore, final_id: str, max_points: int):
-    """The 3D data, as compact base64 arrays.
+def _b64(a, dtype):
+    return base64.b64encode(np.ascontiguousarray(a, dtype=dtype).tobytes()).decode()
 
-    Downsampled by keeping the LOWEST-error points rather than at random: the
-    point of the viewer is to see the reconstruction, and a random sample of a
-    cloud with outliers shows you the outliers. A dense cloud has no per-point
-    error, so there the sample is a uniform stride -- which is the right choice
-    for it, since a dense cloud's outliers are spread evenly rather than
-    concentrated in a tail.
+
+def _latest_of_each_kind(store: ArtifactStore, final_id: str):
+    """The last sparse model and the last dense model in the lineage.
+
+    The LAST of each kind, not the first: a run that bundle-adjusts produces two
+    sparse_model/v1 artifacts and the second is the one anybody wants to look at.
+    One per kind rather than all of them, because the viewer's job is to show the
+    reconstruction, not to be a diff tool.
     """
-    art = store.open(final_id)
-    if art.type not in ("sparse_model/v1", "dense_model/v1"):
-        return None
-    dense = art.type == "dense_model/v1"
+    latest: dict[str, object] = {}
+    for art in lineage(store, final_id):
+        if art.type == "sparse_model/v1":
+            latest["sparse"] = art
+        elif art.type == "dense_model/v1":
+            latest["dense"] = art
+    return latest
 
+
+def _one_cloud(art, kind: str, max_points: int):
     points = art.load("points")
     xyz = np.asarray(points["xyz"], dtype=np.float64)
     rgb = np.asarray(points.get("rgb", np.full((len(xyz), 3), 160)), dtype=np.uint8)
@@ -384,57 +391,245 @@ def cloud_payload(store: ArtifactStore, final_id: str, max_points: int):
 
     total = len(xyz)
     if total > max_points:
-        if dense:
-            keep = np.linspace(0, total - 1, max_points).astype(int)
-        else:
-            keep = np.argsort(error)[:max_points]
+        # Sparse clouds sample by lowest error: a random sample of a cloud with
+        # outliers shows you the outliers. A dense cloud has no per-point error
+        # and its outliers are spread evenly rather than concentrated in a tail,
+        # so an even stride is the honest sample there.
+        keep = (np.linspace(0, total - 1, max_points).astype(int) if kind == "dense"
+                else np.argsort(error)[:max_points])
         xyz, rgb, error = xyz[keep], rgb[keep], error[keep]
 
+    prov = art.manifest.produced_by
+    return {
+        "key": kind,
+        "kind": kind,
+        "module": prov.module if prov else art.id,
+        "artifact": art.id,
+        "count": int(len(xyz)),
+        "total": int(total),
+        "_xyz": xyz,
+        "rgb": _b64(rgb, "u1"),
+        "error": _b64(error, "<f4"),
+        # A cloud with no per-point error offers no error colouring rather than
+        # offering it over an array of zeros: a control that does nothing is worse
+        # than one that is absent.
+        "error_max": (float(np.percentile(error, 95)) if error.any() else None),
+    }
+
+
+def scene_payload(store: ArtifactStore, final_id: str, max_points: int):
+    """Every viewable cloud in the lineage, plus the cameras, in one frame.
+
+    All of it is centred and scaled by ONE transform so switching between clouds
+    does not move the view -- and so the cameras stay where they belong relative
+    to whichever cloud is showing. The reference is the sparse model when there is
+    one, because that is the geometry everything else was built against; then the
+    dense cloud; then, for a pipeline that stops at pose estimation, the camera
+    centres themselves.
+
+    Returns None only when there is nothing spatial at all to draw.
+    """
+    art = store.open(final_id)
+    kinds = _latest_of_each_kind(store, final_id)
+
+    clouds = [_one_cloud(a, kind, max_points)
+              for kind, a in (("sparse", kinds.get("sparse")),
+                              ("dense", kinds.get("dense"))) if a is not None]
+
     source = _pose_source(store, art)
-    if source is None:
-        P = np.zeros((0, 3, 4))
-        valid = np.zeros(0, dtype=bool)
-    else:
+    centres, axes = [], []
+    if source is not None:
         poses = source.load("poses")
         P = np.asarray(poses["cam_from_world"], dtype=np.float64)
         valid = np.asarray(poses["valid"], dtype=bool)
-    # Camera centres in world coordinates, and the three axes of each camera.
-    centres, axes = [], []
-    for k in range(len(P)):
-        if not valid[k]:
-            continue
-        R, t = P[k][:, :3], P[k][:, 3]
-        centres.append(-R.T @ t)
-        axes.append(R.T)  # columns are the camera x, y, z in world coordinates
+        for k in range(len(P)):
+            if not valid[k]:
+                continue
+            R, t = P[k][:, :3], P[k][:, 3]
+            centres.append(-R.T @ t)
+            axes.append(R.T)  # columns are the camera x, y, z in world coordinates
 
-    # Centre and scale so the viewer opens on the model regardless of the
-    # arbitrary world frame the pose estimator chose.
-    finite = xyz[np.isfinite(xyz).all(axis=1)]
+    reference = next((c["_xyz"] for c in clouds if c["kind"] == "sparse"), None)
+    if reference is None:
+        reference = clouds[0]["_xyz"] if clouds else None
+    if reference is None or not len(reference):
+        reference = np.asarray(centres) if centres else None
+    if reference is None or not len(reference):
+        return None
+
+    finite = reference[np.isfinite(reference).all(axis=1)]
     centre = np.median(finite, axis=0) if len(finite) else np.zeros(3)
-    spread = np.percentile(np.linalg.norm(finite - centre, axis=1), 90) if len(finite) else 1.0
+    spread = (np.percentile(np.linalg.norm(finite - centre, axis=1), 90)
+              if len(finite) else 1.0)
     spread = float(spread) if spread > 1e-9 else 1.0
 
-    def b64(a, dtype):
-        return base64.b64encode(np.ascontiguousarray(a, dtype=dtype).tobytes()).decode()
+    for cloud in clouds:
+        cloud["xyz"] = _b64((cloud.pop("_xyz") - centre) / spread, "<f4")
 
-    # A dense cloud has no per-point reprojection error, so the error colouring is
-    # not offered rather than being offered over an array of zeros -- a control
-    # that does nothing is worse than one that is absent.
-    has_error = bool(error.any())
-
+    prov = source.manifest.produced_by if source is not None else None
     return {
-        "count": int(len(xyz)),
-        "total": int(total),
-        "kind": "dense" if dense else "sparse",
-        "xyz": b64((xyz - centre) / spread, "<f4"),
-        "rgb": b64(rgb, "u1"),
-        "error": b64(error, "<f4"),
-        "error_max": (float(np.percentile(error, 95)) if has_error else None),
+        "clouds": clouds,
         "cameras": [
             {"c": ((np.asarray(c) - centre) / spread).tolist(), "R": np.asarray(a).tolist()}
             for c, a in zip(centres, axes)
         ],
+        "camera_source": (prov.module if prov else None),
     }
+
+
+def quaternion_wxyz(R: np.ndarray) -> tuple[float, float, float, float]:
+    """Rotation matrix -> (w, x, y, z), Shepperd's method.
+
+    The branch on which diagonal term is largest is not an optimisation: taking
+    `w = sqrt(1 + trace)/2` unconditionally divides by a number near zero for
+    rotations near 180 degrees, which is exactly where a pose evaluation cares.
+    """
+    m00, m01, m02 = R[0]
+    m10, m11, m12 = R[1]
+    m20, m21, m22 = R[2]
+    trace = m00 + m11 + m22
+    if trace > 0:
+        s = np.sqrt(trace + 1.0) * 2
+        q = (0.25 * s, (m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s)
+    elif m00 > m11 and m00 > m22:
+        s = np.sqrt(1.0 + m00 - m11 - m22) * 2
+        q = ((m21 - m12) / s, 0.25 * s, (m01 + m10) / s, (m02 + m20) / s)
+    elif m11 > m22:
+        s = np.sqrt(1.0 + m11 - m00 - m22) * 2
+        q = ((m02 - m20) / s, (m01 + m10) / s, 0.25 * s, (m12 + m21) / s)
+    else:
+        s = np.sqrt(1.0 + m22 - m00 - m11) * 2
+        q = ((m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, 0.25 * s)
+    q = np.asarray(q, dtype=np.float64)
+    # Sign is a gauge freedom (q and -q are the same rotation). Fixing w >= 0
+    # means two exports of the same pose compare equal componentwise.
+    if q[0] < 0:
+        q = -q
+    return tuple(float(v) for v in q / np.linalg.norm(q))
+
+
+POSE_CONVENTION = (
+    "cam_from_world: X_camera = R @ X_world + t. Quaternions are (w, x, y, z) "
+    "and encode that same R. This is COLMAP's convention, so the .txt below is a "
+    "valid images.txt."
+)
+
+
+def pose_exports(store: ArtifactStore, final_id: str):
+    """The estimated poses, in the two forms an evaluation actually wants.
+
+    A reconstruction's poses are the part you compare against ground truth --
+    relative rotation and translation-direction error, AUC at 5/10/30 degrees --
+    and none of that is reachable from an npz without this repository. So the
+    report carries them out.
+
+    Two files rather than one because the two audiences want different things:
+
+      * `images.txt` in COLMAP's format, which every existing evaluation script
+        and pycolmap itself already read. No intrinsics: images.txt has nowhere to
+        put them, and relative-pose error does not need them.
+      * `poses.json`, explicit and self-describing -- rotation matrices AND
+        quaternions, the translation, the intrinsics when the artifact carries
+        them, the unregistered images listed as such, and the convention written
+        out in words. Nothing to infer.
+
+    Unregistered images appear in the json marked `registered: false` and are
+    absent from images.txt, which has no way to say "no pose" -- an evaluation
+    that silently scores them as identity would be measuring nothing.
+    """
+    art = store.open(final_id)
+    source = _pose_source(store, art)
+    if source is None:
+        return []
+
+    poses = source.load("poses")
+    P = np.asarray(poses["cam_from_world"], dtype=np.float64)
+    valid = np.asarray(poses["valid"], dtype=bool)
+    index = np.asarray(poses.get("image_index", np.arange(len(P))), dtype=int)
+
+    names = None
+    scene_id = source.manifest.scene
+    if scene_id:
+        try:
+            names = [str(n) for n in store.open(scene_id).load("images", "names")]
+        except Exception:
+            names = None
+
+    K_all = None
+    if source.has("intrinsics"):
+        data = source.load("intrinsics")
+        K = np.asarray(data["K"], dtype=np.float64)
+        cam_index = data.get("camera_index")
+        if cam_index is None:
+            cam_index = np.arange(len(K))
+        K_all = {int(i): K[min(int(c), len(K) - 1)].tolist()
+                 for i, c in zip(index, np.asarray(cam_index, dtype=int))}
+
+    prov = source.manifest.produced_by
+    module = prov.module if prov else source.id
+
+    def name_of(frame: int) -> str:
+        if names and 0 <= frame < len(names):
+            return names[frame]
+        return f"{frame:06d}"
+
+    registered = [(int(index[k]), P[k]) for k in range(len(P)) if valid[k]]
+
+    lines = [
+        "# Camera poses estimated by sfmstack.",
+        f"# module: {module}   artifact: {source.id}",
+        f"# {POSE_CONVENTION}",
+        f"# {len(registered)} of {len(P)} images registered; unregistered images "
+        f"are OMITTED rather than written as identity.",
+        "# Image list with two lines of data per image:",
+        "#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME",
+        "#   POINTS2D[] as (X, Y, POINT3D_ID)",
+        f"# Number of images: {len(registered)}",
+    ]
+    for n, (frame, matrix) in enumerate(registered, start=1):
+        w, x, y, z = quaternion_wxyz(matrix[:, :3])
+        t = matrix[:, 3]
+        lines.append(
+            f"{n} {w:.9f} {x:.9f} {y:.9f} {z:.9f} "
+            f"{t[0]:.9f} {t[1]:.9f} {t[2]:.9f} 1 {name_of(frame)}"
+        )
+        lines.append("")  # the POINTS2D line, empty: this is a pose export
+
+    document = {
+        "produced_by": {"module": module, "artifact": source.id,
+                        "type": source.type},
+        "convention": POSE_CONVENTION,
+        "registered": len(registered),
+        "images": [
+            {
+                "image_index": int(index[k]),
+                "name": name_of(int(index[k])),
+                "registered": bool(valid[k]),
+                "cam_from_world": P[k].tolist() if valid[k] else None,
+                "quaternion_wxyz": (list(quaternion_wxyz(P[k][:, :3]))
+                                    if valid[k] else None),
+                "translation": P[k][:, 3].tolist() if valid[k] else None,
+                "K": (K_all or {}).get(int(index[k])),
+            }
+            for k in range(len(P))
+        ],
+    }
+
+    def entry(name, text, note):
+        raw = text.encode()
+        return {
+            "artifact": source.id, "module": module, "type": source.type,
+            "name": f"{module}-{name}", "bytes": len(raw), "points": None,
+            "note": note, "path": None,
+            "data": base64.b64encode(raw).decode(),
+        }
+
+    return [
+        entry("images.txt", "\n".join(lines) + "\n",
+              "COLMAP images.txt — loads in pycolmap and in existing evaluation code"),
+        entry("poses.json", json.dumps(document, indent=2),
+              "explicit matrices, quaternions and intrinsics, convention written out"),
+    ]
 
 
 def downloads(store: ArtifactStore, final_id: str, max_embed_mb: float):
@@ -466,6 +661,7 @@ def downloads(store: ArtifactStore, final_id: str, max_embed_mb: float):
                 "name": f"{produced.module if produced else art.id}-{path.stem}.ply",
                 "bytes": int(size),
                 "points": art.metric("point_count"),
+                "note": "binary PLY with per-point colour",
                 "path": str(path),
                 "data": None,
             }
@@ -569,6 +765,12 @@ pre { overflow-x:auto; background:var(--page); border:1px solid var(--ring);
           background:var(--viewer-bg); cursor:grab; touch-action:none; }
 #viewer:active { cursor:grabbing; }
 .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:11px; }
+.group { display:inline-flex; gap:0; border-radius:7px; overflow:hidden; }
+.group button { border-radius:0; margin:0; }
+.group button + button { border-left:none; }
+.group button:first-child { border-top-left-radius:7px; border-bottom-left-radius:7px; }
+.group button:last-child { border-top-right-radius:7px; border-bottom-right-radius:7px; }
+.sep { width:1px; height:20px; background:var(--ring); }
 button { font:inherit; font-size:13px; padding:5px 12px; border-radius:7px;
          border:1px solid var(--ring); background:var(--surface); color:var(--ink); cursor:pointer; }
 button[aria-pressed="true"] { background:var(--s1); border-color:var(--s1); color:#fff; }
@@ -628,9 +830,12 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
   <div class="card">
     <canvas id="viewer"></canvas>
     <div class="controls">
+      <span class="group" id="c-clouds"></span>
+      <button id="c-pts" aria-pressed="true">Points</button>
+      <button id="c-cam" aria-pressed="true">Cameras</button>
+      <span class="sep"></span>
       <button id="c-rgb" aria-pressed="true">Colour: image</button>
       <button id="c-err" aria-pressed="false">Colour: reprojection error</button>
-      <button id="c-cam" aria-pressed="true">Cameras</button>
       <button id="c-reset">Reset view</button>
       <span class="legend" id="legend"></span>
     </div>
@@ -680,13 +885,20 @@ const poseStep = DATA.steps.find(s => s.type === "poses/v1") || {};
 const reg = (poseStep.metrics || []).find(m => m.name === "registered_images");
 const regFrac = (poseStep.metrics || []).find(m => m.name === "registered_fraction");
 
+// The headline point count is the FINAL cloud's, and its true size rather than
+// the sampled one the viewer draws.
+const finalCloud = (DATA.cloud && DATA.cloud.clouds.length)
+  ? DATA.cloud.clouds[DATA.cloud.clouds.length - 1] : null;
+
 $("#subtitle").textContent =
-  `${DATA.steps.length} modules · ${DATA.cloud ? DATA.cloud.count.toLocaleString() + " points · " : ""}` +
+  `${DATA.steps.length} modules · ` +
+  (finalCloud ? `${finalCloud.total.toLocaleString()} points · ` : "") +
   `${total.toFixed(1)}s total`;
 
 const hero = [
   reg ? {n: `${reg.value}${regFrac ? " / " + Math.round(reg.value / regFrac.value) : ""}`, l: "cameras registered"} : null,
-  DATA.cloud ? {n: DATA.cloud.count.toLocaleString(), l: "3D points"} : null,
+  finalCloud ? {n: finalCloud.total.toLocaleString(),
+                l: (finalCloud.kind === "dense" ? "dense points" : "3D points")} : null,
   lastMetric("reprojection_error_after") ? {n: fmt(lastMetric("reprojection_error_after").value) + " px", l: "reprojection error"} : null,
   {n: total.toFixed(1) + "s", l: "wall clock"},
 ].filter(Boolean);
@@ -797,79 +1009,100 @@ $("#table").innerHTML =
   `<thead><tr><th>module</th><th>metric</th><th>value</th><th>band</th><th>state</th></tr></thead>
    <tbody>${rows.join("")}</tbody>`;
 
-/* ---------- point-cloud downloads ---------- */
+/* ---------- downloads ---------- */
 (function () {
   const files = DATA.downloads || [];
   if (!files.length) return;
-  const mb = b => (b / 1048576).toFixed(b < 1048576 ? 2 : 1) + " MB";
-  const bar = $("#downloads");
+  const mb = b => b < 1024 ? b + " B"
+                : b < 1048576 ? (b / 1024).toFixed(0) + " KB"
+                : (b / 1048576).toFixed(b < 10485760 ? 2 : 1) + " MB";
+  const label = f => f.name.replace(/^[^-]*-/, "");
   const external = [];
-  bar.innerHTML = files.map((f, i) => {
+  $("#downloads").innerHTML = files.map(f => {
     if (!f.data) { external.push(f); return ""; }
     return `<a class="dl" download="${esc(f.name)}"
-              href="data:application/octet-stream;base64,${f.data}">
-              ${esc(f.module)} point cloud
-              <span class="meta">${f.points ? Number(f.points).toLocaleString() + " pts · " : ""}${mb(f.bytes)}</span>
+              href="data:application/octet-stream;base64,${f.data}"
+              title="${esc(f.note || "")}">
+              ${esc(label(f))}
+              <span class="meta">${
+                f.points ? Number(f.points).toLocaleString() + " pts · " : ""}${mb(f.bytes)}</span>
             </a>`;
   }).join("");
-  const notes = ["Binary PLY with per-point colour — opens in MeshLab, CloudCompare, "
-                 + "Open3D or any evaluation script. The artifact's npz stays authoritative."];
-  external.forEach(f => notes.push(
-    `${esc(f.module)}'s cloud is ${mb(f.bytes)} — too large to embed. It is on disk at `
-    + `<code class="path">${esc(f.path)}</code>`));
+
+  // One line per KIND of file rather than one per file: three buttons with three
+  // near-identical captions is noise, and what a reader needs is what each format
+  // is FOR.
+  const seen = new Set();
+  const notes = [];
+  for (const f of files) if (f.note && !seen.has(f.note)) { seen.add(f.note); notes.push(esc(f.note)); }
+  for (const f of external)
+    notes.push(`${esc(label(f))} is ${mb(f.bytes)} — too large to embed. On disk at `
+               + `<code class="path">${esc(f.path)}</code>`);
   $("#downloads-note").innerHTML = notes.join("<br>");
   $("#downloads-card").hidden = false;
 })();
 
 /* ---------- 3D viewer ---------- */
 (function () {
-  const cloud = DATA.cloud;
+  const scene = DATA.cloud;
   const canvas = $("#viewer");
-  if (!cloud) { canvas.parentElement.style.display = "none"; return; }
+  if (!scene) { canvas.parentElement.style.display = "none"; return; }
 
   const dec = (b64, Type) => {
     const bin = atob(b64), buf = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
     return new Type(buf.buffer);
   };
-  const xyz = dec(cloud.xyz, Float32Array);
-  const rgb = dec(cloud.rgb, Uint8Array);
-  const err = dec(cloud.error, Float32Array);
-  const N = cloud.count;
 
   // Sequential blue ramp for error — one hue, light to dark, never a rainbow.
   const RAMP = ["#cde2fb","#9ec5f4","#6da7ec","#3987e5","#256abf","#184f95","#0d366b"];
-  const errColour = new Array(N);
-  for (let i = 0; i < N; i++) {
-    const t = Math.min(1, err[i] / (cloud.error_max || 1));
-    errColour[i] = RAMP[Math.min(RAMP.length - 1, Math.floor(t * RAMP.length))];
-  }
-  const rgbColour = new Array(N);
-  for (let i = 0; i < N; i++)
-    rgbColour[i] = `rgb(${rgb[i*3]},${rgb[i*3+1]},${rgb[i*3+2]})`;
 
-  // Frame the whole scene, cameras included. The world frame is the seed
-  // camera's and its scale is the seed baseline, so a fixed default distance
-  // frames some reconstructions and misses others entirely.
+  // Every cloud is decoded up front. They share one normalisation, computed
+  // host-side from the sparse model, so switching between them does not move the
+  // view and the cameras stay where they belong against either.
+  const clouds = scene.clouds.map(c => {
+    const xyz = dec(c.xyz, Float32Array);
+    const rgb = dec(c.rgb, Uint8Array);
+    const err = dec(c.error, Float32Array);
+    const N = c.count;
+    const rgbColour = new Array(N), errColour = new Array(N);
+    for (let i = 0; i < N; i++) {
+      rgbColour[i] = `rgb(${rgb[i*3]},${rgb[i*3+1]},${rgb[i*3+2]})`;
+      const t = Math.min(1, err[i] / (c.error_max || 1));
+      errColour[i] = RAMP[Math.min(RAMP.length - 1, Math.floor(t * RAMP.length))];
+    }
+    return Object.assign({}, c, {xyz, N, rgbColour, errColour});
+  });
+  const cameras = scene.cameras || [];
+
+  // Frame the whole scene across EVERY cloud and the cameras. Sizing off the
+  // active cloud alone would rescale the view on each switch, and the world
+  // frame's own scale is arbitrary, so a fixed default distance frames some
+  // reconstructions and misses others entirely.
   let radius = 1;
   {
     let r = 0;
-    for (let i = 0; i < N; i++)
-      r = Math.max(r, Math.hypot(xyz[i*3], xyz[i*3+1], xyz[i*3+2]));
-    for (const cam of cloud.cameras)
+    for (const c of clouds)
+      for (let i = 0; i < c.N; i++)
+        r = Math.max(r, Math.hypot(c.xyz[i*3], c.xyz[i*3+1], c.xyz[i*3+2]));
+    for (const cam of cameras)
       r = Math.max(r, Math.hypot(cam.c[0], cam.c[1], cam.c[2]));
     radius = r > 1e-6 ? r : 1;
   }
   const HOME = {yaw: 0.6, pitch: -0.35, dist: radius * 2.2};
   // Frusta are sized against the OBJECT, not the scene radius. The points are
   // normalised so their 90th-percentile distance is 1, and cameras usually sit
-  // several object-diameters out -- scaling the frusta off the total radius
+  // several object-diameters out — scaling the frusta off the total radius
   // makes them dwarf the thing they are looking at.
   const CAM_SCALE = 0.13;
 
   let yaw = HOME.yaw, pitch = HOME.pitch, dist = HOME.dist, panX = 0, panY = 0;
-  let mode = "rgb", showCams = true;
+  let mode = "rgb";
+  let active = 0;                       // which cloud
+  let showPoints = clouds.length > 0;   // a pose-only run has none to show
+  let showCams = cameras.length > 0;
   const ctx = canvas.getContext("2d", { alpha: false });
+  const current = () => clouds[active];
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -895,21 +1128,26 @@ $("#table").innerHTML =
     ctx.fillRect(0, 0, w, h);
     const f = h * 0.9, cx = w / 2 + panX, cy = h / 2 + panY;
 
-    // Depth-sorted painter's algorithm. At a few thousand points this is well
-    // inside a frame budget and needs no WebGL context to go wrong.
-    const order = [];
-    for (let i = 0; i < N; i++) {
-      const p = rotate([xyz[i*3], xyz[i*3+1], xyz[i*3+2]]);
-      const z = p[2] + dist;
-      if (z <= 0.05) continue;
-      order.push([z, cx + f * p[0] / z, cy + f * p[1] / z, i]);
-    }
-    order.sort((a, b) => b[0] - a[0]);
-    const colours = mode === "rgb" ? rgbColour : errColour;
-    for (const [z, sx, sy, i] of order) {
-      const s = Math.max(1.4, Math.min(4.5, 2.4 * radius / z));
-      ctx.fillStyle = colours[i];
-      ctx.fillRect(sx - s / 2, sy - s / 2, s, s);
+    const cloud = current();
+    if (showPoints && cloud) {
+      // Depth-sorted painter's algorithm. At a few tens of thousands of points
+      // this is well inside a frame budget and needs no WebGL context to go wrong.
+      const xyz = cloud.xyz, N = cloud.N;
+      const order = [];
+      for (let i = 0; i < N; i++) {
+        const p = rotate([xyz[i*3], xyz[i*3+1], xyz[i*3+2]]);
+        const z = p[2] + dist;
+        if (z <= 0.05) continue;
+        order.push([z, cx + f * p[0] / z, cy + f * p[1] / z, i]);
+      }
+      order.sort((a, b) => b[0] - a[0]);
+      const useError = mode === "err" && cloud.error_max != null;
+      const colours = useError ? cloud.errColour : cloud.rgbColour;
+      for (const [z, sx, sy, i] of order) {
+        const s = Math.max(1.4, Math.min(4.5, 2.4 * radius / z));
+        ctx.fillStyle = colours[i];
+        ctx.fillRect(sx - s / 2, sy - s / 2, s, s);
+      }
     }
 
     if (showCams) {
@@ -917,7 +1155,7 @@ $("#table").innerHTML =
       ctx.strokeStyle = "#eb6834";
       ctx.globalAlpha = 0.85;
       const S = CAM_SCALE;
-      for (const cam of cloud.cameras) {
+      for (const cam of cameras) {
         // Frustum corners one focal length in front of the centre.
         const corners = [[-1,-0.75,1.4],[1,-0.75,1.4],[1,0.75,1.4],[-1,0.75,1.4]]
           .map(v => [
@@ -944,18 +1182,27 @@ $("#table").innerHTML =
     }
   }
 
-  const sampled = cloud.total > N
-    ? `${N.toLocaleString()} of ${cloud.total.toLocaleString()} points, `
-      + (cloud.kind === "dense" ? "evenly sampled" : "sampled by lowest error")
-    : `${N.toLocaleString()} points`;
+  function sampledText(c) {
+    if (!c) return "";
+    return c.total > c.N
+      ? `${c.N.toLocaleString()} of ${c.total.toLocaleString()} points, `
+        + (c.kind === "dense" ? "evenly sampled" : "sampled by lowest error")
+      : `${c.N.toLocaleString()} points`;
+  }
 
   function setLegend() {
-    $("#legend").innerHTML = mode === "rgb"
-      ? `<span><span class="swatch" style="background:#eb6834"></span>camera</span>
-         <span>${sampled}</span>`
-      : `<span><span class="swatch" style="background:#cde2fb"></span>0 px</span>
+    const cloud = current();
+    const cam = cameras.length
+      ? `<span><span class="swatch" style="background:#eb6834"></span>${cameras.length} cameras${
+           scene.camera_source ? " · " + esc(scene.camera_source) : ""}</span>`
+      : "";
+    if (!showPoints || !cloud) { $("#legend").innerHTML = cam; return; }
+    const useError = mode === "err" && cloud.error_max != null;
+    $("#legend").innerHTML = useError
+      ? `<span><span class="swatch" style="background:#cde2fb"></span>0 px</span>
          <span><span class="swatch" style="background:#0d366b"></span>${cloud.error_max.toFixed(2)} px</span>
-         <span><span class="swatch" style="background:#eb6834"></span>camera</span>`;
+         ${cam}`
+      : `${cam}<span>${esc(cloud.module)} · ${sampledText(cloud)}</span>`;
   }
 
   let drag = null;
@@ -980,17 +1227,69 @@ $("#table").innerHTML =
     draw();
   }, {passive: false});
 
-  if (cloud.error_max == null) $("#c-err").remove();
-  if (!cloud.cameras.length) $("#c-cam").remove();
+  const press = (id, on) => {
+    const el = $(id);
+    if (el) el.setAttribute("aria-pressed", String(on));
+  };
 
-  const press = (id, on) => { $(id).setAttribute("aria-pressed", String(on)); };
-  $("#c-rgb").onclick = () => { mode = "rgb"; press("#c-rgb", true);
-                                if ($("#c-err")) press("#c-err", false); setLegend(); draw(); };
-  if ($("#c-err")) $("#c-err").onclick = () => { mode = "err"; press("#c-rgb", false); press("#c-err", true); setLegend(); draw(); };
-  if ($("#c-cam")) $("#c-cam").onclick = () => { showCams = !showCams; press("#c-cam", showCams); draw(); };
+  // A control that does nothing is worse than one that is absent, so each is
+  // removed rather than disabled when its subject does not exist: no cameras on
+  // a run with no poses, no error colouring on a cloud with no per-point error,
+  // no cloud selector with one cloud.
+  if (!cameras.length) $("#c-cam").remove();
+  if (!clouds.length) { $("#c-pts").remove(); $("#c-rgb").remove(); }
+
+  function syncColourControls() {
+    const cloud = current();
+    const hasError = !!cloud && cloud.error_max != null && showPoints;
+    const err = $("#c-err");
+    if (err) err.hidden = !hasError;
+    if (!hasError && mode === "err") { mode = "rgb"; press("#c-rgb", true); }
+    const rgb = $("#c-rgb");
+    if (rgb) rgb.hidden = !showPoints;
+  }
+
+  if (clouds.length > 1) {
+    // Sparse and dense in the same frame, swapped rather than overlaid: two
+    // clouds of the same scene drawn together are indistinguishable from one
+    // noisy cloud.
+    $("#c-clouds").innerHTML = clouds.map((c, i) =>
+      `<button data-cloud="${i}" aria-pressed="${i === active}">${
+         esc(c.kind === "dense" ? "Dense" : "Sparse")}</button>`).join("");
+    $("#c-clouds").querySelectorAll("button").forEach(btn => {
+      btn.onclick = () => {
+        active = Number(btn.dataset.cloud);
+        showPoints = true;
+        press("#c-pts", true);
+        $("#c-clouds").querySelectorAll("button").forEach(
+          b => b.setAttribute("aria-pressed", String(b === btn)));
+        syncColourControls(); setLegend(); draw();
+      };
+    });
+  } else if (clouds.length === 1) {
+    $("#c-clouds").remove();
+  }
+
+  if ($("#c-pts")) $("#c-pts").onclick = () => {
+    showPoints = !showPoints; press("#c-pts", showPoints);
+    syncColourControls(); setLegend(); draw();
+  };
+  if ($("#c-cam")) $("#c-cam").onclick = () => {
+    showCams = !showCams; press("#c-cam", showCams); setLegend(); draw();
+  };
+  if ($("#c-rgb")) $("#c-rgb").onclick = () => {
+    mode = "rgb"; press("#c-rgb", true); press("#c-err", false); setLegend(); draw();
+  };
+  if ($("#c-err")) $("#c-err").onclick = () => {
+    mode = "err"; press("#c-rgb", false); press("#c-err", true); setLegend(); draw();
+  };
   $("#c-reset").onclick = () => {
     yaw = HOME.yaw; pitch = HOME.pitch; dist = HOME.dist; panX = panY = 0; draw();
   };
+
+  press("#c-pts", showPoints);
+  press("#c-cam", showCams);
+  syncColourControls();
 
   window.addEventListener("resize", resize);
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
@@ -1021,15 +1320,16 @@ def main() -> int:
         return 1
 
     steps = collect(store, args.artifact)
-    cloud = cloud_payload(store, args.artifact, args.max_points)
+    cloud = scene_payload(store, args.artifact, args.max_points)
     tried = attempts(store, args.artifact, {s["id"] for s in steps})
-    clouds = downloads(store, args.artifact, args.max_embed_mb)
+    clouds = pose_exports(store, args.artifact) \
+        + downloads(store, args.artifact, args.max_embed_mb)
     args.output.write_text(render(steps, cloud, tried, args.title, clouds))
 
     size_kb = args.output.stat().st_size / 1024
     print(f"{args.output}  ({size_kb:.0f} KB, {len(steps)} steps, "
           f"{tried['counts']['total'] if tried else 0} attempts, "
-          f"{cloud['count'] if cloud else 0} points, "
+          f"{'+'.join(str(c['count']) for c in cloud['clouds']) if cloud else 0} points, "
           f"{len(cloud['cameras']) if cloud else 0} cameras, "
           f"{sum(1 for c in clouds if c['data'])}/{len(clouds)} ply embedded)")
     return 0

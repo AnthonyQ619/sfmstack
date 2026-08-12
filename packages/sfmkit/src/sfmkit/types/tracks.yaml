@@ -86,7 +86,28 @@ metrics:
     meaning: >
       Fraction of tracks observed twice in the same image, i.e. built from
       contradictory correspondences. Detects OVER-merging only; it is structurally
-      blind to one physical point being split across several tracks.
+      blind to one physical point being split across several tracks. Read it with
+      split_rate, which is the other half.
+
+  split_rate:
+    direction: lower_better
+    meaning: >
+      Fraction of tracks that coincide with another track -- one physical point
+      spread across several tracks, the failure inconsistent_rate cannot see. The
+      dual of that metric, and the two trade against each other through whatever
+      merge tolerance the module applies: merge more loosely and splitting falls
+      while inconsistency rises. Either number alone describes half an operating
+      point.
+
+      Computed by sfmkit.split_rate at a tolerance FIXED by this type rather than
+      chosen per module, because the whole purpose is comparison across trackers,
+      and it requires coincidence in at least two distinct frames -- on a dense
+      detector, two distinct keypoints within two pixels in one view is ordinary,
+      and the same pair landing together in two views is not.
+
+      A union-find tracker's split_rate reads its view graph: a fragmented graph
+      leaves one point in several disconnected chains. A predictive tracker's
+      reads its query frames, which re-find each other's points.
 
   max_track_length:
     direction: neutral

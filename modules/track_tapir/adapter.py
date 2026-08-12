@@ -38,7 +38,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from sfmkit import Ctx, module
+from sfmkit import Ctx, module, split_rate
 from tapnet.torch import tapir_model
 
 CHECKPOINT = os.environ.get("TAPIR_CHECKPOINT", "/opt/weights/bootstapir_v2.pt")
@@ -368,6 +368,10 @@ def run(ctx: Ctx):
     # Structurally zero, as in FeatureTrackVGGSfM: one query point yields one
     # position per frame, so a track cannot contradict itself.
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.0))
+    # See FeatureTrackVGGSfM: duplicate_track_rate is what dedupe removed at this
+    # module's tolerance, split_rate is what remains at the type's fixed one.
+    out.metric("split_rate", round(split_rate(observations, track_count), 4),
+               direction="lower_better", healthy=(None, 0.1))
     out.metric("max_track_length", int(lengths.max()), direction="neutral")
     out.metric("median_track_length", float(np.median(lengths)),
                direction="higher_better")

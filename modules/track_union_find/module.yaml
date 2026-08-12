@@ -130,6 +130,20 @@ metrics:
       constrain relative pose beyond a single pair, so this matters more than the
       mean -- a set can have a healthy mean and still be mostly two-view.
 
+  split_rate:
+    direction: lower_better
+    healthy: [null, 0.1]
+    meaning: >
+      Fraction of tracks that coincide with another track -- one physical point
+      left in several disconnected chains. THE metric of view-graph fragmentation
+      here, and the exact counterpart of inconsistent_rate: raise merge_eps_px and
+      this falls while that rises. Either alone describes half an operating point.
+
+      Computed by sfmkit.split_rate at a tolerance fixed by tracks/v1 rather than
+      at merge_eps_px, so it is comparable with the learned trackers. Distinct
+      from merge_headroom, which rebuilds at twice the tolerance to ask what a
+      looser merge WOULD have changed; this measures the table as written.
+
   max_track_length:
     direction: neutral
     meaning: >

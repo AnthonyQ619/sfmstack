@@ -42,7 +42,7 @@ import os
 import numpy as np
 import torch
 from PIL import Image
-from sfmkit import Ctx, module
+from sfmkit import Ctx, module, split_rate
 from vggt.dependency.vggsfm_utils import (
     build_vggsfm_tracker,
     calculate_index_mappings,
@@ -377,6 +377,12 @@ def run(ctx: Ctx):
     # a track cannot contradict itself. Reported because the type requires it, and
     # documented as uninformative HERE rather than quietly emitted as a success.
     out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.0))
+    # What deduplication did NOT catch, at the tolerance tracks/v1 fixes rather
+    # than at dedupe_eps_px. duplicate_track_rate says what was merged; this says
+    # what is still split in the table as written, comparably with every other
+    # tracker.
+    out.metric("split_rate", round(split_rate(observations, track_count), 4),
+               direction="lower_better", healthy=(None, 0.1))
     out.metric("max_track_length", int(lengths.max()), direction="neutral")
     out.metric("median_track_length", float(np.median(lengths)),
                direction="higher_better")

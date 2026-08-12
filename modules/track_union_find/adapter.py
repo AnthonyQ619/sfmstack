@@ -7,7 +7,7 @@ explicit handling of tracks that contradict themselves.
 from __future__ import annotations
 
 import numpy as np
-from sfmkit import Ctx, module
+from sfmkit import Ctx, module, split_rate
 
 PROGRESS_EVERY = 50_000  # union steps between progress reports
 
@@ -333,6 +333,13 @@ def run(ctx: Ctx):
     obs = np.column_stack([track_id, frame.astype(np.float32), point]).astype(np.float32)
     out.save("observations", obs=obs, track_count=np.int64(track_count))
 
+    # The other half of inconsistent_rate, at the tolerance tracks/v1 fixes rather
+    # than at merge_eps_px -- the point of the metric is comparison across
+    # trackers, so a module-chosen tolerance would defeat it. Distinct from
+    # merge_headroom, which asks what a LOOSER merge would have changed by
+    # rebuilding; this asks what the output as written still holds apart.
+    fragmentation = split_rate(obs, track_count)
+
     ctx.progress(0.95, "computing metrics")
 
     final_lengths = np.bincount(track_id.astype(np.int64), minlength=track_count)
@@ -369,6 +376,8 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1.0, None))
     out.metric("inconsistent_rate", round(inconsistent_rate, 4),
                direction="lower_better", healthy=(None, 0.05))
+    out.metric("split_rate", round(fragmentation, 4),
+               direction="lower_better", healthy=(None, 0.1))
     out.metric(
         "merge_headroom",
         None if merge_headroom is None else round(merge_headroom, 4),

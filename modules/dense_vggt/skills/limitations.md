@@ -17,32 +17,46 @@ here is unchanged — the same pixels survive, because the depth filter and the
 confidence filter are both scale-invariant — so `depth_scale`, its spread, and the
 `scale_unverified` diagnostic are the only evidence.
 
-The reason it is not harmless is that the cameras do not move with the points.
-Unprojection is
+The reason it is not harmless is that **the cameras do not move with the points**.
+Unprojection places each pixel along a ray from its own camera:
 
 ```
 X_world(f) = C_f + R_fᵀ · ray · depth · s
 ```
 
-so getting `s` wrong by a factor *k* replaces each view's cloud with `C_f + (X −
-C_f)/k` — a scaling **about that view's own camera centre**. Every view shrinks
-toward a different point, so the views stop agreeing. Two cameras `d` apart put
-their copies of the same surface point `d · (1 − 1/k)` apart.
+Getting `s` wrong by a factor *k* therefore replaces view *f*'s cloud with
 
-Measured on the 8-view DTU run, true scale 4.4460, run at the default 1.0:
+```
+X_wrong = C_f + (X_true − C_f) / k
+```
 
-| | correct scale | scale left at 1.0 |
-|---|---:|---:|
-| bounding-box diagonal | 7.2506 | 3.8996 |
-| median distance to nearest camera | 4.4633 | 1.0553 |
+— a scaling **about that view's own camera centre**, not about the world origin.
+The centres differ from view to view, so this is not a similarity transform of the
+reconstruction and the views stop agreeing with each other. Two cameras a distance
+`d` apart place their copies of the same surface point
 
-A pure shrink would have put the bbox ratio at `1/k` = **0.225**. It is **0.538**.
-The excess is the splay: eight shrunken shells, each hugging its own camera,
-spread across the rig instead of one surface. With a median baseline of 1.70 the
-predicted disagreement is 1.32 — 78% of the baseline.
+```
+d · (1 − 1/k)
+```
 
-**So the visual signature of a wrong scale is not a small object. It is a smeared
-or multiplied one** — which looks like bad depth, and is not.
+apart. At *k* = 2 that is half the baseline; at *k* = 5, four fifths of it.
+
+**How to tell the two apart on any scene.** A pure shrink would scale the cloud's
+bounding box by exactly `1/k`. A splay scales it by less, because the per-view
+shells are spread across the camera rig as well as being individually smaller. So:
+
+```
+bbox_wrong / bbox_correct  ≈ 1/k      → a global rescale
+bbox_wrong / bbox_correct  >  1/k     → the views disagree; the gap is the splay
+```
+
+The size of the gap depends on the capture — it grows with the camera baselines
+relative to the object, so a wide-baseline set splays visibly and a
+nearly-coincident one barely at all. The algebra above holds regardless.
+
+**The consequence is the same everywhere: the visual signature of a wrong scale is
+not a small object. It is a smeared or multiplied one** — which looks like bad
+depth, and is not.
 
 ## It is not MVS
 

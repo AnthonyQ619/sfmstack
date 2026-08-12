@@ -10,6 +10,7 @@ Design: [../docs/design/knowledge-system.md](../docs/design/knowledge-system.md)
 | --- | --- | --- |
 | [judgment/](judgment/) | "What would a practitioner do? Is this good enough?" | digest below; full text on demand |
 | [workflow/](workflow/) | "Which stage is my problem in? How do I approach this?" | by topic |
+| [families/](families/) | "I know I need a tracker — which one, for this scene?" | [families/README.md](families/README.md) |
 | [modules/](modules/) | "What does this tool do, and how do I move its numbers?" | `sfm_describe_module`, `sfm_module_skill` |
 | [runs/](runs/) | "Has a scene like this been solved before?" | [runs/INDEX.md](runs/INDEX.md) filtered by trait |
 
@@ -28,6 +29,18 @@ Design: [../docs/design/knowledge-system.md](../docs/design/knowledge-system.md)
 
 Trait thresholds live here too: the analysis modules emit numbers, and
 `judgment/` decides what counts as "narrow baseline" or "repetitive texture".
+
+## Family comparisons
+
+> Measured, not judged. One file per stage, holding the axis that stage trades
+> along and the evidence for it. Read before running anything, beside
+> `judgment/triage.md`. Nothing is recorded here without being asked for first.
+
+- **[tracking.md](families/tracking.md)** — track length and positional precision
+  move in opposite directions; no `tracks/v1` metric measures the second
+
+Everything else is unwritten; see [families/README.md](families/README.md) for
+what is measured and what is not.
 
 ## Workflow guides
 
@@ -48,6 +61,7 @@ SKILLS.md (this file)
   ├─ sfm_run(SceneMotion) → scene_analysis/v1 → TRAITS
   ├─ judgment/triage.md            what those traits imply
   ├─ runs/INDEX.md by trait        has this been solved?
+  ├─ families/<stage>.md           which member of each stage, and why
   ├─ sfm_list_modules(produces=…)  candidate pipeline
   │
   └─ run → metrics + diagnostics(see_also)

@@ -5,10 +5,14 @@ and run records already say, not any reconstruction.
 """
 
 import importlib.util
+import json
+import shutil
+import subprocess
 import re
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 from sfmkit import ArtifactStore
 
@@ -232,47 +236,73 @@ def test_a_dense_final_artifact_gets_a_cloud(densified):
     """Before this the viewer handled sparse_model/v1 only, so a pipeline that
     ended in a dense stage rendered a report with no reconstruction in it."""
     store, dense_id, _ = densified
-    cloud = report.cloud_payload(store, dense_id, 60000)
+    payload = report.scene_payload(store, dense_id, 60000)
 
-    assert cloud is not None
-    assert cloud["kind"] == "dense"
-    assert cloud["count"] > 0
+    assert payload is not None
+    assert [c["kind"] for c in payload["clouds"]] == ["sparse", "dense"]
+    assert all(c["count"] > 0 for c in payload["clouds"])
+
+
+def test_both_clouds_share_one_normalisation(densified):
+    """Switching between sparse and dense must not move the view, and the cameras
+    have to stay where they belong against either -- so one transform is applied
+    to everything rather than each cloud being framed on its own."""
+    import base64
+
+    store, dense_id, _ = densified
+    payload = report.scene_payload(store, dense_id, 60000)
+    extent = {}
+    for c in payload["clouds"]:
+        raw = np.frombuffer(base64.b64decode(c["xyz"]), dtype="<f4").reshape(-1, 3)
+        extent[c["kind"]] = float(np.abs(raw).max())
+
+    # The fixture scatters dense points around the sparse ones, so a shared
+    # normalisation keeps the two within a small factor. Per-cloud normalisation
+    # would drive both to the same extent exactly.
+    assert extent["dense"] != pytest.approx(extent["sparse"])
+    assert 0.2 < extent["dense"] / extent["sparse"] < 5
 
 
 def test_a_dense_cloud_offers_no_error_colouring(densified):
     """dense_model/v1 has no per-point error. A control that does nothing is
     worse than one that is absent, so error_max is null and the JS drops it."""
     store, dense_id, _ = densified
-    assert report.cloud_payload(store, dense_id, 60000)["error_max"] is None
+    clouds = {c["kind"]: c for c in report.scene_payload(store, dense_id, 60000)["clouds"]}
+    assert clouds["dense"]["error_max"] is None
+    assert clouds["sparse"]["error_max"] is not None
 
 
-def test_a_sparse_cloud_still_offers_error_colouring(built):
-    store, sparse_id = built
-    cloud = report.cloud_payload(store, sparse_id, 60000)
-    assert cloud["kind"] == "sparse"
-    assert cloud["error_max"] is not None
-
-
-def test_dense_cameras_come_from_the_nearest_ancestor_with_poses(densified):
-    """A dense artifact carries no poses of its own. Taking them from the sparse
-    model it was run against is what puts the cameras in the same frame as the
-    points -- any other source would be a different world frame."""
+def test_cameras_are_reported_once_not_per_cloud(densified):
+    """They come from the pose source, which is one artifact for the whole run --
+    duplicating them per cloud would let the two disagree."""
     store, dense_id, sparse_id = densified
-    dense = report.cloud_payload(store, dense_id, 60000)
-    sparse = report.cloud_payload(store, sparse_id, 60000)
+    payload = report.scene_payload(store, dense_id, 60000)
 
-    assert len(dense["cameras"]) == len(sparse["cameras"]) > 0
+    assert len(payload["cameras"]) > 0
+    assert payload["camera_source"] == "FakeReconstructor"
+    assert not any("cameras" in c for c in payload["clouds"])
+
+
+def test_a_pose_only_run_still_has_something_to_draw(built):
+    """"If we declare only up to pose estimation, the poses are viewable." The
+    normalisation then comes from the camera centres, since there are no points."""
+    store, sparse_id = built
+    sparse = store.open(sparse_id)
+    # The sparse model IS the pose carrier in this fixture chain; asking for it
+    # exercises the same path a poses/v1 final artifact would take.
+    payload = report.scene_payload(store, sparse.id, 60000)
+    assert len(payload["cameras"]) > 0
 
 
 def test_downsampling_reports_what_it_dropped(densified):
     """`total` beside `count`, so the legend can say the viewer is showing a
     sample rather than implying the cloud is that size."""
     store, dense_id, _ = densified
-    full = report.cloud_payload(store, dense_id, 60000)
-    sampled = report.cloud_payload(store, dense_id, 10)
+    full = {c["kind"]: c for c in report.scene_payload(store, dense_id, 60000)["clouds"]}
+    small = {c["kind"]: c for c in report.scene_payload(store, dense_id, 10)["clouds"]}
 
-    assert sampled["count"] == 10
-    assert sampled["total"] == full["total"] == full["count"]
+    assert small["dense"]["count"] == 10
+    assert small["dense"]["total"] == full["dense"]["total"] == full["dense"]["count"]
 
 
 def test_the_ply_sidecar_is_found_and_embedded(densified):
@@ -315,10 +345,203 @@ def test_the_download_link_reaches_the_page(densified):
     store, dense_id, _ = densified
     steps = report.collect(store, dense_id)
     html = report.render(
-        steps, report.cloud_payload(store, dense_id, 60000), None, "test",
+        steps, report.scene_payload(store, dense_id, 60000), None, "test",
         report.downloads(store, dense_id, max_embed_mb=64),
     )
 
     assert "downloads-card" in html
     assert 'data:application/octet-stream;base64' in html
     assert not re.search(r'(src|href)\s*=\s*["\']https?://', html)
+
+
+# --------------------------------------------------------------------------- #
+# The pose export
+# --------------------------------------------------------------------------- #
+
+
+def test_poses_are_exported_in_two_forms(built):
+    """A COLMAP images.txt for the tools that exist, and a json that states its
+    own convention for the ones that do not."""
+    store, sparse_id = built
+    files = report.pose_exports(store, sparse_id)
+
+    assert [f["name"].split("-", 1)[1] for f in files] == ["images.txt", "poses.json"]
+    assert all(f["data"] for f in files)
+
+
+def decoded(entry):
+    import base64
+    return base64.b64decode(entry["data"]).decode()
+
+
+def test_images_txt_has_two_lines_per_image_in_colmap_order(built):
+    """COLMAP's reader takes IMAGE_ID QW QX QY QZ TX TY TZ CAMERA_ID NAME followed
+    by a POINTS2D line. Getting the pairing wrong makes the file load as half the
+    images with garbage poses rather than fail."""
+    store, sparse_id = built
+    text = decoded(report.pose_exports(store, sparse_id)[0])
+
+    body = [ln for ln in text.splitlines() if not ln.startswith("#")]
+    data = [ln for ln in body if ln.strip()]
+    assert len(body) == 2 * len(data)          # one blank POINTS2D line each
+    for line in data:
+        parts = line.split()
+        assert len(parts) == 10
+        assert parts[0].isdigit()
+        float(parts[1]); float(parts[7])
+
+
+def test_the_exported_quaternion_reproduces_the_rotation(built):
+    """The whole export is worthless if this is wrong, and it is wrong silently:
+    a bad quaternion still parses and still evaluates, just against a rotation
+    nobody estimated."""
+    store, sparse_id = built
+    entry = report.pose_exports(store, sparse_id)[1]
+    document = json.loads(decoded(entry))
+
+    for image in document["images"]:
+        if not image["registered"]:
+            continue
+        R = np.asarray(image["cam_from_world"])[:, :3]
+        w, x, y, z = image["quaternion_wxyz"]
+        back = np.array([
+            [1 - 2*(y*y + z*z), 2*(x*y - z*w),     2*(x*z + y*w)],
+            [2*(x*y + z*w),     1 - 2*(x*x + z*z), 2*(y*z - x*w)],
+            [2*(x*z - y*w),     2*(y*z + x*w),     1 - 2*(x*x + y*y)],
+        ])
+        assert np.allclose(R, back, atol=1e-9)
+
+
+def test_the_quaternion_survives_a_half_turn(built):
+    """The naive w = sqrt(1 + trace)/2 divides by zero near 180 degrees, which is
+    exactly where a pose evaluation cares."""
+    R = np.diag([1.0, -1.0, -1.0])            # 180 degrees about x
+    w, x, y, z = report.quaternion_wxyz(R)
+    assert np.isfinite([w, x, y, z]).all()
+    assert abs(w) < 1e-9 and abs(abs(x) - 1) < 1e-9
+
+
+def test_the_quaternion_sign_is_pinned(built):
+    """q and -q are the same rotation, so two exports of one pose would otherwise
+    differ componentwise and a diff would look like a change."""
+    R = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    assert report.quaternion_wxyz(R)[0] >= 0
+    assert report.quaternion_wxyz(R.T)[0] >= 0
+
+
+def test_unregistered_images_are_named_in_json_and_absent_from_images_txt(built):
+    """images.txt has no way to say "no pose". An evaluation that silently scored
+    a missing camera as identity would be measuring nothing, so the json says so
+    and the txt leaves it out."""
+    store, sparse_id = built
+    art = store.open(sparse_id)
+    poses = art.load("poses")
+    n = len(poses["valid"])
+
+    document = json.loads(decoded(report.pose_exports(store, sparse_id)[1]))
+    assert len(document["images"]) == n
+    assert document["registered"] == int(np.asarray(poses["valid"]).sum())
+
+    text = decoded(report.pose_exports(store, sparse_id)[0])
+    data = [ln for ln in text.splitlines() if ln.strip() and not ln.startswith("#")]
+    assert len(data) == document["registered"]
+
+
+def test_the_json_states_its_convention_rather_than_implying_it(built):
+    store, sparse_id = built
+    document = json.loads(decoded(report.pose_exports(store, sparse_id)[1]))
+    assert "cam_from_world" in document["convention"]
+    assert "X_camera" in document["convention"]
+
+
+def test_a_run_with_no_poses_exports_nothing(built):
+    store, sparse_id = built
+    scene_id = store.open(sparse_id).manifest.scene
+    assert report.pose_exports(store, scene_id) == []
+
+
+# --------------------------------------------------------------------------- #
+# The page's script, actually executed
+# --------------------------------------------------------------------------- #
+
+SHIM = Path(__file__).resolve().parent / "fixtures" / "report_dom_shim.js"
+
+needs_node = pytest.mark.skipif(
+    shutil.which("node") is None, reason="node not installed"
+)
+
+
+def run_page(html: str, tmp_path: Path) -> str:
+    """Execute the report's script against a minimal DOM and return its output.
+
+    A syntax check cannot catch `$("#c-err")` returning null and `.remove()`
+    throwing on it, and the failure mode is a blank viewer with an error only in
+    a console nobody opens. This caught exactly that once already: a headline
+    that still read `DATA.cloud.count` after the payload grew a `clouds` list.
+    """
+    script = re.search(r"<script>(.*?)</script>", html, re.S).group(1)
+    (tmp_path / "report.js").write_text(script)
+    result = subprocess.run(
+        ["node", "-e",
+         f"require({str(SHIM)!r});"
+         f"eval(require('fs').readFileSync({str(tmp_path / 'report.js')!r},'utf8'));"
+         "console.log('OK', JSON.stringify(global.removed));"],
+        capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode == 0, result.stderr[-2000:]
+    return result.stdout
+
+
+@needs_node
+def test_the_page_script_runs_for_a_sparse_run(built, tmp_path):
+    store, sparse_id = built
+    html = report.render(
+        report.collect(store, sparse_id),
+        report.scene_payload(store, sparse_id, 60000),
+        collected(built), "test", report.pose_exports(store, sparse_id),
+    )
+    out = run_page(html, tmp_path)
+    assert out.startswith("OK")
+    # One cloud, so the sparse/dense selector is not offered.
+    assert "c-clouds" in out
+
+
+@needs_node
+def test_the_page_script_runs_for_a_dense_run(densified, tmp_path):
+    store, dense_id, _ = densified
+    html = report.render(
+        report.collect(store, dense_id),
+        report.scene_payload(store, dense_id, 60000), None, "test",
+        report.pose_exports(store, dense_id)
+        + report.downloads(store, dense_id, max_embed_mb=64),
+    )
+    out = run_page(html, tmp_path)
+    assert out.startswith("OK")
+    # Two clouds and cameras: every control has a subject, so none is removed.
+    assert "[]" in out
+
+
+@needs_node
+def test_the_page_script_runs_with_cameras_and_no_points(built, tmp_path):
+    """"If we declare only up to pose estimation, the poses are viewable." The
+    point and colour controls have no subject then and are removed."""
+    store, sparse_id = built
+    payload = report.scene_payload(store, sparse_id, 60000)
+    payload["clouds"] = []
+    html = report.render(report.collect(store, sparse_id), payload, None, "test")
+
+    out = run_page(html, tmp_path)
+    assert out.startswith("OK")
+    assert "c-pts" in out and "c-rgb" in out
+
+
+@needs_node
+def test_the_page_script_runs_with_no_reconstruction_at_all(built, tmp_path):
+    """Pointed at a scene or a feature set, the report is still a report -- the
+    viewer hides itself rather than throwing."""
+    store, sparse_id = built
+    scene_id = store.open(sparse_id).manifest.scene
+    html = report.render(report.collect(store, scene_id),
+                         report.scene_payload(store, scene_id, 60000),
+                         None, "test")
+    assert run_page(html, tmp_path).startswith("OK")
