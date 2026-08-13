@@ -147,6 +147,15 @@ metrics:
       geometry absorbs that. Three views absorb far less than two, which is the
       gain, but it is not immunity.
 
+      IT IS ALSO A WEAKER GUARD ON A NOISIER TRACKER, which is measured rather than
+      supposed. Used to detect a merge tolerance wide enough to fuse distinct
+      points, a rising reading predicted a worse reconstruction on all three
+      ground-truth scenes for the precise tracker and on none of them for the noisy
+      one. The mechanism is the metric's own: it works by seeing geometry that no
+      longer closes, and a tracker several pixels off has geometry that does not
+      close well to begin with, so the signal sits inside its own floor. Read this
+      metric as a guard where it is SMALL, and not where it is large.
+
       Bounded cost by construction -- the triples and the correspondences per
       triple are both capped -- so it does not grow with the scene. Measured at
       0.07-0.7 s on 8- and 20-image sets, reported per run as trifocal_seconds.

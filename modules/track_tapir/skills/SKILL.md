@@ -73,5 +73,25 @@ in is a real parameter. A shuffled set is a different and harder problem than th
 one the model was trained on. `FeatureTrackUnionFind` and `FeatureTrackVGGSfM` do
 not care about order at all.
 
+## `dedupe_eps_px` is the one knob here worth sweeping — and it has a hard ceiling
+
+**Bounded at 2.0 by the schema.** `tracks/v1` fixes its duplicate test at 2.0 px, so
+above that the merge is fusing tracks the type itself calls **distinct**. Nine scenes
+say what that costs: by 6.0 px the median run has lost 74% of its tracks and 81% of
+its bundle-adjusted points at unchanged registration, and the errors that look
+better up there are smaller models, not better ones.
+
+**Inside 0–2 it moves the reconstruction and cannot be predicted.** The best value
+landed at every point on that range across nine scenes, and the direction flips —
+on one scene more merging helped monotonically, on another any merging cost ~60% of
+the pose accuracy. Worth a sweep when the scene matters; worth leaving at 1.5 when
+it does not.
+
+**Never compare sweep rows that registered different numbers of images.** Raising
+this deletes tracks, which removes the 2D–3D links PnP needs to register an image
+at all. A smaller model wins every aggregate metric it is scored on.
+
+Full numbers and the failure at 0: [tuning.md](tuning.md#dedupe_eps_px--worth-tuning-inside-a-hard-ceiling).
+
 **Reading the output:** [artifact.md](artifact.md) ·
 **Tuning:** [tuning.md](tuning.md) · **Limits:** [limitations.md](limitations.md)

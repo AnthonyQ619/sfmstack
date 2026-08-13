@@ -54,7 +54,7 @@ and will not register, whatever the totals say. The fix is a query frame near it
 lowering `visibility_threshold` admits noise everywhere to solve a problem in one
 place.
 
-## `dedupe_eps_px`
+## `dedupe_eps_px` — worth tuning, inside a hard ceiling
 
 The same character as `FeatureTrackUnionFind`'s `merge_eps_px`, and the same trap:
 too small leaves one point split across query frames, too large fuses distinct
@@ -66,7 +66,35 @@ tracks are longer as well as fewer.
 It means the query frames are seeing disjoint parts of the scene, which usually
 means there are too few of them.
 
-Set it to 0 only to measure what it was doing.
+**Ceiling 2.0, enforced by the schema.** `tracks/v1` fixes its duplicate test at
+2.0 px, so a merge at 2.0 has already removed everything the type will call a
+duplicate — every merge above it fuses tracks the type classifies as **distinct**.
+Measured across nine scenes (six ETH3D with ground-truth poses, three DTU), by
+6.0 px the median run has lost **74% of its tracks and 81% of its bundle-adjusted
+points** at unchanged registration, and the error at a fixed observation count is
+worse in about 70% of cases. Wins above 2.0 are the model shrinking: one reached
+0.89 px on **44 points**, down from 1120.
+
+**Inside 0–2 it is worth sweeping, and it cannot be guessed.** The best value
+landed at 0.0, 0.5, 1.0, 1.5 and 2.0 on different scenes, and the *direction* of
+the effect flips — on ETH3D `facade` more merging helped monotonically; on
+`electro` any merging at all cost ~60% of the pose accuracy. Nothing upstream
+predicts which: not `trifocal_transfer_px`, not the track statistics, not the
+scene. Getting it right rather than leaving it at 1.5 is worth a median ~8%
+(VGGSfM) to ~25% (TAPIR) on rotation error.
+
+**Sweep against a reconstruction, and throw away rows that registered fewer
+images.** Raising this deletes tracks; deleting tracks removes the 2D–3D links PnP
+needs; an image below `min_pnp_inliers` is never registered. A smaller model scores
+better on every aggregate, so a row with fewer registered images — or fewer points
+— is not a better row.
+
+**0 is not the safe default either.** Deduplication off cost TAPIR **9.86°** of
+median rotation error on ETH3D `electro` against 1.63° with a tolerance set, and
+broke a 16-image `courtyard` reconstruction outright. Both ends fail.
+
+See [`docs/import_lessons.md`](../../../docs/import_lessons.md).
+
 
 ## `visibility_threshold` is a real probability
 

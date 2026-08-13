@@ -97,11 +97,45 @@ single-factor 0.5 would. Dropping it to 0.3 on the reference run gained 65 track
 and cost 0.02 of `long_track_fraction` — it is not a strong knob, which is a sign
 the model's confidence is well separated rather than borderline.
 
-## `dedupe_eps_px`
+## `dedupe_eps_px` — worth tuning, inside a hard ceiling
 
 Same mechanism as `FeatureTrackVGGSfM`'s. It works in **scene pixels**, not
 TAPIR's square, so a value carries between the two trackers even though they run
 at different resolutions. 0.50 of raw tracks merged on the reference run.
+
+**This module is the one that fails at 0.** Of the two trackers it is the one whose
+positions are least precise, so it is the one with most to lose from leaving real
+duplicates in the table — see the `electro` figure below.
+
+**Ceiling 2.0, enforced by the schema.** `tracks/v1` fixes its duplicate test at
+2.0 px, so a merge at 2.0 has already removed everything the type will call a
+duplicate — every merge above it fuses tracks the type classifies as **distinct**.
+Measured across nine scenes (six ETH3D with ground-truth poses, three DTU), by
+6.0 px the median run has lost **74% of its tracks and 81% of its bundle-adjusted
+points** at unchanged registration, and the error at a fixed observation count is
+worse in about 70% of cases. Wins above 2.0 are the model shrinking: one reached
+0.89 px on **44 points**, down from 1120.
+
+**Inside 0–2 it is worth sweeping, and it cannot be guessed.** The best value
+landed at 0.0, 0.5, 1.0, 1.5 and 2.0 on different scenes, and the *direction* of
+the effect flips — on ETH3D `facade` more merging helped monotonically; on
+`electro` any merging at all cost ~60% of the pose accuracy. Nothing upstream
+predicts which: not `trifocal_transfer_px`, not the track statistics, not the
+scene. Getting it right rather than leaving it at 1.5 is worth a median ~8%
+(VGGSfM) to ~25% (TAPIR) on rotation error.
+
+**Sweep against a reconstruction, and throw away rows that registered fewer
+images.** Raising this deletes tracks; deleting tracks removes the 2D–3D links PnP
+needs; an image below `min_pnp_inliers` is never registered. A smaller model scores
+better on every aggregate, so a row with fewer registered images — or fewer points
+— is not a better row.
+
+**0 is not the safe default either.** Deduplication off cost TAPIR **9.86°** of
+median rotation error on ETH3D `electro` against 1.63° with a tolerance set, and
+broke a 16-image `courtyard` reconstruction outright. Both ends fail.
+
+See [`docs/import_lessons.md`](../../../docs/import_lessons.md).
+
 
 ## Reading `trifocal_transfer_px`
 

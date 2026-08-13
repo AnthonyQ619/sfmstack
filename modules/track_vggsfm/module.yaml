@@ -155,17 +155,52 @@ params:
     type: number
     default: 1.5
     minimum: 0.0
-    maximum: 20.0
+    # 2.0, not 20.0: tracks/v1 fixes its duplicate test at 2.0 px, so above this
+    # the merge is provably fusing tracks the type calls distinct. Measured on
+    # nine scenes -- see the tuning note. The bound is enforced rather than
+    # advised because an agent cannot afford to spend a reconstruction
+    # rediscovering it, and because the boundary is a property of the type rather
+    # than a guess about a scene.
+    maximum: 2.0
     description: >
       Merge tracks whose observations fall within this distance in a shared frame.
       0 disables deduplication.
     tuning: >
       This module's version of FeatureTrackUnionFind's merge_eps_px, and it has
       the same character: too small leaves the same point split across query
-      frames, too large fuses genuinely distinct points. 1.5 px at 1024 px works
-      here. Read duplicate_track_rate with it — a rate near zero at a sane eps
+      frames, too large fuses genuinely distinct points. 1.5 px at 1024 px is the
+      default. Read duplicate_track_rate with it — a rate near zero at a sane eps
       means the query frames are seeing disjoint parts of the scene, which is
       usually a sign there are too few of them.
+
+      MEASURED CEILING: 2.0. tracks/v1 fixes its duplicate test at 2.0 px, so a
+      merge at 2.0 has already removed everything the type is willing to call a
+      duplicate -- every merge above it fuses tracks the type classifies as
+      DISTINCT. Swept 0-6 px on nine scenes (six ETH3D with ground-truth poses,
+      three DTU) the cost is measured: by 6.0 px the median run has lost 74% of its
+      tracks and 81% of its bundle-adjusted points, at unchanged registration, and
+      error at a fixed observation count is worse in about 70% of cases. The
+      apparent wins above 2.0 are the model shrinking -- one reached 0.89 px on 44
+      points, down from 1120.
+
+      INSIDE 0-2 IT IS WORTH SWEEPING and cannot be guessed. The best value moved
+      to 0.0, 0.5, 1.0, 1.5 and 2.0 on different scenes, and the DIRECTION of the
+      effect flips: on ETH3D facade more merging helped monotonically, on electro
+      any merging at all cost ~60% of the pose accuracy. Nothing upstream predicts
+      which -- not trifocal_transfer_px, not the track statistics, not the scene.
+      Median gain from getting it right rather than leaving it at 1.5: about 8%
+      (VGGSfM) to 25% (TAPIR) on rotation error.
+
+      SWEEP AGAINST A RECONSTRUCTION, AND DISCARD ROWS THAT REGISTERED FEWER
+      IMAGES. Raising this deletes tracks, deleting tracks removes the 2D-3D links
+      PnP needs, and an image below min_pnp_inliers is never registered. A smaller
+      model scores better on every aggregate, so a row with fewer registered images
+      or fewer points is not a better row. Two readings of this parameter were
+      wrong for exactly that reason before the control was added.
+
+      0 IS NOT THE SAFE DEFAULT EITHER. Deduplication off cost TAPIR 9.86 deg of
+      median rotation error on ETH3D electro against 1.63 deg with a tolerance set,
+      and broke a 16-image courtyard reconstruction outright. Both ends fail.
 
 metrics:
   track_count:

@@ -81,8 +81,28 @@ tells you where the ceiling is and not where the optimum sits. In particular a
 tolerance derived from it — scaling the merge distance by the tracker's own
 measured noise — was tested and does not hold: the tolerance that best recovers
 known duplicates grows *sub-linearly* in that noise, so the ratio is not a
-constant to multiply by. See
-[`docs/import_lessons.md`](../../docs/import_lessons.md).
+constant to multiply by.
+
+### The limit of the guard: it holds for a precise tracker and not for a noisy one
+
+Checked against ground-truth poses on three scenes, and it splits by tracker:
+
+| | does a rising `trifocal_transfer_px` predict a worse reconstruction? |
+| --- | --- |
+| **VGGSfM** | **Yes, on all three.** Its worst tolerances carried its highest readings every time, and on the one scene where merging hurt at every setting, the best row also had the lowest reading. |
+| **TAPIR** | **No.** On one scene the reading had no relation to the pose error at all. |
+
+The asymmetry is the same one the whole family file is about. The guard works by
+detecting that a merge has fused two *different* points, which shows up as
+geometry that no longer closes. A tracker whose own positional error is already
+several pixels has geometry that does not close very well to begin with, so the
+signal it needs to detect sits inside its own noise floor.
+
+**So: trust the guard where `trifocal_transfer_px` is small, and do not lean on it
+where it is large — which is exactly where you would most want a guard.** That is a
+limit of the metric, not a tuning problem, and no setting fixes it.
+
+See [`docs/import_lessons.md`](../../docs/import_lessons.md).
 
 ---
 
