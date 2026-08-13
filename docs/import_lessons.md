@@ -662,3 +662,149 @@ surfaced only because an sfmkit edit invalidated the cached layer — which is t
 real lesson: **sfmkit sits under the dependency installs, so a docstring change
 forces every base above it to re-resolve from the network, and a green build is
 evidence the images are current, not that they are reproducible.**
+
+---
+
+## 2026-08-13 — `dedupe_eps_px` is worth tuning, and it has a ceiling the type defines
+
+**The question, in three parts, run as three experiments.** Does the merge tolerance
+have a consistent optimum? If not, is it worth exposing at all? And if it is, how
+far up should it go?
+
+The decision rule for the first was **fixed in writing before any of it ran**, in
+this file, so the result could not be read after the fact: *a consistent band keeps
+the parameter, an optimum that moves scene to scene removes it.*
+
+**Protocol, identical throughout.** 12 head images, full reconstruction on every
+row — `SceneLoader → FeatureDetectionSIFT → tracker(dedupe_eps_px) →
+PoseEssentialToPnP → SparseTriangulation → BundleAdjustmentGlobal` — with
+`dedupe_eps_px` swept over {0, 0.5, 1, 1.5, 2, 3, 4, 6} and a `FeatureTrackUnionFind`
+reference per scene. ETH3D scenes are scored on **relative** pose against
+`images.txt`, over all image pairs, so no gauge alignment is needed and scale never
+enters. DTU has no ground-truth extrinsics and is scored on structure alone.
+
+Verified from the sealed artifacts rather than from the script: `FeatureDetectionSIFT`,
+`PoseEssentialToPnP`, `SparseTriangulation` and `BundleAdjustmentGlobal` each used
+**exactly one parameter set** across all 153 runs of the final experiment, and the
+`scene/v1` and `features/v1` artifacts were reused by id, so the detector output
+feeding every row is the same artifact. Within a scene and a tracker,
+`dedupe_eps_px` is the only variable.
+
+### 1. Three scenes: the optimum moves
+
+`courtyard`, `electro`, `delivery_area`. Best eps after the registration filter:
+
+| | VGGSfM | TAPIR |
+|---|---|---|
+| courtyard | 3.0 rot / 1.5 trans | 3.0 / 1.5 |
+| delivery_area | 1.5 / 6.0 | 0.5 / 0.0 |
+| electro | **0.0 / 0.0** | 4.0 / 4.0 |
+
+The rule fired. On that evidence the knob was removed and the tolerance fixed at
+1.5 as a module constant — a change verified behaviour-preserving (identical
+`track_count`, `avg_track_length`, `split_rate`, `duplicate_track_rate` and
+`trifocal_transfer_px` on three scenes and both trackers) and then **reverted**,
+because three scenes turned out to be two flat ones and a broken one.
+
+### 2. Six scenes: tuning is worth 8-25%
+
+`facade`, `kicker`, `meadow` added. Cost of leaving it at 1.5 rather than tuning,
+against the per-scene best, comparable rows only:
+
+| tracker | median rotation cost | median translation cost | worst |
+|---|---:|---:|---:|
+| VGGSfM | **+7.6%** | +11.1% | +62.8% (electro) |
+| TAPIR | **+24.6%** | +9.2% | +53.5% (electro) |
+
+And the *direction* flips. `facade`/VGGSfM improves monotonically with more merging
+(0.4607 -> 0.3842 deg across 0 -> 4); `electro`/VGGSfM is best at 0 and every
+tolerance costs ~60%. `kicker`/VGGSfM is flat, 3-4% across the whole range.
+
+**So the parameter stays.** It moves the reconstruction, by enough to matter, in a
+direction nothing upstream predicts.
+
+### 3. Nine scenes: where the ceiling is
+
+Six ETH3D plus DTU `scan1`, `scan4`, `scan9`. 153 rows, 0 failures.
+
+**`split_rate` reaches exactly 0.0 at eps 2.0 in 18 of 18 cases — and that is
+STRUCTURAL, not empirical.** The type fixes `SPLIT_TOLERANCE_PX = 2.0`.
+`split_rate` flags pairs within 2.0 px in >=2 frames; merging at 2.0 unions any pair
+within 2.0 px in >=1 frame, a strict superset. Nothing can survive to be flagged. If
+the type's tolerance were 3.0 the zero would land at 3.0.
+
+It still marks the right boundary, on better grounds: **2.0 px is where the merge
+stops removing anything the type will call a duplicate.** Every merge above it fuses
+tracks the type classifies as distinct — a property of the type, not a guess about a
+scene, which is why the bound is now enforced in the schema (`maximum: 2.0`) rather
+than advised.
+
+What crossing it costs, at UNCHANGED registration:
+
+| from eps 2 to | tracks | bundle-adjusted points |
+|---|---:|---:|
+| 3.0 | -25% | -26% |
+| 4.0 | -47% | -50% |
+| 6.0 | **-74%** | **-81%** |
+
+And the error gets worse once the observation count is held fixed: median **+5.0%**
+at 5+ observations and **+7.5%** at 3-4, with eps > 2 winning in only 3 of 13 and 5
+of 13 cases. Under the maximum-registration control, 32 of 44 optima land at or
+below 2.0.
+
+**Conclusions.**
+
+1. **Keep the parameter, default 1.5, hard ceiling 2.0.** Inside 0-2 it is worth
+   sweeping and cannot be guessed; above 2.0 it is fusing distinct points and paying
+   for it in model size. Both ends fail: 0 cost TAPIR **9.86 deg** of median rotation
+   error on `electro` against 1.63 deg with a tolerance set, and broke a 16-image
+   `courtyard` reconstruction outright.
+
+2. **Every apparent win above 2.0 was the model shrinking.** `scan9`/TAPIR reaches
+   0.8866 px on **44 points**, down from 1120. `delivery_area`/VGGSfM reaches 0.4151
+   on 975, down from 6464. Meanwhile `eps = 0` minimises the final reprojection error
+   in 7 of 18 scene/tracker pairs **while carrying the largest model** — `scan4`/VGGSfM
+   is 0.4458 px on 9552 points against 0.5525 px on 575 — which is the opposite of the
+   shrinkage artefact and therefore the strongest form this evidence can take.
+
+3. **Registration is the control that makes any of this readable.** Raising the
+   tolerance deletes tracks; deleting tracks removes the 2D-3D links PnP needs; an
+   image below `min_pnp_inliers` is never registered. A row that registered fewer
+   images is not a better row, and two readings of this parameter were wrong before
+   that filter was added.
+
+4. **A methodological correction worth more than the result.** "Controlled for point
+   count" was claimed and is not achievable — the point count is an OUTPUT of the
+   parameter. What the experiment actually does is hold *registration* fixed
+   (enforced), *report* the point count (disclosure, not control), and compare error
+   within a fixed observation-count bucket (partial: it holds track length constant
+   but not the identity of the points — the 5+ bucket on `courtyard`/VGGSfM is 3725
+   points at eps 0 and 274 at eps 6). The rigorous version is a PAIRED comparison on
+   `track_id`, and it is **unavailable here**: merging renumbers tracks, so no
+   identity key survives an eps change. The triangulator experiment could pair
+   because both estimators consumed one track table; a tolerance sweep produces a
+   different table per row.
+
+5. **The `trifocal_transfer_px` guard has a limit, and it splits by tracker.** Used
+   to detect a tolerance wide enough to fuse distinct points, a rising reading
+   predicted a worse reconstruction on all three ground-truth scenes for VGGSfM and
+   on **none** of them for TAPIR. The guard works by seeing geometry that no longer
+   closes, and a tracker already several pixels off has geometry that does not close
+   well to begin with — the signal sits inside its own noise floor. Trust it where
+   the reading is small; do not lean on it where it is large, which is exactly where
+   a guard would be most welcome.
+
+6. **A first cross-scene reading of the family trade.** Every learned tracker is
+   2-4x worse than `FeatureTrackUnionFind` on the final reprojection error of all
+   nine scenes — 0.155-0.366 px against 0.40-1.20 px. And on `electro`, `kicker` and
+   `meadow`, TAPIR produces **zero** points reaching five observations at any
+   tolerance, which is a cleaner statement of "this tracker does not work here" than
+   the registration count was.
+
+**What was NOT established.** Whether the optimum inside 0-2 is predictable from
+anything at all. Six scenes put it at every value on that range, and the search for
+a predictor has now failed twice — once against `trifocal_transfer_px` and once
+against the scene. Until something predicts it, the honest guidance is the one now
+written into both trackers' `tuning.md`: sweep it against a reconstruction if the
+scene matters, leave it at 1.5 if it does not, and never compare rows that
+registered different numbers of images.
