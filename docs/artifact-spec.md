@@ -54,11 +54,20 @@ inputs: [art_2b1c04, art_9d4e77]      # provenance DAG, by id
 produced_by:
   module: FeatureTrackFromPairsUnionFind
   module_version: 1.2.0
-  image: ghcr.io/lab/sfm-unionfind@sha256:9c1f...
+  image: sfmstack/track-union-find:1.0.0        # the tag that was asked for
+  image_digest: sha256:9c1f...                 # the image that answered
   params: {min_track_len: 3, allow_pair_local_merge: true}
   started_at: '2026-08-07T14:22:11+00:00'
   duration_s: 41.2
   device: cpu
+**`image` is a tag; `image_digest` is the answer.** A tag is mutable — two builds
+of `sfmstack/track-union-find:1.0.0` are the same string and different software —
+and artifact ids are recipe-derived, so they do not cover the image either. Without
+the digest nothing in the record separates a result produced before a rebuild from
+one produced after. It is read from the running CONTAINER rather than from the tag,
+because a tag can move between the run and the read. Absent when the module ran
+in-process: there was no image, and saying nothing is honest.
+
 files:
   observations:
     path: data/observations.npz

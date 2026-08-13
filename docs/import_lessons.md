@@ -545,3 +545,120 @@ The decision rule, fixed in advance:
   step-by-step module an agent has to drive.
 
 Until that runs, the current defaults stand and the derivation idea stays rejected.
+
+---
+
+## 2026-08-12 — All-view triangulation buys reach, not precision, once bundle adjustment runs
+
+**The question.** `SparseTriangulation` and `SparseTriangulationGTSAM` take the
+same three inputs and produce the same type. Does the GTSAM one always win, and if
+so is the OpenCV one worth keeping?
+
+**What was run.** Two scenes, three trackers, one variable. Poses come from a chain
+the comparison does not touch, so the estimator is the only thing that moves:
+
+```
+SceneLoader → FeatureDetectionSIFT → FeatureMatchNN (exhaustive)
+            → FeatureTrackUnionFind → PoseEssentialToPnP        ── the fixed frame
+                      │
+      tracks from  ───┼── FeatureTrackUnionFind   (mean length 2.8 / 3.5)
+                      ├── FeatureTrackVGGSfM      (mean length 3.9 / 4.9)
+                      └── FeatureTrackTapir       (mean length 6.0 / 6.8)
+                                    │
+                    ┌───────────────┴───────────────┐
+        SparseTriangulation              SparseTriangulationGTSAM
+                    └───────────────┬───────────────┘
+                        BundleAdjustmentGlobal
+```
+
+DTU scan1 at 8 images and ETH3D courtyard at 12. Every comparison is **paired on
+`track_id`** — the same physical track under both estimators — because the two keep
+different point sets and an unpaired median is measured on different populations.
+
+**Result 1: before refinement, the gain is a pure function of track length.**
+Median reprojection error, baseline → GTSAM:
+
+| scene / tracker | 2 obs | 3–4 obs | 5+ obs |
+|---|---:|---:|---:|
+| scan1 / UnionFind (2.84) | 0.1847 → 0.1844 | 0.3583 → 0.3368 (−6.0%) | 0.5642 → **0.4542 (−19.5%)** |
+| scan1 / VGGSfM (3.87) | 0.3606 → 0.3603 | 0.4630 → 0.4390 (−5.2%) | 0.5426 → **0.4400 (−18.9%)** |
+| scan1 / TAPIR (5.97) | 1.2797 → 1.2792 | 1.1200 → 1.0471 (−6.5%) | 1.4728 → **1.2153 (−17.5%)** |
+| ETH / UnionFind (3.54) | 0.0484 → 0.0484 | 0.1434 → 0.1463 (+2%) | 0.1878 → **0.1659 (−11.7%)** |
+| ETH / VGGSfM (4.87) | 0.1513 → 0.1503 | 0.4386 → 0.4337 (−1.1%) | 0.7275 → **0.5761 (−20.8%)** |
+| ETH / TAPIR (6.82) | 0.4618 → 0.4617 | 0.8832 → 0.8361 (−5.3%) | 1.0666 → **0.8876 (−16.8%)** |
+
+Nothing at two observations, which is forced — two views is two views. Around 5% at
+three or four. **12 to 21% at five or more**, on 87–94% of individual points, in
+all six cases.
+
+**Result 2: bundle adjustment erases it completely.** The same paired points, after
+`BundleAdjustmentGlobal`:
+
+| scene / tracker | paired | baseline | GTSAM | GTSAM wins |
+|---|---:|---:|---:|---:|
+| scan1 / VGGSfM | 3285 | 0.2836 | 0.2861 | 50.7% |
+| scan1 / TAPIR | 1334 | 0.9968 | 1.0055 | 47.8% |
+| ETH / VGGSfM | 4505 | 0.3307 | 0.3305 | 41.9% |
+| ETH / TAPIR | 1708 | 0.7413 | 0.7394 | 47.1% |
+
+A coin flip at every track length; the 5+ buckets agree to three decimals.
+
+**Result 3: what survives refinement is yield.** The better initial estimate passes
+the same reprojection filter more often, so more structure reaches the final model:
+
+| scene / tracker | baseline | GTSAM | |
+|---|---:|---:|---|
+| scan1 / VGGSfM | 3319 | 3457 | +4% |
+| scan1 / TAPIR | 1374 | 1715 | **+25%** |
+| ETH / VGGSfM | 4510 | 4740 | +5% |
+| ETH / TAPIR | 1715 | 1947 | **+14%** |
+
+**Conclusions.**
+
+1. **The gain is real and it is about reach, not precision.** Before bundle
+   adjustment GTSAM is 12–21% more accurate on multi-view points; after it, the
+   accuracy difference is gone and the module has instead carried 4–25% more
+   structure through. On a pipeline with no refinement stage the precision is
+   yours to keep; on one with refinement, read it as yield.
+
+2. **An aggregate median hides the whole effect.** The first version of this
+   experiment reported "GTSAM's advantage is negligible" from overall medians. On
+   union-find tracks 2678 of 4558 paired points have exactly two observations —
+   the population where the two estimators are identical by construction — so the
+   median measured the case where nothing can differ. **Condition on track length
+   before comparing triangulators.**
+
+3. **The unpaired post-BA table says the opposite of the truth.** Read
+   unpaired, the baseline appears to have lower error after refinement. It has
+   fewer points, and the ones GTSAM additionally kept are the hard ones. This is
+   the third time in this file that comparing error across differing model sizes
+   would have produced a backwards conclusion.
+
+4. **Both modules stay.** GTSAM is never worse in any measurement here, so the
+   case for the OpenCV path is not accuracy: it is the absence of a factor-graph
+   dependency (594 MB against 760 MB), identical output on two-view-dominated
+   scenes, and the fact that having two interchangeable implementations is what
+   made this measurable at all — the documented diagnostic "when LOST moves points
+   a lot, the linear solution was poorly conditioned" needs both.
+
+5. **Neither of GTSAM's own distinguishing parameters did anything.** `use_lost`
+   and `optimize` agreed to four decimals on every scene, and `optimize` cost 2x
+   the runtime to do it (2.91 s against 1.38 s on scan1). The module's value is in
+   using every view, not in which estimator or refinement it runs there.
+
+**Two bugs this experiment found, both invisible to the suite.**
+
+`BundleAdjustmentGlobal` and `BundleAdjustmentLocal` crashed on any
+`sparse_model/v1` lacking the OPTIONAL `points.track_id` — four of the five
+producers omit it — because `np.asarray(None)` is a 0-d object array rather than
+None, so the `is not None` guard never fired. Every
+BA-after-anything-but-`SparseTriangulation` chain was broken. No test covered it
+because every BA test ran after the one producer that writes the array.
+
+The image build had stopped working: torch 2.6.0 hard-pins a cudnn wheel that the
+cu124 index has since been pruned of, and `--index-url` REPLACES the default index
+rather than adding to it, so pip could not reach the copy PyPI still carries. It
+surfaced only because an sfmkit edit invalidated the cached layer — which is the
+real lesson: **sfmkit sits under the dependency installs, so a docstring change
+forces every base above it to re-resolve from the network, and a green build is
+evidence the images are current, not that they are reproducible.**

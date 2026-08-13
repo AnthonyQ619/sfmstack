@@ -83,6 +83,34 @@ def test_provenance_and_duration_are_recorded(store):
     assert sealed.manifest.produced_by.module_version == "1.0.0"
 
 
+def test_the_image_digest_survives_the_manifest_round_trip(store, tmp_path):
+    """The tag answers "which image was asked for"; the digest answers "which one
+    ran". Only the second survives a rebuild, so it has to reach disk and come back
+    intact -- an in-memory field that is dropped on write records nothing.
+    """
+    from sfmkit.manifest import Manifest, Provenance
+
+    store.writer(
+        artifact_id="art_digest00001", type="tracks/v1", run="run_1",
+        provenance=Provenance(module="Dummy", module_version="1.0.0",
+                              image="sfmstack/dummy:1.0.0",
+                              image_digest="sha256:abc123"),
+    ).save("observations", **dict(zip(("obs", "track_count"),
+                                      tracks_payload()))).seal()
+
+    reopened = store.open("art_digest00001")
+    assert reopened.manifest.produced_by.image == "sfmstack/dummy:1.0.0"
+    assert reopened.manifest.produced_by.image_digest == "sha256:abc123"
+
+    # And absent rather than empty-stringed when the module ran in-process: the
+    # manifest drops falsy provenance fields, so "" must not appear on disk.
+    doc = Manifest.from_doc(
+        {"id": "x", "type": "tracks/v1",
+         "produced_by": {"module": "M", "image": "t:1"}}
+    )
+    assert doc.produced_by.image_digest == ""
+
+
 # --------------------------------------------------------------------------- #
 # Validation happens in the PRODUCER
 # --------------------------------------------------------------------------- #

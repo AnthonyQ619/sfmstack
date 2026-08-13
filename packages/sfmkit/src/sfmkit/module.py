@@ -71,6 +71,9 @@ class Ctx:
     module: str
     module_version: str = "0.0.0"
     image: str = ""
+    # The content-addressed id of the image actually running, set by the runner.
+    # The tag above says which image was ASKED for; this says which one answered.
+    image_digest: str = ""
     run: str = ""
     scene: str = ""
     device: str | None = None
@@ -163,6 +166,7 @@ class Ctx:
                 module=self.module,
                 module_version=self.module_version,
                 image=self.image,
+                image_digest=self.image_digest,
                 params=self.params.as_dict(),
                 started_at=self._started_at,
                 device=self.device,

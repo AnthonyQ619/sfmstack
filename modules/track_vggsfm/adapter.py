@@ -363,7 +363,6 @@ def run(ctx: Ctx):
 
     avg_length = float(lengths.mean())
     duplicate_rate = merged / max(raw_tracks, 1)
-    frames_covered = float((per_frame > 0).mean())
 
     out.metric("track_count", int(track_count),
                direction="higher_better", healthy=(200, None))
@@ -373,8 +372,6 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(0.5, None))
     out.metric("min_frame_observations", int(per_frame.min()),
                direction="higher_better", healthy=(50, None))
-    out.metric("frames_covered", round(frames_covered, 4),
-               direction="higher_better", healthy=(1.0, None))
     # Structurally zero: one query point yields at most one position per frame, so
     # a track cannot contradict itself. Reported because the type requires it, and
     # documented as uninformative HERE rather than quietly emitted as a success.

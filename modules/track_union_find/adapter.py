@@ -374,8 +374,6 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(0.1, None))
     out.metric("min_frame_observations", min_frame_obs,
                direction="higher_better", healthy=(50, None))
-    out.metric("frames_covered", round(frames_covered, 3),
-               direction="higher_better", healthy=(1.0, None))
     # Positional accuracy -- the one axis no other metric here touches. Timed and
     # reported, because it is the only part of this module that could grow with the
     # scene in a way the rest does not.

@@ -251,6 +251,7 @@ class ModuleService:
                 module=self.name,
                 module_version=self.version,
                 image=str(req.get("image", "")),
+                image_digest=str(req.get("image_digest", "")),
                 run=str(req.get("run", "")),
                 scene=str(req.get("scene", "")),
                 device=req.get("device"),

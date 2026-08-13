@@ -196,7 +196,7 @@ would report how self-consistent the network is rather than how accurate it is.
 | `scene/v1` | `n_images`, `megapixels`, `mixed_resolution` |
 | `features/v1` | `keypoints_per_image`, `keypoints_min`, `spatial_coverage` |
 | `pairwise_matches/v1` | `pairs_matched`, `matches_per_pair`, `min_matches_per_pair`, `inlier_ratio`, `graph_components`, `largest_component_fraction`, `planarity`\* |
-| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `frames_covered`, `inconsistent_rate`, `split_rate`, `trifocal_transfer_px`\*, `median_track_length`, `track_survival_5` |
+| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `inconsistent_rate`, `split_rate`, `trifocal_transfer_px`\*, `median_track_length`, `track_survival_5` |
 | `poses/v1` | `registered_fraction`, `registered_images`, `mean_reprojection_error`\*, `median_reprojection_error`\* |
 | `sparse_model/v1` | `point_count`, `observation_count`, `mean_reprojection_error`\*, `registered_images` |
 | `dense_model/v1` | `point_count`, `views_contributing`, `mean_depth_confidence`\* |
@@ -206,7 +206,9 @@ would report how self-consistent the network is rather than how accurate it is.
 Three metrics were required and were removed after review, and the reasoning is
 the rule for anything proposed next: `track_survival_10` is necessarily 0 on any
 set under ten images, `max_track_length` is one order statistic of a distribution
-already described four ways, and `mean_track_length` is EXACTLY
+already described four ways, `frames_covered` fires only when a frame is
+completely empty while `min_frame_observations` catches that case *and* the frame
+that is merely too thin to register, and `mean_track_length` is EXACTLY
 `observation_count / point_count`. **A required metric has to add a degree of
 freedom, not a name.** Each survives as a module-specific metric where a module
 actually routes on it.

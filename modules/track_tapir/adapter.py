@@ -365,8 +365,6 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(0.5, None))
     out.metric("min_frame_observations", int(per_frame.min()),
                direction="higher_better", healthy=(50, None))
-    out.metric("frames_covered", round(float((per_frame > 0).mean()), 4),
-               direction="higher_better", healthy=(1.0, None))
     # Structurally zero, as in FeatureTrackVGGSfM: one query point yields one
     # position per frame, so a track cannot contradict itself.
     # Positional accuracy -- the one axis no other metric here touches. Timed and

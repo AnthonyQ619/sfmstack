@@ -77,10 +77,6 @@ metrics:
       Observations in the weakest frame. A frame below the registration floor
       drops out of the reconstruction whatever the totals say.
 
-  frames_covered:
-    direction: higher_better
-    meaning: Fraction of scene images carrying at least one observation.
-
   inconsistent_rate:
     direction: lower_better
     meaning: >
@@ -185,3 +181,10 @@ metrics:
 #     module-specific metric of FeatureTrackUnionFind, where a track longer than
 #     the view graph can support is that module's over-merge signal; nothing else
 #     at this stage has a use for it.
+#   frames_covered -- the weaker half of a pair. It fires only when a frame is
+#     COMPLETELY empty, and min_frame_observations reports that same case as 0
+#     while also catching the frame that is merely thin: 12 observations will fail
+#     registration as surely as 0 will, and only one of the two metrics sees it.
+#     The thin_frame diagnostic already keys on the minimum, not on the fraction.
+#     What is lost is HOW MANY frames are empty rather than that one is, which is
+#     recoverable from the observation table and was never acted on.

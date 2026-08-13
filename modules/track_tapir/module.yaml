@@ -201,11 +201,6 @@ metrics:
       Observations in the weakest frame. The fix for a thin frame is the query
       selection, not a lower confidence threshold.
 
-  frames_covered:
-    direction: higher_better
-    healthy: [1.0, null]
-    meaning: Fraction of scene images carrying at least one observation.
-
   inconsistent_rate:
     direction: lower_better
     healthy: [null, 0.0]

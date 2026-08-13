@@ -54,13 +54,37 @@ Two things follow, and both are properties of the family rather than of any modu
   directly is correct only when the poses also came from it, and silently wrong
   otherwise.
 
-### 4. Within ray intersection: the estimator matters at short baselines
+### 4. Within ray intersection: how many views the estimator uses
 
-DLT and midpoint triangulation minimise an algebraic quantity that is not the
-reprojection error. **LOST** (`SparseTriangulationGTSAM`) is optimal under a
-Gaussian noise model on the measurements. The difference is invisible on a wide
-baseline and grows as the baseline shrinks, which is where triangulation is badly
-conditioned anyway.
+Two triangulators consume the same three artifacts and differ in one thing —
+whether a track seen in *n* views is solved from **two** of them or from **all
+of them**.
+
+- `SparseTriangulation` triangulates from the **widest-baseline pair**, then
+  verifies in every observing view. The right cheap answer, and it discards
+  evidence: a track seen in eight views is placed by two.
+- `SparseTriangulationGTSAM` solves over **every** observing view at once (LOST,
+  optimal under a Gaussian noise model on the measurements), and carries a
+  far-landmark bound the pairwise path has no equivalent of.
+
+**The gain is a function of track length and nothing else.** At two observations
+the two are the same computation and produce the same point. The advantage appears
+at three or four, and is substantial at five or more. Read `long_track_fraction`
+and `track_survival_5` on the tracks artifact to know which regime you are in
+before choosing — those are the numbers that predict whether the choice matters.
+
+**Bundle adjustment erases the accuracy half of the difference.** Refinement finds
+the same optimum from either starting point, so on the points both estimators keep,
+a post-BA comparison is a coin flip. What survives refinement is **yield**: the
+better initial estimate passes the same reprojection filter more often, so more
+structure reaches the final model. The rule that follows:
+
+> **Pick the all-view estimator for reach, not for precision** — unless the
+> pipeline has no bundle adjustment stage, in which case the precision is yours to
+> keep.
+
+The single-scene magnitudes are in
+[`docs/import_lessons.md`](../../docs/import_lessons.md).
 
 ---
 

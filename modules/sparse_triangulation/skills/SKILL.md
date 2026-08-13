@@ -24,6 +24,21 @@ that observed it, then verify in *every* observing view. A point that reprojects
 badly in any single view is discarded rather than kept with a large residual,
 because one bad observation is enough to drag a bundle adjustment.
 
+**When to reach for `SparseTriangulationGTSAM` instead:** when tracks are long.
+Solving from the widest PAIR is the right cheap answer and it discards evidence —
+a track seen in eight views is placed by two of them. Measured against the all-view
+module on two scenes and three trackers: **identical at two observations**, ~5%
+worse at three or four, and **12–21% worse at five or more**. Read
+`track_survival_5` on the tracks artifact to know which regime you are in.
+
+**That difference does not survive bundle adjustment**, which finds the same
+optimum from either starting point — after refinement the two agree to three
+decimals on shared points. What the all-view module keeps is 4–25% more points,
+because its better initial estimate passes this same reprojection filter more
+often. So: no BA stage, or yield matters → switch. Two-view-dominated tracks, or
+you would rather not carry GTSAM → stay here and give up nothing.
+See [`docs/import_lessons.md`](../../../docs/import_lessons.md).
+
 **The metric that reads upstream:** `rejected_cheirality`. Points landing behind a
 camera is a *pose* problem, not a threshold problem — no setting here fixes it.
 Above ~5% go and look at the pose artifact.

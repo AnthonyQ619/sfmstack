@@ -96,6 +96,35 @@ def test_modules_do_not_share_dependencies(orch):
         assert probe.stdout.strip() == "True False", f"{image}: {probe.stdout}"
 
 
+def test_provenance_records_the_image_that_actually_ran(orch):
+    """`image` is a tag and a tag is mutable, so it cannot answer "which software
+    produced this artifact". Two builds of sfmstack/scene-loader:1.0.0 are the same
+    string. Artifact ids are recipe-derived and do not cover the image either, so
+    the digest is the only thing in the record that separates a result produced
+    before a rebuild from one produced after.
+
+    Read from the CONTAINER, so it is what ran rather than what the tag points at
+    now.
+    """
+    scene = orch.run("SceneLoader", run_id="digest", params={
+        "image_dir": str(DTU_SCAN1),
+        "calibration_path": str(DTU_CALIB),
+        "max_images": 2,
+        "resize": "auto",
+        "max_edge": 400,
+    }).primary
+
+    prov = scene.manifest.produced_by
+    assert prov.image == "sfmstack/scene-loader:1.0.0"
+    assert prov.image_digest.startswith("sha256:")
+
+    live = subprocess.run(
+        ["docker", "image", "inspect", "-f", "{{.Id}}", prov.image],
+        capture_output=True, text=True, timeout=60,
+    ).stdout.strip()
+    assert prov.image_digest == live
+
+
 def test_a_real_pipeline_runs_across_two_containers(orch):
     scene = orch.run("SceneLoader", run_id="docker", params={
         "image_dir": str(DTU_SCAN1),

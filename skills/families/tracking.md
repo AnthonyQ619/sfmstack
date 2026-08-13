@@ -34,9 +34,9 @@ native resolution the more of both you get.
 
 **One metric measures the precision axis and the rest do not.**
 `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`,
-`frames_covered`, `inconsistent_rate`, `split_rate` and the survival curve are all
-about length, coverage or self-consistency — a tracker can look excellent on every
-one of them and be several pixels off everywhere.
+`inconsistent_rate`, `split_rate` and the survival curve are all about length,
+coverage or self-consistency — a tracker can look excellent on every one of them
+and be several pixels off everywhere.
 
 **`trifocal_transfer_px`** is the exception, and it is the number to compare
 trackers on. It is a held-out three-view prediction: relative pose and a third

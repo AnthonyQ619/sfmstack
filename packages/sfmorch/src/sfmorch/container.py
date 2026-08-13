@@ -199,6 +199,9 @@ class ContainerRunner:
                 "module": spec.name,
                 "module_version": spec.version,
                 "image": spec.image,
+                # From the endpoint, not the spec: the spec says which tag was
+                # asked for, the endpoint says which image answered.
+                "image_digest": slot.endpoint.image_digest,
                 "run": job.run,
                 "scene": job.scene,
                 "inputs": {name: art.id for name, art in job.inputs.items()},

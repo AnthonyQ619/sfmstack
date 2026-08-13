@@ -20,10 +20,35 @@ weighting that makes the linear solution statistically optimal. That matters mos
 where the pairwise answer is worst — one wide baseline among several
 near-coincident views.
 
+**Prefer this module when either is true:**
+
+- **`track_survival_5` is healthy** — the gain is a function of track length and
+  nothing else. Measured against `SparseTriangulation` on two scenes and three
+  trackers: identical at two observations (forced — two views is two views),
+  ~5% lower reprojection error at three or four, and **12–21% lower at five or
+  more**, on 87–94% of individual points in every case.
+- **There is no bundle adjustment downstream.** Refinement finds the same optimum
+  from either starting point, so on the points both estimators keep, a post-BA
+  comparison is a coin flip (41–51% win rate, medians agreeing to three decimals).
+  Without a BA stage the accuracy is yours to keep.
+
+**With bundle adjustment, read the gain as YIELD.** The better initial estimate
+passes the same reprojection filter more often, so more structure reaches the final
+model: **+4% to +25% points** after BA, the large end with a predictive tracker's
+long tracks. That is what this module buys in a full pipeline.
+
 **Prefer SparseTriangulation when** `mean_track_length` is near 2.0. On a
 two-view track the two are the same computation and this one costs more; the
 module says so with a `mostly_two_view` diagnostic rather than letting you pay
-for nothing.
+for nothing. Also prefer it when the GTSAM dependency is not wanted — 594 MB
+against 760 MB — since on a two-view-dominated scene nothing is given up.
+
+**`optimize` and `use_lost` are not where the value is.** Both agreed to four
+decimals with each other and with the plain all-view solve on every scene tested,
+and `optimize` cost 2x the runtime to do it. What matters is using every view;
+which estimator solves there did not move a measurement.
+
+Full experiment: [`docs/import_lessons.md`](../../../docs/import_lessons.md).
 
 **It also has a filter the pairwise path has no equivalent of.**
 `max_landmark_distance` rejects points that escaped along near-parallel rays —

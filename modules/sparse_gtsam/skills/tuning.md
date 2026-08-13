@@ -15,6 +15,23 @@ distance bound.
 3. `median_triangulation_angle` — the honest conditioning signal.
 4. `refinement_shift` — whether the linear solve was well posed at all.
 
+## Read the gain at the right place, and against the right baseline
+
+Comparing this module with `SparseTriangulation` on an overall median will tell you
+nothing, and will usually tell you nothing in a confident tone. Two-view points are
+the same computation in both, and they are typically the majority — on union-find
+tracks, 2678 of 4558 paired points. **Split by observation count before comparing:**
+identical at 2, ~5% better at 3–4, 12–21% better at 5+.
+
+And compare the same points. The two keep different sets, so pair on `track_id`;
+an unpaired comparison after bundle adjustment reports this module as *worse*,
+because it retained 4–25% more points and the extra ones are the hard ones.
+
+**`optimize: false` is worth trying and usually free.** On every scene measured it
+matched `optimize: true` to four decimals at half the runtime (1.38 s against
+2.91 s). `refinement_shift` is how you check that on your own data — near zero
+means the linear solve had already arrived and the refinement is pure cost.
+
 ## Reference run
 
 DTU scan1, 12 contiguous images, `max_edge: 1024`, SIFT + FeatureMatchNN

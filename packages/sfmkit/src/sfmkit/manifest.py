@@ -58,9 +58,20 @@ class Diagnostic:
 
 @dataclass
 class Provenance:
+    """Who made this artifact, and with what.
+
+    `image` is a TAG and a tag is mutable: two builds of
+    `sfmstack/foo:1.0.0` are the same string and different software. Artifact ids
+    are recipe-derived and do not cover the image either, so without
+    `image_digest` nothing in the record distinguishes a result produced before a
+    rebuild from one produced after. Empty when the module ran in-process, which
+    is honest -- there was no image.
+    """
+
     module: str
     module_version: str = "0.0.0"
     image: str = ""
+    image_digest: str = ""
     params: dict[str, Any] = field(default_factory=dict)
     started_at: str = ""
     duration_s: float | None = None

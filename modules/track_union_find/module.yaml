@@ -191,11 +191,6 @@ metrics:
       Observations in the weakest frame. A frame below ~50 will fail to register
       and drop out of the reconstruction, regardless of the totals.
 
-  frames_covered:
-    direction: higher_better
-    healthy: [1.0, null]
-    meaning: Fraction of scene images carrying at least one observation.
-
   inconsistent_rate:
     direction: lower_better
     healthy: [null, 0.05]

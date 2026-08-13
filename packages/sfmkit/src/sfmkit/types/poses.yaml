@@ -90,3 +90,12 @@ metrics:
       pair is what separates "a few bad observations" from "everything is off":
       mean much larger than median is outliers, the two together is a systematic
       problem. Null wherever mean_reprojection_error is null.
+
+# registered_fraction is EXACTLY registered_images / scene n_images, and it is
+# required anyway. The redundancy is deliberate: the two are read for different
+# things and neither reduces to the other in use. registered_images is what makes
+# an error comparison legal -- error improves as cameras drop out, so two models
+# with different counts cannot be compared at all. registered_fraction is what a
+# threshold reads, and it is the one that means the same thing on an 8-image set
+# and a 200-image one. A metric that must be recomputed against the scene every
+# time it is read is a metric that will be read wrongly.

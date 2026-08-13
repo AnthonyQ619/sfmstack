@@ -66,6 +66,11 @@ class Endpoint:
     handle: str  # container id, or pid as a string
     module: str
     version: str
+    # Content-addressed id of the image this endpoint is running, read from the
+    # CONTAINER rather than from the tag: a tag can be moved between the run and
+    # the read, and the question the record has to answer is which bytes ran.
+    # Empty for the subprocess backend, which has no image.
+    image_digest: str = ""
     device: int | None = None
     started_at: float = field(default_factory=time.monotonic)
     last_used: float = field(default_factory=time.monotonic)
@@ -382,8 +387,21 @@ class DockerBackend:
             handle=container_id,
             module=spec.name,
             version=spec.version,
+            image_digest=self._image_digest(container_id),
             device=device,
         )
+
+    def _image_digest(self, container_id: str) -> str:
+        """The image id the container was created from, or "" if docker will not say.
+
+        Never fatal. A missing digest costs provenance detail; raising here would
+        cost the run, and the run is the expensive part.
+        """
+        result = subprocess.run(
+            [self.docker, "inspect", "-f", "{{.Image}}", container_id],
+            capture_output=True, text=True,
+        )
+        return result.stdout.strip() if result.returncode == 0 else ""
 
     def stop(self, endpoint: Endpoint) -> None:
         subprocess.run(
