@@ -5,6 +5,7 @@ pytest run collide on `import conftest` when neither directory is a package.
 """
 
 import importlib.util
+import os
 from pathlib import Path
 
 import pytest
@@ -34,3 +35,15 @@ needs_eth = pytest.mark.skipif(
 )
 needs_pil = pytest.mark.skipif(not _importable("PIL"), reason="Pillow not installed")
 needs_cv2 = pytest.mark.skipif(not _importable("cv2"), reason="OpenCV not installed")
+needs_torch = pytest.mark.skipif(
+    not (_importable("torch") and _importable("torchvision")),
+    reason="torch/torchvision not installed",
+)
+
+# SceneMotion loads RAFT from a path baked into its image. In-process the weights
+# have to be supplied explicitly, so the flow tests skip rather than download.
+RAFT_CHECKPOINT = Path(os.environ.get("RAFT_CHECKPOINT", "/opt/weights/raft_large.pt"))
+needs_raft = pytest.mark.skipif(
+    not RAFT_CHECKPOINT.exists(),
+    reason="RAFT weights absent; set RAFT_CHECKPOINT to a torchvision raft_large state dict",
+)

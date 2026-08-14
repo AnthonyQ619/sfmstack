@@ -1,0 +1,292 @@
+name: SceneMotion
+version: 1.0.0
+kind: analysis
+summary: >
+  Dense optical flow between image pairs, summarised into camera-motion scores
+  and the two classic degeneracy tests -- planar dominance and pure rotation.
+  GPU required.
+
+description: |
+  The GPU half of scene analysis. `SceneTriage` says what the images look like;
+  this says how the camera moved between them, which is the other input to
+  whether a reconstruction is possible at all.
+
+  RAFT-large dense flow over pairs, normalised by the image diagonal so the
+  numbers do not depend on resolution, then summarised two ways:
+
+  **motion** -- is there enough parallax to triangulate, and little enough
+  displacement to match? Those are opposite failures with the same cure applied
+  in opposite directions, which is why `low_baseline_risk` and
+  `large_motion_risk` are reported separately rather than as one "motion" score.
+  A capture can suffer both at once when the rate is uneven.
+
+  **degeneracy** -- the two configurations that make a correct pipeline produce a
+  wrong answer rather than no answer:
+
+  - `planar_dominance`: a homography explains the correspondences at least as
+    well as a fundamental matrix, by GRIC. Essential-matrix decomposition is then
+    ill-conditioned and the recovered pose is arbitrary within a family.
+  - `pure_rotation_risk`: the camera rotated without translating. There is no
+    parallax, so there is no structure to recover, however good the matcher is.
+    Distinguished from a planar scene by testing whether `K^-1 H K` is a rotation
+    matrix -- which it is exactly under pure rotation, and is not when a plane is
+    viewed from two positions. That test needs intrinsics, so this cue is OMITTED
+    on an uncalibrated scene rather than guessed.
+
+  Reading this before choosing a matcher is the point. `planarity` on
+  `pairwise_matches/v1` measures the same degeneracy AFTER a matcher has run on
+  every pair; this measures it in seconds, before the choice.
+
+  **This module emits numbers, not traits.** The `traits` group is derived by the
+  orchestrator from thresholds in `skills/judgment/`. The `healthy` bands here
+  are this module's own advisory reading.
+
+image: sfmstack/scene-motion:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 8
+  # Hint for ~40 consecutive pairs at the default 640px side. Flow is one forward
+  # pass per pair; the model load dominates a cold start and is amortised by the
+  # warm server.
+  expected_duration_s: 60
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  analysis: {type: scene_analysis/v1}
+
+params:
+  stride:
+    type: integer
+    default: 1
+    minimum: 1
+    description: Pairs are (i, i + stride) in scene order.
+    tuning: >
+      THE knob on this module. Flow between two nearly identical frames measures
+      the sampling rate, not the capture: on a 60fps walkthrough every
+      consecutive pair looks like a low-baseline failure and none of them is.
+      Set stride to the spacing the reconstruction will actually match at. If
+      low_baseline_risk is high and the capture is dense video, raise it before
+      concluding anything.
+
+  max_pairs:
+    type: integer
+    default: 60
+    minimum: 1
+    description: Cap on pairs evaluated. Pairs are subsampled uniformly when it binds.
+    tuning: >
+      Raise for a long sequence whose character changes partway through -- an
+      indoor-to-outdoor walk -- where 60 uniformly spaced pairs may average two
+      regimes into one meaningless middle.
+
+  max_side:
+    type: integer
+    default: 640
+    minimum: 128
+    maximum: 2048
+    description: Long edge the flow runs at.
+    tuning: >
+      Flow magnitudes are normalised by the image diagonal, so the motion scores
+      are comparable across settings; runtime and memory are not. Raise toward
+      1024 when the scene has fine structure whose motion is being averaged away,
+      which shows up as an implausibly low overall_magnitude on a capture you
+      know moved.
+
+  flow_step:
+    type: integer
+    default: 8
+    minimum: 1
+    description: Grid spacing, in pixels, at which flow is sampled into correspondences.
+    tuning: >
+      Only affects the geometric tests (rotation and degeneracy), not the motion
+      magnitudes, which use the dense field. Lower it for a scene whose textured
+      area is a small part of the frame and the fits are landing on too few
+      usable points.
+
+  low_motion_thresh:
+    type: number
+    default: 0.005
+    minimum: 0.0
+    description: >
+      Normalised p75 flow below which a pair counts toward `low_baseline_risk`.
+    tuning: >
+      A fraction of the image diagonal. 0.005 is roughly 6px on a 1024x768 frame.
+      This is a threshold on a risk COUNT, not on the underlying measurement --
+      move it only if the count is disagreeing with reconstructions you have
+      already run on similar captures.
+
+  high_motion_thresh:
+    type: number
+    default: 0.08
+    minimum: 0.0
+    description: >
+      Normalised p90 flow above which a pair counts toward `large_motion_risk`.
+    tuning: >
+      Detector-based matchers break down earlier than detector-free ones, so this
+      ceiling is family-dependent and the default is set for the classical case.
+      Raise it toward 0.15 when a detector-free matcher is already chosen.
+
+  rotation_risk_deg:
+    type: number
+    default: 20.0
+    minimum: 0.0
+    description: Pair rotation above which a pair counts toward `large_rotation_risk`.
+
+  rotation_only_tol:
+    type: number
+    default: 0.15
+    minimum: 0.0
+    description: >
+      How far `K^-1 H K` may sit from an orthogonal matrix, in Frobenius norm of
+      `M M^T - I`, and still count as a pure rotation.
+    tuning: >
+      Tighten toward 0.05 to call pure rotation only on a near-exact match, which
+      is the right direction if the flag is firing on scenes that reconstruct
+      fine. Loosen toward 0.3 only with a noisy or badly-calibrated scene, where
+      the residual has a floor unrelated to the camera's motion.
+
+  ransac_threshold_px:
+    type: number
+    default: 1.5
+    minimum: 0.1
+    description: Inlier threshold for the homography and fundamental fits, in pixels
+      at the flow resolution.
+
+metrics:
+  n_pairs:
+    direction: neutral
+    meaning: Pairs on which flow was actually computed.
+
+  overall_magnitude:
+    direction: neutral
+    meaning: >
+      Median over pairs of the p75 flow magnitude, as a fraction of the image
+      diagonal. Apparent motion overall. Neutral because both ends are failures:
+      too little is no parallax, too much is no correspondence. NO HEALTHY BAND
+      ON PURPOSE -- ten ETH3D and DTU scenes measured 0.075-0.31 at stride 1, all
+      of which reconstruct, so any band inherited from the predecessor's
+      thresholds would have flagged nine of ten. Read it against the capture you
+      intended, not against a constant.
+
+  high_motion_tail:
+    direction: neutral
+    meaning: >
+      Median over pairs of the p90 flow magnitude. How severe the fast regions
+      are. Large while `overall_magnitude` is moderate means part of the frame is
+      moving much faster than the rest -- a near object, or a dynamic one.
+
+  variability:
+    direction: lower_better
+    healthy: [null, 0.035]
+    meaning: >
+      Interquartile range of the per-pair p75 flow. How uneven the capture rate
+      is. High means one exposure interval is not like another, so a single
+      pairing strategy will be wrong somewhere in the set.
+
+  low_baseline_risk:
+    direction: lower_better
+    healthy: [null, 0.35]
+    meaning: >
+      Fraction of pairs below `low_motion_thresh`. Triangulation on these pairs is
+      ill-conditioned -- the rays are nearly parallel, so depth is unconstrained
+      however precise the correspondences are.
+
+  large_motion_risk:
+    direction: lower_better
+    healthy: [null, 0.45]
+    meaning: >
+      Fraction of pairs above `high_motion_thresh`. Displacement large enough to
+      cost a detector-based matcher its correspondences. UNCALIBRATED THRESHOLD:
+      `high_motion_thresh` is carried over from the predecessor and reads 0.82-1.00
+      on all ten benchmark scenes measured, every one of which reconstructs, so on
+      captures of that character it currently carries no information. Displacement
+      is a weak proxy for matching difficulty -- a rotation-invariant descriptor
+      does not care how far a point moved, it cares how much the view changed.
+      Read `variability` and `rotation_median_deg` instead until this is
+      recalibrated.
+
+  rotation_median_deg:
+    direction: neutral
+    meaning: >
+      Median inter-frame rotation, from the essential matrix fitted to flow
+      correspondences. Null on an uncalibrated scene, where there is no metric
+      angle to report.
+
+  large_rotation_risk:
+    direction: lower_better
+    healthy: [null, 0.33]
+    meaning: >
+      Fraction of pairs rotating past `rotation_risk_deg`. Null when uncalibrated.
+
+  planar_dominance:
+    direction: lower_better
+    healthy: [null, 0.5]
+    meaning: >
+      Fraction of pairs where GRIC prefers a homography to a fundamental matrix.
+      High means essential-matrix decomposition is ill-conditioned across the set,
+      and the fix depends on the cause -- see pure_rotation_risk.
+
+  pure_rotation_risk:
+    direction: lower_better
+    healthy: [null, 0.1]
+    meaning: >
+      Fraction of pairs whose homography is a conjugated rotation, meaning the
+      camera turned without translating and there is no structure to recover.
+      Null on an uncalibrated scene: separating this from a planar scene requires
+      intrinsics, and guessing would turn "cannot tell" into a wrong answer.
+
+diagnostics:
+  - code: low_baseline
+    severity: warn
+    message: Many pairs carry too little parallax to triangulate well.
+    suggested_actions:
+      - If the capture is dense video, raise `stride` and re-read before concluding anything.
+      - If it is genuinely a narrow-baseline capture, expect high reprojection error at low triangulation angle.
+      - Consider a capability that infers structure from a learned prior rather than by ray intersection - sfm_find_alternatives(produces='sparse_model/v1', not_consuming='poses/v1').
+    see_also: tuning.md#low_baseline_risk-above-035
+
+  - code: large_motion
+    severity: info
+    message: Many pairs displace far enough to cross the large-motion threshold.
+    suggested_actions:
+      - Info, not warn, because this threshold fires on every benchmark scene measured so far and all of them reconstruct.
+      - Lower `stride` if the capture supports it - this is the one failure denser pairing fixes.
+      - Corroborate with rotation_median_deg before acting; large displacement under small rotation is usually harmless.
+      - If corroborated, prefer a detector-free matcher - sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1').
+    see_also: tuning.md#large_motion_risk-above-045
+
+  - code: planar_scene
+    severity: warn
+    message: A homography explains the flow at least as well as a fundamental matrix.
+    suggested_actions:
+      - Read pure_rotation_risk next; a plane and a pure rotation look identical here and have different fixes.
+      - If it is a genuine plane, essential-matrix pose is ill-conditioned; prefer a pose capability that does not decompose one.
+      - Expect `planarity` on pairwise_matches/v1 to agree once a matcher has run.
+    see_also: limitations.md#planar-and-rotational-degeneracy-are-the-same-measurement
+
+  - code: pure_rotation
+    severity: error
+    message: The camera rotated without translating on a substantial share of pairs.
+    suggested_actions:
+      - There is no parallax and therefore no structure; no matcher or triangulator recovers from this.
+      - If only part of the capture is rotational, re-run SceneLoader over the translating subset.
+    see_also: limitations.md#pure-rotation-is-terminal
+
+  - code: uncalibrated_scene
+    severity: info
+    message: No intrinsics; rotation and pure-rotation cues are omitted.
+    suggested_actions:
+      - Motion magnitudes and planar_dominance are still valid - none of them need K.
+      - Supply calibration_path to SceneLoader to recover the angular cues.
+    see_also: limitations.md#what-needs-intrinsics
+
+  - code: flow_fit_failed
+    severity: info
+    message: Some pairs produced too few usable correspondences for the geometric fits.
+    suggested_actions:
+      - Lower `flow_step` to sample the field more densely.
+      - Expected on pairs that are almost entirely textureless or almost entirely static.
+    see_also: limitations.md#what-needs-intrinsics

@@ -426,12 +426,29 @@ convention a `ply` sidecar.
 needs only the paths themselves. **No calibration** — the point is to characterise
 a scene before anything is known about it.
 
-Designed, not yet built. The type exists with no producer.
+*Members:* `SceneTriage` (CPU), `SceneMotion` (GPU).
 
 - Every file is optional: an analyser fills the facets it measures and omits the
   rest, so a triage module and a motion module both produce the type honestly.
+  `SceneTriage` fills `metadata`, `photometric` and `texture`; `SceneMotion`
+  fills `motion` and `degeneracy`. They are two artifacts of one type with
+  disjoint groups, and nothing merges them — the agent reads whichever are
+  present.
+- **Absent is not zero.** A cue that could not be measured is omitted, and its
+  metric is reported as null. `pure_rotation_risk` needs intrinsics; on an
+  uncalibrated scene a zero would read as "no rotation detected" when the truth
+  is "the test could not run".
 - **Thresholds do not live here.** The analyser emits numbers; what counts as
   "narrow baseline" belongs in `skills/judgment/`.
+- **`traits` has no producer, and that is deliberate.** It is the one declared
+  group neither module fills. Deriving it is the orchestrator's job, from
+  thresholds in `skills/judgment/`, so that revising a cut point does not
+  invalidate every analysis already computed. Until `judgment/` is written,
+  trait-based retrieval does not run — see
+  [mcp-tools.md](mcp-tools.md#4-the-empty-tiers--which-tools-read-them-and-what-does-not-work).
+- This is the only family whose output no module consumes. The orphan warning
+  at registry load is expected: `scene_analysis/v1` is read by the agent, not by
+  a pipeline stage.
 
 ---
 

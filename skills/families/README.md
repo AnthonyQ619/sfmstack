@@ -42,7 +42,12 @@ One file per stage of the pipeline, because each stage is a family.
 | Optimization | [optimization.md](optimization.md) | `sparse_model/v1` |
 | Dense reconstruction | [dense.md](dense.md) | `dense_model/v1` |
 
-Scene analysis has no file because it has no modules yet.
+Scene analysis now has two modules — `SceneTriage` and `SceneMotion`, both
+producing `scene_analysis/v1` — and still has no file here, because of the
+recording protocol below: it has not been asked for. The trade is a real one and
+worth a file eventually (appearance from a CPU pass against geometry from a GPU
+one, and what each can see that the other cannot). Until then the two modules'
+own `SKILL.md` files carry it, and each names the other.
 
 **Everything currently written here is structural and nothing is quantified.** The
 axes follow from where each family's numbers come from, not from any dataset, and

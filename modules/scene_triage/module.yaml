@@ -1,0 +1,266 @@
+name: SceneTriage
+version: 1.0.0
+kind: analysis
+summary: >
+  CPU scene characterisation before anything is reconstructed: photometric
+  stability across the set, texture and self-similarity, and capture ordering.
+  Cheap enough to run unconditionally.
+
+description: |
+  The first thing to run after `SceneLoader`, and the cheapest. `SceneLoader`
+  reports bookkeeping -- how many images, what resolution, how far they were
+  scaled. This reports what the images are LIKE, which is what actually decides
+  which detector and matcher have a chance.
+
+  Three groups, all from pixels already in the scene artifact:
+
+  **photometric** -- how much the appearance changes between images. Descriptor
+  matching assumes the same surface looks the same from two viewpoints; exposure
+  drift, auto white balance and moving sun each break that assumption in a
+  different way, and the fix differs per cause, so they are measured separately
+  rather than as one "hard scene" number.
+
+  **texture** -- whether there is anything to detect, and whether what is there is
+  distinguishable. `repetitiveness` is the important one and the reason this
+  module exists: a repetitive facade defeats descriptor matching in a way that no
+  parameter recovers, it is visible in seconds, and the alternative is finding out
+  after four tuning runs.
+
+  **metadata** -- whether the capture has an order. Everything that matches or
+  tracks consecutive frames assumes it does, and nothing else in the stack checks.
+
+  All groups of `scene_analysis/v1` are optional and this module fills three of
+  them. `SceneMotion` fills the other two from optical flow. They are separate
+  artifacts of the same type and compose without a merge step -- read whichever
+  groups are present.
+
+  **This module emits numbers, not traits.** The `traits` group is derived by the
+  orchestrator from thresholds held in `skills/judgment/`, so revising what counts
+  as "repetitive" does not mean re-running analysis. The `healthy` bands below are
+  this module's own advisory reading and are not that vocabulary.
+
+image: sfmstack/scene-triage:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 4
+  # Hint for ~40 images at the default 512px analysis side. Decoding dominates;
+  # the measurements themselves are a small multiple of one Laplacian pass.
+  expected_duration_s: 25
+  timeout_s: 1800
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  analysis: {type: scene_analysis/v1}
+
+params:
+  pairing:
+    type: string
+    default: consecutive
+    enum: [consecutive, all]
+    description: Which image pairs the photometric comparison runs over.
+    tuning: >
+      `consecutive` answers "does appearance drift as the capture proceeds",
+      which is the failure that breaks sequential matching. `all` answers "do any
+      two images in this set look alike", which is the right question when the
+      capture is unordered or when exhaustive matching is planned -- a set shot
+      over two hours can have small consecutive deltas and a large first-to-last
+      one, and `consecutive` will not see it.
+
+  max_pairs:
+    type: integer
+    default: 400
+    minimum: 1
+    description: "Cap on pairs compared. Applies to `pairing: all`, which is O(n^2)."
+    tuning: >
+      Only binds under `all`. Pairs are subsampled uniformly when the cap binds,
+      so the score stays representative rather than becoming a prefix.
+
+  analysis_max_side:
+    type: integer
+    default: 512
+    minimum: 128
+    maximum: 4096
+    description: Long edge the measurements run at.
+    tuning: >
+      Leave it. It is fixed rather than adaptive on purpose: `texture_density`
+      counts corners per megapixel, and a count measured at two resolutions is
+      two different quantities. Changing it makes this run incomparable with
+      every other scene measured at the default.
+
+  texture_floor:
+    type: number
+    default: 5.0
+    minimum: 0.0
+    description: >
+      Local intensity standard deviation (0-255 scale, 8px window) below which a
+      pixel counts as textureless.
+    tuning: >
+      Raise toward 8 to count faintly-textured surfaces -- distant haze, smooth
+      plaster -- as textureless too. Lower toward 3 only if the images are known
+      to be low-contrast overall and the fraction is reading implausibly high.
+
+  repetitiveness_images:
+    type: integer
+    default: 5
+    minimum: 1
+    description: How many images the self-similarity test samples, spread uniformly.
+
+  repetitiveness_patches:
+    type: integer
+    default: 48
+    minimum: 4
+    description: Patches tested per sampled image, taken at the strongest corners.
+
+  patch_size:
+    type: integer
+    default: 32
+    minimum: 8
+    description: Side of the self-similarity patch, in analysis-resolution pixels.
+    tuning: >
+      This is the scale the repetition is measured AT. 32px at a 512px long edge
+      is roughly one brick or one window pane; raise it toward 64 to ask whether
+      whole architectural bays repeat, lower it toward 16 to ask whether surface
+      texture does. A facade can score low at one scale and high at the other.
+
+  source_dir:
+    type: string
+    description: >
+      Directory holding the ORIGINAL images, read for EXIF only. Optional.
+    tuning: >
+      Supply it when capture timing or lens metadata matters -- `SceneLoader`
+      re-encodes images into the scene artifact and EXIF does not survive that,
+      so `capture_interval_s` and `focal_35mm` are omitted without this. Files
+      are looked up by the names the scene recorded; missing ones are skipped.
+
+metrics:
+  illumination_change:
+    direction: lower_better
+    healthy: [null, 0.12]
+    meaning: >
+      p75 over compared pairs of a weighted luminance-change score: change in
+      mean and median brightness, in contrast, and in the shape of the luminance
+      histogram. This is the one that costs descriptor repeatability directly.
+
+  color_shift:
+    direction: lower_better
+    healthy: [null, 0.12]
+    meaning: >
+      p75 over pairs of chroma change: LAB a/b histogram distance plus mean
+      white-balance displacement. Matters more for detectors that consume colour
+      than for those that convert to grayscale first.
+
+  exposure_shift:
+    direction: lower_better
+    healthy: [null, 0.12]
+    meaning: >
+      p75 over pairs of exposure instability: brightness change weighted with
+      change in the shadow- and highlight-clipped pixel fractions. Distinct from
+      `illumination_change` because clipping DESTROYS detail rather than moving
+      it -- no descriptor is robust to a region that is uniformly 255.
+
+  combined_change:
+    direction: lower_better
+    healthy: [null, 0.12]
+    meaning: >
+      Weighted combination of the three above (0.45 / 0.35 / 0.20). The single
+      number to glance at; read the components before acting on it, because they
+      have different fixes.
+
+  texture_density:
+    direction: higher_better
+    healthy: [400.0, null]
+    meaning: >
+      Median over images of corner-like features per megapixel at the analysis
+      resolution. How much there is to detect at all. Not a keypoint prediction --
+      a detector with a lower threshold finds more -- but a scene-level ceiling.
+
+  repetitiveness:
+    direction: lower_better
+    healthy: [null, 0.75]
+    meaning: >
+      Median over sampled patches of the best normalised cross-correlation the
+      patch achieves ELSEWHERE in its own image, with its own neighbourhood
+      excluded. High means every distinctive-looking patch has a convincing
+      impostor nearby, which is what makes descriptor matching produce confident
+      wrong correspondences rather than no correspondences. PROVISIONAL BAND:
+      measured 0.62-0.81 over ten ETH3D and DTU scenes, ordered plausibly (natural
+      terrain lowest, brick facades highest) but with no gap to cut at. The band
+      is where the two known facades sit, not a validated boundary.
+
+  textureless_fraction:
+    direction: lower_better
+    healthy: [null, 0.35]
+    meaning: >
+      Median over images of the image area whose local standard deviation is
+      below `texture_floor`. Sky, water, plaster. Detection cannot happen here at
+      any threshold, so it bounds coverage rather than count.
+
+  sharpness_ratio:
+    direction: higher_better
+    healthy: [0.4, null]
+    meaning: >
+      Worst image's Laplacian variance over the set median. Scale-free on
+      purpose: absolute sharpness depends on content and resolution, but a frame
+      far below its own set's median is blurred relative to its neighbours and is
+      a candidate for dropping.
+
+  ordered:
+    direction: neutral
+    meaning: >
+      1 if filenames (or EXIF timestamps, when `source_dir` is given) establish a
+      capture order. 0 means sequential pairing and video-trained trackers are
+      being applied to a set that does not support the assumption.
+
+diagnostics:
+  - code: illumination_unstable
+    severity: warn
+    message: Appearance changes substantially between compared images.
+    suggested_actions:
+      - Read illumination_change, color_shift and exposure_shift separately; the fix differs per cause.
+      - For luminance drift, prefer a detector that normalises exposure (CLAHE, RootSIFT) before changing family.
+      - If inlier_ratio then confirms the problem, resolve a detector-free matcher with sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1').
+    see_also: tuning.md#combined_change-above-028
+
+  - code: repetitive_texture
+    severity: warn
+    message: Patches match strongly elsewhere in their own image; the scene is self-similar.
+    suggested_actions:
+      - Expect confident WRONG matches rather than missing ones; watch inlier_ratio, not match count.
+      - This is a capability problem, not a parameter one -- no ratio test threshold recovers from it.
+      - Prefer a matcher that reasons about global context; resolve with sfm_find_alternatives(produces='pairwise_matches/v1').
+    see_also: limitations.md#repetitive-structure
+
+  - code: textureless
+    severity: warn
+    message: A large share of the frame carries no detectable texture.
+    suggested_actions:
+      - Detection coverage, not count, is the metric to watch downstream (spatial_coverage on features/v1).
+      - Consider a detector-free matcher, which does not need a keypoint to exist to produce a correspondence.
+    see_also: limitations.md#textureless-scenes
+
+  - code: blurred_frames
+    severity: warn
+    message: At least one image is far below the set's median sharpness.
+    suggested_actions:
+      - The named frames are candidates for exclusion; re-run SceneLoader without them.
+      - A blurred frame usually fails to register rather than corrupting the model, so this is a coverage cost.
+    see_also: tuning.md#sharpness_ratio-below-04
+
+  - code: unordered_capture
+    severity: info
+    message: Filenames do not establish a capture order.
+    suggested_actions:
+      - Sequential pairing is not valid here; use exhaustive or retrieval-based pairing.
+      - A video-trained tracker takes image order as real input and is the wrong choice on an unordered set.
+    see_also: limitations.md#order-is-inferred-from-filenames
+
+  - code: exif_unavailable
+    severity: info
+    message: No EXIF was readable; capture timing and lens metadata are omitted.
+    suggested_actions:
+      - Expected when the scene was built with a resize policy, which re-encodes and drops EXIF.
+      - Pass source_dir pointing at the original images to recover it.
+    see_also: limitations.md#exif-does-not-survive-the-scene-artifact

@@ -1,0 +1,51 @@
+# Sources — SceneTriage
+
+The photometric block is a port with its measurements and weights unchanged; the
+texture and metadata blocks are new here. No paper backs any of it — these are
+standard image statistics assembled for a purpose — so what needs citing is where
+each number came from and what has actually been measured.
+
+| Tag | Source | Where | Claims it supports |
+| --- | --- | --- | --- |
+| S1 | Predecessor source | `scene_agent/breadth_agent/src/agent/core/utility/illumination_analysis.py` | The LAB statistics, the Bhattacharyya histogram distances, the four weighted scores and their weights (0.35/0.25/0.15/0.25 for illumination, 0.65/0.35 for colour, 0.45/0.25/0.25/0.05 for exposure, 0.45/0.35/0.20 for the combination), the p75 dataset aggregation, and the LOW/MEDIUM/HIGH cut points at 0.12 and 0.28 |
+| S2 | OpenCV documentation | `cv2.compareHist`, `HISTCMP_BHATTACHARYYA` | The distance is bounded to [0, 1] for normalised histograms, which is what makes the weighted sums comparable across scenes |
+| S3 | Classical practice | Laplacian variance as a no-reference focus measure; Shi–Tomasi corner response | Both are standard and neither is novel; cited so it is clear no claim of a new measurement is being made |
+| S4 | Direct measurement, this repository | 2026-08-14, ten scenes at 12 images each: ETH3D courtyard, delivery_area, electro, facade, kicker, meadow; DTU scan1, scan4, scan9, scan10 | `repetitiveness` ranges 0.62–0.81 with facade (0.808) and delivery_area (0.809) highest and meadow (0.621) lowest; `combined_change` ranges 0.055–0.116; `textureless_fraction` ranges 0.14–0.60; all ten reconstruct under a classical pipeline |
+
+## What changed from the predecessor, and why
+
+Recorded because the numbers are meant to stay comparable across the two systems
+while the surrounding behaviour deliberately does not.
+
+**Unchanged:** every measurement and every weight in [S1]. A score computed here
+and one computed there are the same quantity.
+
+**Changed:**
+
+1. **Output is numeric.** The predecessor's entry point returned a formatted
+   English paragraph with the thresholds interpolated into the text. Prose that
+   ships inside a measurement cannot be revised without re-running the
+   measurement; here the numbers go into the artifact and the prose lives in
+   these files.
+2. **Recommendations name capabilities, not modules.** `make_agent_interpretation`
+   emitted "Consider SuperPoint+LightGlue, DISK+LightGlue, LoFTR, or RoMa"
+   ([S1], line 415). Four hardcoded module names in a system whose registry is
+   meant to change. The diagnostics here emit a query the orchestrator resolves
+   against whatever is registered.
+3. **LOW/MEDIUM/HIGH labels are gone.** They were a trait vocabulary living inside
+   the measurement. Traits belong to the orchestrator, derived from thresholds in
+   `skills/judgment/`, so that revising a boundary does not invalidate every
+   analysis already computed.
+
+## What is asserted without a source
+
+Stated plainly so it is not mistaken for measurement:
+
+- That `repetitiveness` predicts matcher failure. It is *motivated* — identical
+  appearance defeats a local descriptor by construction — and the ranking over
+  [S4] is plausible, but no run in this repository has yet paired a high reading
+  with a measured `inlier_ratio` collapse. That pairing is the experiment this
+  metric is waiting on.
+- That `texture_floor = 5.0` is the right contrast floor. It was chosen so that
+  sensor noise on a flat surface does not register as texture, and checked only
+  for plausibility against [S4].

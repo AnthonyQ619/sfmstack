@@ -26,9 +26,10 @@ Early. Build order and progress:
 | 7c | Pose, triangulation, bundle adjustment — a complete classical pipeline | **done** |
 | 7d | ORB, FLANN, SuperPoint, ALIKED, LightGlue, LoFTR | **done** |
 | 8 | The remaining 9 legacy modules | **done** |
+| 8b | `SceneTriage`, `SceneMotion` — scene analysis before anything is reconstructed | **done** |
 | 9 | First agent-driven session over MCP | |
 
-25 modules, 335 tests. `.venv/bin/python -m pytest -q`
+27 modules, 353 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -136,7 +137,12 @@ same SIFT keypoints:
 Longer tracks, less accurate positions, monotonically. Length and precision are
 separate axes and no `tracks/v1` metric measures the second.
 
-**All 25 legacy modules are ported.**
+**All 25 legacy modules are ported**, plus two that the predecessor had only as
+loose scripts: `SceneTriage` and `SceneMotion`, which characterise a scene before
+anything is reconstructed. They fill disjoint groups of one `scene_analysis/v1`
+and neither derives traits — that is the orchestrator's job, from thresholds in
+`skills/judgment/`, and it is not built. See
+[docs/mcp-tools.md](docs/mcp-tools.md#4-the-empty-tiers--which-tools-read-them-and-what-does-not-work).
 
 `tools/build_images.sh` builds everything in dependency order — and it has to be
 everything: sfmkit is COPYed into `sfmstack/runtime`, the first layer of every

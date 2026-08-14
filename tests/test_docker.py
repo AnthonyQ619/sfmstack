@@ -86,6 +86,11 @@ def test_modules_do_not_share_dependencies(orch):
         ("sfmstack/feature-sift:1.0.0", "cv2", "PIL"),
         ("sfmstack/match-nn:1.0.0", "cv2", "PIL"),
         ("sfmstack/track-union-find:1.0.0", "cv2", "torch"),
+        # The reason scene analysis is two modules rather than one: the CPU half
+        # carries no torch at all (578 MB) and is cheap enough to run on every
+        # scene, where the flow half pays for the shared torch base (5.98 GB).
+        # Splitting them is what keeps the always-run one affordable.
+        ("sfmstack/scene-triage:1.0.0", "cv2", "torch"),
     ):
         probe = subprocess.run(
             ["docker", "run", "--rm", "--entrypoint", "python", image, "-c",

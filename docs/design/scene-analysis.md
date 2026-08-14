@@ -1,8 +1,28 @@
 ---
 name: scene-analysis
-description: PROPOSAL (under discussion) — the scene triage layer: cue extractors that characterize a dataset before any reconstruction runs, producing a scene_analysis/v1 artifact whose derived traits drive workflow retrieval and initial module selection.
-status: proposal / under discussion — not implemented
+description: The scene triage layer: cue extractors that characterize a dataset before any reconstruction runs, producing a scene_analysis/v1 artifact whose derived traits drive workflow retrieval and initial module selection.
+status: partly built 2026-08-14 — SceneTriage and SceneMotion exist; trait derivation does not
 ---
+
+> **Build note, 2026-08-14.** `SceneTriage` and `SceneMotion` are implemented and
+> their images are built. Both ports landed with the three fixes named below.
+> What is built, against what this document proposed:
+>
+> | Proposed | State |
+> | --- | --- |
+> | `SceneMotion` from `optical_flow.py` | **built**, all seven motion signals |
+> | illumination block of `SceneTriage` | **built**, measurements and weights unchanged |
+> | pure-rotation and planar degeneracy tests | **built**, and verified synthetically |
+> | texture: density, repetitiveness, textureless fraction, sharpness | **built** |
+> | metadata: ordering, capture interval, EXIF focal | **partly** — ordering is a filename heuristic; the EXIF cues need the new `source_dir` parameter, because `SceneLoader` re-encodes and drops EXIF |
+> | EXIF sanity-check of supplied calibration, GPS | not built |
+> | view-graph shape, dynamic content | not built |
+> | **trait derivation** | **not built**, and blocked on `skills/judgment/` — see below |
+> | `sfm_open_scene` auto-runs `SceneTriage` | not built; there is no `sfm_open_scene` tool, and `SceneTriage` is an ordinary `sfm_run` |
+>
+> The open question at the end of this document — orchestrator or module — was
+> answered in favour of the orchestrator, and the modules honour it: neither
+> writes the `traits` group, and a test asserts they do not.
 
 # Scene Analysis
 

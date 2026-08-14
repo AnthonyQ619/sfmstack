@@ -2,12 +2,14 @@
 
 Deliberately thin: every tool is a one-line call into `SfmService`. All the logic
 lives there so it is testable without MCP transport, and an SDK change touches
-this file alone rather than fourteen tools.
+this file alone rather than seventeen tools.
 
-Fourteen tools in five stable categories -- discovery, execution, inspection,
+Seventeen tools in five stable categories -- discovery, execution, inspection,
 knowledge, authoring -- and the count does not grow with the module count.
 Modules are *discovered* through `sfm_list_modules` / `sfm_describe_module`,
 never enumerated as tools, so this surface is the same at 2 modules and at 200.
+
+Which files each tool reads: docs/mcp-tools.md.
 
     python -m sfmorch.mcp_server --modules ./modules --store ./store [--docker]
 """
