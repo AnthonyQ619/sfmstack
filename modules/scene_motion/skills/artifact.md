@@ -14,7 +14,6 @@ motion.npz
   high_motion_tail     ()      float64  median over pairs of p90 flow / diagonal
   variability          ()      float64  IQR of the per-pair p75
   low_baseline_risk    ()      float64  fraction of pairs below low_motion_thresh
-  large_motion_risk    ()      float64  fraction of pairs above high_motion_thresh
   rotation_median_deg  ()      float64  calibrated scenes only
   large_rotation_risk  ()      float64  calibrated scenes only
   pair_index           (P, 2)  int32    EXTRA -- which pairs were evaluated
@@ -104,7 +103,7 @@ A worked reading, DTU scan10 at 12 images, stride 1:
 
 ```
 n_pairs 11   overall_magnitude 0.110   high_motion_tail 0.144   variability 0.029
-low_baseline_risk 0.00   large_motion_risk 0.91
+low_baseline_risk 0.00
 rotation_median_deg 16.4   large_rotation_risk 0.18
 planar_dominance 0.00   pure_rotation_risk 0.00
 ```
@@ -113,14 +112,15 @@ Which reads as: eleven wide-baseline pairs at a very even spacing — variabilit
 0.029 is the lowest of the ten benchmark scenes, which is what a robot arm on a
 fixed arc produces. 16.4° of rotation per step is the DTU rig's own geometry, not
 a problem. No degeneracy: the object has real depth and the camera really
-translated. The `large_motion` info fires and is the inherited threshold rather
-than a finding — see [tuning.md](tuning.md#large_motion_risk-above-045).
+translated. The tail of 0.144 against 16.4° of rotation is a wide-baseline arc
+and not a problem; there is no diagnostic for it, which is deliberate — see
+[tuning.md](tuning.md#high_motion_tail-large).
 
 And the contrast, ETH3D facade at 12 images:
 
 ```
-overall_magnitude 0.075   variability 0.104   rotation_median_deg 3.1
-planar_dominance 0.18     pure_rotation_risk 0.09
+overall_magnitude 0.075   high_motion_tail 0.118   variability 0.104
+rotation_median_deg 3.1   planar_dominance 0.18    pure_rotation_risk 0.09
 ```
 
 Less motion, three times the unevenness, almost no rotation — a handheld walk

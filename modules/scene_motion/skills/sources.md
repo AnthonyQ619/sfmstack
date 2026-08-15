@@ -2,17 +2,21 @@
 
 | Tag | Source | Where | Claims it supports |
 | --- | --- | --- | --- |
-| S1 | Predecessor source | `scene_agent/breadth_agent/src/agent/core/utility/optical_flow.py` | RAFT-large over consecutive pairs; normalisation by image diagonal; the p75/p90/IQR summary; the `low_motion_thresh = 0.005` and `high_motion_thresh = 0.08` defaults; the 20° large-rotation cut; the essential-matrix rotation estimate from flow correspondences |
+| S1 | Predecessor source | `scene_agent/breadth_agent/src/agent/core/utility/optical_flow.py` | RAFT-large over consecutive pairs; normalisation by image diagonal; the p75/p90/IQR summary; the `low_motion_thresh = 0.005` default and the `high_motion_thresh = 0.08` one that has since been cut; the 20° large-rotation cut; the essential-matrix rotation estimate from flow correspondences |
 | S2 | Teed & Deng, *RAFT: Recurrent All-Pairs Field Transforms for Optical Flow*, ECCV 2020 | torchvision `raft_large`, weights `C_T_SKHT_V2` | The flow model. Weights are baked into the image at build time and loaded with `strict=True`, which the build step asserts |
 | S3 | Torr, *An assessment of information criteria for motion model selection*, CVPR 1997 | GRIC | The homography-vs-fundamental criterion, its penalty terms, and the constants `r = 4`, `λ₃ = 2`, `d = 2/3`, `k = 8/7` |
 | S4 | Direct measurement, this repository | 2026-08-14, synthetic homographies at f = 800, principal point (320, 240) | `K⁻¹HK` orthogonality residual is 2–5 × 10⁻¹⁶ for `H = K R K⁻¹` at 2°, 8° and 20°; for a plane at unit depth with lateral baselines 0.02, 0.10 and 0.50 the residual is 0.028, 0.142 and 0.748 — very nearly linear in the baseline-to-depth ratio at ≈1.4 × |
-| S5 | Direct measurement, this repository | 2026-08-14, ten scenes at 12 images each, stride 1: ETH3D courtyard, delivery_area, electro, facade, kicker, meadow; DTU scan1, scan4, scan9, scan10 | `low_baseline_risk` 0.00 on all ten; `large_motion_risk` 0.82–1.00 on all ten; `variability` 0.029–0.208; `rotation_median_deg` 2.6–29.5; `planar_dominance` 0.00–0.18; `pure_rotation_risk` 0.00–0.09. All ten reconstruct under a classical SIFT pipeline (see `docs/import_lessons.md`) |
+| S5 | Direct measurement, this repository | 2026-08-14, ten scenes at 12 images each, stride 1: ETH3D courtyard, delivery_area, electro, facade, kicker, meadow; DTU scan1, scan4, scan9, scan10 | `low_baseline_risk` 0.00 on all ten; the since-cut `large_motion_risk` 0.82–1.00 on all ten; `overall_magnitude` 0.075–0.31; `variability` 0.029–0.208; `rotation_median_deg` 2.6–29.5; `planar_dominance` 0.00–0.18; `pure_rotation_risk` 0.00–0.09. All ten reconstruct under a classical SIFT pipeline (see `docs/import_lessons.md`) |
 
 ## What changed from the predecessor
 
-**Unchanged:** the flow model, the normalisation, the summary statistics, and the
-threshold defaults. A motion score computed here and one computed there are the
-same quantity.
+**Unchanged:** the flow model, the normalisation and the summary statistics. A
+motion score computed here and one computed there are the same quantity.
+
+**One threshold removed rather than re-fitted.** `high_motion_thresh` and the
+`large_motion_risk` fraction it fed were cut on 2026-08-14 after [S5] — see
+[limitations.md](limitations.md#what-the-displacement-thresholds-did-and-did-not-show).
+The remaining defaults are the predecessor's, untouched.
 
 **Changed, and all three were flagged as defects in
 `docs/design/scene-analysis.md` before the port:**

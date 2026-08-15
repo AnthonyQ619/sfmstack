@@ -155,6 +155,11 @@ def _manifest(r: ScaffoldRequest, slug: str) -> str:
             "severity": "warn",
             "message": "TODO: what went wrong, in one sentence.",
             "suggested_actions": ["TODO: the first thing to try."],
+            # The metric whose healthy band this alarm is for. sfm_smoke_test
+            # checks the two agree against a real run -- an alarm that fires
+            # while its own metric reads healthy is drift between two files.
+            # Drop the line for a diagnostic keyed on a condition, not a band.
+            "metric": "example_metric",
             "see_also": "tuning.md#example_metric-below-1",
         }
     ]

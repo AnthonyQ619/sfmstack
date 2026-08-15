@@ -37,37 +37,39 @@ nothing about the scene.
 
 **Calibration caveat:** on ten benchmark scenes this metric read 0.00 every time
 [S5]. It has never fired on a scene measured here, so its sensitivity is untested
-— see [limitations.md](limitations.md#the-motion-thresholds-are-inherited-and-untested).
+— see [limitations.md](limitations.md#what-the-displacement-thresholds-did-and-did-not-show).
 
 ---
 
-## `large_motion_risk` above 0.45
+## `high_motion_tail` large
 
-**Read it as:** most pairs displace past `high_motion_thresh` at p90. The
-predecessor's intent was "too far apart for reliable feature matching" [S1].
+**Read it as:** the median pair's p90 flow, as a fraction of the image diagonal.
+How far the fastest tenth of the frame travels. There is no band on it and no
+diagnostic keyed to it, and that is the finding rather than an omission — the
+`large_motion_risk` fraction that used to sit here fired on all ten benchmark
+scenes measured, at 0.82–1.00, and all ten reconstruct under a classical SIFT
+pipeline [S5]. It was reporting its own threshold.
 
-**Read it sceptically.** This threshold fired on all ten benchmark scenes
-measured, at 0.82–1.00, and all ten reconstruct under a classical SIFT pipeline
-[S5]. On captures of that character it currently carries no information. The
-diagnostic is emitted at `info` severity for exactly this reason.
+**So read it in pairs, never alone:**
 
-**Gradient:**
+1. **Against `rotation_median_deg`.** Displacement under small rotation is
+   usually harmless: a rotation-invariant descriptor does not care how far a point
+   moved across the frame, it cares how much the *view* changed. ETH3D facade sits
+   at 0.118 tail with 3.1° median rotation and matches fine.
+2. **Against itself, across the set.** `variability` is the spread of the
+   underlying per-pair series. A large tail at low variability is a uniform
+   wide-baseline capture — DTU's arc. A large tail at high variability means part
+   of the capture moved much faster than the rest, which is the case worth acting
+   on.
+3. **Against the `motion/pair_p90` array.** It is written to the artifact, so
+   "which pairs" is answerable without re-running flow, and any threshold you do
+   want can be applied there rather than inherited from this module.
 
-1. **Corroborate with `rotation_median_deg`.** Large displacement under small
-   rotation is usually harmless: a rotation-invariant descriptor does not care how
-   far a point moved across the frame, it cares how much the *view* changed. ETH3D
-   facade reads 91% large-motion at 3.1° median rotation and matches fine.
-2. If rotation is also large — ETH3D kicker reads 29.5° median, electro 23.3° —
-   then the concern is real, and it is a viewpoint-change problem rather than a
-   displacement one.
-3. Lower `stride` if the capture supports it. This is the one failure that denser
-   pairing genuinely fixes.
-4. If corroborated, prefer a detector-free matcher:
-   `sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1')`.
-
-**`high_motion_thresh` is family-dependent.** The default is set for the
-classical case; raise it toward 0.15 when a detector-free matcher is already
-chosen, since those degrade later.
+**When the concern is real** — a large tail *and* rotation past ~20°, as ETH3D
+kicker (29.5°) and electro (23.3°) show — the problem is viewpoint change, not
+displacement. Lower `stride` if the capture supports it; otherwise prefer a
+detector-free matcher:
+`sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1')`.
 
 ---
 
@@ -101,8 +103,8 @@ displacement ones it is a direct statement about how much the *view* changed.
 1. Past roughly 20–30° a detector-based matcher loses correspondences to
    viewpoint change rather than to anything tunable. Both ETH3D kicker (29.5°) and
    electro (23.3°) sit here.
-2. Lower `stride` if the capture supports it — this is the same fix as
-   `large_motion_risk` and here it addresses the real cause.
+2. Lower `stride` if the capture supports it. Displacement and rotation both
+   fall with it, and here it addresses the cause rather than the symptom.
 3. Otherwise this is a detector-family question. Learned descriptors are more
    viewpoint-tolerant than hand-crafted ones; a detector-free matcher more so
    again.

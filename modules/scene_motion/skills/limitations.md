@@ -96,34 +96,52 @@ the first to both.
 
 ---
 
-## The motion thresholds are inherited and untested
+## What the displacement thresholds did and did not show
 
-`low_motion_thresh` (0.005) and `high_motion_thresh` (0.08) come from the
-predecessor [S1]. Across ten ETH3D and DTU scenes at 12 images each [S5]:
+`low_motion_thresh` (0.005) and `high_motion_thresh` (0.08) both came from the
+predecessor [S1]. Across ten ETH3D and DTU scenes at 12 images each, **all of
+which reconstruct** under a classical SIFT pipeline [S5]:
 
-| metric | range over ten scenes | fired |
+| metric | range over ten scenes | verdict |
 | --- | --- | --- |
-| `low_baseline_risk` | 0.00 — 0.00 | never |
-| `large_motion_risk` | 0.82 — 1.00 | always |
-| `variability` | 0.029 — 0.208 | discriminates |
-| `rotation_median_deg` | 2.6 — 29.5 | discriminates |
+| `large_motion_risk` | 0.82 — 1.00 | fired on every scene → **cut** |
+| `low_baseline_risk` | 0.00 — 0.00 | fired on none → **kept, untested** |
+| `variability` | 0.029 — 0.208 | discriminates → kept |
+| `rotation_median_deg` | 2.6 — 29.5 | discriminates → kept |
 
-All ten scenes reconstruct. So the two displacement thresholds currently carry no
-information on captures of that character, while the variability and angular cues
-do.
+**The two zero-information results are not the same result**, and that is why
+only one of them was removed.
 
-**The likely reason** is that normalised displacement is a weak proxy for
-matching difficulty. A rotation-invariant descriptor is indifferent to how far a
-point travelled across the frame; what costs it correspondences is how much the
-view changed, which is what `rotation_median_deg` measures directly. A p90 flow
-of 0.08 diagonals is about 98 px on a 1024×682 frame, and 98 px of displacement
+**`large_motion_risk` was cut** for two reasons that compound. Structurally it
+was `mean(pair_p90 > threshold)` — `high_motion_tail` with a cut point welded
+into it — and the per-pair array it aggregates is written to the artifact anyway,
+so nothing is lost by removing the fraction. Empirically it fired on ten scenes
+out of ten that all succeeded, which is a metric reporting its own threshold.
+Recalibrating was not an option: a threshold cannot be fitted on data where every
+case is negative. You would only learn where these scenes sit, not where failure
+begins.
+
+**The likely reason it fails** is that normalised displacement is a weak proxy
+for matching difficulty. A rotation-invariant descriptor is indifferent to how
+far a point travelled across the frame; what costs it correspondences is how much
+the *view* changed, which `rotation_median_deg` measures directly. A p90 flow of
+0.08 diagonals is about 98 px on a 1024×682 frame, and 98 px of displacement
 under 3° of rotation is nothing.
 
-**The defaults have deliberately not been changed.** They are a faithful port,
-and re-fitting them to ten scenes would replace one unvalidated number with
-another. What has changed is that the `large_motion` diagnostic is emitted at
-`info` rather than `warn`, and that `overall_magnitude` carries no healthy band —
-a band that flags nine scenes in ten is worse than none.
+**`low_baseline_risk` was kept** on the opposite evidence. It never fired, but
+none of the ten scenes is a dense capture: ETH3D and DTU both have coarse native
+spacing, and `stride` cannot bring frames closer together than the dataset shot
+them. Its positive case is absent from the sample rather than failing to exist,
+and it names the failure this module exists to catch. Deleting it would be
+reasoning from "no evidence" to "no value".
+
+**What it would take to settle it:** one video-like capture, where consecutive
+frames genuinely are nearly identical. Until then treat a 0.00 reading as
+uninformative rather than as reassurance.
+
+**`overall_magnitude` also lost its healthy band**, from the same reasoning: it
+measured 0.075–0.31 across the ten and any inherited band would have flagged nine
+of them.
 
 ---
 

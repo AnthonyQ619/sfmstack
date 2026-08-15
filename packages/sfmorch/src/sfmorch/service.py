@@ -543,10 +543,17 @@ class SfmService:
         """Run a module once and check what it produced actually validates.
 
         Also verifies the manifest's own promises: that every metric it declares
-        is emitted, and that every diagnostic points at a skill file that exists.
-        A tuning section keyed on a metric the module never emits is dead text,
-        and that is precisely the drift that made the previous system's guidance
-        untrustworthy.
+        is emitted, that every diagnostic points at a skill file that exists, and
+        that the diagnostic the adapter ACTUALLY raised agrees with the one the
+        manifest advertises. A tuning section keyed on a metric the module never
+        emits is dead text, and that is precisely the drift that made the previous
+        system's guidance untrustworthy.
+
+        The manifest and the adapter each hold half of a diagnostic. The manifest
+        is the catalogue -- what `sfm_describe_module` shows before anything runs.
+        The adapter writes the instance, with the run's numbers in its message,
+        and THAT is what reaches the caller. Nothing kept the two in step until
+        this ran.
         """
         spec = self.registry.get(name)
 
@@ -558,6 +565,12 @@ class SfmService:
             elif spec.root and not (spec.root / "skills" / doc).exists():
                 problems.append(
                     f"diagnostic '{code}' points at skills/{doc}, which does not exist"
+                )
+            if diag.metric and diag.metric not in spec.metrics:
+                problems.append(
+                    f"diagnostic '{code}' names metric '{diag.metric}', which this "
+                    f"module does not declare. A renamed metric leaves the alarm "
+                    f"pointing at nothing."
                 )
         for metric, m in spec.metrics.items():
             if not m.meaning:
@@ -582,6 +595,7 @@ class SfmService:
                     f"emitted but not declared in module.yaml: {undeclared}. The "
                     f"agent has no interpretation for these."
                 )
+            problems += self._diagnostic_problems(spec, outcome)
 
         return {
             "module": name,
@@ -589,3 +603,72 @@ class SfmService:
             "contract_problems": problems,
             "passed": outcome["status"] == "ok" and not problems,
         }
+
+    @staticmethod
+    def _diagnostic_problems(spec, outcome: dict[str, Any]) -> list[str]:
+        """Check what the adapter raised against what the manifest advertises.
+
+        Only what the run actually exercised. A declared diagnostic that did not
+        fire is NOT a problem: one smoke input cannot trip every condition, and
+        demanding it would push modules toward diagnostics that always fire --
+        which is the opposite of what a diagnostic is for.
+        """
+        problems: list[str] = []
+        metrics = outcome.get("metrics") or {}
+
+        for raised in outcome.get("diagnostics") or []:
+            code = raised.get("code", "")
+            declared = spec.diagnostics.get(code)
+
+            if declared is None:
+                problems.append(
+                    f"diagnostic '{code}' was raised but is not declared in "
+                    f"module.yaml, so `sfm_describe_module` cannot warn that this "
+                    f"module can say it."
+                )
+                continue
+
+            if raised.get("severity") != declared.severity:
+                problems.append(
+                    f"diagnostic '{code}' was raised at severity "
+                    f"'{raised.get('severity')}'; the manifest declares "
+                    f"'{declared.severity}'."
+                )
+            if raised.get("see_also") != declared.see_also:
+                problems.append(
+                    f"diagnostic '{code}' was raised pointing at "
+                    f"'{raised.get('see_also')}'; the manifest declares "
+                    f"'{declared.see_also}'. The manifest's is what the agent read "
+                    f"before running."
+                )
+            if not raised.get("message", "").strip():
+                problems.append(
+                    f"diagnostic '{code}' was raised with an empty message. The "
+                    f"manifest's static text does not travel with the artifact; "
+                    f"only this does."
+                )
+            if not raised.get("suggested_actions"):
+                problems.append(
+                    f"diagnostic '{code}' was raised with no suggested_actions."
+                )
+
+            # The threshold/band check. One direction only, deliberately: a
+            # diagnostic that fires while its own metric reads healthy is
+            # unambiguous drift, but the reverse -- outside the band with no
+            # diagnostic -- is legitimate hysteresis. A band says "outside the
+            # comfortable range"; a warn says "loud enough to interrupt", and
+            # those are allowed to sit apart.
+            spec_metric = spec.metrics.get(declared.metric) if declared.metric else None
+            value = metrics.get(declared.metric) if declared.metric else None
+            if spec_metric is not None and spec_metric.healthy and value is not None:
+                low, high = spec_metric.healthy
+                inside = (low is None or value >= low) and (high is None or value <= high)
+                if inside:
+                    problems.append(
+                        f"diagnostic '{code}' fired while its metric "
+                        f"'{declared.metric}' read {value}, inside the healthy band "
+                        f"{list(spec_metric.healthy)}. The adapter's threshold and "
+                        f"the declared band disagree."
+                    )
+
+        return problems

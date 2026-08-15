@@ -14,11 +14,13 @@ description: |
   RAFT-large dense flow over pairs, normalised by the image diagonal so the
   numbers do not depend on resolution, then summarised two ways:
 
-  **motion** -- is there enough parallax to triangulate, and little enough
-  displacement to match? Those are opposite failures with the same cure applied
-  in opposite directions, which is why `low_baseline_risk` and
-  `large_motion_risk` are reported separately rather than as one "motion" score.
-  A capture can suffer both at once when the rate is uneven.
+  **motion** -- is there enough parallax to triangulate? `low_baseline_risk`
+  answers that, and `variability` says whether the answer holds across the whole
+  capture or only its middle. The opposite failure -- too much displacement to
+  match -- is deliberately NOT reported as a risk fraction any more: that flag
+  fired on every benchmark scene measured and none of them failed. What survives
+  is the raw `high_motion_tail`, corroborated by `rotation_median_deg`, because
+  view change rather than displacement is what costs a matcher correspondences.
 
   **degeneracy** -- the two configurations that make a correct pipeline produce a
   wrong answer rather than no answer:
@@ -118,16 +120,12 @@ params:
       move it only if the count is disagreeing with reconstructions you have
       already run on similar captures.
 
-  high_motion_thresh:
-    type: number
-    default: 0.08
-    minimum: 0.0
-    description: >
-      Normalised p90 flow above which a pair counts toward `large_motion_risk`.
-    tuning: >
-      Detector-based matchers break down earlier than detector-free ones, so this
-      ceiling is family-dependent and the default is set for the classical case.
-      Raise it toward 0.15 when a detector-free matcher is already chosen.
+  # There was a `high_motion_thresh` here, feeding a `large_motion_risk` metric.
+  # Both were cut on 2026-08-14: the risk fraction fired on all ten benchmark
+  # scenes measured, every one of which reconstructs, so it reported its own
+  # threshold rather than the capture. `high_motion_tail` is the same
+  # measurement without a cut welded in, and the `pair_p90` array lets any
+  # consumer recompute the fraction at a threshold of its choosing.
 
   rotation_risk_deg:
     type: number
@@ -194,19 +192,7 @@ metrics:
       ill-conditioned -- the rays are nearly parallel, so depth is unconstrained
       however precise the correspondences are.
 
-  large_motion_risk:
-    direction: lower_better
-    healthy: [null, 0.45]
-    meaning: >
-      Fraction of pairs above `high_motion_thresh`. Displacement large enough to
-      cost a detector-based matcher its correspondences. UNCALIBRATED THRESHOLD:
-      `high_motion_thresh` is carried over from the predecessor and reads 0.82-1.00
-      on all ten benchmark scenes measured, every one of which reconstructs, so on
-      captures of that character it currently carries no information. Displacement
-      is a weak proxy for matching difficulty -- a rotation-invariant descriptor
-      does not care how far a point moved, it cares how much the view changed.
-      Read `variability` and `rotation_median_deg` instead until this is
-      recalibrated.
+  # `large_motion_risk` was declared here and is gone. See the note in `params`.
 
   rotation_median_deg:
     direction: neutral
@@ -246,17 +232,12 @@ diagnostics:
       - If the capture is dense video, raise `stride` and re-read before concluding anything.
       - If it is genuinely a narrow-baseline capture, expect high reprojection error at low triangulation angle.
       - Consider a capability that infers structure from a learned prior rather than by ray intersection - sfm_find_alternatives(produces='sparse_model/v1', not_consuming='poses/v1').
+    metric: low_baseline_risk
     see_also: tuning.md#low_baseline_risk-above-035
 
-  - code: large_motion
-    severity: info
-    message: Many pairs displace far enough to cross the large-motion threshold.
-    suggested_actions:
-      - Info, not warn, because this threshold fires on every benchmark scene measured so far and all of them reconstruct.
-      - Lower `stride` if the capture supports it - this is the one failure denser pairing fixes.
-      - Corroborate with rotation_median_deg before acting; large displacement under small rotation is usually harmless.
-      - If corroborated, prefer a detector-free matcher - sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1').
-    see_also: tuning.md#large_motion_risk-above-045
+  # There is no large-motion diagnostic. The metric it keyed on was cut; see the
+  # note in `params`. Displacement without a rotation to corroborate it did not
+  # predict anything on the scenes measured.
 
   - code: planar_scene
     severity: warn
@@ -265,6 +246,7 @@ diagnostics:
       - Read pure_rotation_risk next; a plane and a pure rotation look identical here and have different fixes.
       - If it is a genuine plane, essential-matrix pose is ill-conditioned; prefer a pose capability that does not decompose one.
       - Expect `planarity` on pairwise_matches/v1 to agree once a matcher has run.
+    metric: planar_dominance
     see_also: limitations.md#planar-and-rotational-degeneracy-are-the-same-measurement
 
   - code: pure_rotation
@@ -273,6 +255,7 @@ diagnostics:
     suggested_actions:
       - There is no parallax and therefore no structure; no matcher or triangulator recovers from this.
       - If only part of the capture is rotational, re-run SceneLoader over the translating subset.
+    metric: pure_rotation_risk
     see_also: limitations.md#pure-rotation-is-terminal
 
   - code: uncalibrated_scene

@@ -65,4 +65,5 @@ diagnostics:
     suggested_actions:
       - Raise the detector's max_keypoints.
       - Loosen this module's keep_ratio.
+    metric: inlier_yield
     see_also: tuning.md#inlier_yield-below-015

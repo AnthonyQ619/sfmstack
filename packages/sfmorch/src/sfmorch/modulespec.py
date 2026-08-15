@@ -62,6 +62,20 @@ class DiagnosticSpec:
     suggested_actions: tuple[str, ...] = ()
     see_also: str = ""
 
+    metric: str = ""
+    """The metric whose `healthy` band this diagnostic is the alarm for.
+
+    Optional, and the only field here that is CHECKED rather than displayed.
+    A diagnostic's firing threshold lives in the adapter and the band lives in
+    the manifest; they are two numbers that must agree and nothing was watching
+    them. Naming the metric lets `sfm_smoke_test` verify the pair against a real
+    run: a diagnostic that fired while its metric sits inside the band, or a
+    metric outside its band with no diagnostic, is drift.
+
+    Leave it empty for a diagnostic that is not a band alarm -- one keyed on a
+    condition rather than a threshold, like `uncalibrated`.
+    """
+
 
 @dataclass(frozen=True)
 class Resources:
@@ -171,6 +185,7 @@ class ModuleSpec:
                     "message": d.message,
                     "suggested_actions": list(d.suggested_actions),
                     "see_also": d.see_also,
+                    "metric": d.metric,
                 }
                 for c, d in self.diagnostics.items()
             },
@@ -250,6 +265,7 @@ class ModuleSpec:
                 message=str(ddoc.get("message", "")),
                 suggested_actions=tuple(ddoc.get("suggested_actions") or ()),
                 see_also=str(ddoc.get("see_also", "")),
+                metric=str(ddoc.get("metric", "")),
             )
 
         res_doc = doc.get("resources") or {}

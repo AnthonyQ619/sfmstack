@@ -33,13 +33,17 @@ in seconds instead of after a matcher has processed every pair. That is the whol
 argument for the module: it is the cheap version of a decision you would
 otherwise make expensively and after the fact.
 
-**Two thresholds here are inherited and currently uninformative.** `large_motion_risk`
-read 0.82–1.00 on all ten benchmark scenes measured, every one of which
-reconstructs, and `low_baseline_risk` read 0.00 on all ten. Displacement is a
-weak proxy for matching difficulty — a rotation-invariant descriptor does not care
-how far a point moved, it cares how much the view changed. Read `variability` and
-`rotation_median_deg` instead until they are recalibrated. See
-[limitations.md](limitations.md#the-motion-thresholds-are-inherited-and-untested).
+**Displacement is not reported as a risk, on purpose.** There was a
+`large_motion_risk` here, inherited from the predecessor; it read 0.82–1.00 on all
+ten benchmark scenes measured, every one of which reconstructs, and it was cut.
+Displacement is a weak proxy for matching difficulty — a rotation-invariant
+descriptor does not care how far a point moved, it cares how much the view
+changed. **Read `high_motion_tail` corroborated by `rotation_median_deg`.**
+
+`low_baseline_risk` survives on different grounds: it read 0.00 on all ten, but
+none of the ten is a dense capture, so it is untested rather than uninformative.
+Both stories are in
+[limitations.md](limitations.md#what-the-displacement-thresholds-did-and-did-not-show).
 
 **Cheapest thing that usually works:**
 

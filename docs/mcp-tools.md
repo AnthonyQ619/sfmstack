@@ -157,6 +157,37 @@ the matcher is the problem"** without naming a module that may be gone.
 `sfm_smoke_test` is the contract check: it verifies a module keeps its own
 manifest's promises, which is a different question from whether it ran.
 
+A diagnostic is the case where those promises are easiest to break, because
+**the manifest and the adapter each hold half of one**. The manifest is the
+catalogue `sfm_describe_module` shows before anything runs; the adapter writes
+the instance, with the run's numbers in its message, and *that* is what reaches
+the caller — the manifest's static text never travels with the artifact. So
+against a real run it checks:
+
+| Check | Why |
+| --- | --- |
+| every raised code is declared | otherwise `sfm_describe_module` cannot warn the module can say it |
+| raised `severity` == declared | a warn advertised and an error raised is a different contract |
+| raised `see_also` == declared | the manifest's pointer is the one the agent read *before* running |
+| raised message and `suggested_actions` are non-empty | the manifest's do not travel; only these do |
+| an alarm that fired reads outside its metric's `healthy` band | the firing threshold lives in the adapter and the band in the manifest — two numbers, two files, nothing watching them |
+
+The band check needs the link, so a diagnostic may declare **`metric:`** naming
+the metric it is the alarm for. Optional: a diagnostic keyed on a condition
+rather than a threshold (`uncalibrated`, `exif_unavailable`) leaves it empty. When
+present it is also checked statically, which catches a renamed metric leaving the
+alarm pointing at nothing.
+
+**One direction only, deliberately.** Firing while healthy is unambiguous drift.
+The reverse — outside the band with no diagnostic — is legitimate hysteresis: a
+band says "outside the comfortable range" and a warn says "loud enough to
+interrupt", and those are allowed to sit apart. `SceneTriage`'s `repetitiveness`
+uses exactly that gap, with a band at 0.75 and a warn at 0.80.
+
+Likewise **a declared diagnostic that did not fire is not a problem.** One smoke
+input cannot trip every condition, and demanding it would push modules toward
+diagnostics that always fire.
+
 ---
 
 ## 3. What a first pipeline actually touches

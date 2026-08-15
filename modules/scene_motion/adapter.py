@@ -338,7 +338,6 @@ def run(ctx: Ctx):
     tail = float(np.median(p90))
     variability = float(np.percentile(p75, 75) - np.percentile(p75, 25))
     low_baseline = float(np.mean(p75 < p.low_motion_thresh))
-    large_motion = float(np.mean(p90 > p.high_motion_thresh))
 
     planar_dominance = float(np.mean(planar)) if planar else None
     rotation_risk = float(np.mean(rotation_only)) if rotation_only else None
@@ -355,9 +354,13 @@ def run(ctx: Ctx):
         "high_motion_tail": tail,
         "variability": variability,
         "low_baseline_risk": low_baseline,
-        "large_motion_risk": large_motion,
         # Extra, recorded as such: the per-pair series, so "which part of the
         # capture is the problem" is answerable without re-running flow.
+        #
+        # `pair_p90` is also what replaced `large_motion_risk`, which was
+        # `mean(pair_p90 > high_motion_thresh)` -- a thresholded restatement of
+        # `high_motion_tail` with the cut welded in. A consumer that wants the
+        # fraction computes it here, at whatever cut it likes.
         "pair_index": np.asarray(pairs, dtype=np.int32),
         "pair_p75": p75,
         "pair_p90": p90,
@@ -381,8 +384,6 @@ def run(ctx: Ctx):
                direction="lower_better", healthy=(None, 0.035))
     out.metric("low_baseline_risk", round(low_baseline, 4),
                direction="lower_better", healthy=(None, 0.35))
-    out.metric("large_motion_risk", round(large_motion, 4),
-               direction="lower_better", healthy=(None, 0.45))
     out.metric("rotation_median_deg",
                None if rotation_median is None else round(rotation_median, 3),
                direction="neutral")
@@ -415,28 +416,12 @@ def run(ctx: Ctx):
             see_also="tuning.md#low_baseline_risk-above-035",
         )
 
-    if large_motion > 0.45:
-        out.diagnostic(
-            "large_motion",
-            # info, not warn: this threshold fired on all ten benchmark scenes
-            # measured, every one of which reconstructs. Until it is recalibrated
-            # it is a fact about the capture, not a problem with it.
-            severity="info",
-            message=(
-                f"{large_motion:.0%} of pairs exceed {p.high_motion_thresh:.3f} of "
-                f"the diagonal at p90 (tail {tail:.4f}), under a median rotation of "
-                + (f"{rotation_median:.1f} deg."
-                   if rotation_median is not None else "unknown angle.")
-            ),
-            suggested_actions=[
-                "Corroborate with rotation_median_deg: large displacement under "
-                "small rotation is usually harmless to a rotation-invariant descriptor.",
-                "Lower `stride` if the capture supports it.",
-                "If corroborated, prefer a detector-free matcher - sfm_find_alternatives("
-                "produces='pairwise_matches/v1', not_consuming='features/v1').",
-            ],
-            see_also="tuning.md#large_motion_risk-above-045",
-        )
+    # There is deliberately no large-motion diagnostic. The metric it would have
+    # keyed on was cut: it fired on all ten benchmark scenes measured, every one
+    # of which reconstructs, so it was reporting the threshold rather than the
+    # capture. `high_motion_tail` carries the measurement and
+    # `rotation_median_deg` carries the thing that actually costs a matcher its
+    # correspondences -- see limitations.md.
 
     if planar_dominance is not None and planar_dominance > 0.5:
         out.diagnostic(
@@ -498,7 +483,7 @@ def run(ctx: Ctx):
     out.note(
         f"RAFT flow over {len(pairs)} pairs at stride {p.stride}, {p.max_side}px. "
         f"Motion: overall {overall:.4f}, tail {tail:.4f}, variability {variability:.4f}; "
-        f"low-baseline risk {low_baseline:.0%}, large-motion risk {large_motion:.0%}. "
+        f"low-baseline risk {low_baseline:.0%}. "
         + (f"Rotation: median {rotation_median:.1f} deg, "
            f"{large_rotation:.0%} past {p.rotation_risk_deg:.0f} deg. "
            if rotation_median is not None else "Uncalibrated: no angular cues. ")

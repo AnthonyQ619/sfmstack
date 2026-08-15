@@ -10,7 +10,7 @@ status: partly built 2026-08-14 — SceneTriage and SceneMotion exist; trait der
 >
 > | Proposed | State |
 > | --- | --- |
-> | `SceneMotion` from `optical_flow.py` | **built**, all seven motion signals |
+> | `SceneMotion` from `optical_flow.py` | **built**, six of the seven motion signals — `large_motion_risk_score` was ported, measured against ten scenes, and cut |
 > | illumination block of `SceneTriage` | **built**, measurements and weights unchanged |
 > | pure-rotation and planar degeneracy tests | **built**, and verified synthetically |
 > | texture: density, repetitiveness, textureless fraction, sharpness | **built** |

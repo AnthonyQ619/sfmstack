@@ -385,3 +385,114 @@ def test_smoke_test_catches_a_dangling_skill_pointer(service):
 
     assert result["passed"] is False
     assert any("does not exist" in p for p in result["contract_problems"])
+
+
+# --------------------------------------------------------------------------- #
+# Smoke test -- the manifest and the adapter each hold half of a diagnostic
+#
+# The manifest is the catalogue `sfm_describe_module` shows before anything runs.
+# The adapter writes the instance, with the run's numbers in it, and that is what
+# reaches the caller. Nothing kept the two in step until these checks existed.
+# --------------------------------------------------------------------------- #
+
+
+def weak_match(service, scene, keep_ratio):
+    feats = service.run("FakeDetector", run_id="r", inputs={"scene": scene})
+    return service.smoke_test(
+        "FakeMatcher",
+        inputs={"scene": scene, "features": feats["outputs"]["features"]},
+        params={"keep_ratio": keep_ratio},
+    )
+
+
+def test_a_band_alarm_that_agrees_with_its_own_metric_passes(service, scene):
+    """`weak_matching` declares `metric: inlier_yield`, fires below 0.15, and the
+    metric's healthy band starts at 0.15. Fired and outside: consistent."""
+    result = weak_match(service, scene["outputs"]["scene"], 0.1)
+
+    assert "weak_matching" in [d["code"] for d in result["run"]["diagnostics"]]
+    assert result["contract_problems"] == []
+    assert result["passed"] is True
+
+
+def test_smoke_test_catches_an_alarm_that_fires_inside_its_own_healthy_band(
+    service, scene
+):
+    """The drift this exists for: the adapter's firing threshold and the
+    manifest's band are two numbers that have to agree, in two files."""
+    from sfmorch import MetricSpec
+
+    spec = service.registry.get("FakeMatcher")
+    spec.metrics["inlier_yield"] = MetricSpec(
+        name="inlier_yield", direction="higher_better",
+        healthy=(0.0, None),  # now nothing can be unhealthy, but the alarm still fires
+        meaning="Retained correspondences over candidates.",
+    )
+    result = weak_match(service, scene["outputs"]["scene"], 0.1)
+
+    assert result["passed"] is False
+    assert any("inside the healthy band" in p for p in result["contract_problems"])
+
+
+def test_smoke_test_catches_a_severity_that_drifted_from_the_manifest(service, scene):
+    from sfmorch import DiagnosticSpec
+
+    spec = service.registry.get("FakeMatcher")
+    spec.diagnostics["weak_matching"] = DiagnosticSpec(
+        code="weak_matching", severity="error", metric="inlier_yield",
+        see_also="tuning.md#inlier_yield-below-015",
+    )
+    result = weak_match(service, scene["outputs"]["scene"], 0.1)
+
+    assert result["passed"] is False
+    assert any("severity" in p for p in result["contract_problems"])
+
+
+def test_smoke_test_catches_a_see_also_that_drifted_from_the_manifest(service, scene):
+    """The manifest's pointer is the one the agent read BEFORE running, so a
+    divergent one in the artifact sends it somewhere it was not promised."""
+    from sfmorch import DiagnosticSpec
+
+    spec = service.registry.get("FakeMatcher")
+    spec.diagnostics["weak_matching"] = DiagnosticSpec(
+        code="weak_matching", severity="warn", metric="inlier_yield",
+        see_also="tuning.md#somewhere-else",
+    )
+    result = weak_match(service, scene["outputs"]["scene"], 0.1)
+
+    assert result["passed"] is False
+    assert any("pointing at" in p for p in result["contract_problems"])
+
+
+def test_smoke_test_catches_a_diagnostic_raised_but_never_declared(service, scene):
+    spec = service.registry.get("FakeMatcher")
+    del spec.diagnostics["weak_matching"]
+    result = weak_match(service, scene["outputs"]["scene"], 0.1)
+
+    assert result["passed"] is False
+    assert any("not declared in module.yaml" in p for p in result["contract_problems"])
+
+
+def test_smoke_test_catches_a_metric_link_that_names_nothing(service):
+    """Catches a renamed metric, which leaves the alarm pointing at nothing. This
+    one is static -- it does not need the diagnostic to fire."""
+    from sfmorch import DiagnosticSpec
+
+    spec = service.registry.get("MakeScene")
+    spec.diagnostics["orphan"] = DiagnosticSpec(
+        code="orphan", metric="renamed_away", see_also="tuning.md#anything",
+    )
+    result = service.smoke_test("MakeScene", params={"n_images": 3})
+
+    assert result["passed"] is False
+    assert any("does not declare" in p for p in result["contract_problems"])
+
+
+def test_a_declared_diagnostic_that_did_not_fire_is_not_a_problem(service, scene):
+    """One smoke input cannot trip every condition, and demanding it would push
+    modules toward diagnostics that always fire -- the opposite of the point."""
+    result = weak_match(service, scene["outputs"]["scene"], 1.0)
+
+    assert result["run"]["diagnostics"] == []
+    assert "weak_matching" in service.registry.get("FakeMatcher").diagnostics
+    assert result["passed"] is True

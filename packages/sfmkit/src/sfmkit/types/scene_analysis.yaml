@@ -52,7 +52,14 @@ files:
       high_motion_tail: {required: false, shape: [], dtype: [float32, float64]}
       variability: {required: false, shape: [], dtype: [float32, float64]}
       low_baseline_risk: {required: false, shape: [], dtype: [float32, float64]}
-      large_motion_risk: {required: false, shape: [], dtype: [float32, float64]}
+      # `large_motion_risk` was declared here and was cut 2026-08-14. It was
+      # `mean(pair_p90 > threshold)` -- `high_motion_tail` with a cut point
+      # welded into it -- and the cut point fired on all ten benchmark scenes
+      # measured, every one of which reconstructs. A declared cue that no
+      # producer fills is worse than an absent one, so it is gone from the
+      # vocabulary rather than left optional-and-unused. Producers that want to
+      # express the same thing write the per-pair series and let the reader
+      # threshold it.
       rotation_median_deg: {required: false, shape: [], dtype: [float32, float64]}
       large_rotation_risk: {required: false, shape: [], dtype: [float32, float64]}
 

@@ -222,6 +222,7 @@ diagnostics:
       - Read illumination_change, color_shift and exposure_shift separately; the fix differs per cause.
       - For luminance drift, prefer a detector that normalises exposure (CLAHE, RootSIFT) before changing family.
       - If inlier_ratio then confirms the problem, resolve a detector-free matcher with sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1').
+    metric: combined_change
     see_also: tuning.md#combined_change-above-028
 
   - code: repetitive_texture
@@ -231,6 +232,7 @@ diagnostics:
       - Expect confident WRONG matches rather than missing ones; watch inlier_ratio, not match count.
       - This is a capability problem, not a parameter one -- no ratio test threshold recovers from it.
       - Prefer a matcher that reasons about global context; resolve with sfm_find_alternatives(produces='pairwise_matches/v1').
+    metric: repetitiveness
     see_also: limitations.md#repetitive-structure
 
   - code: textureless
@@ -239,6 +241,7 @@ diagnostics:
     suggested_actions:
       - Detection coverage, not count, is the metric to watch downstream (spatial_coverage on features/v1).
       - Consider a detector-free matcher, which does not need a keypoint to exist to produce a correspondence.
+    metric: textureless_fraction
     see_also: limitations.md#textureless-scenes
 
   - code: blurred_frames
@@ -247,6 +250,7 @@ diagnostics:
     suggested_actions:
       - The named frames are candidates for exclusion; re-run SceneLoader without them.
       - A blurred frame usually fails to register rather than corrupting the model, so this is a coverage cost.
+    metric: sharpness_ratio
     see_also: tuning.md#sharpness_ratio-below-04
 
   - code: unordered_capture
@@ -255,6 +259,7 @@ diagnostics:
     suggested_actions:
       - Sequential pairing is not valid here; use exhaustive or retrieval-based pairing.
       - A video-trained tracker takes image order as real input and is the wrong choice on an unordered set.
+    metric: ordered
     see_also: limitations.md#order-is-inferred-from-filenames
 
   - code: exif_unavailable
