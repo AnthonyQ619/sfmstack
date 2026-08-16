@@ -38,8 +38,9 @@ health here is worth less than a clean bill from `SceneMotion`.
 Stated as a boundary rather than a feature, because the rubric will drift toward
 restating numbers if nobody holds the line.
 
-Two fields cover things **measured nowhere in this system**: `dynamic_content` and
-`material_hazards`. Both are failures that hide. A track through a moving object
+Four things are covered that are **measured nowhere in this system**:
+`dynamic_content`, `material_hazards`, `hazard_position`, and the `objects` half
+of `repetition_notes`. Both are failures that hide. A track through a moving object
 is locally consistent — the correspondences are real, the geometry is not, and
 reprojection error will not find it. A reflection triangulates confidently to a
 virtual point behind the surface and reprojects beautifully.
@@ -50,8 +51,12 @@ Three fields cover things a measurement **sees partially**:
   area and cannot say whether the empty region was wanted. This is the exact trap
   DTU scan10 sets: 60% textureless, entirely harmless, because it is a blown-out
   white studio sweep.
-- `repetition` covers the between-image case that `repetitiveness` explicitly
-  cannot see, being a within-image measurement.
+- `repetition_notes.texture` covers the between-image case that `repetitiveness`
+  explicitly cannot see, being a within-image measurement. Its `objects` half
+  covers something no module here sees at ANY level, because nothing counts
+  objects, so that half sits with the group above as much as here. There is no
+  enum in front of the note any more: four gradings across four revisions never
+  discriminated, and the note carried the difference every time.
 - `main_subject` and `subject_completeness` cover what nothing here counts: whether
   the images are of one thing, and whether that thing fits inside them. Without
   them a correct reconstruction of a cropped object reads as a coverage failure.

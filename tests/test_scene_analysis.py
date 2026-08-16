@@ -327,8 +327,11 @@ GOOD_REPORT = {
     "subject_completeness": "cropped",
     "subject": "One object filling the right half against a plain backdrop.",
     "empty_regions": "Uniform background surrounding the object; not wanted.",
-    "repetition": "none",
+    "repetition_notes": {"texture": "none - the backdrop is plain and the object "
+                                    "carries no periodic pattern",
+                         "objects": "none - a single object, nothing repeated"},
     "dynamic_content": "none",
+    "third_frame": "[3] - the only cell showing the far side of the object",
     "material_hazards": "none",
     "overall": "Controlled capture of a single object. Nothing hazardous.",
 }
@@ -345,9 +348,8 @@ def test_the_first_call_renders_a_browse_set_and_says_it_is_waiting(orch):
     assert art.metric("described") == 0
     assert art.metric("browse_images") == 6
     # Null, not zero, on every report-derived metric. Zero is a claim.
-    for name in ("dynamic_content", "material_hazards",
-                 "between_image_repetition", "has_main_subject",
-                 "subject_complete"):
+    for name in ("dynamic_content", "material_hazards", "hazard_position",
+                 "third_frame", "has_main_subject", "subject_complete"):
         assert art.metric(name) is None, name
 
     assert "awaiting_description" in [d.code for d in art.manifest.diagnostics]
@@ -399,9 +401,15 @@ def test_the_second_call_records_the_report_beside_the_first(orch):
     # Three arrays are declared in the type; the rest ride as recorded extras, so
     # revising the rubric does not mean revising scene_analysis/v1.
     assert set(described.manifest.extras["description"]) == {
-        "browsed", "main_subject", "subject_completeness", "subject",
-        "empty_regions", "repetition", "dynamic_content", "material_hazards",
+        "browsed", "full_res_frames", "third_frame", "main_subject",
+        "subject_completeness", "subject", "empty_regions", "dynamic_content",
+        "material_hazards", "repetition_texture", "repetition_objects",
     }
+    # Two prescribed and one chosen, in that order, as the scene wants them.
+    assert list(described.load("description", "full_res_frames")) == [
+        "images/000000.png", "images/000005.png", "images/000003.png"
+    ]
+    assert described.metric("third_frame") == 3
     # `overall` leads the body: it is the field a reader acts on, and the enums
     # are its machine-readable shadow rather than a summary of it.
     body = (described.root / "artifact.md").read_text().split("---", 2)[-1].strip()
@@ -417,8 +425,30 @@ def test_the_second_call_records_the_report_beside_the_first(orch):
 @pytest.mark.parametrize("mutation, expected", [
     ({"overall": ""}, "empty"),
     ({"environment": "probably outdoor"}, "expected one of"),
-    ({"material_hazards": "substantial"}, "hazard_notes"),
-    # The contingency, both ways round.
+    ({"material_hazards": "coherent", "hazard_position": "background"},
+     "hazard_notes"),
+    # The hazard split, v6. Coherence and position are independent, and the
+    # position is contingent both ways round.
+    ({"material_hazards": "coherent", "hazard_notes": "a mirrored shopfront"},
+     "hazard_position. is empty"),
+    ({"hazard_position": "background"}, "nothing to place"),
+    ({"material_hazards": "a bit shiny"}, "expected one of"),
+    ({"material_hazards": "coherent", "hazard_notes": "x",
+      "hazard_position": "somewhere behind"}, "expected one of"),
+    # The repetition note: unconditional since v7, both halves demanded, capped.
+    ({"repetition_notes": None}, "must be a mapping"),
+    ({"repetition_notes": "lots of identical windows"}, "must be a mapping"),
+    ({"repetition_notes": {"texture": "brick coursing"}},
+     r"repetition_notes\[objects\]. is empty"),
+    ({"repetition_notes": {"texture": "brick " * 60, "objects": "windows"}},
+     "the cap is 260"),
+    # The third full-resolution view, v5. Four ways to get it wrong.
+    ({"third_frame": "the one with the mirror"}, "does not name a cell"),
+    ({"third_frame": "[99] - out beyond the end of the set"}, "browse set has"),
+    ({"third_frame": "[0] - the first one, which is already prescribed"},
+     "already prescribed"),
+    ({"third_frame": "[3]"}, "no reason attached"),
+    # The subject contingency, both ways round.
     ({"subject_completeness": ""}, "subject_completeness. is empty"),
     ({"main_subject": "none", "subject_completeness": "complete"},
      "nothing for it to describe"),

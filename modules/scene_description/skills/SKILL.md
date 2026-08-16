@@ -1,8 +1,8 @@
 ---
 module: SceneDescription
-module_version: 0.3.0
+module_version: 0.7.0
 upstream: none (in-house)
-curated_at: 2026-08-15
+curated_at: 2026-08-16
 sources: 1
 ---
 
@@ -20,10 +20,31 @@ prepares something to look at and holds the answer; the looking is yours.
                                                      raises `awaiting_description`
 2.  sfm_artifact_image(<id>)                      -> the sheet, in your context
                                                      (no `name`: it is the only image)
+3.  sfm_artifact_image(<scene_id>, <first>)       -> FIXED: the first and last of
+    sfm_artifact_image(<scene_id>, <last>)           the browse set, full resolution.
+                                                     Both calls are printed for you
+                                                     in `awaiting_description`.
+4.  sfm_artifact_image(<scene_id>, <your pick>)   -> ONE more, your choice, any
+                                                     cell but those two. Name it
+                                                     as [k] in `third_frame`
+                                                     with a reason.
     sfm_module_skill('SceneDescription', 'rubric')
-3.  sfm_run(SceneDescription, {scene},
+5.  sfm_run(SceneDescription, {scene},
             params={'report': {...}})             -> the answers, described 1
 ```
+
+**Two fixed, one earned, and both halves matter.** The sheet is two downscales
+deep -- SceneLoader resized the capture and the sheet resized that again, so on a
+6200px ETH3D frame loaded at 1024 a 384px cell is 0.4% of the original pixels.
+Gloss, clipping and printed detail are not decidable there.
+
+Two frames are prescribed because a reader who picks all their own picks the
+interesting ones, and then no two scenes were read the same way. The third is
+free because fixity cost something real: on ETH3D facade the worst reflector in
+the scene sits only in cells [2]-[6], so a two-frame protocol could only grade it
+from a thumbnail. The choice is checked -- it must name a real cell, not one of
+the fixed two, and carry a reason. All three names go into the artifact as
+`full_res_frames`, and the chosen index as the `third_frame` metric.
 
 **Both artifacts persist**, because the report is part of the recipe. The
 un-described one is the record that the sheet was rendered; two different
@@ -43,9 +64,10 @@ in the rubric.
 | The blind spot | Field |
 | --- | --- |
 | textureless area — but is that region *wanted*? | `empty_regions` |
-| repetition *between* images, not within one | `repetition` |
+| repetition *between* images, and whether it is pattern or objects | `repetition_notes` |
+| whether a reflection carries an *image* or is just a sheen | `material_hazards` |
+| where the reflector sits, which decides where the phantom lands | `hazard_position` |
 | moving people, vehicles, water | `dynamic_content` |
-| glass, mirrors, polished metal | `material_hazards` |
 | whether there IS one thing being reconstructed | `main_subject` |
 | whether that thing even fits in the frames | `subject_completeness` |
 

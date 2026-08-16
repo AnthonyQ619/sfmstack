@@ -1,5 +1,5 @@
 name: SceneDescription
-version: 0.3.0
+version: 0.7.0
 kind: analysis
 summary: >
   Renders a browsable contact sheet from the scene, then records what a viewer
@@ -18,9 +18,15 @@ description: |
     1. `sfm_run(SceneDescription, {scene})` with no `report`. It renders a
        contact sheet into the artifact and raises `awaiting_description`.
     2. `sfm_artifact_image(<that artifact>)` -- the sheet is the only image it
-       carries, so no `name` is needed. Fetch the rubric with
-       `sfm_module_skill('SceneDescription', 'rubric')`. Answer it.
-    3. `sfm_run(SceneDescription, {scene}, params={report: {...}})`. The report is
+       carries, so no `name` is needed.
+    3. **Three frames at full resolution, from the SCENE.** Two are fixed on
+       every scene -- the first and last of the browse set -- and the
+       `awaiting_description` diagnostic prints both calls with the names filled
+       in. The third is the reader's own, any cell but those two, named and
+       justified in the report's `third_frame` field.
+    4. Fetch the rubric with `sfm_module_skill('SceneDescription', 'rubric')`.
+       Answer it.
+    5. `sfm_run(SceneDescription, {scene}, params={report: {...}})`. The report is
        validated against the rubric and written into the artifact.
 
   Both runs are kept, because ids come from the recipe and the report is part of
@@ -28,15 +34,40 @@ description: |
   was rendered, and two different readings of the same scene stay comparable
   through `sfm_compare`.
 
+  **Why two frames are FIXED and the third is not.** The contact sheet is two
+  downscales deep -- SceneLoader's, then the thumbnail's. On a 6200px ETH3D
+  capture loaded at `resize=fixed 1024`, a 384px cell is 6% of the original
+  linear scale and 0.4% of its pixels. Gloss, clipping, printed detail and fine
+  texture are all decided below that, and several rubric fields ask about
+  exactly those.
+
+  Two are prescribed because a reader who picks all their own picks the
+  interesting ones, and then no two scenes have been read the same way and
+  nothing across scenes is comparable. First and last, every time.
+
+  The third is free because fixity has a cost, and it was paid immediately: on
+  ETH3D facade the scene's worst reflector -- a mirror-polished sculpture
+  standing between camera and building -- appears only in cells [2] to [6], so
+  under a two-frame protocol it could only be graded from a 384px thumbnail. One
+  free choice recovers that without giving up the comparable base. It is not a
+  loophole: the cell must be named as `[k]` in `third_frame`, must not be one of
+  the two already prescribed, must resolve against the browse set, and must
+  carry a reason. All four are checked.
+
+  All three names are written into the artifact as `full_res_frames`, and the
+  chosen index as the `third_frame` metric, so a second reader can repeat the
+  reading exactly. Nothing here can verify that anyone looked.
+
   **What it is FOR.** Not general description -- the rubric targets the specific
   blind spots the two measuring modules document in their own `limitations.md`:
 
   | Blind spot | Which module admits it | Rubric field |
   | --- | --- | --- |
   | textureless area, but is it WANTED? | SceneTriage: "counts area, says nothing about where" | `empty_regions` |
-  | repetition BETWEEN images, not within one | SceneTriage: "within-image self-similarity, not between-image ambiguity" | `repetition` |
+  | repetition BETWEEN images, and whether it is PATTERN or OBJECTS | SceneTriage: "within-image self-similarity, not between-image ambiguity", and nothing counts objects at all | `repetition_notes` |
   | moving people, vehicles, water | both: "dynamic content ... not implemented" | `dynamic_content` |
-  | glass, mirrors, polished metal | measured nowhere | `material_hazards` |
+  | reflective surfaces, and whether the reflection carries an IMAGE | measured nowhere | `material_hazards` |
+  | where the reflector sits, which decides where the phantom lands | measured nowhere | `hazard_position` |
   | indoor or outdoor, for weight selection | nothing measured says which | `environment` |
   | whether there IS one thing being reconstructed | nothing counts objects | `main_subject` |
   | whether that thing even fits in the frames | nothing knows what the subject is | `subject_completeness` |
@@ -54,7 +85,7 @@ description: |
   of `scene_analysis/v1`, which is marked as such in the schema. It can be wrong
   in ways a measurement cannot.
 
-image: sfmstack/scene-description:0.3.0
+image: sfmstack/scene-description:0.7.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -99,11 +130,15 @@ params:
     maximum: 1024
     description: Long edge of each cell in the contact sheet.
     tuning: >
-      384 keeps a 12-cell sheet readable at a glance. Raise it toward 512 when
-      the rubric question is about fine detail -- material, texture, small moving
-      objects. For a question about ONE frame, do not raise it: read that frame
-      from the scene at full resolution instead,
-      `sfm_artifact_image(scene_id, 'images/000003.png')`.
+      384 keeps a 12-cell sheet readable at a glance, and it is the value the
+      published readings were made at -- changing it makes a reading
+      incomparable with them, which is a bigger cost than it looks.
+
+      Do not raise it to answer a question about fine detail. The sheet is
+      already two downscales deep and 512 does not fix that; the full-resolution
+      frames named in `awaiting_description` do, and they are part of the
+      protocol rather than an escape hatch. Lower it only to fit a much larger
+      `n_images` on one sheet, and expect to lose material and gloss entirely.
 
   grid_cols:
     type: integer
@@ -148,26 +183,48 @@ metrics:
     direction: lower_better
     healthy: [null, 0]
     meaning: >
-      Glass, mirrors, water surfaces, polished metal. Also measured nowhere else.
-      A reflection is a correspondence to a virtual point BEHIND the surface, so it
-      triangulates confidently to the wrong place and reprojects beautifully --
-      reprojection error will not find it.
+      Graded by COHERENCE, which is the mechanism: 0 none, 1 diffuse, 2 coherent.
 
-      The levels are graded by WHERE the reflector is, not how much of it there
-      is: 0 none, 1 present but in the background rather than on the surface being
-      reconstructed, 2 on the subject itself or across most of the frame. That
-      axis is the one that decides whether the phantom structure lands somewhere
-      nobody is looking or inside the model you wanted.
+      Does the reflective surface carry a legible IMAGE of something else? That
+      is what decides which failure you get. A coherent reflection is a
+      correspondence to a virtual point BEHIND the surface -- it triangulates
+      confidently, reprojects beautifully, and can be a RANSAC inlier, so nothing
+      downstream finds it. A diffuse highlight makes no virtual point at all; it
+      makes a bright patch that moves with the camera instead of the surface, so
+      correspondences there drift or drop out and that part of the model thins.
+      Opposite responses, and the reader who goes hunting for phantom structure
+      after a diffuse reading wastes the effort.
 
-  between_image_repetition:
-    direction: lower_better
-    healthy: [null, 0]
+      Measured nowhere else in this system, at any level.
+
+      This was graded by POSITION through v5 and regraded in v6. Position turned
+      out to be a second, independent axis rather than a severity, and it is now
+      `hazard_position`. The old rule also had no way to express a mirror standing
+      between the camera and the subject -- the worst case, which it graded
+      mildest -- and its "on the subject" test is undefined on a scene with no
+      main subject, which is half the benchmark set.
+
+  hazard_position:
+    direction: neutral
     meaning: >
-      1 when the same structure recurs across DIFFERENT images. The direct
-      complement to SceneTriage's `repetitiveness`, which measures self-similarity
-      WITHIN one image and is explicitly blind to this. Forty photographs of forty
-      identical-looking bays defeat matching just as thoroughly and score low
-      there.
+      Where the reflector sits, which decides where the phantom structure LANDS.
+      0 background, 1 on_subject, 2 between_camera_and_subject, 3 throughout.
+      Required whenever `material_hazards` is not `none`, refused when it is.
+
+      Not a severity and not ordered as one, which is why the direction is
+      neutral. Background usually means spurious points nobody is looking at.
+      On_subject means they land on the surface you wanted. Between camera and
+      subject is the dangerous one and the one the previous grading could not say:
+      close to the camera, so the virtual points land well inside the model.
+
+  third_frame:
+    direction: neutral
+    meaning: >
+      Which browse cell the reader chose to open at full resolution, beyond the
+      first and last which are opened on every scene. Not a quality score. It is
+      here so a run of readings can be audited for where judgement keeps landing
+      -- and, less comfortably, for whether it lands anywhere the fixed two do
+      not already cover.
 
   has_main_subject:
     direction: neutral
@@ -192,10 +249,11 @@ diagnostics:
     severity: info
     message: The browse set is rendered; no report has been supplied yet.
     suggested_actions:
-      - Look at it - sfm_artifact_image(this artifact). It is the only image here, so no `name` is needed.
-      - Fetch the rubric with sfm_module_skill('SceneDescription', 'rubric').
-      - Re-run this module with params={report - the answers}. The two artifacts both persist.
-      - For one frame at full resolution use the SCENE, not this artifact - sfm_artifact_image(scene_id, 'images/000003.png').
+      - 1. Look at the sheet - sfm_artifact_image(this artifact). It is the only image here, so no `name` is needed.
+      - 2. Then the first and last of the browse set at FULL resolution, from the SCENE. This diagnostic prints both calls with the names filled in. Fixed, not chosen - the sheet's cells are two downscales deep and gloss, clipping and fine texture are not decidable there.
+      - 3. Then ONE more cell of your choosing, for whatever those two do not settle. Name it as [k] in the report's `third_frame` field with a reason. It is checked against the browse set and may not be the first or last.
+      - 4. Fetch the rubric with sfm_module_skill('SceneDescription', 'rubric').
+      - 5. Re-run this module with params={report - the answers}. The two artifacts both persist.
     see_also: SKILL.md#the-two-call-flow
 
   - code: dynamic_content
@@ -208,24 +266,25 @@ diagnostics:
       - Treat a healthy inlier_ratio as weak evidence here - moving points are locally consistent.
     see_also: limitations.md#the-report-can-be-wrong
 
-  - code: material_hazards
+  - code: coherent_reflection
     severity: warn
-    message: Substantial reflective or transparent surfaces were reported.
+    message: A reflective surface carrying a legible reflected image was reported.
     metric: material_hazards
     suggested_actions:
-      - A reflection triangulates confidently to a point behind the surface.
-      - Expect structure that reprojects well and sits in the wrong place; reprojection error will not find it.
+      - A coherent reflection is a correspondence to a virtual point BEHIND the surface. It triangulates confidently and reprojects beautifully, so neither reprojection error nor bundle adjustment will find it.
+      - Read `hazard_position` for where the phantom lands - between camera and subject is the worst, background is often ignorable.
+      - Those features are self-consistent, so they can be RANSAC inliers. A healthy inlier_ratio is not evidence against this.
     see_also: limitations.md#the-report-can-be-wrong
 
-  - code: between_image_repetition
-    severity: warn
-    message: The same structure was reported recurring across different images.
-    metric: between_image_repetition
+  - code: diffuse_reflection
+    severity: info
+    message: A glossy surface with no legible reflected image was reported.
+    metric: material_hazards
     suggested_actions:
-      - SceneTriage's `repetitiveness` cannot see this; do not read a low value there as reassurance.
-      - Expect confident wrong matches; watch inlier_ratio rather than match count.
-      - Prefer a matcher that reasons about global context - sfm_find_alternatives(produces='pairwise_matches/v1').
-    see_also: limitations.md#what-this-adds-over-the-measured-modules
+      - This is NOT the phantom-geometry case - a highlight with no image in it creates no virtual point. Do not go looking for structure in the wrong place.
+      - Expect the opposite failure - a bright patch that moves with the camera rather than the surface, so correspondences there drift or drop out and that part of the model thins.
+      - Read `hazard_position` for which part of the model is affected.
+    see_also: limitations.md#the-report-can-be-wrong
 
   - code: incomplete_subject
     severity: info
