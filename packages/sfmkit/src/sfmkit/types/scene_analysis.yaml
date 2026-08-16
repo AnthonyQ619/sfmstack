@@ -108,6 +108,40 @@ files:
           GRIC homography-vs-fundamental preference. High values make
           essential-matrix decomposition ill-conditioned.
 
+  description:
+    required: false
+    description: |
+      ASSERTED, NOT MEASURED -- the only group here that is. Everything else in
+      this type comes out of an algorithm reading pixels; this comes out of
+      someone LOOKING at the images and answering a rubric. Read it that way: it
+      can be wrong in ways a measurement cannot, and it can see things no
+      measurement here does -- a person walking through frame, a mirror, whether
+      the empty half of the picture is sky you never wanted or a wall you did.
+
+      `overall` is the field to act on -- a paragraph, and the thing a reader
+      should weigh alongside the measured groups when choosing a pipeline. The
+      rest of the answers are its machine-readable shadow: they make a hazard
+      countable and a diagnostic possible, and they do not carry the reasoning.
+
+      Only two arrays are declared, deliberately. The rubric behind this group is
+      expected to be revised from experience, and a schema that churns with it
+      would drag every producer along. The rest of the answers ride as extras and
+      are recorded in the manifest under `extras`; promote one here once it has
+      stopped moving. One has already been cut, below.
+    arrays:
+      overall:
+        required: true
+        shape: []
+        dtype: [str]
+        description: One paragraph. What this scene is and what will be hard about it.
+      environment: {required: false, shape: [], dtype: [str]}
+      # `capture_style` was declared here -- turntable / orbit / walk_along /
+      # sweep / aerial / unordered -- and was cut 2026-08-15. It was asserting
+      # what `rotation_median_deg`, `variability`, `overall_magnitude` and
+      # `metadata.ordered` already measure between them. A declared cue that no
+      # producer fills is worse than an absent one, so it is out of the
+      # vocabulary rather than left optional-and-unused.
+
   traits:
     required: false
     description: Derived vocabulary. The retrieval key.

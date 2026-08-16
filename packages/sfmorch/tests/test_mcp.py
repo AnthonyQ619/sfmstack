@@ -7,6 +7,7 @@ of the adapter.
 """
 
 import asyncio
+import base64
 import importlib.util
 from pathlib import Path
 
@@ -24,7 +25,7 @@ EXPECTED_TOOLS = {
     # execution
     "sfm_check", "sfm_run", "sfm_replay", "sfm_job", "sfm_list_jobs",
     # inspection
-    "sfm_artifact", "sfm_run_summary", "sfm_compare",
+    "sfm_artifact", "sfm_artifact_image", "sfm_run_summary", "sfm_compare",
     # knowledge
     "sfm_module_skill", "sfm_find_alternatives", "sfm_workflow_skill",
     # authoring
@@ -59,8 +60,13 @@ def test_the_expected_tools_register(server):
 
 
 def test_the_surface_does_not_grow_with_the_module_count(server):
-    """Modules are discovered, never enumerated as tools. Fourteen-odd tools at
-    two modules must still be fourteen-odd at two hundred."""
+    """Modules are discovered, never enumerated as tools. Eighteen tools at two
+    modules must still be eighteen at two hundred.
+
+    The count moves on a different axis: `sfm_artifact_image` was added because
+    artifacts could always hold pictures and there was no way to hand one back.
+    That is a payload KIND, not a module.
+    """
     mcp, service = server
     before = len(asyncio.run(mcp.list_tools()))
 
@@ -94,6 +100,35 @@ def test_run_round_trips_through_the_adapter(server):
     assert result["status"] == "ok"
     assert result["metrics"]["n_images"] == 3
     assert result["outputs"]["scene"].startswith("art_")
+
+
+def test_an_artifact_image_comes_back_as_a_picture_not_a_path(server):
+    """The whole point of the tool. A path is useless to a caller that cannot
+    reach this filesystem, and that was the one precondition SceneDescription had
+    which no other module does.
+    """
+    mcp, service = server
+    scene = call(mcp, "sfm_run", {
+        "module": "MakeScene", "run_id": "r", "params": {"n_images": 3}
+    })["outputs"]["scene"]
+
+    sheet = service.store.open(scene).data_dir / "browse" / "contact_sheet.jpg"
+    sheet.parent.mkdir(parents=True, exist_ok=True)
+    sheet.write_bytes(b"\xff\xd8\xff fake jpeg")
+
+    result = asyncio.run(mcp.call_tool("sfm_artifact_image", {"artifact_id": scene}))
+
+    assert not result.is_error, result.content
+    kinds = [block.type for block in result.content]
+    assert "image" in kinds, kinds
+
+    image = next(b for b in result.content if b.type == "image")
+    assert image.mime_type == "image/jpeg"
+    assert base64.b64decode(image.data) == b"\xff\xd8\xff fake jpeg"
+
+    # Provenance travels beside the picture; an image with no record of which
+    # artifact it came out of is not evidence of anything.
+    assert any(scene in getattr(b, "text", "") for b in result.content)
 
 
 def test_a_wiring_error_carries_the_fix_to_the_caller(server):

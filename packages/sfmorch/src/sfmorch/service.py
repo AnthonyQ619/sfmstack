@@ -27,6 +27,20 @@ from .scaffold import ScaffoldRequest, scaffold_module, to_slug
 
 DEFAULT_INLINE_WAIT = 20.0
 
+MIME_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+IMAGE_SUFFIXES = frozenset(MIME_TYPES)
+
+# A ceiling on what one call will hand back. Generous for a contact sheet, which
+# is the case this exists for, and small enough that a full-resolution frame is a
+# deliberate choice rather than an accident.
+MAX_IMAGE_BYTES = 8 * 2**20
+
 
 def _sink(holder: dict):
     """Route a module's progress onto its job handle.
@@ -361,6 +375,82 @@ class SfmService:
         if full:
             doc["artifact_md"] = (art.root / "artifact.md").read_text(encoding="utf-8")
         return doc
+
+    def artifact_image(
+        self, artifact_id: str, *, name: str = "", max_bytes: int = MAX_IMAGE_BYTES
+    ) -> dict[str, Any]:
+        """Locate an image inside an artifact, for a caller that can look at it.
+
+        Returns a path and its media type; it does not read or decode the file.
+        Encoding it for the wire belongs to the transport, and decoding it belongs
+        to nobody here -- the orchestrator has no image library and should not
+        acquire one. Pixels are a container concern; serving bytes a container
+        already wrote is inspection, which is what this is.
+
+        With no `name`, returns the artifact's images so the caller can choose --
+        unless there is exactly one, which is the `SceneDescription` case and the
+        one worth making frictionless.
+        """
+        art = self.store.open(artifact_id)
+        data_dir = art.data_dir.resolve()
+
+        available = sorted(
+            str(p.relative_to(data_dir))
+            for p in data_dir.rglob("*")
+            if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES
+        )
+
+        if not name:
+            if len(available) != 1:
+                return {
+                    "artifact": art.id,
+                    "type": art.type,
+                    "images": available,
+                    "hint": (
+                        f"{len(available)} images; pass one as `name`."
+                        if available
+                        else "this artifact carries no images."
+                    ),
+                }
+            name = available[0]
+
+        path = (data_dir / name).resolve()
+
+        # An artifact id plus a caller-supplied path is the shape that leaks a
+        # filesystem if nobody checks it. `..` must not walk out of the artifact.
+        if not path.is_relative_to(data_dir):
+            raise OrchestratorError(
+                f"'{name}' resolves outside artifact {art.id}. Names are relative "
+                f"to the artifact's data directory."
+            )
+        if not path.is_file():
+            raise OrchestratorError(
+                f"artifact {art.id} has no image '{name}'. Available: {available}"
+            )
+        if path.suffix.lower() not in IMAGE_SUFFIXES:
+            raise OrchestratorError(
+                f"'{name}' is not an image ({sorted(IMAGE_SUFFIXES)}). This tool "
+                f"serves pictures; use sfm_artifact for the manifest and the "
+                f"array inventory."
+            )
+
+        size = path.stat().st_size
+        if size > max_bytes:
+            raise OrchestratorError(
+                f"'{name}' is {size / 2**20:.1f} MiB, over the {max_bytes / 2**20:.0f} "
+                f"MiB limit. A contact sheet is meant to be one modest image; if "
+                f"this is a full-resolution frame, look at a thumbnail instead. "
+                f"Available: {available}"
+            )
+
+        return {
+            "artifact": art.id,
+            "type": art.type,
+            "name": name,
+            "path": str(path),
+            "mime_type": MIME_TYPES[path.suffix.lower()],
+            "bytes": size,
+        }
 
     def run_summary(self, run_id: str) -> dict[str, Any]:
         summary = self.orch.summary(run_id)

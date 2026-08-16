@@ -2,12 +2,18 @@
 
 Deliberately thin: every tool is a one-line call into `SfmService`. All the logic
 lives there so it is testable without MCP transport, and an SDK change touches
-this file alone rather than seventeen tools.
+this file alone rather than eighteen tools.
 
-Seventeen tools in five stable categories -- discovery, execution, inspection,
+Eighteen tools in five stable categories -- discovery, execution, inspection,
 knowledge, authoring -- and the count does not grow with the module count.
 Modules are *discovered* through `sfm_list_modules` / `sfm_describe_module`,
 never enumerated as tools, so this surface is the same at 2 modules and at 200.
+
+It grows, rarely, with the number of PAYLOAD KINDS the surface can carry.
+`sfm_artifact_image` was the eighteenth: artifacts could always hold pictures and
+there was no way to hand one to the caller, so anything that needed looking at
+required filesystem access outside this protocol. That is a different axis from
+the module count and it is the only one that should move this number.
 
 Which files each tool reads: docs/mcp-tools.md.
 
@@ -44,16 +50,19 @@ The loop:
      whether a number is good is in the response rather than in your head.
   3. A diagnostic's `see_also` names the exact curated section that addresses it.
      Fetch it with `sfm_module_skill`.
-  4. Re-running with different parameters keeps BOTH results. Use `sfm_compare`
+  4. `sfm_artifact_image` hands back a picture an artifact carries, so questions
+     a number cannot answer -- what is actually in this scene -- do not need
+     filesystem access outside this protocol.
+  5. Re-running with different parameters keeps BOTH results. Use `sfm_compare`
      to put them side by side -- it also reports where two lineages diverge, so a
      difference inherited from three stages upstream is not credited to the knob
      you just turned.
-  5. When metrics suggest the real problem is upstream, `sfm_replay` re-runs that
+  6. When metrics suggest the real problem is upstream, `sfm_replay` re-runs that
      step and everything downstream in one call.
-  6. When tuning has bottomed out, `sfm_module_skill(name, "limitations")` gives
+  7. When tuning has bottomed out, `sfm_module_skill(name, "limitations")` gives
      the failure signature and a capability query; `sfm_find_alternatives` runs
      that query against the live registry.
-  7. If nothing fits, `sfm_scaffold_module` -> implement the adapter ->
+  8. If nothing fits, `sfm_scaffold_module` -> implement the adapter ->
      `sfm_build_module` -> `sfm_smoke_test`.
 
 Type checking happens before anything is spawned, so a wiring mistake is a fast
@@ -196,6 +205,29 @@ def build_server(service: SfmService):
         """Read an artifact: metrics, diagnostics, provenance, array inventory,
         and the narrative its producer wrote."""
         return service.artifact(artifact_id, full=full)
+
+    @mcp.tool()
+    def sfm_artifact_image(artifact_id: str, name: str = "") -> Any:
+        """Return an image an artifact carries, as a picture you can look at.
+
+        For the cases a number cannot answer -- what is actually in this scene,
+        what does this reconstruction look like. `SceneDescription` renders a
+        contact sheet for exactly this; `name` is relative to the artifact's data
+        directory, e.g. 'browse/contact_sheet.jpg'. Omit it to list what is there,
+        or when the artifact carries only one image.
+
+        A scene's own working images are reachable the same way, so a single frame
+        can be inspected at full resolution without any module in between.
+        """
+        doc = service.artifact_image(artifact_id, name=name)
+        if "path" not in doc:
+            return doc  # a listing, not a picture
+
+        from mcp.server.mcpserver.utilities.types import Image
+
+        # Picture plus provenance: without the second block the caller has an
+        # image and no record of which artifact it came out of.
+        return [Image(path=doc["path"]), {k: v for k, v in doc.items() if k != "path"}]
 
     @mcp.tool()
     def sfm_run_summary(run_id: str) -> dict[str, Any]:

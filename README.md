@@ -27,9 +27,10 @@ Early. Build order and progress:
 | 7d | ORB, FLANN, SuperPoint, ALIKED, LightGlue, LoFTR | **done** |
 | 8 | The remaining 9 legacy modules | **done** |
 | 8b | `SceneTriage`, `SceneMotion` — scene analysis before anything is reconstructed | **done** |
+| 8c | `SceneDescription` + `sfm_artifact_image` — the agent looks at the scene | **done** |
 | 9 | First agent-driven session over MCP | |
 
-27 modules, 353 tests. `.venv/bin/python -m pytest -q`
+28 modules, 379 tests. `.venv/bin/python -m pytest -q`
 
 A complete classical reconstruction runs end to end on DTU scan1 — 12 contiguous
 images at 1024px, every stage in its own container:
@@ -137,11 +138,14 @@ same SIFT keypoints:
 Longer tracks, less accurate positions, monotonically. Length and precision are
 separate axes and no `tracks/v1` metric measures the second.
 
-**All 25 legacy modules are ported**, plus two that the predecessor had only as
-loose scripts: `SceneTriage` and `SceneMotion`, which characterise a scene before
-anything is reconstructed. They fill disjoint groups of one `scene_analysis/v1`
-and neither derives traits — that is the orchestrator's job, from thresholds in
-`skills/judgment/`, and it is not built. See
+**All 25 legacy modules are ported**, plus three that characterise a scene before
+anything is reconstructed. `SceneTriage` and `SceneMotion` were loose scripts in
+the predecessor; `SceneDescription` is new and is the odd one out — it renders a
+contact sheet, and the description comes from the agent *looking* at it through
+`sfm_artifact_image` rather than from any code in the container. All three fill
+disjoint groups of one `scene_analysis/v1`, and none derives traits — that is the
+orchestrator's job, from thresholds in `skills/judgment/`, and it is not built.
+See
 [docs/mcp-tools.md](docs/mcp-tools.md#4-the-empty-tiers--which-tools-read-them-and-what-does-not-work).
 
 `tools/build_images.sh` builds everything in dependency order — and it has to be
@@ -362,7 +366,7 @@ pinning torch 2.11. See the note in `packages/sfmkit/pyproject.toml`.
     --docker --mount /home/anthonyq/datasets
 ```
 
-Seventeen tools in five categories — discovery, execution, inspection,
+Eighteen tools in five categories — discovery, execution, inspection,
 knowledge, authoring. **The count does not grow with the module count.** Modules
 are discovered through `sfm_list_modules` / `sfm_describe_module`, never
 enumerated as tools, so the surface is the same at two modules and at two

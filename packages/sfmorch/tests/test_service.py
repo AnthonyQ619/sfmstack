@@ -349,6 +349,92 @@ def test_reload_picks_up_a_scaffolded_module(service, tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# Artifact images
+#
+# The service resolves and vets a path; it never decodes. The orchestrator has no
+# image library and should not acquire one -- pixels are a container concern, and
+# serving bytes a container already wrote is inspection.
+# --------------------------------------------------------------------------- #
+
+
+def put_image(service, artifact_id, name, payload=b"\x89PNG\r\n\x1a\n fake"):
+    """Drop a file into a sealed artifact's data dir.
+
+    Bytes, not a real PNG: nothing in this path decodes the file, and keeping the
+    fixture free of an image library is the point of that design.
+    """
+    path = service.store.open(artifact_id).data_dir / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(payload)
+    return path
+
+
+def test_artifact_image_resolves_a_single_image_without_being_named(service, scene):
+    """The SceneDescription case: one sheet, no reason to make the caller name it."""
+    put_image(service, scene["outputs"]["scene"], "browse/contact_sheet.jpg")
+
+    doc = service.artifact_image(scene["outputs"]["scene"])
+
+    assert doc["name"] == "browse/contact_sheet.jpg"
+    assert doc["mime_type"] == "image/jpeg"
+    assert doc["bytes"] > 0
+    assert doc["path"].endswith("data/browse/contact_sheet.jpg")
+
+
+def test_artifact_image_lists_when_the_choice_is_ambiguous(service, scene):
+    for name in ("browse/contact_sheet.jpg", "browse/000.png", "browse/001.png"):
+        put_image(service, scene["outputs"]["scene"], name)
+
+    doc = service.artifact_image(scene["outputs"]["scene"])
+
+    assert "path" not in doc
+    assert doc["images"] == [
+        "browse/000.png", "browse/001.png", "browse/contact_sheet.jpg"
+    ]
+
+
+def test_artifact_image_says_so_when_there_are_none(service, scene):
+    doc = service.artifact_image(scene["outputs"]["scene"])
+
+    assert doc["images"] == []
+    assert "no images" in doc["hint"]
+
+
+def test_artifact_image_refuses_a_path_that_escapes_the_artifact(service, scene):
+    """An artifact id plus a caller-supplied path is the shape that leaks a
+    filesystem when nobody checks it."""
+    put_image(service, scene["outputs"]["scene"], "browse/contact_sheet.jpg")
+
+    with pytest.raises(OrchestratorError, match="resolves outside artifact"):
+        service.artifact_image(
+            scene["outputs"]["scene"], name="../../../../etc/passwd.png"
+        )
+
+
+def test_artifact_image_refuses_a_file_that_is_not_an_image(service, scene):
+    put_image(service, scene["outputs"]["scene"], "browse/notes.txt", b"not a picture")
+
+    with pytest.raises(OrchestratorError, match="is not an image"):
+        service.artifact_image(scene["outputs"]["scene"], name="browse/notes.txt")
+
+
+def test_artifact_image_refuses_one_too_large_to_hand_back(service, scene):
+    put_image(service, scene["outputs"]["scene"], "browse/huge.png", b"x" * 4096)
+
+    with pytest.raises(OrchestratorError, match="over the"):
+        service.artifact_image(
+            scene["outputs"]["scene"], name="browse/huge.png", max_bytes=1024
+        )
+
+
+def test_artifact_image_names_what_is_available_when_the_name_is_wrong(service, scene):
+    put_image(service, scene["outputs"]["scene"], "browse/contact_sheet.jpg")
+
+    with pytest.raises(OrchestratorError, match=r"contact_sheet\.jpg"):
+        service.artifact_image(scene["outputs"]["scene"], name="browse/sheet.png")
+
+
+# --------------------------------------------------------------------------- #
 # Smoke test -- the manifest's promises
 # --------------------------------------------------------------------------- #
 

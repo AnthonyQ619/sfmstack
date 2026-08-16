@@ -1,0 +1,238 @@
+name: SceneDescription
+version: 0.3.0
+kind: analysis
+summary: >
+  Renders a browsable contact sheet from the scene, then records what a viewer
+  reports after looking at it. The only module whose output comes from outside
+  the container.
+
+description: |
+  Half tool, half protocol, and worth understanding as such before using it.
+
+  `SceneTriage` and `SceneMotion` compute. This one **prepares something to look
+  at and then holds the answer**. The looking is done by whoever is driving --
+  the module cannot do it, has no model, and does not pretend to.
+
+  That makes it a two-call module:
+
+    1. `sfm_run(SceneDescription, {scene})` with no `report`. It renders a
+       contact sheet into the artifact and raises `awaiting_description`.
+    2. `sfm_artifact_image(<that artifact>)` -- the sheet is the only image it
+       carries, so no `name` is needed. Fetch the rubric with
+       `sfm_module_skill('SceneDescription', 'rubric')`. Answer it.
+    3. `sfm_run(SceneDescription, {scene}, params={report: {...}})`. The report is
+       validated against the rubric and written into the artifact.
+
+  Both runs are kept, because ids come from the recipe and the report is part of
+  it. That is not a wart: the un-described artifact is the record that the sheet
+  was rendered, and two different readings of the same scene stay comparable
+  through `sfm_compare`.
+
+  **What it is FOR.** Not general description -- the rubric targets the specific
+  blind spots the two measuring modules document in their own `limitations.md`:
+
+  | Blind spot | Which module admits it | Rubric field |
+  | --- | --- | --- |
+  | textureless area, but is it WANTED? | SceneTriage: "counts area, says nothing about where" | `empty_regions` |
+  | repetition BETWEEN images, not within one | SceneTriage: "within-image self-similarity, not between-image ambiguity" | `repetition` |
+  | moving people, vehicles, water | both: "dynamic content ... not implemented" | `dynamic_content` |
+  | glass, mirrors, polished metal | measured nowhere | `material_hazards` |
+  | indoor or outdoor, for weight selection | nothing measured says which | `environment` |
+  | whether there IS one thing being reconstructed | nothing counts objects | `main_subject` |
+  | whether that thing even fits in the frames | nothing knows what the subject is | `subject_completeness` |
+
+  A field that only restates a number the other modules already produce does not
+  belong in the rubric. That is the test to apply when revising it.
+
+  **`overall` is the field to act on.** It is a paragraph, it leads the artifact's
+  narrative body, and it is what the driving agent should read alongside the
+  `SceneTriage` and `SceneMotion` metrics when choosing a pipeline. The enums are
+  its machine-readable shadow -- they make a hazard countable and a diagnostic
+  possible; they do not carry the reasoning.
+
+  **The report is asserted, not measured.** It goes into the `description` group
+  of `scene_analysis/v1`, which is marked as such in the schema. It can be wrong
+  in ways a measurement cannot.
+
+image: sfmstack/scene-description:0.3.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 2
+  # Decoding and downscaling a dozen images. The smallest module here.
+  expected_duration_s: 10
+  timeout_s: 900
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  analysis: {type: scene_analysis/v1}
+
+params:
+  n_images:
+    type: integer
+    default: 12
+    minimum: 1
+    maximum: 60
+    description: How many images the browse set holds.
+    tuning: >
+      10-15 is the working range. Below that the sheet stops representing the
+      capture; above it the cells get too small to see anything in, which is a
+      worse failure because it is invisible -- the sheet still looks fine.
+
+  sampling:
+    type: string
+    default: uniform
+    enum: [uniform, head]
+    description: How the browse set is drawn from the scene.
+    tuning: >
+      `uniform` spans the capture and is what you want for a description, because
+      the question is what the whole set looks like. `head` shows a contiguous
+      run, which is the right choice only when you are specifically checking how
+      much consecutive frames differ.
+
+  thumbnail_max_side:
+    type: integer
+    default: 384
+    minimum: 64
+    maximum: 1024
+    description: Long edge of each cell in the contact sheet.
+    tuning: >
+      384 keeps a 12-cell sheet readable at a glance. Raise it toward 512 when
+      the rubric question is about fine detail -- material, texture, small moving
+      objects. For a question about ONE frame, do not raise it: read that frame
+      from the scene at full resolution instead,
+      `sfm_artifact_image(scene_id, 'images/000003.png')`.
+
+  grid_cols:
+    type: integer
+    default: 4
+    minimum: 1
+    maximum: 8
+    description: Columns in the contact sheet.
+
+  report:
+    type: object
+    default: {}
+    description: >
+      The answers to the rubric. Empty on the first call. See
+      sfm_module_skill('SceneDescription', 'rubric') for the fields and how to
+      answer them.
+    tuning: >
+      Not a tuning knob -- it is the payload. It is part of the recipe, so a
+      revised reading produces a new artifact beside the old one rather than
+      replacing it, and `sfm_compare` will show both.
+
+metrics:
+  described:
+    direction: neutral
+    meaning: >
+      1 once a report has been supplied and validated, 0 for a browse-set-only
+      run. The two are separate artifacts; this says which one you are holding.
+
+  browse_images:
+    direction: neutral
+    meaning: Images in the contact sheet.
+
+  dynamic_content:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: >
+      Moving objects -- people, vehicles, water, wind-blown foliage. NOTHING ELSE
+      IN THIS STACK SEES THIS. Moving content corrupts tracks silently: the
+      correspondences are real, the geometry is not, and every metric downstream
+      looks healthy. 0 none, 1 minor, 2 substantial.
+
+  material_hazards:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: >
+      Glass, mirrors, water surfaces, polished metal. Also measured nowhere else.
+      A reflection is a correspondence to a virtual point BEHIND the surface, so it
+      triangulates confidently to the wrong place and reprojects beautifully --
+      reprojection error will not find it.
+
+      The levels are graded by WHERE the reflector is, not how much of it there
+      is: 0 none, 1 present but in the background rather than on the surface being
+      reconstructed, 2 on the subject itself or across most of the frame. That
+      axis is the one that decides whether the phantom structure lands somewhere
+      nobody is looking or inside the model you wanted.
+
+  between_image_repetition:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: >
+      1 when the same structure recurs across DIFFERENT images. The direct
+      complement to SceneTriage's `repetitiveness`, which measures self-similarity
+      WITHIN one image and is explicitly blind to this. Forty photographs of forty
+      identical-looking bays defeat matching just as thoroughly and score low
+      there.
+
+  has_main_subject:
+    direction: neutral
+    meaning: >
+      1 when the images are of one identifiable thing, 0 when they are of a place
+      or a collection with no single object at the centre of them. Not a quality
+      score -- a scene shape. It decides whether "coverage" means covering an
+      object or covering a volume, and nothing else in this system counts objects.
+
+  subject_complete:
+    direction: higher_better
+    healthy: [1, null]
+    meaning: >
+      1 when the main subject sits fully inside the frames, 0 when it is cropped
+      by the frame edge or occluded by something else. Null when there is no main
+      subject, which is not the same as 0. This is what tells a reader that a low
+      point count on part of the object is the CAPTURE's limit rather than the
+      pipeline's.
+
+diagnostics:
+  - code: awaiting_description
+    severity: info
+    message: The browse set is rendered; no report has been supplied yet.
+    suggested_actions:
+      - Look at it - sfm_artifact_image(this artifact). It is the only image here, so no `name` is needed.
+      - Fetch the rubric with sfm_module_skill('SceneDescription', 'rubric').
+      - Re-run this module with params={report - the answers}. The two artifacts both persist.
+      - For one frame at full resolution use the SCENE, not this artifact - sfm_artifact_image(scene_id, 'images/000003.png').
+    see_also: SKILL.md#the-two-call-flow
+
+  - code: dynamic_content
+    severity: warn
+    message: Substantial moving content was reported in the images.
+    metric: dynamic_content
+    suggested_actions:
+      - Nothing downstream detects this; tracks through a moving object are wrong and look right.
+      - Prefer a subset of frames where the movers are absent, re-run SceneLoader over it.
+      - Treat a healthy inlier_ratio as weak evidence here - moving points are locally consistent.
+    see_also: limitations.md#the-report-can-be-wrong
+
+  - code: material_hazards
+    severity: warn
+    message: Substantial reflective or transparent surfaces were reported.
+    metric: material_hazards
+    suggested_actions:
+      - A reflection triangulates confidently to a point behind the surface.
+      - Expect structure that reprojects well and sits in the wrong place; reprojection error will not find it.
+    see_also: limitations.md#the-report-can-be-wrong
+
+  - code: between_image_repetition
+    severity: warn
+    message: The same structure was reported recurring across different images.
+    metric: between_image_repetition
+    suggested_actions:
+      - SceneTriage's `repetitiveness` cannot see this; do not read a low value there as reassurance.
+      - Expect confident wrong matches; watch inlier_ratio rather than match count.
+      - Prefer a matcher that reasons about global context - sfm_find_alternatives(produces='pairwise_matches/v1').
+    see_also: limitations.md#what-this-adds-over-the-measured-modules
+
+  - code: incomplete_subject
+    severity: info
+    message: The main subject is not fully in view across the set.
+    metric: subject_complete
+    suggested_actions:
+      - Judge downstream coverage against what is VISIBLE, not against the object.
+      - '`cropped` is a framing limit of the capture; `occluded` means something else is in the way.'
+      - Neither is a pipeline fault, and a low point count on the missing part is expected.
+    see_also: limitations.md#the-report-can-be-wrong

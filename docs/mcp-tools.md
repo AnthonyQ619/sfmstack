@@ -1,14 +1,19 @@
 ---
 name: mcp-tools
-description: The 17 MCP tools and the exact files each one reads or writes. Where the agent's context comes from, and which tools are currently blocked on the empty knowledge tiers.
-status: current as of 2026-08-14
+description: The 18 MCP tools and the exact files each one reads or writes. Where the agent's context comes from, and which tools are currently blocked on the empty knowledge tiers.
+status: current as of 2026-08-15
 ---
 
 # The tools and their context
 
-Seventeen tools in five groups. The count does not grow with the module count —
+Eighteen tools in five groups. The count does not grow with the module count —
 modules are *discovered* through `sfm_list_modules` / `sfm_describe_module`, never
 enumerated as tools, so this surface is the same at 2 modules and at 200.
+
+It grows, rarely, on a different axis: the number of **payload kinds** the
+surface can carry. `sfm_artifact_image` was the eighteenth, added 2026-08-15 —
+artifacts could always hold pictures and there was no way to hand one back, so
+anything that needed looking at required filesystem access outside this protocol.
 
 Every tool's context comes from one of four stores. Knowing which one answers
 "why does the agent know this" and, more usefully, "why does it not".
@@ -19,7 +24,7 @@ Every tool's context comes from one of four stores. Knowing which one answers
 
 ### A. Module manifests — `modules/*/module.yaml`
 
-27 files. Loaded once at server start by `ModuleRegistry.load_dir`, and again on
+28 files. Loaded once at server start by `ModuleRegistry.load_dir`, and again on
 `sfm_reload_modules`. Each one carries the module's whole machine contract:
 identity, image tag, resources, input and output slots with payload types, the
 full parameter schema with defaults / ranges / enums / per-parameter `tuning`
@@ -125,12 +130,21 @@ No second call is needed to see how a step went.
 | Tool | Reads | Writes |
 | --- | --- | --- |
 | `sfm_artifact` | **D** — `artifact.md` frontmatter, the array inventory, the sidecar list, and (with `full`) the narrative body | — |
+| `sfm_artifact_image` | **D** — one image sidecar's bytes, returned as an `ImageContent` block beside its provenance | — |
 | `sfm_run_summary` | **D** — `run.md`: every step attempted with params and metrics, plus the leaf artifacts nothing consumed | — |
 | `sfm_compare` | **D** — the manifests of the named artifacts, plus their ancestry walked back through `inputs` | — |
 
 `sfm_compare`'s lineage-divergence report is the part that earns its place:
 without it, two results differing because of a change three stages upstream look
 like evidence about the parameter just turned.
+
+`sfm_artifact_image` **resolves and vets a path; it never decodes.** The
+orchestrator has no image library and should not acquire one — pixels are a
+container concern, and serving bytes a container already wrote is inspection. It
+refuses a name that resolves outside the artifact's data directory, a non-image
+extension, and anything over 8 MiB, naming what is available in each case. With
+no `name` it returns the artifact's images, or resolves silently when there is
+exactly one — which is the `SceneDescription` contact-sheet case.
 
 ### Knowledge
 
@@ -317,7 +331,7 @@ be built from later. Nothing needs re-plumbing when the rows arrive.
 | `workflow/` | 0 | `sfm_workflow_skill` | stage-level diagnosis above a single module |
 | `runs/INDEX.md` | header only | `sfm_workflow_skill` | "scenes like this were solved how" |
 | `families/` | 8 | `sfm_workflow_skill` | — populated |
-| `modules/*/skills/` | 135 across 27 modules | `sfm_describe_module`, `sfm_module_skill` | — populated |
+| `modules/*/skills/` | 141 across 28 modules | `sfm_describe_module`, `sfm_module_skill` | — populated |
 
 Only one tool reads all three empty tiers, and it is the same tool that reads the
 populated ones. **No new tool is needed when they are filled** — which is the

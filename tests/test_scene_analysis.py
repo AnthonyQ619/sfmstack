@@ -316,6 +316,154 @@ def test_the_two_producers_cover_the_type_without_a_merge_step(orch, monkeypatch
     assert a | b == {"metadata", "photometric", "texture", "motion", "degeneracy"}
 
 
+# --------------------------------------------------------------------------- #
+# SceneDescription -- the asserted one
+# --------------------------------------------------------------------------- #
+
+
+GOOD_REPORT = {
+    "environment": "studio",
+    "main_subject": "a cardboard box",
+    "subject_completeness": "cropped",
+    "subject": "One object filling the right half against a plain backdrop.",
+    "empty_regions": "Uniform background surrounding the object; not wanted.",
+    "repetition": "none",
+    "dynamic_content": "none",
+    "material_hazards": "none",
+    "overall": "Controlled capture of a single object. Nothing hazardous.",
+}
+
+
+@needs_dtu
+@needs_pil
+def test_the_first_call_renders_a_browse_set_and_says_it_is_waiting(orch):
+    scene = load_dtu(orch)
+    art = orch.run(
+        "SceneDescription", run_id="analysis", inputs={"scene": scene.id}
+    ).primary
+
+    assert art.metric("described") == 0
+    assert art.metric("browse_images") == 6
+    # Null, not zero, on every report-derived metric. Zero is a claim.
+    for name in ("dynamic_content", "material_hazards",
+                 "between_image_repetition", "has_main_subject",
+                 "subject_complete"):
+        assert art.metric(name) is None, name
+
+    assert "awaiting_description" in [d.code for d in art.manifest.diagnostics]
+    assert (art.root / "data" / "browse" / "contact_sheet.jpg").is_file()
+    assert "description" not in art.manifest.files
+
+
+@needs_dtu
+@needs_pil
+def test_the_sheet_is_the_only_image_so_it_needs_no_name(orch):
+    """`sfm_artifact_image(<id>)` resolves without a name only when the artifact
+    carries exactly one image, and this is the case that convenience exists for.
+    Per-frame thumbnails would break it, and are redundant anyway -- the scene
+    holds every working image at full resolution."""
+    from sfmorch.service import IMAGE_SUFFIXES
+
+    scene = load_dtu(orch)
+    art = orch.run(
+        "SceneDescription", run_id="analysis", inputs={"scene": scene.id}
+    ).primary
+
+    images = [
+        p for p in (art.root / "data").rglob("*")
+        if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES
+    ]
+    assert [p.name for p in images] == ["contact_sheet.jpg"]
+
+    # ...and the single-frame route, which is better than a thumbnail would be.
+    assert (scene.root / "data" / "images" / "000003.png").is_file()
+
+
+@needs_dtu
+@needs_pil
+def test_the_second_call_records_the_report_beside_the_first(orch):
+    scene = load_dtu(orch)
+    first = orch.run(
+        "SceneDescription", run_id="analysis", inputs={"scene": scene.id}
+    ).primary
+    described = orch.run(
+        "SceneDescription", run_id="analysis", inputs={"scene": scene.id},
+        params={"report": GOOD_REPORT},
+    ).primary
+
+    assert first.id != described.id  # the report is part of the recipe
+    assert described.metric("described") == 1
+    assert described.metric("dynamic_content") == 0
+    assert str(described.load("description", "environment")) == "studio"
+
+    # Three arrays are declared in the type; the rest ride as recorded extras, so
+    # revising the rubric does not mean revising scene_analysis/v1.
+    assert set(described.manifest.extras["description"]) == {
+        "browsed", "main_subject", "subject_completeness", "subject",
+        "empty_regions", "repetition", "dynamic_content", "material_hazards",
+    }
+    # `overall` leads the body: it is the field a reader acts on, and the enums
+    # are its machine-readable shadow rather than a summary of it.
+    body = (described.root / "artifact.md").read_text().split("---", 2)[-1].strip()
+    assert body.startswith(GOOD_REPORT["overall"])
+    assert described.metric("has_main_subject") == 1
+    assert described.metric("subject_complete") == 0  # cropped
+    assert "incomplete_subject" in [d.code for d in described.manifest.diagnostics]
+    assert len(described.load("description", "browsed")) == 6
+
+
+@needs_dtu
+@needs_pil
+@pytest.mark.parametrize("mutation, expected", [
+    ({"overall": ""}, "empty"),
+    ({"environment": "probably outdoor"}, "expected one of"),
+    ({"material_hazards": "substantial"}, "hazard_notes"),
+    # The contingency, both ways round.
+    ({"subject_completeness": ""}, "subject_completeness. is empty"),
+    ({"main_subject": "none", "subject_completeness": "complete"},
+     "nothing for it to describe"),
+])
+def test_a_report_that_misses_the_rubric_is_refused(orch, mutation, expected):
+    """Shape only -- nothing here can tell whether the answers are TRUE. What it
+    buys is that a half-filled report is not recorded as a description."""
+    scene = load_dtu(orch)
+    with pytest.raises(Exception, match=expected):
+        orch.run(
+            "SceneDescription", run_id="analysis", inputs={"scene": scene.id},
+            params={"report": GOOD_REPORT | mutation},
+        )
+
+
+@needs_dtu
+@needs_pil
+def test_an_answer_beyond_the_rubric_rides_in_rather_than_being_dropped(orch):
+    """The rubric is expected to grow. A field that keeps appearing here is a
+    candidate for promotion into the required set."""
+    scene = load_dtu(orch)
+    art = orch.run(
+        "SceneDescription", run_id="analysis", inputs={"scene": scene.id},
+        params={"report": GOOD_REPORT | {"lighting": "flat and even"}},
+    ).primary
+
+    assert str(art.load("description", "lighting")) == "flat and even"
+
+
+@needs_pil
+def test_the_rubric_doc_and_the_adapter_agree():
+    """The closed vocabularies live in two places -- the adapter enforces them and
+    rubric.md explains them. They must not drift apart silently."""
+    description = _adapter("scene_description")
+    doc = (MODULES / "scene_description" / "skills" / "rubric.md").read_text()
+
+    for field, allowed in description.ENUMS.items():
+        assert f"### `{field}` — enum" in doc, f"{field} is not in the rubric"
+        for value in allowed:
+            assert f"`{value}`" in doc, f"{field}: '{value}' is undocumented"
+
+    for field in description.FREE_TEXT:
+        assert f"### `{field}` — free text" in doc, f"{field} is not in the rubric"
+
+
 def test_neither_analysis_module_derives_traits(registry):
     """Traits are the retrieval key and their cut points are a practitioner call.
     A module that wrote them would freeze a judgement into a cached artifact and
@@ -325,3 +473,22 @@ def test_neither_analysis_module_derives_traits(registry):
         source = (MODULES / directory / "adapter.py").read_text()
         assert 'out.save("traits"' not in source
         assert "traits" not in registry.get(name).metrics
+
+
+@needs_dtu
+@needs_pil
+def test_a_scene_with_no_main_subject_leaves_completeness_unanswered(orch):
+    """`none` is a real answer -- a street or a landscape has no main subject --
+    and then `subject_complete` is null rather than 0. "There is nothing to be
+    incomplete" and "it is incomplete" are opposite claims."""
+    scene = load_dtu(orch)
+    art = orch.run(
+        "SceneDescription", run_id="analysis", inputs={"scene": scene.id},
+        params={"report": {k: v for k, v in GOOD_REPORT.items()
+                           if k != "subject_completeness"}
+                | {"main_subject": "none"}},
+    ).primary
+
+    assert art.metric("has_main_subject") == 0
+    assert art.metric("subject_complete") is None
+    assert "incomplete_subject" not in [d.code for d in art.manifest.diagnostics]
