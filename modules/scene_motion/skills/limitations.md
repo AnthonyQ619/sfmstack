@@ -36,9 +36,51 @@ default disagrees with captures you know: tighten toward 0.05 for a near-exact
 match, loosen toward 0.3 only on a noisy or badly-calibrated scene where the
 residual has a floor unrelated to the camera.
 
+**The consequence, observed: the flag can fire on a pair with almost no
+rotation.** On a rig capture whose orbit includes one overhead pass across a flat
+roof plane, that pass's pair is flagged `pair_pure_rotation` while its
+`pair_rotation_deg` reads a twentieth of a degree — essentially no turn — against
+mid-set flow. Substantial apparent motion, no rotation, and the flag still fires. That looks like the metric contradicting
+itself and it is not. `rotation_deg` comes from the essential matrix; the
+discriminator tests the *homography*. With R near identity the conjugate
+`K⁻¹HK` reduces to `I + t nᵀ/d`, which passes an orthogonality tolerance whenever
+`|t|/depth` is small. A short-baseline translation across a near-constant-depth
+surface is therefore indistinguishable from a pure rotation by this test, exactly
+as the residual table above predicts.
+
+**Read the flag as "no usable parallax here", not as "the camera turned in
+place".** Both are terminal for that pair and the remedy is the same, so the flag
+is still correct about what to do — it is only the *name* that is narrower than
+the condition it detects. A reader holding only `sfm_plan_brief` cannot reconstruct
+any of this, because the brief carries the metric and not this file; that is why
+such a reading gets reported as a suspected defect rather than understood.
+
 **The prognoses are opposite**, which is why the discrimination is worth the
 intrinsics requirement. A plane is recoverable with a pose method that does not
 decompose an essential matrix. A pure rotation is not recoverable at all.
+
+**Both are reported per pair as well as summarised**, and on the readings
+measured so far the per-pair view is the one that decides anything. Every
+non-zero `planar_dominance` observed has been one or two pairs of eleven — well
+under the 0.5 band, so no diagnostic fires, and a fraction of 0.18 alone does not
+say whether to change solver or simply to keep two views out of the seed. Read
+`degeneracy/pair_planar` against `degeneracy/pair_index`, and
+`pair_pure_rotation` against `rotation_pair_index`; the artifact note names the
+flagged pairs in prose too. The fractions are the means of exactly those arrays,
+so a caller asking about a subset of the capture recomputes rather than re-runs.
+
+**A local degeneracy tells you what the cheap fix is, not that the safe fix is
+wrong.** Clustered pairs mean the rest of the set carries baseline, so a seed
+exclusion is available and costs nothing to try. That is worth knowing and the
+fraction cannot tell you it. It is *not* a reason to keep a two-view bootstrap: a
+global solver is robust to a handful of degenerate pairs. **The question to ask is
+whether a clean seed survives the exclusion**: one flagged pair with the rest
+connected leaves the incremental route safe; flagged pairs spread across the
+capture, or covering the only wide-baseline pairs, leave it nothing to bootstrap
+from. Measured, the global solver returned roughly a third fewer points on
+captures where the incremental route did not visibly fail — but read that as a
+premium, not as evidence, because the failure it insures against is a confident
+wrong model that every metric here would score as healthy.
 
 ---
 
@@ -99,39 +141,39 @@ the first to both.
 ## What the displacement thresholds did and did not show
 
 `low_motion_thresh` (0.005) and `high_motion_thresh` (0.08) both came from the
-predecessor [S1]. Across ten ETH3D and DTU scenes at 12 images each, **all of
-which reconstruct** under a classical SIFT pipeline [S5]:
+predecessor [S1]. `large_motion_risk` was cut because it fired on every benchmark
+capture measured, "all of which reconstruct".
 
-| metric | range over ten scenes | verdict |
-| --- | --- | --- |
-| `large_motion_risk` | 0.82 — 1.00 | fired on every scene → **cut** |
-| `low_baseline_risk` | 0.00 — 0.00 | fired on none → **kept, untested** |
-| `variability` | 0.029 — 0.208 | discriminates → kept |
-| `rotation_median_deg` | 2.6 — 29.5 | discriminates → kept |
+> **That premise was false and the cut was a mistake in reasoning, if not in
+> outcome.** Nobody had run a pipeline when it was written — the captures were
+> assumed to reconstruct because they are standard benchmarks. Run to a sparse
+> model, the highest-displacement captures do **not** fully reconstruct on a
+> classical detector with a ratio-test matcher: they drop between a quarter and
+> three quarters of their frames, and they are separated from the captures that
+> complete by a clean gap. The flag was reporting something real.
 
-**The two zero-information results are not the same result**, and that is why
-only one of them was removed.
+**What it was actually seeing.** Displacement between *adjacent* frames is a
+proxy for overlap between *non-adjacent* ones, and an exhaustive view graph is
+built from those. A capture that covers ground quickly between neighbours shares
+proportionally less between distant frames, so fewer pairs survive verification
+and the graph fragments. **A fast capture is a sparse graph.** That is a real
+mechanism and it is what the fraction was tracking, clumsily.
 
-**`large_motion_risk` was cut** for two reasons that compound. Structurally it
-was `mean(pair_p90 > threshold)` — `high_motion_tail` with a cut point welded
-into it — and the per-pair array it aggregates is written to the artifact anyway,
-so nothing is lost by removing the fraction. Empirically it fired on ten scenes
-out of ten that all succeeded, which is a metric reporting its own threshold.
-Recalibrating was not an option: a threshold cannot be fitted on data where every
-case is negative. You would only learn where these scenes sit, not where failure
-begins.
+**Not restored, and the reasons are narrow.** `high_motion_tail` and
+`overall_magnitude` carry the same measurement without a cut welded into them and
+separate the fragmenting captures on their own; the `pair_p90` array lets any
+consumer threshold it themselves; and a fraction fitted on this corpus would
+encode this corpus. Read the raw values.
 
-**The likely reason it fails** is that normalised displacement is a weak proxy
-for matching difficulty. A rotation-invariant descriptor is indifferent to how
-far a point travelled across the frame; what costs it correspondences is how much
-the *view* changed, which `rotation_median_deg` measures directly. A p90 flow of
-0.08 diagonals is about 98 px on a 1024×682 frame, and 98 px of displacement
-under 3° of rotation is nothing.
+**The general lesson is worth more than the specific one:** *"it fires on
+everything" and "it is measuring nothing" are different claims, and only the
+second justifies removing a metric.* Do not cut a metric for over-firing until the
+pipeline has been run on the captures it fired on.
 
-**`low_baseline_risk` was kept** on the opposite evidence. It never fired, but
-none of the ten scenes is a dense capture: ETH3D and DTU both have coarse native
-spacing, and `stride` cannot bring frames closer together than the dataset shot
-them. Its positive case is absent from the sample rather than failing to exist,
+**`low_baseline_risk` was kept** on the opposite evidence. It never fired, but no
+capture in the corpus is a dense video-rate sequence — the benchmark families used
+here have coarse native spacing, and `stride` cannot bring frames closer together
+than the capture shot them. Its positive case is absent from the sample rather than failing to exist,
 and it names the failure this module exists to catch. Deleting it would be
 reasoning from "no evidence" to "no value".
 

@@ -64,9 +64,31 @@ judgement.
 network was trained on, or when a predictable failure mode is worth more than a
 better average.
 
-**Learned** when illumination or viewpoint change is large — that is what they are
-trained for — and when a learned matcher will follow. Choosing SuperPoint and then
-matching it with a ratio test discards most of the reason to have chosen it.
+**Learned** when the VIEW GRAPH is at risk — this is the measured case and it
+outranks everything else on this list. A capture that covers ground quickly
+between adjacent frames shares proportionally less between non-adjacent ones, and
+an exhaustive view graph is built from those. Run to a sparse model across
+fourteen captures, the ones reading highest on `overall_magnitude` /
+`high_motion_tail` are exactly the ones whose graph fragments under a classical
+detector and a ratio-test matcher — dropping between a quarter and three quarters
+of their frames — with a clean gap below them. A learned detector and matcher
+restored full or near-full registration on every one, **while finding fewer
+keypoints**: it recovers the marginal pairs rather than enriching the good ones.
+
+Also learned when illumination or viewpoint change is large — that is what they
+are trained for — and when a learned matcher will follow. Choosing a learned
+detector and then matching it with a ratio test discards most of the reason to
+have chosen it.
+
+**Ask connectivity FIRST and repetition second.** The two questions have an order
+and getting it wrong is expensive: on a fast capture whose subject does not
+repeat, the repetition question sends you to the classical detector precisely
+where the graph cannot afford it. See `skills/scene_to_pipeline.md` §3b.
+
+**And know what you are paying.** On a well-connected capture the learned branch
+returned the SMALLEST model of the three on ten of fourteen — its keypoint budget
+is capped where a classical detector's is not. Buy it for connectivity and
+robustness, not for point count.
 
 **Neither**, when the detector fires on nothing: a textureless, blurred or
 low-contrast capture is a case for a detector-free matcher, which skips this stage

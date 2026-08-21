@@ -20,10 +20,15 @@ motion.npz
   pair_p75             (P,)    float64  EXTRA -- per-pair series behind the median
   pair_p90             (P,)    float64  EXTRA
   pair_rotation_deg    (R,)    float64  EXTRA -- calibrated scenes only
+  rotation_pair_index  (R, 2)  int32    EXTRA -- the index THAT array is in
 
 degeneracy.npz
   planar_dominance     ()      float64  fraction of pairs where GRIC prefers H
   pure_rotation_risk   ()      float64  calibrated scenes only
+  pair_index           (H, 2)  int32    EXTRA -- pairs that admitted a fit
+  pair_planar          (H,)    bool     EXTRA -- planar_dominance is its mean
+  rotation_pair_index  (Q, 2)  int32    EXTRA -- calibrated scenes only
+  pair_pure_rotation   (Q,)    bool     EXTRA -- pure_rotation_risk is its mean
 ```
 
 `degeneracy.npz` is absent entirely when no pair admitted a model fit — a
@@ -32,9 +37,25 @@ Absent, not zero: zero would read as "no degeneracy detected", which is the
 opposite of "the test could not run".
 
 The `EXTRA` arrays are outside the type schema, legal under the
-additive-extension rule, and listed in the manifest's `extras` block. `P` is the
-pair count; `R` is the number of pairs whose essential matrix solved, which can
-be smaller.
+additive-extension rule, and listed in the manifest's `extras` block.
+
+**Four different lengths, and four different indices.** `P` is the pair count;
+`R` is the pairs whose essential matrix solved; `H` is the pairs that admitted a
+homography fit; `Q` is the pairs where the rotation discriminator could be
+evaluated, which needs intrinsics. On a clean calibrated scene they are all equal
+and it is tempting to assume they always are. **They are not**, which is why each
+series carries the index it was written against rather than sharing one. Do not
+zip a series against another's index; `pair_rotation_deg` was implicitly indexed
+by the full pair list until 1.1.0, and that was only correct when every pair fit.
+
+**The boolean series is what the fraction is a mean of.** `planar_dominance` is
+`mean(pair_planar)`, exactly. It is shipped because the advice attached to the
+fraction — watch the seed, raise `init_min_angle_deg`, re-run `SceneLoader` over
+the translating subset — needs to know *which* pairs, and because a caller who
+wants the fraction over a subset of the capture can compute it here rather than
+asking for a re-run. The artifact note names the flagged pairs in prose too, and
+does so even when the fraction is below the diagnostic's band, which is every
+non-zero reading measured so far.
 
 ---
 

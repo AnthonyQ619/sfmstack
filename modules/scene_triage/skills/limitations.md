@@ -13,6 +13,27 @@ Downstream this looks like plenty of keypoints, plenty of matches, and an
 `inlier_ratio` that collapses under geometric verification. It is the case where
 every number before the verification step looks excellent.
 
+**But do not trust this metric to tell you the signature is present.** It
+template-matches a patch against elsewhere in its **own image**, and
+`matchTemplate` is not scale invariant. Two consequences, both observed:
+
+- **A subject whose repeating elements recede in perspective reads LOW** — a long
+  frontage of bays, a colonnade, a receding row of windows. A near element does
+  not correlate with a far one, so the most repetitive subject in a corpus can
+  produce the lowest reading in it.
+- **A fronto-parallel grid of identical panels reads HIGH** for a purely geometric
+  reason, whether or not its ambiguity is actually hard to resolve.
+
+**The reading is dominated by viewing geometry, not by ambiguity**, and the
+ordering across a corpus is therefore not trustworthy. Worse, the hazard that
+breaks reconstructions is *between-image* ambiguity — element `n` in one frame
+matching element `n+1` in the next — and this measurement is within-image only.
+See "What this cannot see" below.
+
+**Use `repetition_notes` from `SceneDescription` as the primary reading** and this
+number as weak corroboration. A viewer can see that two windows are the same
+window; no within-image correlation can.
+
 **Why no parameter recovers it.** Descriptor matching decides correspondence by
 appearance. When two different scene points have the same appearance, the ratio
 test — which compares the best match to the second-best — sees two equally good

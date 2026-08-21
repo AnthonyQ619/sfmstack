@@ -22,19 +22,43 @@ photometric.npz
   combined_change     ()        float64
   pair_index          (P, 2)    int32    EXTRA -- which pairs were compared
   pair_combined       (P,)      float64  EXTRA -- the per-pair series behind the p75
+  shadow_clipped      (N,)      float64  EXTRA -- per-IMAGE area share at L <= 5
+  highlight_clipped   (N,)      float64  EXTRA -- per-IMAGE area share at L >= 250
 
 texture.npz
   density             ()        float64  corner-like features per megapixel
   repetitiveness      ()        float64  median best self-correlation
   textureless_fraction()        float64  area share below the contrast floor
   sharpness           (N,)      float64  per-image Laplacian variance
+  sharpness_median    ()        float64  EXTRA -- the scale `sharpness` is read against
+  density_per_image   (N,)      float64  EXTRA -- corners/MP, per image
+  textureless_per_image (N,)    float64  EXTRA -- area share below the floor, per image
 ```
 
-The two `EXTRA` arrays are not in the type schema. That is legal under the
+**Watch the index.** `photometric.npz` mixes two: everything named `pair_*` is
+indexed by `pair_index`, and `shadow_clipped` / `highlight_clipped` are per IMAGE
+in scene order, alongside `texture/sharpness`. They live in `photometric` because
+that is where the measurement comes from, not because they share an axis with the
+pair series.
+
+The `EXTRA` arrays are not in the type schema. That is legal under the
 additive-extension rule and they are listed in the manifest's `extras` block, so
-a consumer can discover them. They are there because "how photometrically stable
-is this set" and "*where* is it unstable" are different questions and only the
-first fits in a scalar.
+a consumer can discover them. They are there because every metric this module
+reports is a median or a p75, and the advice attached to those metrics is
+per-frame: *open the soft frame before dropping it*, *is the empty region blown
+out or merely flat*. Only the first half of each of those fits in a scalar.
+
+`density_per_image` and `textureless_per_image` were added in 1.2.0 for the same
+reason and one more: `keypoints_min` on `features/v1` is what predicts a frame
+failing to register, and it is the FRAME that starves, not the set. A scene whose
+texture sits in half its frames reports the same `texture_density` as one where it
+is spread evenly, and those are different captures with different plans.
+
+`shadow_clipped` and `highlight_clipped` were being computed all along and
+consumed only as a pairwise DIFFERENCE inside `exposure_shift`, which answers
+"did the exposure move between two frames" and cannot answer "is this frame
+burnt". Same measurement, kept rather than differenced away. Added in 1.1.0
+alongside their medians as metrics.
 
 ---
 

@@ -349,6 +349,18 @@ def run(ctx: Ctx):
     median_sharp = float(np.median(sharp))
     sharp_ratio = float(sharp.min() / median_sharp) if median_sharp > 0 else 0.0
 
+    # ------------------------------------------------------------ clipping
+    # `shadow_clip` and `highlight_clip` were already being measured per image and
+    # were being consumed only as a DIFFERENCE, inside `exposure_shift`. That
+    # answers "did the exposure move between two frames" and cannot answer "is the
+    # empty part of this frame blown out or merely flat", which is the judgement
+    # SceneDescription's rubric asks for on every scene. Same measurement, kept
+    # rather than differenced away.
+    shadow = np.array([s["shadow_clip"] for s in stats], dtype=np.float64)
+    highlight = np.array([s["highlight_clip"] for s in stats], dtype=np.float64)
+    shadow_median = float(np.median(shadow))
+    highlight_median = float(np.median(highlight))
+
     # -------------------------------------------------------------- metadata
     times, focals = ([], [])
     source_dir = p.get("source_dir")
@@ -380,12 +392,30 @@ def run(ctx: Ctx):
         # caller can ask WHERE the instability is rather than only how much.
         pair_index=np.asarray(pairs, dtype=np.int32),
         pair_combined=np.asarray([c["combined"] for c in changes], dtype=np.float64),
+        # Per-IMAGE, unlike everything above it in this group. Indexed by scene
+        # order, not by pair.
+        shadow_clipped=shadow,
+        highlight_clipped=highlight,
     )
 
     tex = {
         "density": density,
         "textureless_fraction": textureless,
         "sharpness": sharp,
+        # Per image, in scene order. Both were already measured per frame and
+        # reduced to a median, and the median is the wrong shape for the question
+        # these two get asked: `keypoints_min` is what predicts a frame failing to
+        # register, and it is the FRAME that starves, not the set. A scene whose
+        # texture sits in half its frames reports the same median as one where it
+        # is spread evenly, and those are different captures.
+        "density_per_image": np.asarray([t["density"] for t in texture],
+                                        dtype=np.float64),
+        "textureless_per_image": np.asarray([t["textureless"] for t in texture],
+                                            dtype=np.float64),
+        # The scale `sharpness` is measured against. `sharpness_ratio` divides one
+        # by the other and throws it away, which makes the array unreadable on its
+        # own: 180 is a sharp frame in one scene and a soft one in another.
+        "sharpness_median": median_sharp,
     }
     if repeat is not None:
         tex["repetitiveness"] = repeat
@@ -407,6 +437,11 @@ def run(ctx: Ctx):
                direction="lower_better", healthy=(None, 0.35))
     out.metric("sharpness_ratio", round(sharp_ratio, 4),
                direction="higher_better", healthy=(0.4, None))
+    out.metric("sharpness_median", round(median_sharp, 2), direction="neutral")
+    out.metric("highlight_clipped_fraction", round(highlight_median, 5),
+               direction="lower_better")
+    out.metric("shadow_clipped_fraction", round(shadow_median, 5),
+               direction="lower_better")
     out.metric("ordered", int(ordered), direction="neutral")
 
     # ----------------------------------------------------------- diagnostics
@@ -517,6 +552,8 @@ def run(ctx: Ctx):
         f"(illumination {illumination:.3f}, colour {color:.3f}, exposure {exposure:.3f}). "
         f"Texture: {density:.0f} corners/MP, {textureless:.0%} textureless, "
         f"repetitiveness {'n/a' if repeat is None else f'{repeat:.2f}'}. "
-        f"Sharpness ratio {sharp_ratio:.2f}. "
+        f"Sharpness ratio {sharp_ratio:.2f} against a median of {median_sharp:.0f}. "
+        f"Clipping: {highlight_median:.2%} highlight, {shadow_median:.2%} shadow "
+        f"in the median frame. "
         f"{'Ordered' if ordered else 'UNORDERED'} capture."
     )

@@ -1,0 +1,45 @@
+name: FakeAnalyser
+version: 1.0.0
+kind: analysis
+summary: Emits one scene_analysis/v1 group so plan_brief has something to gather. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+produces:
+  analysis: {type: scene_analysis/v1}
+
+params:
+  textureless:
+    type: number
+    default: 0.2
+    minimum: 0.0
+    maximum: 1.0
+    description: The value to report, so a test can put the scene in or out of band.
+    tuning: Not a real knob. It exists so a fixture can stage a diagnostic.
+
+  emit:
+    type: boolean
+    default: true
+    description: When false, write no arrays at all.
+    tuning: >
+      Stages the placeholder case: `SceneDescription`'s first call renders a
+      contact sheet and writes no group, so a `scene_analysis/v1` carrying
+      nothing is a real state the store holds.
+
+metrics:
+  textureless_fraction:
+    direction: lower_better
+    healthy: [null, 0.5]
+    meaning: Fraction of the frame below a local-standard-deviation floor.
+
+diagnostics:
+  - code: textureless
+    severity: warn
+    message: A large share of the frame carries no texture.
+    metric: textureless_fraction
+    suggested_actions:
+      - Read `empty_regions` before acting - the fraction cannot say whether the region was wanted.
+    see_also: SKILL.md

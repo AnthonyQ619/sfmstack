@@ -11,9 +11,11 @@ The tier that was missing. The others cannot hold this:
 | `runs/` | One scene's episode. This is a family-level trade that generalises across scenes, or is explicit about not doing so. |
 | `workflow/` | "Which stage is my problem in", not "which member of this stage". |
 
-Read **before running anything**, alongside `judgment/triage.md` and the scene's
-traits, when composing a pipeline. That is the point: a comparison you can only
-make after running all the candidates is not a selection aid.
+Read **before running anything**, alongside `scene_to_pipeline.md` and the
+scene's own analysis, when composing a pipeline. `sfm_plan_brief` returns these
+files and that guide in one call, for exactly this reason. That is the point: a
+comparison you can only make after running all the candidates is not a selection
+aid.
 
 ## What a family file holds
 
@@ -42,12 +44,13 @@ One file per stage of the pipeline, because each stage is a family.
 | Optimization | [optimization.md](optimization.md) | `sparse_model/v1` |
 | Dense reconstruction | [dense.md](dense.md) | `dense_model/v1` |
 
-Scene analysis now has two modules — `SceneTriage` and `SceneMotion`, both
-producing `scene_analysis/v1` — and still has no file here, because of the
-recording protocol below: it has not been asked for. The trade is a real one and
-worth a file eventually (appearance from a CPU pass against geometry from a GPU
-one, and what each can see that the other cannot). Until then the two modules'
-own `SKILL.md` files carry it, and each names the other.
+Scene analysis now has three modules — `SceneTriage`, `SceneMotion` and
+`SceneDescription`, all producing `scene_analysis/v1` — and still has no file
+here, because of the recording protocol below: it has not been asked for. The
+trade is a real one and worth a file eventually (appearance from a CPU pass
+against geometry from a GPU one, and what each can see that the other cannot).
+Until then the two modules' own `SKILL.md` files carry it, and each names the
+other.
 
 **Everything currently written here is structural and nothing is quantified.** The
 axes follow from where each family's numbers come from, not from any dataset, and

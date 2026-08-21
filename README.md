@@ -366,7 +366,7 @@ pinning torch 2.11. See the note in `packages/sfmkit/pyproject.toml`.
     --docker --mount /home/anthonyq/datasets
 ```
 
-Eighteen tools in five categories — discovery, execution, inspection,
+Nineteen tools in five categories — discovery, execution, inspection,
 knowledge, authoring. **The count does not grow with the module count.** Modules
 are discovered through `sfm_list_modules` / `sfm_describe_module`, never
 enumerated as tools, so the surface is the same at two modules and at two

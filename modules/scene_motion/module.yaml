@@ -1,5 +1,5 @@
 name: SceneMotion
-version: 1.0.0
+version: 1.1.0
 kind: analysis
 summary: >
   Dense optical flow between image pairs, summarised into camera-motion scores
@@ -16,11 +16,17 @@ description: |
 
   **motion** -- is there enough parallax to triangulate? `low_baseline_risk`
   answers that, and `variability` says whether the answer holds across the whole
-  capture or only its middle. The opposite failure -- too much displacement to
-  match -- is deliberately NOT reported as a risk fraction any more: that flag
-  fired on every benchmark scene measured and none of them failed. What survives
-  is the raw `high_motion_tail`, corroborated by `rotation_median_deg`, because
-  view change rather than displacement is what costs a matcher correspondences.
+  capture or only its middle.
+
+  The opposite failure -- too much displacement between frames -- is reported as
+  the raw `high_motion_tail` and `overall_magnitude` rather than as a risk
+  fraction. **Read both. They are the most predictive numbers this module
+  produces.** Taken to a sparse model across fourteen captures, the highest
+  readings on either are exactly the captures whose view graph fragments under a
+  classical detector and ratio-test matcher, with a clean gap below them. The
+  reason is that these measure ADJACENT-frame overlap, and a capture that covers
+  ground quickly between adjacent frames shares less between non-adjacent ones --
+  which is what an exhaustive view graph is made of.
 
   **degeneracy** -- the two configurations that make a correct pipeline produce a
   wrong answer rather than no answer:
@@ -35,6 +41,23 @@ description: |
     viewed from two positions. That test needs intrinsics, so this cue is OMITTED
     on an uncalibrated scene rather than guessed.
 
+  **Both degeneracy numbers are fractions, and the fraction is not the actionable
+  half.** The advice attached to them -- watch the seed, raise
+  `init_min_angle_deg`, re-run `SceneLoader` over the translating subset -- needs
+  to know WHICH pairs, and one pair in eleven and eleven in eleven are the same
+  metric with different plans. So `degeneracy` carries `pair_planar` and
+  `pair_pure_rotation` as boolean series beside their own pair indices, and the
+  artifact note names the flagged pairs even when no diagnostic fires. The
+  fractions are means of exactly these arrays; a caller wanting the fraction over
+  a subset computes it rather than asking for a re-run.
+
+  The indices are separate per series on purpose. A pair can admit a homography
+  and no rotation estimate, and an uncalibrated scene fills the planar series and
+  neither of the others, so one shared index would be a false claim about
+  alignment. `motion.pair_rotation_deg` gained `rotation_pair_index` for the same
+  reason: it was implicitly indexed by the full pair list, which is only correct
+  when every pair fits.
+
   Reading this before choosing a matcher is the point. `planarity` on
   `pairwise_matches/v1` measures the same degeneracy AFTER a matcher has run on
   every pair; this measures it in seconds, before the choice.
@@ -43,7 +66,7 @@ description: |
   orchestrator from thresholds in `skills/judgment/`. The `healthy` bands here
   are this module's own advisory reading.
 
-image: sfmstack/scene-motion:1.0.0
+image: sfmstack/scene-motion:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -121,11 +144,22 @@ params:
       already run on similar captures.
 
   # There was a `high_motion_thresh` here, feeding a `large_motion_risk` metric.
-  # Both were cut on 2026-08-14: the risk fraction fired on all ten benchmark
-  # scenes measured, every one of which reconstructs, so it reported its own
-  # threshold rather than the capture. `high_motion_tail` is the same
-  # measurement without a cut welded in, and the `pair_p90` array lets any
-  # consumer recompute the fraction at a threshold of its choosing.
+  # Both were cut on 2026-08-14 because the risk fraction fired on all ten
+  # benchmark scenes measured, "every one of which reconstructs".
+  #
+  # THAT JUSTIFICATION WAS WRONG and is recorded here rather than quietly fixed.
+  # No pipeline had been run at the time; the scenes were assumed to reconstruct
+  # because they are standard benchmarks. Run to a sparse model, the highest-motion
+  # captures do NOT fully reconstruct on a classical branch -- they drop between a
+  # quarter and three quarters of their frames. The flag was reporting something
+  # real and was cut for firing too often, which is a threshold complaint dressed
+  # as a validity one.
+  #
+  # Not restored, because `high_motion_tail` carries the same measurement without
+  # a cut welded into it and separates the fragmenting captures cleanly on its
+  # own, and because `pair_p90` lets any consumer threshold it themselves. The
+  # lesson is the one worth keeping: DO NOT CUT A METRIC FOR OVER-FIRING UNTIL THE
+  # PIPELINE HAS BEEN RUN ON THE SCENES IT FIRED ON.
 
   rotation_risk_deg:
     type: number
@@ -162,12 +196,28 @@ metrics:
     direction: neutral
     meaning: >
       Median over pairs of the p75 flow magnitude, as a fraction of the image
-      diagonal. Apparent motion overall. Neutral because both ends are failures:
-      too little is no parallax, too much is no correspondence. NO HEALTHY BAND
-      ON PURPOSE -- ten ETH3D and DTU scenes measured 0.075-0.31 at stride 1, all
-      of which reconstruct, so any band inherited from the predecessor's
-      thresholds would have flagged nine of ten. Read it against the capture you
-      intended, not against a constant.
+      diagonal. Apparent motion between ADJACENT frames. Neutral because both ends
+      are failures: too little is no parallax, too much is no correspondence.
+
+      A previous version of this note declined to put a band here on the grounds
+      that the benchmark captures measured spanned the range and "all of which
+      reconstruct". That was an assumption, not an observation, and running the
+      pipeline refuted it: across fourteen captures taken to a sparse model, the
+      HIGHEST readings are exactly the captures whose view graph fragments under a
+      classical detector and ratio-test matcher, dropping between a quarter and
+      three quarters of the frames, with a clean gap separating them from the
+      captures that complete.
+
+      The mechanism is that this measures adjacent-frame overlap, and a capture
+      that covers ground quickly between adjacent frames shares proportionally
+      less between NON-adjacent ones -- which is what an exhaustive view graph is
+      built from. A fast capture is a sparse graph.
+
+      Still no band declared, because the separating value is a property of the
+      corpus rather than of the algorithm and n is small. But read a high value as
+      a prediction that the graph will be sparse: plan exhaustive pairing, budget
+      for a learned detector and matcher, and treat the cheap classical branch as
+      something to verify rather than assume. See skills/scene_to_pipeline.md.
 
   high_motion_tail:
     direction: neutral

@@ -2,18 +2,24 @@
 
 Deliberately thin: every tool is a one-line call into `SfmService`. All the logic
 lives there so it is testable without MCP transport, and an SDK change touches
-this file alone rather than eighteen tools.
+this file alone rather than nineteen tools.
 
-Eighteen tools in five stable categories -- discovery, execution, inspection,
+Nineteen tools in five stable categories -- discovery, execution, inspection,
 knowledge, authoring -- and the count does not grow with the module count.
 Modules are *discovered* through `sfm_list_modules` / `sfm_describe_module`,
 never enumerated as tools, so this surface is the same at 2 modules and at 200.
 
-It grows, rarely, with the number of PAYLOAD KINDS the surface can carry.
-`sfm_artifact_image` was the eighteenth: artifacts could always hold pictures and
-there was no way to hand one to the caller, so anything that needed looking at
-required filesystem access outside this protocol. That is a different axis from
-the module count and it is the only one that should move this number.
+It grows, rarely, and on two axes that are not the module count.
+
+The number of PAYLOAD KINDS the surface can carry: `sfm_artifact_image` was the
+eighteenth, because artifacts could always hold pictures and there was no way to
+hand one to the caller, so anything that needed looking at required filesystem
+access outside this protocol.
+
+And a STEP OF THE LOOP that had no tool at all: `sfm_plan_brief` is the
+nineteenth. Choosing the first pipeline was the one step with nothing behind it
+-- the type system says what CAN follow, the family files say what SHOULD, and
+nothing joined either to the numbers step 2 produces.
 
 Which files each tool reads: docs/mcp-tools.md.
 
@@ -44,25 +50,35 @@ Modules are discovered, not listed as tools. Start with `sfm_list_modules` and
 `sfm_describe_module`; both are cheap.
 
 The loop:
-  1. Build a scene, then run modules against it. Every call reports its metrics
-     and diagnostics inline -- you do not need a second call to see how it went.
-  2. Metrics carry their own interpretation (`direction`, `healthy` band), so
-     whether a number is good is in the response rather than in your head.
+  1. Build a scene with `SceneLoader`, then characterise it. Run `SceneTriage`
+     and `SceneMotion` BEFORE `SceneDescription`, not alongside it: the describer
+     opens three frames at full resolution and one of them is a free choice, and
+     the per-image series those two modules produce are what make that choice by
+     evidence rather than by eye. Every call reports its metrics and diagnostics
+     inline -- you do not need a second call to see how it went.
+  2. `sfm_run` returns metric VALUES. Their `direction` and `healthy` band live
+     in `sfm_describe_module(name)` and in the artifact's own frontmatter, not in
+     the run response -- so a bare number is a measurement, and the DIAGNOSTIC is
+     what tells you it is out of band.
   3. A diagnostic's `see_also` names the exact curated section that addresses it.
      Fetch it with `sfm_module_skill`.
   4. `sfm_artifact_image` hands back a picture an artifact carries, so questions
      a number cannot answer -- what is actually in this scene -- do not need
      filesystem access outside this protocol.
-  5. Re-running with different parameters keeps BOTH results. Use `sfm_compare`
+  5. Before choosing any module, `sfm_plan_brief(scene_id)`. It gathers the
+     analysis, the guide that says how to read those numbers, the family file for
+     each stage and the live menu, so the first pipeline is argued once against a
+     complete picture. It prepares; the argument is yours.
+  6. Re-running with different parameters keeps BOTH results. Use `sfm_compare`
      to put them side by side -- it also reports where two lineages diverge, so a
      difference inherited from three stages upstream is not credited to the knob
      you just turned.
-  6. When metrics suggest the real problem is upstream, `sfm_replay` re-runs that
+  7. When metrics suggest the real problem is upstream, `sfm_replay` re-runs that
      step and everything downstream in one call.
-  7. When tuning has bottomed out, `sfm_module_skill(name, "limitations")` gives
+  8. When tuning has bottomed out, `sfm_module_skill(name, "limitations")` gives
      the failure signature and a capability query; `sfm_find_alternatives` runs
      that query against the live registry.
-  8. If nothing fits, `sfm_scaffold_module` -> implement the adapter ->
+  9. If nothing fits, `sfm_scaffold_module` -> implement the adapter ->
      `sfm_build_module` -> `sfm_smoke_test`.
 
 Type checking happens before anything is spawned, so a wiring mistake is a fast
@@ -228,6 +244,42 @@ def build_server(service: SfmService):
         # Picture plus provenance: without the second block the caller has an
         # image and no record of which artifact it came out of.
         return [Image(path=doc["path"]), {k: v for k, v in doc.items() if k != "path"}]
+
+    @mcp.tool()
+    def sfm_plan_brief(
+        scene_id: str, stages: list[str] | None = None
+    ) -> dict[str, Any]:
+        """Everything needed to turn a scene analysis into a first pipeline plan.
+
+        Call this after `SceneTriage`, `SceneMotion` and `SceneDescription` have
+        run, and before choosing any module. It gathers, in one response:
+
+          - the scene's own bookkeeping and its image names, and every
+            `scene_analysis/v1` artifact produced against it -- metrics,
+            diagnostics, narrative, and the per-frame and per-pair SERIES those
+            metrics are summaries of. Every analysis metric is a median, a p75 or
+            a fraction, and the advice attached to them is per-frame: open the
+            soft frame before dropping it, keep the planar pair out of the seed.
+            `series` is what makes that followable; indices are positions in
+            `scene.images`, and each series carries the index it was written
+            against, which is not always the same one
+          - `skills/scene_to_pipeline.md`, which is how those numbers are read:
+            the ranges measured across every scene so far, what each metric can
+            and cannot tell you, and the traps that have already caught someone
+          - the family file for each pipeline stage, which is what says which
+            member of that stage to reach for
+          - the live menu of modules consuming `scene/v1`
+          - the shape the plan should take
+
+        It does NOT decide. There is no model here; the argument is yours to
+        make. What this closes is a measured gap -- of the 29 metrics the analysis
+        modules produce, two are named anywhere in the family files, so the
+        families speak in adjectives while step 2 speaks in numbers.
+
+        `stages` defaults to detection, matching, tracking, pose, sparse and
+        optimization. Pass it to narrow the call, or to add 'dense'.
+        """
+        return service.plan_brief(scene_id, stages=stages)
 
     @mcp.tool()
     def sfm_run_summary(run_id: str) -> dict[str, Any]:

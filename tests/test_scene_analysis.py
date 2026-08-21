@@ -183,8 +183,44 @@ def test_the_per_pair_series_rides_along_as_a_recorded_extra(orch):
     scene = load_dtu(orch)
     art = orch.run("SceneTriage", run_id="analysis", inputs={"scene": scene.id}).primary
 
-    assert art.manifest.extras["photometric"] == ["pair_combined", "pair_index"]
-    assert len(art.load("photometric", "pair_combined")) == 5  # consecutive pairs
+    n_images, n_pairs = 6, 5  # consecutive pairing over the fixture scene
+
+    assert art.manifest.extras["photometric"] == [
+        "highlight_clipped", "pair_combined", "pair_index", "shadow_clipped",
+    ]
+    assert art.manifest.extras["texture"] == [
+        "density_per_image", "sharpness_median", "textureless_per_image",
+    ]
+
+    # `texture` mixes one scalar with three per-image series. The scalar is the
+    # scale `sharpness` is read against; the other two answer "which frame will
+    # starve the detector", which the set median cannot.
+    assert art.load("texture", "density_per_image").shape == (n_images,)
+    assert art.load("texture", "textureless_per_image").shape == (n_images,)
+
+    # The scene metric is the MEDIAN of the series it summarises, and pinning that
+    # is what makes the series usable: a reader comparing one frame against the
+    # scene number needs to know which statistic they are comparing against.
+    assert art.metric("texture_density") == pytest.approx(
+        float(np.median(art.load("texture", "density_per_image"))), rel=1e-3
+    )
+    assert art.metric("textureless_fraction") == pytest.approx(
+        float(np.median(art.load("texture", "textureless_per_image"))), rel=1e-3
+    )
+
+    # `photometric` holds two DIFFERENT indices, which is the trap this asserts
+    # against: everything named `pair_*` is per pair, and the clipping arrays are
+    # per IMAGE, in scene order. They live in the same group because that is where
+    # the measurement comes from, not because they share an axis.
+    assert len(art.load("photometric", "pair_combined")) == n_pairs
+    assert len(art.load("photometric", "shadow_clipped")) == n_images
+    assert len(art.load("photometric", "highlight_clipped")) == n_images
+
+    # The scale `sharpness` is read against. Without it a raw Laplacian variance
+    # is uninterpretable, because `sharpness_ratio` divides by it and drops it.
+    assert art.load("texture", "sharpness_median") == pytest.approx(
+        float(np.median(art.load("texture", "sharpness")))
+    )
 
 
 @needs_dtu
@@ -233,6 +269,41 @@ def test_scene_motion_fills_the_other_two_groups(orch, monkeypatch):
 @needs_cv2
 @needs_torch
 @needs_raft
+def test_the_degeneracy_fractions_ship_the_series_they_are_means_of(orch, monkeypatch):
+    """A fraction cannot say WHICH pair, and every action attached to these two
+    metrics needs to know -- keep the pair out of the seed, re-run SceneLoader
+    over the translating subset. Every non-zero reading measured so far has been
+    one or two pairs of eleven, below the diagnostic band, where the fraction
+    alone does not distinguish a local fact from a global one."""
+    monkeypatch.setenv("RAFT_CHECKPOINT", str(RAFT_CHECKPOINT))
+    scene = load_dtu(orch)
+    art = orch.run("SceneMotion", run_id="analysis", inputs={"scene": scene.id}).primary
+
+    planar = art.load("degeneracy", "pair_planar")
+    rotation_only = art.load("degeneracy", "pair_pure_rotation")
+
+    # The metric is the mean of the series, exactly -- so a caller wanting the
+    # fraction over a subset of the capture computes it rather than re-running.
+    assert art.metric("planar_dominance") == pytest.approx(float(np.mean(planar)))
+    assert art.metric("pure_rotation_risk") == pytest.approx(
+        float(np.mean(rotation_only))
+    )
+
+    # Each series against ITS OWN index, never a shared one. On a clean scene the
+    # subsets coincide and it is tempting to assume they always do; a pair can
+    # admit a homography and no rotation estimate, and an uncalibrated scene
+    # fills the first and neither of the others.
+    assert len(art.load("degeneracy", "pair_index")) == len(planar)
+    assert len(art.load("degeneracy", "rotation_pair_index")) == len(rotation_only)
+    assert len(art.load("motion", "rotation_pair_index")) == len(
+        art.load("motion", "pair_rotation_deg")
+    )
+
+
+@needs_dtu
+@needs_cv2
+@needs_torch
+@needs_raft
 def test_an_uncalibrated_scene_omits_the_angular_cues_rather_than_zeroing_them(
     orch, monkeypatch
 ):
@@ -249,6 +320,15 @@ def test_an_uncalibrated_scene_omits_the_angular_cues_rather_than_zeroing_them(
     # The cues that need no K are unaffected.
     assert art.metric("overall_magnitude") > 0.0
     assert art.metric("planar_dominance") is not None
+
+    # And the series follow the same rule as the metrics: the planar one is
+    # written, the rotation one is absent rather than empty. This is the case
+    # that makes a single shared pair index wrong -- here the two subsets are not
+    # merely different sizes, one of them does not exist.
+    groups = art.load("degeneracy")
+    assert {"pair_planar", "pair_index"} <= set(groups)
+    assert "pair_pure_rotation" not in groups
+    assert "rotation_pair_index" not in groups
 
 
 @needs_dtu

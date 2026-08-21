@@ -1,6 +1,6 @@
-# SceneMotion 1.0.0
+# SceneMotion 1.1.0
 #
-#   docker build -t sfmstack/scene-motion:1.0.0 -f modules/scene_motion/Dockerfile .
+#   docker build -t sfmstack/scene-motion:1.1.0 -f modules/scene_motion/Dockerfile .
 #
 # Build context is the repository root.
 #

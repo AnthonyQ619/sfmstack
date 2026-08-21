@@ -38,6 +38,7 @@ from conftest import contract_metrics  # noqa: E402
 
 def test_fixture_modules_all_load(registry):
     assert registry.names() == [
+        "FakeAnalyser",
         "FakeDetector",
         "FakeMatcher",
         "FakeReconstructor",
@@ -205,7 +206,8 @@ def test_find_by_produced_type(registry):
 
 def test_find_by_consumed_type(registry):
     names = [m.name for m in registry.find(consumes="scene/v1")]
-    assert names == ["FakeDetector", "FakeMatcher", "FakeReconstructor", "FakeTracker"]
+    assert names == ["FakeAnalyser", "FakeDetector", "FakeMatcher",
+                     "FakeReconstructor", "FakeTracker"]
 
 
 def test_not_consuming_expresses_switch_to_a_direct_tracker(registry, types):

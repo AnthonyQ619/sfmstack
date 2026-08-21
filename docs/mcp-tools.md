@@ -1,19 +1,28 @@
 ---
 name: mcp-tools
-description: The 18 MCP tools and the exact files each one reads or writes. Where the agent's context comes from, and which tools are currently blocked on the empty knowledge tiers.
-status: current as of 2026-08-15
+description: The 19 MCP tools and the exact files each one reads or writes. Where the agent's context comes from, and which tools are currently blocked on the empty knowledge tiers.
+status: current as of 2026-08-16
 ---
 
 # The tools and their context
 
-Eighteen tools in five groups. The count does not grow with the module count —
+Nineteen tools in five groups. The count does not grow with the module count —
 modules are *discovered* through `sfm_list_modules` / `sfm_describe_module`, never
 enumerated as tools, so this surface is the same at 2 modules and at 200.
 
-It grows, rarely, on a different axis: the number of **payload kinds** the
-surface can carry. `sfm_artifact_image` was the eighteenth, added 2026-08-15 —
-artifacts could always hold pictures and there was no way to hand one back, so
-anything that needed looking at required filesystem access outside this protocol.
+It grows, rarely, on two other axes.
+
+The number of **payload kinds** the surface can carry: `sfm_artifact_image` was
+the eighteenth, added 2026-08-15 — artifacts could always hold pictures and there
+was no way to hand one back, so anything that needed looking at required
+filesystem access outside this protocol.
+
+And a **step of the loop with no tool behind it**: `sfm_plan_brief` is the
+nineteenth, added 2026-08-16. Choosing the first pipeline was the step where the
+agent was most on its own — the type system says what *can* follow and the family
+files say what *should*, and nothing joined either to the numbers step 2
+produces. Measured: of the 29 metrics the three analysis modules emit, exactly
+two are named anywhere in `skills/families/`.
 
 Every tool's context comes from one of four stores. Knowing which one answers
 "why does the agent know this" and, more usefully, "why does it not".
@@ -133,6 +142,27 @@ No second call is needed to see how a step went.
 | `sfm_artifact_image` | **D** — one image sidecar's bytes, returned as an `ImageContent` block beside its provenance | — |
 | `sfm_run_summary` | **D** — `run.md`: every step attempted with params and metrics, plus the leaf artifacts nothing consumed | — |
 | `sfm_compare` | **D** — the manifests of the named artifacts, plus their ancestry walked back through `inputs` | — |
+| `sfm_plan_brief` | **A + C + D** — every `scene_analysis/v1` in the store whose `scene` is this one, `skills/scene_to_pipeline.md`, six `skills/families/*.md`, and the 27 manifests that consume `scene/v1` | — |
+
+**`sfm_plan_brief` is the only tool that reads three stores at once**, and that is
+the point of it. Step 3 needs the measurements (**D**), the prose that ranks each
+stage (**C**), and the live menu (**A**) in the same breath — split across six
+calls, the early ones have fallen out of context by the time the argument is
+made. It reports `analysis_missing` rather than quietly planning from a partial
+picture, and it decides nothing: like `SceneDescription` rendering a contact
+sheet, it prepares and stops.
+
+**It also reads the artifact payloads, not only their manifests** — the one place
+in the tool surface that opens an npz to answer a question. Every metric an
+analysis module reports is a median, a p75 or a fraction over the set, and the
+advice attached to those metrics is per-frame and per-pair: *open the soft frame
+before dropping it*, *keep the planar pair out of the seed*. Six independent
+readers of the first briefs hit the same wall — the instruction named a frame and
+the response carried one scalar. So each analysis entry now has a `series` block
+holding the stored arrays as the artifact groups them, and `scene.images` carries
+the index those series are in. Above 200 elements a series arrives summarised at
+both extremes rather than truncated to a prefix, since a prefix of a per-frame
+array is the first frames rather than the interesting ones.
 
 `sfm_compare`'s lineage-divergence report is the part that earns its place:
 without it, two results differing because of a change three stages upstream look
@@ -231,10 +261,16 @@ session to a first reconstruction, with the files each step opens.
    -> motion / degeneracy groups; overall_magnitude, variability,
       rotation_median_deg, planar_dominance, pure_rotation_risk
 
-3. choose the family                 <- no tool decides this
-   sfm_workflow_skill("families/detection.md")
-   sfm_workflow_skill("families/matching.md")
-   sfm_list_modules(consumes=scene/v1)   the menu, not the answer
+3. plan the pipeline                 <- NEW, and previously the gap here
+   sfm_plan_brief(scene)               store: every scene_analysis/v1 whose
+                                       `scene` is this one
+                                     + skills/scene_to_pipeline.md
+                                     + skills/families/{detection,matching,
+                                       tracking,pose,sparse,optimization}.md
+                                     + 27 module.yaml (the menu)
+   -> one response holding measurements, the guide that reads them, the prose
+      that ranks each stage, and the shape the plan should take.
+      It PREPARES. It does not decide.
 
 4. the stage loop, repeated
    sfm_check -> sfm_run -> read the inline metrics
@@ -257,9 +293,15 @@ learned the scene by starting to reconstruct it. Now the loader's bookkeeping
 (how much image there is), triage (what the images are like) and motion (how the
 camera moved) are all available before a detector is chosen.
 
-**Step 3 is still a judgement, and no tool makes it.** The type system constrains
-what *can* follow; the family files say what *should*. That asymmetry is
-deliberate and it is where the empty tiers bite.
+**Step 3 is still a judgement, and no tool makes it** — `sfm_plan_brief` gathers
+the argument's inputs and stops there, the same way `SceneDescription` renders a
+contact sheet and stops. The type system constrains what *can* follow; the family
+files say what *should*; `skills/scene_to_pipeline.md` translates the numbers
+into the vocabulary those files are written in. What none of them do is decide.
+
+That asymmetry is deliberate, and the remaining gap is narrower than it was: the
+translation is now written down and countable, so a threshold that turns out to
+be wrong can be corrected in one file rather than re-derived every session.
 
 ---
 
@@ -273,7 +315,7 @@ what is wired and waiting, so the gap is a known state rather than a surprise.
 
 | Reached by | How |
 | --- | --- |
-| `sfm_workflow_skill(topic)` | resolves `skills/judgment/<topic>.md` on a bare topic name — `triage`, `stopping`, `tradeoffs`, `smells`, `priors` |
+| `sfm_workflow_skill(topic)` | resolves `skills/judgment/<topic>.md` on a bare topic name — `swap_or_build` (written), `stopping` and `priors` (empty) |
 
 Indexed in `skills/SKILLS.md` and unwritten. Five files are named there.
 
@@ -327,7 +369,7 @@ be built from later. Nothing needs re-plumbing when the rows arrive.
 
 | Tier | Files | Tool that reads it | Blocked capability |
 | --- | --- | --- | --- |
-| `judgment/` | 0 of 5 named | `sfm_workflow_skill` | trait derivation; stopping criteria; cut points for the analysis cues |
+| `judgment/` | 1 of 3 named | `sfm_workflow_skill` | stopping criteria; which families to trust. Trait derivation moved to `scene_to_pipeline.md` |
 | `workflow/` | 0 | `sfm_workflow_skill` | stage-level diagnosis above a single module |
 | `runs/INDEX.md` | header only | `sfm_workflow_skill` | "scenes like this were solved how" |
 | `families/` | 8 | `sfm_workflow_skill` | — populated |

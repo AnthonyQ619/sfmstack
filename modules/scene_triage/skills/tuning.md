@@ -43,10 +43,15 @@ descriptor repeatability. Threshold from the predecessor's HIGH label [S1].
    `sfm_find_alternatives(produces='pairwise_matches/v1',
    not_consuming='features/v1')`.
 
-**Do not** treat a high total as a matcher decision on its own. On the ten
-benchmark scenes measured here `combined_change` ran 0.055–0.116 and all of them
-reconstruct [S4]; the number that decides a family change is `inlier_ratio`, and
-this one tells you *why* it fell.
+**Do not** treat a high total as a matcher decision on its own. Across the
+benchmark corpus this metric has never left a narrow band and has never fired, so
+it has no demonstrated discriminating power — the number that decides a family
+change is `inlier_ratio`, and this one tells you *why* it fell. (An earlier
+version of this note added "and all of them reconstruct" as supporting evidence.
+That was an assumption rather than an observation; run to a sparse model, several
+captures in that corpus do not fully reconstruct on a classical branch. It does
+not change this metric's verdict — `combined_change` is quiet on the failures too
+— but the phrase was doing unearned work and is gone.)
 
 **`pairing: all` is the check worth running** when the capture spans time. A set
 shot over two hours can have small consecutive deltas and a large
@@ -69,7 +74,18 @@ comparison is against this capture's own frames.
    frame-exclusion parameter here on purpose — the scene is the thing that
    defines the image set, and forking it keeps both versions comparable.
 3. If nearly every frame is soft, the ratio will look *healthy* while the whole
-   set is blurred. Read the per-image `texture/sharpness` array, not the ratio.
+   set is blurred. Read the per-image `texture/sharpness` array, not the ratio,
+   and read `sharpness_median` beside it — that is the number the ratio divides
+   by, and it spans roughly eighteen-fold across the corpus. A ratio of 0.7 means
+   something different at a low-contrast subject than at a high-contrast one.
+
+**This metric reports content, not focus, on every capture where it has fired.**
+Five of five, confirmed by opening the frames at full resolution: the low frames
+were aimed at a smooth roof plane, a blank painted wall, or shaded timber, and
+were sharply in focus. **Open the frame
+before dropping it.** `texture/sharpness` and `sharpness_median` are in the
+artifact and in `sfm_plan_brief` for exactly that; the diagnostic names the
+frames, and the array says by how much.
 
 **Do not** raise `analysis_max_side` to make sharpness look better. Laplacian
 variance rises with resolution; the ratio is designed to be immune to that, and
@@ -86,11 +102,24 @@ deviation under `texture_floor`. Detection cannot happen there at any threshold.
 
 1. Check what the region is. Sky and water are harmless — they carry no structure
    worth reconstructing. A textureless *wall* is not harmless, because it is
-   geometry you wanted.
-2. Watch `spatial_coverage` on `features/v1` rather than keypoint count. A
+   geometry you wanted. This metric counts area and is blind to which; pair it
+   with `empty_regions` from `SceneDescription`.
+2. **Check whether the region is burnt or merely flat**, because they have
+   opposite gradients. `highlight_clipped_fraction` and
+   `shadow_clipped_fraction` answer it, added in 1.1.0 for this. High textureless
+   *and* high clipped means detail is destroyed and no exposure normalisation
+   recovers it; high textureless with clipping near zero means the detail is
+   there at another exposure or scale, and normalising at detection is a real
+   move. Measured across sixteen scenes, the three worst-textured split exactly
+   that way: two controlled-rig captures reading ~0.60 empty alongside ~0.6
+   clipped are blown backdrop and harmless, where a blank-wall interior reading
+   0.80 empty against essentially zero clipped is the surface being reconstructed
+   — flat, not burnt, and therefore recoverable at higher working resolution or
+   with exposure normalisation at detection.
+3. Watch `spatial_coverage` on `features/v1` rather than keypoint count. A
    detector can hit its cap entirely inside the textured third, and a thousand
    keypoints in one corner give a degenerate two-view geometry.
-3. Consider a detector-free matcher, which produces correspondences without
+4. Consider a detector-free matcher, which produces correspondences without
    needing a keypoint to exist first:
    `sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1')`.
 
@@ -109,5 +138,5 @@ parameter one — [limitations.md](limitations.md#repetitive-structure).
 The one thing worth varying is `patch_size`, and it changes the *scale* the
 question is asked at rather than the answer: 32px at a 512px long edge is roughly
 one brick or one window pane; 64px asks whether whole architectural bays repeat.
-A facade can score low at one and high at the other, and which one matters
-depends on the scale your detector's descriptors cover.
+A building frontage can score low at one and high at the other, and which one
+matters depends on the scale your detector's descriptors cover.

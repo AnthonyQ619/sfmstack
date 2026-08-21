@@ -1,5 +1,5 @@
 name: SceneTriage
-version: 1.0.0
+version: 1.2.0
 kind: analysis
 summary: >
   CPU scene characterisation before anything is reconstructed: photometric
@@ -29,6 +29,20 @@ description: |
   **metadata** -- whether the capture has an order. Everything that matches or
   tracks consecutive frames assumes it does, and nothing else in the stack checks.
 
+  **The per-image series are the point, not a by-product.** Every metric here is
+  a median or a p75 over the set, and a median cannot answer "which frame".
+  `texture.sharpness` and its scale `sharpness_median`,
+  `texture.density_per_image`, `texture.textureless_per_image`, and
+  `photometric.shadow_clipped` / `highlight_clipped` are all written per image in
+  scene order so a caller can open the frame before deciding anything about it.
+  They ride as extras under the additive-extension rule; `sfm_plan_brief` surfaces
+  them.
+
+  The two texture series were added in 1.2.0 because `keypoints_min` on
+  `features/v1` is what predicts a frame failing to register, and it is the FRAME
+  that starves, not the set: a scene whose texture sits in half its frames reports
+  the same `texture_density` as one where it is spread evenly.
+
   All groups of `scene_analysis/v1` are optional and this module fills three of
   them. `SceneMotion` fills the other two from optical flow. They are separate
   artifacts of the same type and compose without a merge step -- read whichever
@@ -39,7 +53,7 @@ description: |
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 
-image: sfmstack/scene-triage:1.0.0
+image: sfmstack/scene-triage:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -206,6 +220,35 @@ metrics:
       purpose: absolute sharpness depends on content and resolution, but a frame
       far below its own set's median is blurred relative to its neighbours and is
       a candidate for dropping.
+
+  sharpness_median:
+    direction: neutral
+    meaning: >
+      Median Laplacian variance over the set, in absolute units. NO BAND, and
+      none is possible: the value depends on content and resolution, so 180 is a
+      sharp frame in one scene and a soft one in another. It is here because
+      `sharpness_ratio` divides the per-image `sharpness` array by exactly this
+      number and then discards it, which leaves the array unreadable on its own.
+      Report it so a caller holding the array can put a frame on a scale.
+
+  highlight_clipped_fraction:
+    direction: lower_better
+    meaning: >
+      Median over images of the frame area at L >= 250 -- blown highlights, where
+      detail is gone rather than merely bright. NO BAND: never measured across a
+      corpus, and a sky-heavy outdoor capture legitimately reads higher than a
+      studio one. Read it beside `textureless_fraction`: together they separate a
+      region that is EMPTY from one that is BURNT, which are the same absence to
+      a detector and different problems to fix. Was already being computed and
+      consumed only as a pairwise difference inside `exposure_shift`.
+
+  shadow_clipped_fraction:
+    direction: lower_better
+    meaning: >
+      The same measurement at L <= 5. Crushed shadow. Separate from the highlight
+      fraction because the captures that produce them differ -- one is exposure
+      for the subject against a bright sky, the other is an underlit interior --
+      and so does what you would do about it.
 
   ordered:
     direction: neutral

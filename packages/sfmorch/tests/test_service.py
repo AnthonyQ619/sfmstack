@@ -4,11 +4,12 @@ Exercised through SfmService directly rather than over MCP transport, because th
 logic lives there by design and the MCP layer is one-line registrations.
 """
 
+import numpy as np
 import pytest
 from sfmkit import ArtifactStore
 
 from sfmorch import ModuleRegistry, Orchestrator, OrchestratorError, WiringError
-from sfmorch.service import ServiceConfig, SfmService
+from sfmorch.service import SERIES_MAX, ServiceConfig, SfmService, _series
 
 FIXTURES = "packages/sfmorch/tests/fixtures/modules"
 
@@ -582,3 +583,165 @@ def test_a_declared_diagnostic_that_did_not_fire_is_not_a_problem(service, scene
     assert result["run"]["diagnostics"] == []
     assert "weak_matching" in service.registry.get("FakeMatcher").diagnostics
     assert result["passed"] is True
+
+
+# --------------------------------------------------------------------------- #
+# Planning -- step 3
+# --------------------------------------------------------------------------- #
+
+
+def test_plan_brief_gathers_the_analysis_the_guide_and_the_families(service, scene):
+    """One call has to carry the whole argument.
+
+    Split across six, the measurements have fallen out of context by the time the
+    family prose is read, which is exactly the failure this tool exists to stop.
+    """
+    scene_id = scene["outputs"]["scene"]
+    service.run("FakeAnalyser", run_id="r", inputs={"scene": scene_id})
+
+    brief = service.plan_brief(scene_id)
+
+    assert brief["scene"]["artifact"] == scene_id
+    assert [a["module"] for a in brief["analysis"]] == ["FakeAnalyser"]
+    assert brief["analysis"][0]["metrics"]["textureless_fraction"] == 0.2
+
+    # The guide is the half that translates numbers into the adjectives the
+    # family files are written in; without it the brief is just a dump.
+    assert "scene_to_pipeline" in brief["how_to_read"]["path"]
+    assert "texture_density" in brief["how_to_read"]["text"]
+
+    assert set(brief["families"]) == {
+        "detection", "matching", "tracking", "pose", "sparse", "optimization",
+    }
+    assert brief["families_missing"] == []
+    # `dense` is not a first-plan decision and is left out on purpose.
+    assert "dense" not in brief["families"]
+
+    assert brief["menu"]["modules"], "the live menu, not a remembered one"
+    assert brief["report_shape"]["sections"][0].startswith("SCENE")
+
+
+def test_plan_brief_carries_the_series_a_summary_cannot_answer(service, scene):
+    """Every metric an analysis module reports is a median, a p75 or a fraction,
+    and half the advice attached to them is per-frame or per-pair: open the soft
+    frame before dropping it, keep the planar pair out of the seed. Six
+    independent readers of the first briefs hit the same wall -- the instruction
+    named a frame and the brief shipped one scalar."""
+    scene_id = scene["outputs"]["scene"]
+    service.run("FakeAnalyser", run_id="r", inputs={"scene": scene_id})
+
+    brief = service.plan_brief(scene_id)
+    entry = brief["analysis"][0]
+
+    sharpness = entry["series"]["texture"]["sharpness"]
+    assert len(sharpness) == len(brief["scene"]["images"])
+    assert sharpness[-1] == min(sharpness), "the fixture's soft frame is the last"
+
+    # The index is only actionable against the names, which is why the scene
+    # block carries them: "element 11 is soft" is not something you can look at.
+    assert brief["scene"]["images"][sharpness.index(min(sharpness))]
+
+    # A summary already exposed as a metric still rides along in its group; the
+    # series block is the artifact as stored, not a curated subset.
+    assert entry["series"]["texture"]["textureless_fraction"] == 0.2
+    assert entry["series"]["metadata"]["n_images"] == len(brief["scene"]["images"])
+
+
+def test_plan_brief_names_the_module_version_that_measured(service, scene):
+    """A version bump changes the recipe, so a re-analysed scene holds BOTH
+    results under one module name. Without the version the two entries are
+    indistinguishable, and the newer is not reliably the one to trust."""
+    scene_id = scene["outputs"]["scene"]
+    service.run("FakeAnalyser", run_id="r", inputs={"scene": scene_id})
+
+    assert service.plan_brief(scene_id)["analysis"][0]["module_version"] == "1.0.0"
+
+
+def test_long_series_is_summarised_at_both_ends_not_truncated(service):
+    """A prefix of a per-frame array is the first frames, which are not the
+    interesting ones. The scene that overflows the cap is exactly the scene where
+    the extremes are the whole question."""
+    values = np.arange(SERIES_MAX + 50, dtype=np.float64)
+
+    doc = _series(values)
+
+    assert doc["truncated"] is True and doc["n"] == len(values)
+    assert doc["max"] == len(values) - 1
+    assert doc["lowest"][0] == [0, 0.0]
+    assert doc["highest"][0] == [len(values) - 1, float(len(values) - 1)]
+    # Short of the cap it passes through whole, because that is the case the
+    # field exists for and every scene measured so far is twelve images.
+    assert _series(values[:SERIES_MAX]) == list(values[:SERIES_MAX])
+
+
+def test_plan_brief_does_not_count_a_browse_set_as_an_analysis(service, scene):
+    """`SceneDescription`'s first call renders a contact sheet and writes no
+    group. If that counted, a scene that was looked at and never described would
+    read as fully characterised -- the one mistake `analysis_missing` prevents."""
+    scene_id = scene["outputs"]["scene"]
+    placeholder = service.run(
+        "FakeAnalyser", run_id="r", inputs={"scene": scene_id},
+        params={"emit": False},
+    )
+
+    brief = service.plan_brief(scene_id)
+
+    assert brief["analysis"] == []
+    assert [p["artifact"] for p in brief["analysis_pending"]] == [
+        placeholder["outputs"]["analysis"]
+    ]
+
+    # And once the same module has actually measured something, the real one is
+    # gathered and the placeholder stays where it is.
+    service.run("FakeAnalyser", run_id="r", inputs={"scene": scene_id})
+    brief = service.plan_brief(scene_id)
+    assert [a["module"] for a in brief["analysis"]] == ["FakeAnalyser"]
+    assert len(brief["analysis_pending"]) == 1
+
+
+def test_plan_brief_names_the_analysis_that_is_missing(service, scene):
+    """Silence here would be a brief that plans confidently from half a picture."""
+    brief = service.plan_brief(scene["outputs"]["scene"])
+
+    assert brief["analysis"] == []
+    assert brief["analysis_missing"] == [
+        "SceneDescription", "SceneMotion", "SceneTriage"
+    ]
+
+
+def test_plan_brief_only_gathers_analysis_of_the_scene_it_was_asked_about(service):
+    """Artifacts are found by their `scene` backlink, not by run id, because one
+    run holds several scenes and one scene outlives the run that made it."""
+    a = service.run("MakeScene", run_id="r", params={"n_images": 4})
+    b = service.run("MakeScene", run_id="r", params={"n_images": 6})
+    service.run("FakeAnalyser", run_id="r", inputs={"scene": a["outputs"]["scene"]})
+    service.run(
+        "FakeAnalyser", run_id="r", inputs={"scene": b["outputs"]["scene"]},
+        params={"textureless": 0.8},
+    )
+
+    brief = service.plan_brief(b["outputs"]["scene"])
+
+    assert len(brief["analysis"]) == 1
+    assert brief["analysis"][0]["metrics"]["textureless_fraction"] == 0.8
+    # And the diagnostic travels with it -- the brief has to carry what fired,
+    # not only what was measured.
+    assert [d["code"] for d in brief["analysis"][0]["diagnostics"]] == ["textureless"]
+
+
+def test_plan_brief_refuses_an_artifact_that_is_not_a_scene(service, scene):
+    """The scene is the anchor every analysis backlinks to; anything else would
+    silently gather nothing."""
+    analysis = service.run(
+        "FakeAnalyser", run_id="r", inputs={"scene": scene["outputs"]["scene"]}
+    )
+    with pytest.raises(OrchestratorError, match="not 'scene/v1'"):
+        service.plan_brief(analysis["outputs"]["analysis"])
+
+
+def test_plan_brief_stages_can_be_narrowed(service, scene):
+    brief = service.plan_brief(
+        scene["outputs"]["scene"], stages=["matching", "dense"]
+    )
+    assert set(brief["families"]) == {"matching", "dense"}
+    assert brief["families_missing"] == []

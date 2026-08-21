@@ -41,7 +41,16 @@ survive repetitive structure, where a per-match ratio test has no way to prefer 
 right one of several identical candidates.
 
 Repetitive texture is therefore the clearest signal for a learned matcher: a
-façade, a tiled floor, a row of identical windows.
+building frontage, a tiled floor, a row of identical windows.
+
+**Judge that from the description, not from `repetitiveness`.** That metric
+template-matches within one image and is not scale invariant, so a subject whose
+repeating elements recede in perspective reads *low* — the most repetitive subject
+in a corpus can produce the lowest reading in it — while a fronto-parallel grid
+reads *high* for a purely geometric reason. It is dominated by viewing geometry
+rather than by ambiguity, and the hazard here is *between-image* ambiguity, which
+it cannot see at all. `repetition_notes` from `SceneDescription` is the reading to
+act on.
 
 ### 3. Pairing is a graph decision priced as a matcher parameter
 
@@ -83,13 +92,61 @@ signal to change what you are doing, not how you are doing it.
 
 **Distinguishing the two is not this metric's job.** `planarity` is per-pair and
 averaged; it cannot tell "no translation" from "flat wall". What separates them is
-whether *other* pairs in the set carry parallax — and the type designed to answer
-it directly is `scene_analysis/v1`, whose `degeneracy` group holds
-`pure_rotation_risk` and `planar_dominance` as separate numbers. That family is
-designed and not yet built, so today the separation is a judgment call made from
-the pose stage's behaviour: a seed pair that cannot be found (`init_min_angle_deg`
-rejecting everything) points at rotation; a seed that is found and yields a
-reconstruction that drifts points at a plane.
+whether *other* pairs in the set carry parallax.
+
+**`SceneMotion` separates them before this stage runs**, and it is the one place a
+measured number reaches a module choice directly. Its `degeneracy` group holds
+`pure_rotation_risk` and `planar_dominance` as two numbers rather than one:
+`K₂⁻¹HK₁` is exactly a rotation when the camera only turned, and the residual from
+that grows with the baseline-to-depth ratio, so a homography that fits *because
+the scene is flat* does not look like one that fits *because nothing moved*.
+
+Read them at planning time, from `sfm_plan_brief`. **Both read zero on the large
+majority of captures**, which is what makes a non-zero reading worth acting on
+rather than weighing. The readings observed so far, as capture shapes:
+
+| what was captured | what the pair read | what it meant |
+| --- | --- | --- |
+| a near-planar built surface walked past nearly parallel, with a mirrored object in front of it | a fifth of pairs planar, a tenth rotation-only | genuinely the planar row above — real baseline, flat structure |
+| a wall of flat panels shot nearly square-on | a fifth of pairs planar, rotation-only at zero | the cleanest confirmation the pair works: a flat subject, with the rotation discriminator correctly silent because the camera did translate |
+| an orbit around an object with one overhead pass across a flat roof plane | one pair of eleven on both | a single frame's geometry, not the capture's. Watch the seed; not a reason to change solver |
+
+**The fraction is not the actionable half, and as of SceneMotion 1.1.0 you get the
+rest.** Every non-zero reading above is one or two pairs of eleven, so no
+diagnostic fires and the choice is between changing solver and keeping two views
+out of the seed. `degeneracy/pair_planar` and `pair_pure_rotation` name which
+pairs, each against its own index, and the artifact note names them in prose.
+
+**Use that to price the fix, and ask the right question.** The question is not
+whether the degeneracy is local — it is **whether a clean seed still exists after
+the flagged pairs are excluded.** An incremental solver needs exactly one
+well-conditioned pair to bootstrap from and then grows by resection.
+
+- **One flagged pair, the rest clean and connected** → the seed is safe. Exclude
+  that pair, stay incremental, and name the pair you excluded.
+- **Flagged pairs sharing a common frame** → that frame is the problem, not the
+  geometry. Keep it out of seed candidacy.
+- **Flagged pairs spread across the capture, or covering the only wide-baseline
+  pairs** → there is no clean seed to find. Use a solver that does not bootstrap
+  from two views.
+
+**What the global solver costs, measured.** Run on the same matches, on captures
+reading up to a fifth of pairs planar, it registered every frame and returned
+roughly a third fewer points. **Do not read that as evidence against it** — the
+failure it prevents is a *confident wrong model*, and a mis-decomposed essential
+matrix yields a full, plausible, well-reprojecting cloud. On a degeneracy
+question more points is not better and the usual metrics cannot referee. Treat it
+as insurance with a known premium and an unmeasured payout.
+
+One caution from the same set: a subject that *looks* planar need not read as
+planar. A carved relief panel photographed head-on scores zero, because the
+figures project far enough to cast their own shadows. The metric was right and the
+intuition was wrong — see `skills/scene_to_pipeline.md`.
+
+When the analysis has not been run, the fallback is still the pose stage's own
+behaviour: a seed pair that cannot be found (`init_min_angle_deg` rejecting
+everything) points at rotation; a seed that is found and yields a reconstruction
+that drifts points at a plane.
 
 **Where it lands downstream.** `PoseEssentialToPnP` fails to seed and names this
 metric in its diagnostic; `SparseGlobalCOLMAP` reports degenerate pairs failing
@@ -111,6 +168,23 @@ the right answer and cost nothing.
 **A learned detector-based matcher** when the scene is repetitive, the baselines
 are wide, or illumination varies — and pair it with the detector it was trained
 against.
+
+**But check connectivity before repetition — the order matters and is measured.**
+Read `overall_magnitude` / `high_motion_tail` from `SceneMotion` first. A capture
+reading high on those will produce a sparse view graph, and no matcher choice made
+on repetition grounds will save it; the answer there is a learned detector AND
+matcher together. Only once the graph is safe does the repetition question decide
+anything. On a fast capture with a repetitive subject, both halves of the usual
+argument are answering the wrong question — the graph fails before ambiguity gets
+a chance to matter. See `skills/scene_to_pipeline.md` §3b.
+
+**When the graph IS safe and the subject repeats, swap only the matcher.** A
+jointly-reasoning matcher accepts classical descriptors — `FeatureMatchLightGlue`
+carries a `sift` weight set and `auto` reads the producing module off the features
+artifact — so this costs **no re-detection**, the same `features/v1` feeds both.
+Measured across fourteen captures, that swap gains on well-connected repetitive
+subjects and loses a third to a half of the model on well-connected
+non-repetitive ones, so it is worth being right about which you have.
 
 **Detector-free** when the detector is the thing that failed: `keypoints_min` low,
 `spatial_coverage` low, a textureless or blurred capture. Expect to tune

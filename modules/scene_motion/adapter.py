@@ -255,12 +255,31 @@ def choose_pairs(n: int, stride: int, cap: int) -> list[tuple[int, int]]:
     return [pairs[i] for i in idx]
 
 
+NOTE_PAIRS = 6
+
+
+def flagged(label: str, pairs, flags, names) -> str:
+    """Name the pairs a boolean series is true on, for the artifact note.
+
+    Truncated: a scene where most pairs are degenerate produces a diagnostic and
+    a plan to abandon the capture, and does not need sixty names in prose. The
+    full series is in the artifact for anyone who does.
+    """
+    hits = [(i, j) for (i, j), flag in zip(pairs, flags) if flag]
+    if not hits:
+        return ""
+    shown = ", ".join(f"{names[i]}/{names[j]}" for i, j in hits[:NOTE_PAIRS])
+    rest = len(hits) - NOTE_PAIRS
+    return f" {label}: {shown}" + (f", and {rest} more." if rest > 0 else ".")
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
     p = ctx.params
 
     paths = scene.load("images", "paths")
+    names = [str(x) for x in scene.load("images", "names")]
     n = len(paths)
 
     pairs = choose_pairs(n, p.stride, p.max_pairs)
@@ -275,6 +294,13 @@ def run(ctx: Ctx):
 
     p75_flow, p90_flow = [], []
     planar, rotation_only, rotations = [], [], []
+    # Which pair each of the three lists above is talking about. Three separate
+    # index lists rather than one, because they are three different subsets: a
+    # pair can admit a homography fit and no rotation estimate, and an
+    # uncalibrated scene fills the first and neither of the others. Reducing them
+    # to a mean hid that; carrying the mean plus one shared index would have made
+    # a false claim about alignment.
+    planar_pairs, rotation_only_pairs, rotation_pairs = [], [], []
     fit_failures = 0
 
     cache: dict[int, tuple[np.ndarray, float]] = {}
@@ -325,10 +351,13 @@ def run(ctx: Ctx):
             continue
 
         planar.append(geom["planar"])
+        planar_pairs.append((i, j))
         if "rotation_only" in geom:
             rotation_only.append(geom["rotation_only"])
+            rotation_only_pairs.append((i, j))
         if "rotation_deg" in geom:
             rotations.append(geom["rotation_deg"])
+            rotation_pairs.append((i, j))
 
     # ----------------------------------------------------------------- summary
     p75 = np.asarray(p75_flow)
@@ -369,12 +398,29 @@ def run(ctx: Ctx):
         motion["rotation_median_deg"] = rotation_median
         motion["large_rotation_risk"] = large_rotation
         motion["pair_rotation_deg"] = np.asarray(rotations, dtype=np.float64)
+        # Its OWN index. `pair_rotation_deg` used to be written against `pairs`
+        # implicitly, which is only correct when every pair fitted -- one
+        # `flow_fit_failed` and the array silently misaligns with the labels.
+        motion["rotation_pair_index"] = np.asarray(rotation_pairs, dtype=np.int32)
     out.save("motion", **motion)
 
     if planar_dominance is not None:
-        degeneracy = {"planar_dominance": planar_dominance}
+        # `planar_dominance` is a fraction of pairs, and the action attached to it
+        # -- watch the seed, raise `init_min_angle_deg`, drop the offending views
+        # -- needs to know WHICH pairs. One in eleven and eleven in eleven are the
+        # same metric and different plans. The flags are what the fractions are a
+        # mean of, so a caller can also recompute the fraction over a subset.
+        degeneracy = {
+            "planar_dominance": planar_dominance,
+            "pair_index": np.asarray(planar_pairs, dtype=np.int32),
+            "pair_planar": np.asarray(planar, dtype=np.bool_),
+        }
         if rotation_risk is not None:
             degeneracy["pure_rotation_risk"] = rotation_risk
+            degeneracy["rotation_pair_index"] = np.asarray(
+                rotation_only_pairs, dtype=np.int32
+            )
+            degeneracy["pair_pure_rotation"] = np.asarray(rotation_only, dtype=np.bool_)
         out.save("degeneracy", **degeneracy)
 
     out.metric("n_pairs", len(pairs), direction="neutral")
@@ -491,4 +537,9 @@ def run(ctx: Ctx):
            + (f", pure-rotation on {rotation_risk:.0%}." if rotation_risk is not None
               else " (cause not separable without intrinsics).")
            if planar_dominance is not None else "No pair admitted a model fit.")
+        # Named even when no diagnostic fires. Every non-zero reading measured so
+        # far has been one or two pairs of eleven, well under the 0.5 band, and
+        # the fraction alone does not say which views to keep out of the seed.
+        + flagged("Planar pairs", planar_pairs, planar, names)
+        + flagged("Pure-rotation pairs", rotation_only_pairs, rotation_only, names)
     )

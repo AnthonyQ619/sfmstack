@@ -30,9 +30,9 @@ underneath carrying `[k] original_filename`. The `[k]` is the index every answer
 below should refer to.
 
 The thing to keep in mind about it: **it is two downscales deep.** SceneLoader
-already resized the capture, and the sheet resizes that again. On an ETH3D
-capture — 6221×4146 native, loaded at `resize=fixed [1024, 682]`, thumbnailed to
-384 — a cell is 384×256. That is 6% of the original linear scale and 0.4% of its
+already resized the capture, and the sheet resizes that again. On a typical
+field capture — around 6000×4000 native, loaded near 1024px long edge, thumbnailed
+to 384 — a cell ends up roughly 384×256. That is 6% of the original linear scale and 0.4% of its
 pixels. The sheet answers *what is this capture* very well and it cannot answer
 *is that surface glossy*, *is that white clipped*, or *is that window glass or
 printed card*. Three of the fields below ask exactly those.
@@ -52,27 +52,52 @@ have changed.
 and last. Record it in `third_frame` as `[k] — the reason`.
 
 **Why there is a free one at all.** Because fixity has a cost and it was paid
-immediately. On ETH3D facade the worst thing in the scene is a mirror-polished
-sculpture standing between the camera and the building; it appears only in cells
-[2]–[6], so under the two-frame protocol it could only be graded from a 384px
+immediately. On one capture the worst hazard in the scene was a mirror-polished
+object standing between the camera and the building, appearing only in the middle
+cells — under the two-frame protocol it could only be graded from a 384px
 thumbnail, and the report had to say so. One free view recovers that without
 giving up the comparable base — two frames read the same way on every scene, one
 that follows the scene.
 
-**Spend it on what the fixed two could not settle.** A hazard visible only in the
-middle of the set. A frame the sheet suggests is different in kind. The cell a
-diagnostic points at. Not "the nicest picture" — if the fixed two already
-answered everything, say that in the reason and pick the least similar cell.
+**Spend it on what the fixed two could not settle, and let the measurements pick
+it.** Run `SceneTriage` before this module and read its per-image series from
+`sfm_plan_brief` or the artifact directly. Take the cell that is extreme on the
+most axes:
+
+| series | pick the cell that is | because it answers |
+| --- | --- | --- |
+| `texture.sharpness` | **lowest** | is that frame soft, or aimed at something flat? Only looking settles it, and the diagnostic's default action is to delete it |
+| `photometric.highlight_clipped` | **highest** | is the blown region backdrop or subject? |
+| `photometric.shadow_clipped` | **highest** | crushed shadow lands on structure, not behind it |
+| `texture.textureless_per_image` / `density_per_image` | **worst** | which frame will starve the detector |
+
+**When several point at the same cell, that cell is the answer** — convergence is
+the strongest signal available here, and it costs nothing to check. When they
+point at different cells, prefer the sharpness minimum, because that is the one
+the pipeline will otherwise act on unseen.
+
+**Why this changed.** The free choice used to be made by eye from the contact
+sheet, and it systematically missed. Reviewed across the corpus, describers
+picked a middle cell by position while the series named a *different* cell as
+extreme on three axes at once — and on more than one capture the frame carrying
+the corpus-worst shadow crush was never opened at all. The sheet is two downscales
+deep; it cannot show what the numbers already know. Choosing by measurement also
+makes the choice reproducible, which choosing by eye never was.
+
+Fall back to judgement only when `SceneTriage` has not run: a hazard visible only
+in the middle of the set, a frame the sheet suggests is different in kind, the
+cell a diagnostic points at. Never "the nicest picture" — if the fixed two already
+answered everything, say so in the reason and take the least similar cell.
 
 All three names are recorded in the artifact as `full_res_frames` and the chosen
 index as the `third_frame` metric, so a second reader can repeat the reading
 exactly — including the choice and the argument for it.
 
 **If the full-resolution frames contradict the sheet, the frames win, and say so
-in `notes`.** That has already happened twice: DTU scan15's shopfront "glazing"
-reads as glass on the sheet and is printed card at full resolution, and ETH3D
-office's flat regions read as ordinary and are *underexposed* — maximum pixel
-187, which is the opposite gradient.
+in `notes`.** That has already happened twice: a model shopfront's "glazing"
+read as glass on the sheet and was printed card at full resolution, and a blank-wall
+interior's empty regions read as ordinary and were *underexposed*, with a maximum
+pixel value far below the ceiling — the opposite gradient to the one assumed.
 
 ---
 
@@ -124,7 +149,7 @@ main subject and saying so is the correct report.
 - `occluded` — something else in the scene hides part of it
 - `both`
 
-**What this adds:** this is the field DTU scan10 produced and v1 had nowhere to
+**What this adds:** this is the field a cropped-subject rig capture produced and v1 had nowhere to
 put. The box is cropped in all twelve frames, so what is reconstructable is a
 corner and not a box — and a reader judging point count against "a box" would
 read a correct result as a failure. `cropped` and `occluded` are separated
@@ -154,17 +179,28 @@ describing.
 3. **Clipped or merely flat** — is it at 0 or 255, or just low-contrast?
 
 **Why (2):** `textureless_fraction` counts area and is explicitly blind to it. On
-DTU scan10 it reads 0.60 because the background is a blown-out white sweep, which
+a controlled rig capture it can read 0.60 because the background is a blown-out sweep, which
 is harmless. The same number on a scene whose *subject* is a blank wall is fatal.
 
 **Why (3):** clipped means the detail is **destroyed** — no exposure
 normalisation, no CLAHE, no raising `max_edge` recovers a region at 255, and
 suggesting any of them is wasted effort. Merely flat means the detail may survive
 at another exposure or another scale, and normalising at detection is worth
-trying. The fraction cannot distinguish these either, and they have opposite
-gradients.
+trying. They have opposite gradients, so getting this wrong sends the next three
+runs in the wrong direction.
 
-**A scene can be all three at once and usually is.** ETH3D meadow has unwanted sky,
+**`SceneTriage` 1.1.0 measures the clipped share** —
+`highlight_clipped_fraction` and `shadow_clipped_fraction`, plus the per-image
+arrays — and this answer should agree with it. It does not replace the answer:
+the measurement is a whole-frame median that cannot say *where* the clipping is
+or *whether that region was wanted*, which is the half only looking can supply.
+Treat a disagreement as worth resolving before submitting. If you called a region
+blown and the highlight fraction is near zero, you are looking at a bright flat
+surface, not a destroyed one. A blank-wall interior reading high on textureless
+and essentially zero on clipped is exactly that case, and it is the difference
+between an unrecoverable capture and a merely hard one.
+
+**A scene can be all three at once and usually is.** One vegetated site has unwanted sky,
 wanted-but-degraded grass, and wanted-and-low-texture clapboard siding which is
 the actual reconstruction target — one number covers all of it. Enumerate them
 separately rather than averaging.
@@ -198,7 +234,7 @@ gate meaning *read the note*, and a gate that is always open is not a gate. So
 the note is asked of every scene and the enum is gone.
 
 **Answer both halves even when the answer is `none`.** A blank half reads as an
-oversight. `none` is a finding, and on DTU scan33 it is the whole story: the cast
+oversight. `none` is a finding, and on one rig capture it was the whole story: the cast
 stone is genuinely aperiodic, which is exactly what makes its two identical ear
 cups the thing to worry about.
 
@@ -217,7 +253,7 @@ repeats and *in which cells*; argue about it in `overall`.
 **What this adds over what is measured:** `repetitiveness` measures
 self-similarity *within one image* and its own limitations file says it cannot
 see between-image ambiguity. It has been caught being wrong in the direction that
-matters — 0.6213 on ETH3D meadow, the lowest of ten scenes, for a building of
+matters — the lowest reading in the corpus belongs to a building of
 near-identical repeating bays. And nothing here counts objects at any level.
 
 **Why two halves rather than one — the escapes are opposite.**
@@ -275,7 +311,7 @@ Measured nowhere else in this system, at any level.
 
 **The material list is indicative, not exhaustive.** Glass, mirrors, standing
 water, polished metal, chrome — and anything else whose appearance changes with
-viewpoint. DTU scan33's ear defenders are glossy injection-moulded plastic, on
+viewpoint. One rig capture's subject is glossy injection-moulded plastic, on
 none of those lists, and in [11] the near cup carries a legible window frame
 while the printed text beneath it stays put. That is `coherent`.
 
@@ -295,7 +331,7 @@ the camera and the subject is a hole in the model.
 - `on_subject` — on the surface being reconstructed, so the phantom lands on the
   thing you wanted
 - `between_camera_and_subject` — **the dangerous one.** Close to the camera, so
-  the virtual points land well inside the model. ETH3D facade's mirror-polished
+  the virtual points land well inside the model. One capture's mirror-polished
   sculpture is this, and no earlier version of this rubric could say so
 - `throughout` — across most of the frame; no part of the model is clear of it
 

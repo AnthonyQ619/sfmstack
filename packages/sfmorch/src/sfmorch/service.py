@@ -2,7 +2,7 @@
 
 Every MCP tool is a thin call into a method here. Keeping the logic
 framework-independent means the surface is testable without MCP transport, and a
-change in the SDK touches one adapter file rather than fourteen tools.
+change in the SDK touches one adapter file rather than nineteen tools.
 
 Return shapes are chosen for an agent reading them, not for completeness. A run
 returns its metrics and diagnostics inline, because the alternative is a second
@@ -15,6 +15,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 from sfmkit import ArtifactStore
 
@@ -40,6 +42,127 @@ IMAGE_SUFFIXES = frozenset(MIME_TYPES)
 # is the case this exists for, and small enough that a full-resolution frame is a
 # deliberate choice rather than an accident.
 MAX_IMAGE_BYTES = 8 * 2**20
+
+SCENE_TYPE = "scene/v1"
+ANALYSIS_TYPE = "scene_analysis/v1"
+
+# The guide that translates step 2's numbers into the adjectives the family files
+# are written in. Named here rather than inlined so the prose can be revised
+# without touching the orchestrator, which is the same arrangement every other
+# curated document has.
+PLANNING_GUIDE = "scene_to_pipeline"
+
+# `dense` is deliberately absent. A first plan reaches a sparse model; dense
+# reconstruction is a separate decision made after one exists, and carrying its
+# family file into every planning call costs context for nothing. Pass `stages`
+# explicitly to include it.
+PLANNING_STAGES = (
+    "detection", "matching", "tracking", "pose", "sparse", "optimization",
+)
+
+# How many elements of a per-frame or per-pair series `plan_brief` will hand over
+# whole. Every metric an analysis module reports is a median or a p75 over the
+# set, and a median cannot answer "which frame" or "which pair" -- which is what
+# the advice attached to those metrics needs. Above the cap the series is
+# summarised rather than dropped, because a 400-image scene is exactly the one
+# where the extremes matter and exactly the one that must not blow up the reply.
+SERIES_MAX = 200
+
+# How many extremes survive the summary at each end.
+SERIES_EXTREMES = 8
+
+PLAN_SHAPE = {
+    "sections": [
+        "SCENE - one line: what it is, from the description's `overall`",
+        "WHAT IS HARD - the two or three things that will actually cost you",
+        "DETECTION - module + why, or 'skipped' + why",
+        "MATCHING - module + pairing + why",
+        "TRACKING - provisional; name what the matcher's output will decide",
+        "POSE - module + why, naming any degeneracy reading",
+        "SPARSE - provisional, but COMMIT to a module anyway. The metrics that "
+        "settle this stage (long_track_fraction, track_survival_5) are produced "
+        "two stages later, so the choice cannot be derived here - and the "
+        "conventional answer is right most of the time, which makes 'undecidable' "
+        "the less useful reply. Name the module, then name the reading that would "
+        "overturn it, so the line fills itself in once tracking has run",
+        "OPTIMIZATION - module + why",
+        "WATCH - the metric to judge this scene on, often not the obvious one",
+        "ESCAPE - what to try if it fails, and the observation that would trigger it",
+        "UNSUPPORTED - what matters here that nothing in the brief backs, and "
+        "what would settle it. This section exists because two of the first five "
+        "plans needed a second WATCH for hazards no metric reaches; that is this, "
+        "and it should be prompted rather than improvised.",
+    ],
+    "rules": [
+        "This is an INITIAL plan, not a commitment - and not a lock. Every stage "
+        "may be revised by what the stage before it measures; the point of "
+        "writing it down is to know WHICH observation would change your mind, "
+        "not to bind the pipeline.",
+        "A provisional stage still gets a module. TRACKING cannot be settled "
+        "until the matcher has run, because detector-based and detector-free "
+        "matchers build tracks differently, and SPARSE cannot be settled until "
+        "tracking reports. Neither is a reason to leave the line blank: name the "
+        "default and name what would overturn it.",
+        "Every stage gets a line, including when the answer is the cheap default. "
+        "'SIFT, because nothing here is hard' is a real answer.",
+        "Name the number. 'texture_density 475, seven times below the next lowest "
+        "scene' beats 'low texture'.",
+        "Where nothing supports a choice, say so rather than inventing a reason - "
+        "in the stage line if it changes the choice, in UNSUPPORTED if it does not.",
+        "Do not restate the metrics as prose - the reader has them. Say what they "
+        "mean together.",
+    ],
+}
+
+
+def _cell(value):
+    """One array element, as something JSON can carry."""
+    if isinstance(value, (bytes, np.bytes_)):
+        return value.decode("utf-8", "replace")
+    if isinstance(value, np.str_):
+        return str(value)
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        # Six significant figures. These are measurements, not identifiers, and a
+        # full float64 repr costs a third of the payload to carry noise.
+        return float(f"{float(value):.6g}")
+    return value.tolist() if isinstance(value, np.ndarray) else value
+
+
+def _series(array) -> Any:
+    """Render one stored array for the wire.
+
+    Scalars pass through. A short series passes through whole -- that is the
+    point of the field, because "which frame is the soft one" is not answerable
+    from a median. A long one is summarised at both extremes rather than
+    truncated to a prefix, since a prefix of a per-frame array is the first
+    frames rather than the interesting ones.
+    """
+    if array.ndim == 0:
+        return _cell(array[()])
+    if len(array) <= SERIES_MAX:
+        return [_cell(v) for v in array]
+
+    doc: dict[str, Any] = {"n": len(array), "truncated": True}
+    if array.ndim == 1 and np.issubdtype(array.dtype, np.number):
+        order = np.argsort(array)
+        doc |= {
+            "min": _cell(array.min()),
+            "median": _cell(np.median(array)),
+            "max": _cell(array.max()),
+            "lowest": [[int(i), _cell(array[i])] for i in order[:SERIES_EXTREMES]],
+            "highest": [[int(i), _cell(array[i])]
+                        for i in order[-SERIES_EXTREMES:][::-1]],
+        }
+    else:
+        doc["hint"] = (
+            f"{len(array)} entries, over the {SERIES_MAX} this call inlines. "
+            f"Read it from the artifact directly."
+        )
+    return doc
 
 
 def _sink(holder: dict):
@@ -450,6 +573,109 @@ class SfmService:
             "path": str(path),
             "mime_type": MIME_TYPES[path.suffix.lower()],
             "bytes": size,
+        }
+
+    def plan_brief(
+        self, scene_id: str, *, stages: list[str] | None = None
+    ) -> dict[str, Any]:
+        """Assemble everything needed to turn a scene analysis into a first plan.
+
+        This is step 3 of the loop and it is the same shape as
+        `SceneDescription`: it PREPARES and it does not decide. There is no model
+        in the orchestrator, so nothing here converts a metric into a module. What
+        it does is put the four things that argument needs into one response --
+        the measurements, the guide that says how to read them, the family files
+        that say which member of a stage to reach for, and the live menu -- so the
+        reasoning happens once, against a complete picture, rather than across six
+        calls with the early ones already out of context.
+
+        The gap being closed is real and was measured: of the 29 metrics the three
+        analysis modules produce, exactly two are named anywhere in
+        `skills/families/`. The families speak in adjectives and step 2 speaks in
+        numbers, and `skills/scene_to_pipeline.md` is the translation.
+        """
+        scene = self.store.open(scene_id)
+        if scene.type != SCENE_TYPE:
+            raise OrchestratorError(
+                f"artifact {scene_id} is '{scene.type}', not '{SCENE_TYPE}'. "
+                f"Pass the scene this analysis was run against."
+            )
+
+        analyses, pending = [], []
+        for aid in self.store.list(type=ANALYSIS_TYPE):
+            art = self.store.open(aid)
+            if art.manifest.scene != scene_id:
+                continue
+            groups = [n for n in art.manifest.files if n != "__sidecars__"]
+            if not groups:
+                # A `scene_analysis/v1` carrying no group is a placeholder, not
+                # an analysis -- `SceneDescription`'s first call renders a contact
+                # sheet and writes nothing. Counting it as an analysis would let
+                # a scene that was looked at but never described read as complete,
+                # which is the one mistake this field exists to prevent.
+                pending.append({"artifact": art.id,
+                                "module": art.manifest.produced_by.module})
+                continue
+            analyses.append({
+                "artifact": art.id,
+                "module": art.manifest.produced_by.module,
+                # A scene re-analysed after a module version bump carries BOTH
+                # results, because the recipe changed and the id follows it. Two
+                # entries reading `SceneTriage` with different contents are
+                # indistinguishable without this, and the newer one is not
+                # reliably the one to trust -- the version is the fact, so report
+                # it rather than making the reader infer it.
+                "module_version": art.manifest.produced_by.module_version,
+                "groups": groups,
+                "metrics": {n: m.value for n, m in art.manifest.metrics.items()},
+                # Every metric above is a median, a p75 or a fraction over the
+                # set, and the advice attached to those metrics is per-frame and
+                # per-pair: open the soft frame before dropping it, keep the
+                # planar pair out of the seed. That advice was unfollowable from
+                # this call until the series came with it.
+                "series": {
+                    group: {name: _series(arr)
+                            for name, arr in art.load(group).items()}
+                    for group in groups
+                },
+                "diagnostics": [d.to_doc() for d in art.manifest.diagnostics],
+                "notes": art.manifest.body.strip(),
+            })
+        analyses.sort(key=lambda a: (a["module"], a["module_version"]))
+
+        wanted = list(stages or PLANNING_STAGES)
+        families, missing = {}, []
+        for stage in wanted:
+            try:
+                families[stage] = self.workflow_skill(f"families/{stage}")["text"]
+            except OrchestratorError:
+                missing.append(stage)
+
+        return {
+            "scene": {
+                "artifact": scene.id,
+                "run": scene.manifest.run,
+                "metrics": {n: m.value for n, m in scene.manifest.metrics.items()},
+                # The index every per-frame series below is in. A series saying
+                # element 11 is the soft one is not actionable until 11 has a
+                # name, and per-PAIR series carry a pair of these same indices.
+                "images": _series(scene.load("images", "names")),
+                "diagnostics": [d.to_doc() for d in scene.manifest.diagnostics],
+                "notes": scene.manifest.body.strip(),
+            },
+            # Empty is a legitimate state and worth surfacing rather than
+            # returning a brief that silently plans from nothing.
+            "analysis": analyses,
+            "analysis_pending": sorted(pending, key=lambda a: a["module"]),
+            "analysis_missing": sorted(
+                {"SceneTriage", "SceneMotion", "SceneDescription"}
+                - {a["module"] for a in analyses}
+            ),
+            "how_to_read": self.workflow_skill(PLANNING_GUIDE),
+            "families": families,
+            "families_missing": missing,
+            "menu": self.list_modules(consumes=SCENE_TYPE),
+            "report_shape": PLAN_SHAPE,
         }
 
     def run_summary(self, run_id: str) -> dict[str, Any]:

@@ -19,22 +19,31 @@ Design: [../docs/design/knowledge-system.md](../docs/design/knowledge-system.md)
 > Human-authored, subjective, authoritative but non-binding. Say when you depart
 > from one. Distillation may *propose* edits here; it never writes them.
 
-*Empty — to be written. One line per entry, full text in the linked file.*
+- **[swap_or_build](judgment/swap_or_build.md)** — when tuning stops and the
+  module is the problem; when nothing in the registry fits at all. Organised by
+  family. *Written, and honest that most of it is structural rather than measured.*
+- **[stopping](judgment/stopping.md)** — when a result is good enough; when to
+  stop tuning. *Empty.*
+- **[priors](judgment/priors.md)** — which module families to trust, and where.
+  *Empty.*
 
-- **[triage](judgment/triage.md)** — what to read off a scene before running anything
-- **[stopping](judgment/stopping.md)** — when a result is good enough; when to stop tuning
-- **[tradeoffs](judgment/tradeoffs.md)** — runtime vs quality; when GPU hours are worth spending
-- **[smells](judgment/smells.md)** — results that look fine numerically and are wrong
-- **[priors](judgment/priors.md)** — which module families to trust, and where
+Three files were planned here and cut. `triage.md` was to hold what to read off a
+scene before running anything — that is now
+[scene_to_pipeline.md](scene_to_pipeline.md), which carries the measured ranges
+behind each call and is reached through `sfm_plan_brief`. `smells.md` duplicated
+material already spread through `families/` and the modules' own `tuning.md`, and
+a second copy of a claim is a second place for it to go stale. `tradeoffs.md`
+never earned a page of its own.
 
-Trait thresholds live here too: the analysis modules emit numbers, and
-`judgment/` decides what counts as "narrow baseline" or "repetitive texture".
+**Trait thresholds are NOT here any more.** The analysis modules emit numbers and
+`scene_to_pipeline.md` says how to read them; this tier says what to do once you
+have.
 
 ## Family comparisons
 
 > Measured, not judged. One file per stage, holding the axis that stage trades
 > along and the evidence for it. Read before running anything, beside
-> `judgment/triage.md`. Nothing is recorded here without being asked for first.
+> `scene_to_pipeline.md`. Nothing is recorded here without being asked for first.
 
 - **[detection.md](families/detection.md)** — invariance by construction or by
   training; the descriptor type decides the matcher; coverage beats count
@@ -69,17 +78,25 @@ numbers on it.
 
 ```
 SKILLS.md (this file)
-  ├─ sfm_open_scene → scene/v1     (+ SceneTriage auto-run)
-  ├─ sfm_run(SceneMotion) → scene_analysis/v1 → TRAITS
-  ├─ judgment/triage.md            what those traits imply
-  ├─ runs/INDEX.md by trait        has this been solved?
-  ├─ families/<stage>.md           which member of each stage, and why
-  ├─ sfm_list_modules(produces=…)  candidate pipeline
+  ├─ sfm_run(SceneLoader) → scene/v1
+  ├─ sfm_run(SceneTriage), sfm_run(SceneMotion)     → scene_analysis/v1, measured
+  ├─ sfm_run(SceneDescription) ×2 + sfm_artifact_image ×3   → asserted
+  │
+  ├─ sfm_plan_brief(scene)         ONE call, and it gathers:
+  │    ├─ the analysis above       metrics, diagnostics, narrative
+  │    ├─ scene_to_pipeline.md     how to READ those numbers — measured ranges,
+  │    │                           what each cannot tell you, the known traps
+  │    ├─ families/<stage>.md      which member of each stage, and why
+  │    └─ sfm_list_modules(...)    the live menu
+  │  → you write the plan. The tool prepares; it does not decide.
+  │
+  ├─ runs/INDEX.md by trait        has this been solved?          [EMPTY]
+  ├─ judgment/swap_or_build.md     tuning stopped - now what?
   │
   └─ run → metrics + diagnostics(see_also)
         ├─ tuning.md          principled gradient + observed episodes
         ├─ sfm_replay(...)    suspect upstream? branch the DAG
-        ├─ judgment/stopping  good enough?
+        ├─ judgment/stopping  good enough?                        [EMPTY]
         ├─ limitations.md     stuck? + workflow/diagnosing_failures.md
         └─ sfm_find_alternatives(...) or scaffold a new module
   │
