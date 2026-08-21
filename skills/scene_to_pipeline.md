@@ -413,10 +413,17 @@ configuration that produces this, and it now has two independent instances.
 `skills/families/matching.md` §5 separates the two causes and prescribes
 different fixes, and
 **`SceneMotion` has already done that separation** — which is the one place a
-measured number reaches a module choice directly. Facade is the planar branch:
-real baseline, flat structure, so avoid two-view bootstrap. `SparseGlobalCOLMAP`
-solves the view graph globally, or keep the incremental route and raise
-`init_min_angle_deg`.
+measured number reaches a module choice directly. When the reading is the planar
+branch — real baseline, flat structure — the response is to avoid a two-view
+bootstrap: `SparseGlobalCOLMAP` solves the view graph globally, or keep the
+incremental route and raise `init_min_angle_deg`.
+
+**Read that against the per-pair series before acting on it**, because the
+paragraph above is written for a capture that is planar *throughout* and the
+readings observed have not been. When the flagged pairs share a single frame,
+the table below sends you to "keep that frame out of seed candidacy" and the
+incremental route survives — which is the opposite conclusion, reached from the
+same fraction.
 
 A single flagged pair out of eleven is a reason to watch the seed, not to switch
 solver.
@@ -557,7 +564,7 @@ captures run through three detector+matcher branches to a sparse model, everythi
 downstream held identical and all matchers at `pairing: exhaustive`. It is the
 first swap in this repository carried through and compared —
 `judgment/swap_or_build.md` was written admitting none existed. The per-capture
-numbers are in the appendix at the end of this file; what follows is what
+numbers are in [`skills/runs/INDEX.md`](runs/INDEX.md); what follows is what
 generalises.
 
 ### 1. The failure that actually costs you frames is view-graph fragmentation
@@ -793,10 +800,13 @@ without knowing any of ours.
 | *a built interior whose blank walls are the subject* | *ETH3D office* |
 | *a near-planar surface shot nearly square-on* | *facade and delivery_area* |
 | *a capture that covers ground quickly between adjacent frames* | *the four high-`overall_magnitude` scenes* |
-| *the highest readings you have seen, with a gap below them* | *above 0.155* |
+| *the highest readings you have seen, with a gap below them* | *above &lt;the cut point you happened to fit&gt;* |
 
 **Thresholds are the same mistake in numeric form.** A cut point derived from N
-captures is a property of those captures; state the *direction* and the *shape of
+captures is a property of those captures. **Do not print the number even as an
+example of what not to write** — a reader in a hurry lifts it straight out of the
+counter-example column and uses it as the threshold, which is exactly what
+happened to an earlier version of the row above. State the *direction* and the *shape of
 the evidence* (unanimous, a clean gap, one exception and why), and let the reader
 locate their own reading in it. Where a number genuinely is load-bearing, name it
 once and say what corpus produced it.

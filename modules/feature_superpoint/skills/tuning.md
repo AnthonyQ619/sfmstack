@@ -72,14 +72,35 @@ keypoints are marginal.
 
 ## `resize_long_edge`
 
-Leave unset. SuperPoint was trained around 480-640px and its detections do change
-with resolution, but coordinates are returned in scene pixels either way, so the
-only reason to set it is inference cost.
+Leave unset by default. SuperPoint was trained around 480-640px and its detections
+do change with resolution, but coordinates are returned in scene pixels either way,
+so on a normally-sized capture the only reason to set it is inference cost.
 
-If you do set it, the rescaling is handled here and downstream is unaffected — but
-note that detections found at 640px and rescaled to 1600px carry the localisation
-precision of 640px, which will show up as higher reprojection error two stages
-later.
+**It resizes in both directions**, and the upward direction does not do what it
+sounds like it does. Upsampling a heavily-downscaled capture — the obvious move when
+the loader reported a heavy downscale and the detector looks starved — was measured
+to *reduce* the keypoint count by low double-digit percent, not raise it. The reason
+is that `nms_radius` and `detection_threshold` are both denominated at inference
+resolution: stretch the image and the same real structure spans more pixels, so a
+fixed-radius suppression removes relatively more of it. `mean_score` and coverage
+barely moved, which is the signature of "the same structure, sampled differently"
+rather than "new detail found".
+
+So: upsampling here is not the answer to a starved capture. The pixels the loader
+threw away are gone, and interpolation does not bring them back — if the capture is
+genuinely short of resolution, the fix belongs at the loader, before the scene was
+built. If you do upsample anyway, raise `nms_radius` with it or the two changes
+fight each other.
+
+Either direction costs localisation precision. Detections found at 640px and
+rescaled to 1600px carry the precision of 640px, which shows up as higher
+reprojection error two stages later; detections found on an upsample carry the
+precision of the original pixels no matter what sub-pixel refinement reports.
+
+*This used to be downscale-only, and a value above the scene's resolution was
+silently ignored — while provenance recorded it as applied. If you are reading an
+artifact produced before this module's 1.1.0, a large `resize_long_edge` in its
+parameters may not have run.*
 
 ## A note on CPU
 

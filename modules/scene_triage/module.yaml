@@ -291,8 +291,9 @@ diagnostics:
     severity: warn
     message: At least one image is far below the set's median sharpness.
     suggested_actions:
-      - The named frames are candidates for exclusion; re-run SceneLoader without them.
-      - A blurred frame usually fails to register rather than corrupting the model, so this is a coverage cost.
+      - OPEN the named frames before acting. This metric reports content, not focus - on every capture where it has fired it named frames aimed at a flat surface and sharply in focus.
+      - Only if they are genuinely soft, re-run SceneLoader without them; a soft frame usually fails to register rather than corrupting the model, so this is a coverage cost.
+      - If they are flat rather than blurred, the fix is exposure normalisation at detection or a larger working resolution upstream - not exclusion.
     metric: sharpness_ratio
     see_also: tuning.md#sharpness_ratio-below-04
 

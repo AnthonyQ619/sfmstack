@@ -74,6 +74,17 @@ Coordinates are rescaled back to scene pixels here, so downstream is unaffected 
 but detections found at 640px carry 640px localisation precision however they are
 rescaled, which will appear as higher reprojection error two stages later.
 
+It resizes both ways. On a scene whose frames are already below the trained band,
+setting 840 upsamples into that band rather than doing nothing. Whether that is
+worth doing is untested here, and the one place it has been measured — the sparse
+heatmap detectors, where the same move stretches structure past a fixed NMS radius —
+it cost detections rather than winning them. LoFTR has no NMS radius, so the
+mechanism does not obviously transfer, which is exactly why it needs measuring
+rather than assuming.
+
+*Before this module's 1.1.0 this was downscale-only: a value at or above the
+scene's own resolution was ignored while provenance recorded it as applied.*
+
 ## `max_matches`
 
 Semi-dense output can reach tens of thousands per pair. The tracker's union-find

@@ -1,5 +1,5 @@
 name: FeatureMatchLoFTR
-version: 1.0.0
+version: 1.1.0
 kind: matching
 summary: >
   Detector-free semi-dense matching straight from images. No keypoint detection
@@ -24,7 +24,7 @@ description: |
   `setting` selects between two separately trained models. Indoor and outdoor are
   not interchangeable and picking the wrong one is a common cause of thin matches.
 
-image: sfmstack/match-loftr:1.0.0
+image: sfmstack/match-loftr:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -99,12 +99,16 @@ params:
     type: integer
     minimum: 0
     description: >
-      Optionally resize the long edge before matching. 0 or omitted uses the
-      scene's resolution. Coordinates are returned in scene pixels regardless.
+      Resize the long edge before matching, in either direction. 0 or omitted uses
+      the scene's resolution. Coordinates are returned in scene pixels regardless.
     tuning: >
       The main cost lever, because attention cost grows with the coarse grid area.
       LoFTR was trained around 640-840px. Setting 840 on a 1600px scene is often a
       large speedup with little accuracy loss; coordinates are rescaled back here.
+      It resizes both ways, so setting 840 on a scene already below that band
+      upsamples into the trained band rather than doing nothing. Whether that helps
+      is untested; on the sparse heatmap detectors the equivalent move cost
+      detections rather than winning them.
 
   geometric_model:
     type: string

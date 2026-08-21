@@ -57,10 +57,17 @@ def load_image(path, long_edge: int | None):
     scale = 1.0
     if long_edge:
         h, w = bgr.shape[:2]
-        if max(h, w) > long_edge:
+        # Both directions. The guard here was `> long_edge`, which made any value
+        # at or above the scene's own resolution a silent no-op: provenance recorded
+        # the parameter as applied and the artifact id moved with it, while the
+        # pixels did not change at all. Two artifacts, different recorded params,
+        # identical metrics -- the worst shape a knob can have, because it reads as
+        # "this lever does nothing" rather than "this lever did not run".
+        if max(h, w) != long_edge:
             scale = long_edge / max(h, w)
             bgr = cv2.resize(
-                bgr, (round(w * scale), round(h * scale)), interpolation=cv2.INTER_AREA
+                bgr, (round(w * scale), round(h * scale)),
+                interpolation=cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC,
             )
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     return torch.from_numpy(rgb).permute(2, 0, 1).float() / 255.0, scale

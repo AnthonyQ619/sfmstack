@@ -1,5 +1,5 @@
 name: FeatureDetectionALIKED
-version: 1.0.0
+version: 1.1.0
 kind: detection
 summary: >
   ALIKED learned keypoints and 128-dimensional descriptors, using deformable
@@ -21,7 +21,7 @@ description: |
   either everything or nothing, and is the single most likely mistake when
   swapping them.
 
-image: sfmstack/feature-aliked:1.0.0
+image: sfmstack/feature-aliked:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -86,12 +86,15 @@ params:
     type: integer
     minimum: 0
     description: >
-      Optionally resize the long edge before detection. 0 or omitted uses the
-      scene's resolution. Coordinates are always returned in scene pixels.
+      Resize the long edge before detection, in either direction. 0 or omitted
+      uses the scene's resolution. Coordinates are always returned in scene pixels.
     tuning: >
       Leave unset to keep the scene's working resolution and exact coordinates.
-      Set it only when inference is the bottleneck; rescaling back is handled here
-      so downstream is unaffected.
+      Lower it when inference is the bottleneck; rescaling back is handled here so
+      downstream is unaffected. A value above the scene's own resolution upsamples
+      rather than being ignored, but do not expect it to rescue a starved capture:
+      on the sibling heatmap detector, upsampling lowered the count because the NMS
+      radius is denominated at inference resolution. Untested here.
 
 metrics:
   keypoints_per_image:

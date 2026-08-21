@@ -1,5 +1,5 @@
 name: FeatureDetectionSuperPoint
-version: 1.0.0
+version: 1.1.0
 kind: detection
 summary: >
   SuperPoint learned keypoints and 256-dimensional descriptors. GPU, weights baked
@@ -21,7 +21,7 @@ description: |
   nothing there and SIFT costs no weights. Prefer ALIKED when keypoint localisation
   accuracy matters more than descriptor robustness.
 
-image: sfmstack/feature-superpoint:1.0.0
+image: sfmstack/feature-superpoint:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -78,13 +78,19 @@ params:
     type: integer
     minimum: 0
     description: >
-      Optionally resize the long edge before detection. 0 or omitted uses the
-      scene's resolution as-is. Coordinates are always returned in scene pixels.
+      Resize the long edge before detection, in either direction. 0 or omitted
+      uses the scene's resolution as-is. Coordinates are always returned in scene
+      pixels.
     tuning: >
       SuperPoint was trained around 480-640px and its detections do change with
-      resolution. Leave unset to keep the scene's working resolution, which keeps
-      coordinates exact. Set it when the scene is very large and inference is the
-      bottleneck; the module rescales coordinates back, so downstream is unaffected.
+      resolution, so this is a detection lever and not only a cost lever. Leave it
+      unset to keep the scene's working resolution, which keeps coordinates exact.
+      Lower it when the scene is very large and inference is the bottleneck. Raising
+      it above the scene's own resolution now upsamples rather than being ignored,
+      but it is not the cure for a starved capture: nms_radius and
+      detection_threshold are denominated at inference resolution, so stretching the
+      image suppresses relatively more of the same structure and the count was
+      measured to fall. Fix a resolution shortage at the loader instead.
 
 metrics:
   keypoints_per_image:

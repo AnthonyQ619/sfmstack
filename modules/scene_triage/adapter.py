@@ -513,7 +513,12 @@ def run(ctx: Ctx):
                 f"set median. Softest: {', '.join(blurred)}."
             ),
             suggested_actions=[
-                "These frames are candidates for exclusion; re-run SceneLoader without them.",
+                "OPEN these frames before acting. This metric reports content, "
+                "not focus: on every capture where it has fired it named frames "
+                "aimed at a flat surface that were sharply in focus.",
+                "Only if they are genuinely soft, re-run SceneLoader without them.",
+                "If they are flat rather than blurred, the fix is at detection "
+                "(exposure normalisation) or upstream (working resolution).",
                 "A soft frame usually fails to register rather than corrupting the model.",
             ],
             see_also="tuning.md#sharpness_ratio-below-04",
