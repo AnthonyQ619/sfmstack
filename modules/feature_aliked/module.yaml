@@ -92,9 +92,13 @@ params:
       Leave unset to keep the scene's working resolution and exact coordinates.
       Lower it when inference is the bottleneck; rescaling back is handled here so
       downstream is unaffected. A value above the scene's own resolution upsamples
-      rather than being ignored, but do not expect it to rescue a starved capture:
-      on the sibling heatmap detector, upsampling lowered the count because the NMS
-      radius is denominated at inference resolution. Untested here.
+      rather than being ignored, but it does not rescue a starved capture: measured
+      on two captures, a ~1.5x upsample changed the count by about a percent, in the
+      DOWN direction. nms_radius and detection_threshold are denominated at
+      inference resolution, so stretching the image spreads the same structure past
+      a fixed suppression radius; this module's tighter default radius is why it
+      loses far less to that than the sibling heatmap detector does. Fix a real
+      resolution shortage at the loader.
 
 metrics:
   keypoints_per_image:

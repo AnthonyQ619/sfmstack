@@ -20,14 +20,33 @@ alongside wrong ones. Detecting more keypoints produces more ambiguity, not less
 This is the failure mode that costs the most time, because every metric this
 module reports looks fine. The evidence is always downstream.
 
-**Escape:** a detector-free matcher, which reasons over image context rather than
-isolated patches:
+**Note what that argument does and does not indict.** Every step of it runs through
+the ratio test, not through the descriptor. So the escape is a *matcher* that does
+not rely on one — and the cheaper of the two escapes keeps these keypoints:
+
+**Escape A — a joint matcher on these descriptors.** A learned matcher that
+attends over both images jointly resolves a repeated patch by its surroundings
+rather than by its own appearance. It accepts SIFT descriptors directly, so the
+detector does not change and neither does anything upstream of it:
+
+```
+sfm_find_alternatives(produces="pairwise_matches/v1", consuming="features/v1")
+```
+
+**Escape B — a detector-free matcher**, which skips this stage entirely and
+reasons over image context rather than isolated patches:
 
 ```
 sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1")
 ```
 
-**Expected trade:** those need a GPU and run orders of magnitude slower.
+**Expected trade:** both need a GPU; B runs orders of magnitude slower and
+discards the keypoint identity that makes tracking exact. Try A first.
+
+**What is NOT the escape:** a more invariant detector. Invariance is what makes two
+genuinely different-but-similar patches describe alike, so a better descriptor makes
+the wrong match on a repeated casting *more* confident. This is the one place in the
+stack where the obvious upgrade reaches the wrong way.
 
 ---
 

@@ -607,6 +607,30 @@ benchmarks, not from running them. Under a classical detector and ratio-test
 matcher the top of that range drops between a quarter and three quarters of the
 frames. **The band was rejected because nobody had run the pipeline to check.**
 
+**One correction this file owes its own headline metric.** §2 spends four numbered
+points establishing that an area-weighted measure is diluted when a large part of
+the frame is a backdrop that carries nothing — the reason `textureless_fraction`
+reads alarmingly on a perfectly good studio capture. `overall_magnitude` is a
+percentile over a dense flow field, computed over the whole frame, and is
+area-weighted in exactly the same way. On a capture where a large fraction of the
+frame is featureless, the flow there is not measured so much as filled in, and the
+reported percentile is effectively a *lower* percentile of the region that actually
+carries motion. The module exposes no mask or region parameter, so the corrected
+number cannot be computed through it at all.
+
+Two consequences, and neither of them overturns the reading:
+
+- On a diluted capture, the tail statistic is the closer estimate of what the live
+  region is doing than the headline percentile is, so read them together and let
+  the tail carry more weight when the frame is mostly backdrop.
+- **The corpus band itself is mixed.** It contains both heavily-diluted rig
+  captures and undiluted field captures, so its median is not a clean reference
+  point in either direction. What survives that is the *shape* of the evidence, not
+  the level: the fragmenting captures were the highest readings with a clean gap
+  below them, and a gap is robust to a bias that shifts a subset of readings the
+  same way. Locate your capture by where it sits relative to that gap, and be aware
+  that a rig capture against a dead backdrop is being read low.
+
 **Read it this way:**
 
 - **Low** — adjacent frames overlap heavily, the graph will be dense, and the

@@ -1,5 +1,5 @@
 name: SceneTriage
-version: 1.2.0
+version: 1.3.0
 kind: analysis
 summary: >
   CPU scene characterisation before anything is reconstructed: photometric
@@ -53,7 +53,7 @@ description: |
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 
-image: sfmstack/scene-triage:1.2.0
+image: sfmstack/scene-triage:1.3.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -282,7 +282,8 @@ diagnostics:
     severity: warn
     message: A large share of the frame carries no detectable texture.
     suggested_actions:
-      - Detection coverage, not count, is the metric to watch downstream (spatial_coverage on features/v1).
+      - Detection coverage, not count, is the metric to watch downstream (spatial_coverage on features/v1) - but read empty_regions first and subtract. That metric's denominator is the whole frame, so cells holding destroyed detail rather than merely flat texture can never be occupied by any detector, and one reporting that it occupied them is detecting on nothing.
+      - Consequence: on this capture the raw coverage ratio does not compare two detectors. The one that spreads detections evenly regardless of content scores higher and is not better. Check where the winner's keypoints landed before believing the gap.
       - Consider a detector-free matcher, which does not need a keypoint to exist to produce a correspondence.
     metric: textureless_fraction
     see_also: limitations.md#textureless-scenes

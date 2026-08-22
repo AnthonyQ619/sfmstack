@@ -224,8 +224,14 @@ def test_the_server_is_reused_between_jobs(orch, runner):
             inputs={"scene": scene.id}, params={"max_keypoints": k},
         )
 
+    # Keyed by name@version, and the version comes from the live manifest rather
+    # than a literal: what this test is about is that two runs of one module share
+    # one endpoint, which a hardcoded version turns into a tripwire that fires on
+    # every unrelated version bump.
+    expected = {f"{m}@{orch.registry.get(m).version}"
+                for m in ("SceneLoader", "FeatureDetectionSIFT")}
     endpoints = runner.endpoints()
-    assert set(endpoints) == {"SceneLoader@1.0.0", "FeatureDetectionSIFT@1.0.0"}
+    assert set(endpoints) == expected
     assert len({e.handle for e in endpoints.values()}) == 2
 
 

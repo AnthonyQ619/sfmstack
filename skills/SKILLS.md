@@ -101,7 +101,16 @@ SKILLS.md (this file)
         └─ sfm_find_alternatives(...) or scaffold a new module
   │
   └─ session ends → distill → reviewed diff (judgment/ proposed, not applied)
+                              see distill/SKILL.md for the SHAPE to write in
 ```
+
+## Writing new context
+
+**[distill/SKILL.md](distill/SKILL.md)** — what to record after a session and what
+shape to record it in, so an agent reading it cold reaches the same decision for the
+same reason. Selection context and tuning context need different shapes; a metric
+claim owes a denominator; the evidence is a shape, never a cut point. Read it before
+adding to any file below.
 
 ## Conventions
 

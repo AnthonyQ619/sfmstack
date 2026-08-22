@@ -30,12 +30,28 @@ piled onto the strongest texture.
 
 ## Which parameter is binding
 
-- **`saturation` near 1.0** → the cap binds. Raising `max_keypoints` yields more.
-- **`saturation` near 0** → `detection_threshold` or `nms_radius` binds. Raising
+- **`saturation` exactly 0** → `detection_threshold` or `nms_radius` binds. Raising
   the cap does nothing; lower the threshold or the radius instead.
+- **anything above 0** → the cap binds on at least some frames, and until it is
+  cleared `keypoints_per_image` is partly your parameter and partly the capture.
+  Raise `max_keypoints` and re-read before doing anything else.
 
 This is the same logic as SIFT's `saturation`, and the same mistake is available:
 raising a cap that was never the constraint.
+
+**Two things make this module worse than SIFT for the partial band, not better.**
+Its default cap is much lower — deliberately, because its own suppression has
+already removed the redundant candidates — so an ordinary capture pins *every*
+frame at defaults and returns a completely synthetic number. And `cap_binding`
+fires only when most images are pinned, so the partial band is silent on both
+modules. Every capture in a cold five-capture run came back saturated at some
+module's default; on this one it was routinely total.
+
+**The consequence that actually costs you a decision:** comparing this detector to
+a classical one at each module's own defaults compares the two defaults, which are
+set on different scales for different reasons. Match them at a cap neither binds
+on, or the comparison means nothing. `mean_score` is the honest reading while you
+do it — if it falls sharply as the cap rises, the extra detections are marginal.
 
 ## `keypoints_min` below 150
 
@@ -91,6 +107,17 @@ threw away are gone, and interpolation does not bring them back — if the captu
 genuinely short of resolution, the fix belongs at the loader, before the scene was
 built. If you do upsample anyway, raise `nms_radius` with it or the two changes
 fight each other.
+
+**The mechanism was then confirmed across the family, which is why it is worth
+trusting past this one module.** The same upsample was run on the other sparse
+detector, whose suppression radius defaults to half of this one's, and on the
+detector-free semi-dense matcher, which has no suppression radius at all. The
+outcome orders monotonically by that radius: this module, the widest, lost the most;
+the tighter-radius detector lost about a percent; the matcher with no radius *gained
+by half*, and its worst pair nearly doubled. Suppression radius, not resolution, is
+what decides whether more pixels help — so **the answer differs by module and you
+cannot carry it from one to another.** For anything that suppresses in a fixed pixel
+radius, upsampling is a cost. For anything that does not, it is a real lever.
 
 Either direction costs localisation precision. Detections found at 640px and
 rescaled to 1600px carry the precision of 640px, which shows up as higher

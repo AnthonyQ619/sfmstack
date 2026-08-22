@@ -1,5 +1,5 @@
 name: FeatureDetectionSIFT
-version: 1.0.0
+version: 1.1.0
 kind: detection
 summary: >
   SIFT keypoints and RootSIFT descriptors. Classical, deterministic, CPU-only,
@@ -14,12 +14,16 @@ description: |
   cluttered tabletops, textured objects. Scale and rotation invariant, so wide
   baselines and orbital captures are fine.
 
-  Do not reach for it first on low-texture, repetitive, or photometrically
-  unstable sets. It is not that SIFT fails gracefully there; it produces
-  confident matches on repeated structure that survive ratio-test filtering and
-  poison tracks downstream. See limitations.md.
+  Do not reach for it first on low-texture or photometrically unstable sets.
 
-image: sfmstack/feature-sift:1.0.0
+  Repetitive sets are a different case and a common mistake: the failure there is
+  that confident matches on repeated structure survive RATIO-TEST filtering and
+  poison tracks downstream -- which is a matcher problem, not a detector one. Keep
+  these keypoints and change the matcher to one that reasons over whole-image
+  context; a more invariant detector makes the wrong match more confident. See
+  limitations.md#repetitive-structure.
+
+image: sfmstack/feature-sift:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false

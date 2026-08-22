@@ -106,9 +106,13 @@ params:
       LoFTR was trained around 640-840px. Setting 840 on a 1600px scene is often a
       large speedup with little accuracy loss; coordinates are rescaled back here.
       It resizes both ways, so setting 840 on a scene already below that band
-      upsamples into the trained band rather than doing nothing. Whether that helps
-      is untested; on the sparse heatmap detectors the equivalent move cost
-      detections rather than winning them.
+      upsamples into the trained band rather than doing nothing -- and here, unlike
+      on the sparse detectors, upsampling genuinely wins: measured on a
+      heavily-downscaled capture, a ~1.5x upsample raised matches per pair by half
+      and nearly doubled the worst pair, with inlier ratio and match confidence both
+      rising. There is no NMS radius to fight, and the coarse grid scales with the
+      image, so more pixels means more candidate cells. Pay the attention cost
+      knowingly.
 
   geometric_model:
     type: string

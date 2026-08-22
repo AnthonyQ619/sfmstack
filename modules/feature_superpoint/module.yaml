@@ -87,10 +87,13 @@ params:
       unset to keep the scene's working resolution, which keeps coordinates exact.
       Lower it when the scene is very large and inference is the bottleneck. Raising
       it above the scene's own resolution now upsamples rather than being ignored,
-      but it is not the cure for a starved capture: nms_radius and
+      but it is not the cure for a starved capture: a ~1.5x upsample was measured to
+      LOWER the count by low double-digit percent. nms_radius and
       detection_threshold are denominated at inference resolution, so stretching the
-      image suppresses relatively more of the same structure and the count was
-      measured to fall. Fix a resolution shortage at the loader instead.
+      image spreads the same structure past a fixed suppression radius -- and this
+      module's radius is the widest of the sparse detectors, so it pays the most.
+      Raise nms_radius alongside it or the two changes fight. Fix a real resolution
+      shortage at the loader instead.
 
 metrics:
   keypoints_per_image:

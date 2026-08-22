@@ -74,13 +74,22 @@ Coordinates are rescaled back to scene pixels here, so downstream is unaffected 
 but detections found at 640px carry 640px localisation precision however they are
 rescaled, which will appear as higher reprojection error two stages later.
 
-It resizes both ways. On a scene whose frames are already below the trained band,
-setting 840 upsamples into that band rather than doing nothing. Whether that is
-worth doing is untested here, and the one place it has been measured — the sparse
-heatmap detectors, where the same move stretches structure past a fixed NMS radius —
-it cost detections rather than winning them. LoFTR has no NMS radius, so the
-mechanism does not obviously transfer, which is exactly why it needs measuring
-rather than assuming.
+**It resizes both ways, and upward is a real lever here — which is not true of the
+sparse detectors.** On a heavily-downscaled capture, upsampling roughly 1.5× raised
+matches per pair by half, nearly doubled the worst pair in the set, and lifted both
+`inlier_ratio` and `mean_match_score`. Every metric moved the right way at once,
+which is rare enough to be worth noticing.
+
+The reason it works here and not there: the sparse detectors suppress within a fixed
+pixel radius, so stretching the image pushes the same structure past that radius and
+costs detections — measured, and the loss orders monotonically by how wide each one's
+radius is. LoFTR has no suppression radius, and its coarse grid scales with the
+image, so more pixels means more candidate cells rather than more suppression. **Do
+not carry a resize conclusion between this module and a detector.**
+
+The cost is real: attention grows with the coarse grid area, so a 1.5× upsample is
+well over 2× the compute. Spend it when pairs are thin on a small capture; it is the
+one place in this stack where "give the model more pixels" is measured to work.
 
 *Before this module's 1.1.0 this was downscale-only: a value at or above the
 scene's own resolution was ignored while provenance recorded it as applied.*

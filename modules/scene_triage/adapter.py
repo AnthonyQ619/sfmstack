@@ -497,7 +497,14 @@ def run(ctx: Ctx):
                 f"corner density {density:.0f}/MP."
             ),
             suggested_actions=[
-                "Watch spatial_coverage on features/v1, not keypoint count.",
+                "Watch spatial_coverage on features/v1, not keypoint count -- but "
+                "read empty_regions FIRST and subtract. The grid's denominator is "
+                "the whole frame, so where the untextured part is destroyed detail "
+                "rather than merely flat, no detector can occupy those cells and "
+                "one that reports occupying them is detecting on nothing.",
+                "That makes the raw ratio NOT comparable between two detectors on "
+                "this capture: the one that spreads evenly across the frame wins a "
+                "metric it should lose. Check where the winner's keypoints landed.",
                 "A detector-free matcher does not need a keypoint to exist first.",
             ],
             see_also="limitations.md#textureless-scenes",

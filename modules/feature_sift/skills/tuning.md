@@ -20,11 +20,21 @@ weakest by contrast score [S1].
 2. Repeat while saturation stays near 1.0 **and** downstream track survival is
    still the binding constraint.
 
-**Stop when** saturation drops below ~0.5 — content, not the cap, is now the
-limit, and further raising it does nothing.
+**Stop when** saturation reaches **zero**, not when it drops below a half. Any
+non-zero saturation means some frames returned your parameter and others returned
+the capture, so `keypoints_per_image` is a blend of a measurement and a setting and
+cannot be compared to anything — not to another parameter setting, and certainly
+not to another detector. The `cap_binding` diagnostic will not help you here: it
+fires only when *most* images are pinned, so the entire partial band is silent.
 
-**Do not** raise the cap to fix low counts when saturation is already low. That
+**Do not** raise the cap to fix low counts when saturation is already zero. That
 is the contrast filter binding, not the cap; see the next section.
+
+**The most useful thing this section does is come first.** Across a set of captures
+each analysed cold, every one came back partly or fully saturated at the module
+default, and most of them then settled on nothing more than the raised cap. Treat
+"raise the cap until saturation is zero, then read the numbers" as the entry
+condition for reading this file at all, rather than as one of its branches.
 
 ### Observed
 
@@ -38,6 +48,24 @@ is the contrast filter binding, not the cap; see the next section.
 > matters for geometry.
 > **Untested:** whether the extra keypoints survive matching; no downstream
 > module existed at the time of measurement.
+
+> **L-0002 · The coverage half of L-0001 does not transfer**
+> **Run:** detection phase, five captures analysed cold · **Seen in:** 4 captures
+> **Confidence:** medium — consistent across four, and the mechanism is understood.
+> **Context:** DTU scan10/scan15/scan33 and ETH3D facade, 12 images each at ~0.7-0.8 MP.
+> **Observed:** raising the cap to clear saturation reliably did what L-0001 says
+> for *count*, and reliably did not for *coverage* — the coverage move was an order
+> of magnitude smaller than L-0001's on every one, and on one capture raising the cap
+> a second time returned a byte-identical artifact.
+> **Takeaway:** the count gain is a property of the cap; the coverage gain in L-0001
+> was a property of that particular scene having reachable flat regions left. Where
+> the uncovered cells are destroyed detail rather than merely flat — a blown-out
+> backdrop, clipped sky — no cap reaches them, and neither does lowering
+> `contrast_threshold` or enabling CLAHE. Predict the coverage move before the run
+> and let it tell you which kind of scene you have: a coverage number that will not
+> move is a ceiling, not a tuning failure.
+> **Untested:** whether the extra keypoints survive matching. Still true two
+> observations later, and it is the question this stage cannot answer.
 
 ---
 
