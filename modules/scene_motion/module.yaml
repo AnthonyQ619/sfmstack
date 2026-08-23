@@ -1,5 +1,5 @@
 name: SceneMotion
-version: 1.1.0
+version: 1.2.0
 kind: analysis
 summary: >
   Dense optical flow between image pairs, summarised into camera-motion scores
@@ -66,7 +66,7 @@ description: |
   orchestrator from thresholds in `skills/judgment/`. The `healthy` bands here
   are this module's own advisory reading.
 
-image: sfmstack/scene-motion:1.1.0
+image: sfmstack/scene-motion:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -188,6 +188,17 @@ params:
       at the flow resolution.
 
 metrics:
+  stride: 
+    direction: neutral
+    meaning: >
+      The frame spacing these numbers were measured at. Published as a metric
+      because two runs of this module at different strides appear in a plan brief
+      under one module name, and every other number here means something different
+      between them. A wide-stride run is NOT comparable to a stride-1 run or to any
+      published band; it is read by its direction against the stride-1 run, and a
+      LOWER reading means flow lost correspondence rather than that the camera moved
+      less. See tuning.md#reading-a-wide-stride-run.
+
   n_pairs:
     direction: neutral
     meaning: Pairs on which flow was actually computed.

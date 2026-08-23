@@ -480,8 +480,8 @@ points is not better and the usual metrics cannot referee.** Treat the global
 solver as insurance with a known premium and an unmeasured payout, and say so in
 the plan rather than implying the choice is settled either way.
 
-**A caution learned on relief:** a subject that *looks* planar need not read as
-planar. A carved relief panel photographed head-on scored 0.0, and the
+**A caution worth carrying:** a subject that *looks* planar need not read as
+planar. A carved stone relief photographed head-on scored 0.0, and the
 full-resolution view showed why — the figures project far enough to cast their
 own shadows. The metric was right and the intuition was wrong.
 
@@ -532,7 +532,8 @@ for what they cover:
    0.165 destroys the only signal its walls have. On that scene the first move is
    not a detector but a larger `target_resolution`.
 8. **A capture can split into disconnected halves and no metric says so.**
-   Playground and facade both do. `pairing: exhaustive`, watch `graph_components`.
+   An outdoor site walked in two passes and a long frontage walked end to end have
+   both done it. `pairing: exhaustive`, watch `graph_components`.
 9. **Do not cut or dismiss a metric for over-firing until the pipeline has been
    run on the captures it fired on.** A displacement flag in this stack was
    removed on the grounds that it fired on every benchmark capture measured,
@@ -548,8 +549,9 @@ for what they cover:
    `FeatureMatchNN` both default to `pairing: sequential`, which on a 12-image
    scene is 11 pairs. Every plan in §4 specifies `exhaustive`, which is 66. The
    first run of the swap experiment below passed no parameters and therefore
-   measured sequential: the classical branch registered 6 of 12 images on scan9
-   and scan15 and appeared to collapse, and the write-up nearly recorded a
+   measured sequential: the classical branch registered half the frames on two
+   well-connected rig captures and appeared to collapse, and the write-up nearly
+   recorded a
    texture band that does not exist. Re-run at the pairing the plans actually
    specify, **every branch registers 12 of 12 on every scene** and the ordering
    changes. Pass the parameters your plan names; a default is a decision
@@ -649,10 +651,46 @@ Two consequences, and neither of them overturns the reading:
    ones.
 2. **Choose `pairing: exhaustive`.** A sequential window is what a sparse graph
    can least afford, and the module default is sequential.
-3. **Raise `stride` on `SceneMotion` and read it again** if you want to see the
-   overlap directly rather than infer it. At the default stride the module reports
-   on roughly a sixth of the pairs an exhaustive matcher will build, and
-   fragmentation lives in the rest.
+3. **Raise `stride` on `SceneMotion` and read it again** — but read the *direction
+   of the change*, not the level, and read it knowing the probe fails silently in
+   one direction. At the default stride the module reports on roughly a sixth of the
+   pairs an exhaustive matcher will build, and fragmentation lives in the rest, so
+   this is the one cheap way to look at the pairs that matter. The reading it gives
+   back means two opposite things depending on which way it moves:
+
+   - **It goes UP.** Frames further apart really have moved further apart. This is a
+     measurement, and it is the strongest evidence available before matching: it
+     converts "this capture resembles the ones that fragmented" into "this capture's
+     non-adjacent pairs share little, and here is by how much." Captures have been
+     seen where four-apart pairs move as far as the fastest capture in a corpus moves
+     between *adjacent* frames.
+   - **It goes DOWN.** Real camera motion between frames four apart cannot be smaller
+     than between adjacent ones. A lower reading is dense optical flow losing
+     correspondence and returning small vectors — and **flow loses correspondence
+     precisely when the frames stop overlapping, which is the thing you were trying
+     to detect.** So a falling stride reading is not reassurance. It is the failure
+     you were looking for, wearing the costume of its opposite, and a reader who
+     takes the number at face value is talked out of the correct conclusion.
+
+   Roughly a third of captures measured this way read *down*. Nothing in the artifact
+   flags it: there is no validity or coverage field on the flow, and a collapsed
+   reading can even make the low-baseline diagnostic fire, which reads as "the camera
+   barely moved" on a pair that has no shared content at all. Sanity-check against
+   the adjacent rotations — if the per-step rotations between frames *i* and *i+N*
+   sum to far more than the stride-*N* pair reports, the wide read has collapsed.
+
+   **A non-monotonic sweep is its own answer.** Reading strides 1, 2 and 3 and
+   getting a value that falls then rises means the mechanism is not reproducing on
+   this capture, and you are back to the borrowed correlation with no local evidence
+   for it. That is worth knowing and worth saying in the plan; it is not a reason to
+   change the decision, but it is a reason to hold it less firmly.
+
+   **Do not locate a raised-stride reading in the corpus band.** Every band in §1 is
+   at the default stride, and a wider-stride number is a different quantity on a
+   different denominator — the fractions especially, which are over *fitted pairs*.
+   A capture has been seen reading above the corpus maximum at stride 4 and
+   comfortably mid-range at stride 1, which would place it in the fragmenting group
+   or well outside it depending only on which artifact you happened to read.
 4. **Watch `graph_components` and `largest_component_fraction`** at the matcher —
    the first stage outputs that see the problem rather than predict it.
 5. **If the graph does fragment, change the detector and matcher together**, not
@@ -661,8 +699,11 @@ Two consequences, and neither of them overturns the reading:
 ### 3. A learned detector is not a way to get more points
 
 On ten of the fourteen the learned branch produced the **smallest** model of the
-three — often by a factor of two or more — because its keypoint budget is capped
-where a classical detector's is not. That is not an argument against it: on the
+three — often by a factor of two or more. (This sentence used to continue "because
+its keypoint budget is capped where a classical detector's is not." That explanation
+is refuted: at caps neither detector binds on, the learned detector has returned
+*more* keypoints than the classical one on several captures. The point-count result
+stands; its cause is open. See `families/detection.md`.) That is not an argument against it: on the
 fragmenting captures it was the only branch that finished. **It is an argument
 against reaching for it by default.** Buy it for connectivity and robustness, and
 expect to pay for that in point count; if the graph was never in danger, the cheap
@@ -779,8 +820,9 @@ that would otherwise act on it.
 - **Name the number.** "texture_density 475, seven times below the next lowest
   scene" beats "low texture".
 - **`WATCH` is the most valuable line.** It is where a scene's real risk goes when
-  no module choice addresses it. ETH3D relief's whole plan is ordinary and its
-  watch line is *judge on `median_triangulation_angle`, not `inlier_ratio`*,
+  no module choice addresses it. A tight-arc capture of a wall relief had an
+  entirely ordinary plan whose watch line was
+  *judge on `median_triangulation_angle`, not `inlier_ratio`*,
   because a tight baseline against a shallow subject makes every other number
   look excellent.
 - **`UNSUPPORTED` is where the honesty goes, and it is not optional.** Two of the
@@ -825,6 +867,45 @@ without knowing any of ours.
 | *a near-planar surface shot nearly square-on* | *facade and delivery_area* |
 | *a capture that covers ground quickly between adjacent frames* | *the four high-`overall_magnitude` scenes* |
 | *the highest readings you have seen, with a gap below them* | *above &lt;the cut point you happened to fit&gt;* |
+
+### A corpus member cannot be a cold reading of itself
+
+The de-naming above protects a reader planning a *new* capture. It does nothing for
+the case that turns out to be common: **the capture in front of you is one of the
+captures these bands were fitted on.**
+
+When that happens, this file stops being guidance and becomes recall. Its range
+table's extremes are, by construction, specific captures' own readings printed to
+five significant figures — so a planner who "locates their reading in the observed
+range" and finds it *is* the maximum has looked up their own number. Several
+readings in this file have been recognised that way by readers who then said so.
+
+Two things follow, and they pull in opposite directions.
+
+**For the reader.** Before treating a band as independent evidence, check whether
+your capture is in it. If your reading matches a quoted extreme to several digits,
+it is yours. Say so in the plan rather than presenting the reading as confirmation —
+a rule reproducing on its own training data is worth much less than the same rule
+reproducing out of sample, and the difference is exactly the thing a plan should be
+honest about.
+
+**For whoever writes here.** The evidence records exist so a claim can be traced
+back and re-run — that is their whole point, and this file links to them from three
+places for exactly that reason. But those records are indexed by scene name and
+carry downstream results, so **following the traceability link is itself the leak**:
+a reader sent there to locate a threshold finds their own capture's registration
+outcome on the same screen. That has happened, and the reader disclosed it rather
+than pretending otherwise, which is the right behaviour and not a fix.
+
+There is no clean way to have both. What is achievable: a brief that says plainly
+when the capture it describes is already in the corpus, so a planner knows which
+kind of reasoning they are doing before they start. Until that exists, treat
+"unrecognised capture" as an assumption to check rather than a given.
+
+**And note what this does *not* excuse.** A named capture in the prose is still the
+wrong way to write a lesson, including where the name would let a reader detect
+contamination — an evidence record is the place for names. The two problems have
+different fixes and solving one with the other makes both worse.
 
 **Thresholds are the same mistake in numeric form.** A cut point derived from N
 captures is a property of those captures. **Do not print the number even as an

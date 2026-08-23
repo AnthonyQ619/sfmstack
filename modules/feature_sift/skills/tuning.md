@@ -59,13 +59,45 @@ condition for reading this file at all, rather than as one of its branches.
 > a second time returned a byte-identical artifact.
 > **Takeaway:** the count gain is a property of the cap; the coverage gain in L-0001
 > was a property of that particular scene having reachable flat regions left. Where
-> the uncovered cells are destroyed detail rather than merely flat — a blown-out
+> the uncovered cells are **destroyed detail** rather than merely flat — a blown-out
 > backdrop, clipped sky — no cap reaches them, and neither does lowering
-> `contrast_threshold` or enabling CLAHE. Predict the coverage move before the run
-> and let it tell you which kind of scene you have: a coverage number that will not
-> move is a ceiling, not a tuning failure.
+> `contrast_threshold` or enabling CLAHE.
+> **Scope — read this before applying the above.** All four captures behind L-0002
+> had *destroyed* empty regions. The rule does not extend to captures whose empty
+> regions are merely flat; see [L-0003](#l-0003). Check
+> `highlight_clipped_fraction` / `shadow_clipped_fraction` and the description's
+> `empty_regions` before predicting a ceiling.
 > **Untested:** whether the extra keypoints survive matching. Still true two
 > observations later, and it is the question this stage cannot answer.
+
+> <a id="l-0003"></a>
+> **L-0003 · Where the empty region is FLAT, coverage moves — and it is the cheapest
+> test of which kind you have**
+> **Run:** detection phase, twelve further captures analysed cold · **Seen in:** 3
+> captures moving, 8 not · **Confidence:** medium-high — the two groups separate on
+> a reading available before the run.
+> **Context:** ETH3D delivery_area, office, courtyard, 12 images each at ~0.7 MP.
+> **Observed:** on a loading-bay capture whose large empty region is a flat panel
+> door at a heavy downscale — unclipped, `highlight_clipped_fraction` effectively
+> zero, and graded *merely flat* by the description — halving `contrast_threshold`
+> moved `spatial_coverage` **0.910 → 0.987** in one step. That is an order of
+> magnitude more than L-0002's captures moved under any parameter. A dim interior
+> behaved the same way: two levers together took coverage from 0.352 to 0.725.
+> **Takeaway:** predict the coverage move before the run, and let the *prediction*
+> be the instrument. Destroyed cells cannot be reached by any parameter, so a
+> coverage number that will not move is a ceiling. Flat-but-unclipped cells can be
+> reached, so a coverage number that *does* move tells you the detail is genuinely
+> present at this working resolution — which is a positive result about the capture,
+> not merely a tuning success, and it is the confirmation the description's
+> flat-versus-burnt call was right. **The two cases are distinguishable before you
+> run anything**: the clipping fractions and `empty_regions` separate them.
+> **Also observed:** a coverage number can be *exhausted* rather than capped. Past
+> roughly 0.99 on an 8×8 grid the metric is inside its own quantisation — under a
+> cell per image — and stops discriminating between runs or between detectors. Stop
+> reading it there rather than chasing the last cells.
+> **Untested:** whether keypoints recovered from a flat region match as well as
+> keypoints from a textured one. They are lower-contrast by construction, so this is
+> the obvious place for the stage's standing unknown to bite.
 
 ---
 

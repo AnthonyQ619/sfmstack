@@ -116,6 +116,27 @@ Scene names belong in exactly two places: the run index and the sources files,
 which exist so a claim can be traced back and re-run. Those are citation records,
 and they are the reason the prose does not need names.
 
+**But de-naming does not buy independence, and it is worth being clear about what
+it does and does not do.** It protects a reader planning a capture the corpus has
+never seen. It does nothing at all when the capture in front of them *is* one of the
+corpus captures — and that case is common, because a corpus is built from whatever
+was to hand. A range table's extremes are specific captures' readings printed
+verbatim, so a planner whose number matches one to several digits has looked up
+their own answer without either party intending it.
+
+Worse, the traceability link is the leak. The evidence record exists to be followed;
+it is indexed by name and carries downstream results; so a reader sent there to
+locate a threshold meets their own capture's outcome. Anonymising the record would
+destroy the one thing it is for.
+
+The honest resolutions are structural, not editorial: **declare corpus membership
+where the reading is served**, so a planner knows before they start whether they are
+reasoning or recalling; and **prefer evidence stated as a shape** — a gap between
+groups, a unanimous direction — since a shape is much harder to look yourself up in
+than a level is. When neither is available, the fallback is disclosure: a plan that
+says "this capture is in the corpus and here is what I did about it" is worth far
+more than one that quietly presents recall as derivation.
+
 ---
 
 ## 5. Every metric claim owes a denominator

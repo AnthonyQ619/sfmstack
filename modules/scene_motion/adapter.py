@@ -423,6 +423,13 @@ def run(ctx: Ctx):
             degeneracy["pair_pure_rotation"] = np.asarray(rotation_only, dtype=np.bool_)
         out.save("degeneracy", **degeneracy)
 
+    # Stride is a metric, not just a parameter, because two runs of this module at
+    # different strides are two DIFFERENT quantities and a caller reading a brief
+    # sees both listed under one module name with nothing to tell them apart. Four
+    # readers independently mistook one for the other, and one planned a capture off
+    # the wrong artifact. Provenance carries it, but a caller reading metrics does
+    # not read provenance.
+    out.metric("stride", int(p.stride), direction="neutral")
     out.metric("n_pairs", len(pairs), direction="neutral")
     out.metric("overall_magnitude", round(overall, 5), direction="neutral")
     out.metric("high_motion_tail", round(tail, 5), direction="neutral")
@@ -455,6 +462,12 @@ def run(ctx: Ctx):
             ),
             suggested_actions=[
                 "If the capture is dense video, raise `stride` and re-read before concluding.",
+                "If this run IS a raised-stride run, suspect the reading before the "
+                "capture: dense flow returns small vectors when two frames share too "
+                "little to match, so this diagnostic fires on pairs with NO overlap "
+                "exactly as it does on pairs with no motion. Check the per-step "
+                "rotations between the two frames -- if they sum to far more than "
+                "this pair reports, the flow collapsed and the pair is wide, not slow.",
                 "Otherwise expect high reprojection error at low triangulation angle.",
                 "Consider a learned-prior structure capability - sfm_find_alternatives("
                 "produces='sparse_model/v1', not_consuming='poses/v1').",
@@ -527,7 +540,17 @@ def run(ctx: Ctx):
         )
 
     out.note(
-        f"RAFT flow over {len(pairs)} pairs at stride {p.stride}, {p.max_side}px. "
+        (f"STRIDE {p.stride}: these numbers are NOT comparable to a stride-1 run of "
+         f"this module or to any band quoted at the default stride -- they are a "
+         f"different quantity on a different set of pairs. A wide-stride reading is "
+         f"read by its DIRECTION against the stride-1 run: higher means the frames "
+         f"really are further apart, which is a direct measurement of how little "
+         f"non-adjacent pairs share. LOWER is not reassurance -- real motion between "
+         f"distant frames cannot be smaller than between adjacent ones, so a lower "
+         f"reading means dense flow failed to find correspondence, which happens "
+         f"exactly when the frames stop overlapping. "
+         if p.stride > 1 else "")
+        + f"RAFT flow over {len(pairs)} pairs at stride {p.stride}, {p.max_side}px. "
         f"Motion: overall {overall:.4f}, tail {tail:.4f}, variability {variability:.4f}; "
         f"low-baseline risk {low_baseline:.0%}. "
         + (f"Rotation: median {rotation_median:.1f} deg, "

@@ -73,6 +73,17 @@ raising the learned detector's score threshold by an order of magnitude removed 
 large fraction of its detections and dropped its coverage sharply. Those detections
 were weak, and they were exactly what the metric had been rewarding.
 
+**That confirmation is conditional, and the condition is the same one that runs
+through this whole section.** Repeated on captures whose empty regions are *flat
+rather than destroyed*, the same tenfold threshold removed just as many detections —
+around half — and coverage barely moved, a few percent. Those detections were low
+in score because the signal is low in amplitude, not because there was no signal:
+raise the bar and the cell is still held by whatever survives. So the probe
+separates the two cases rather than confirming one of them. **Coverage collapsing
+under a raised threshold means the cells were held by nothing. Coverage holding
+means they were held by something faint.** Both are useful; only the first is the
+trap.
+
 *The softer version, which is more common.* The same trap applies wherever the
 wanted region is a fraction of the frame even though the rest is not destroyed — a
 building facade with a band of loose gravel below it and sky above. There the extra
@@ -88,15 +99,55 @@ floor, ask what fraction of the frame could hold a repeatable keypoint at all. T
 scene description is where that lives — it names the blown backdrop, the empty sky,
 the glass. If a large part of the frame is in that state, the number you want is
 *occupied cells over cells with content*, and you have to compute it yourself; the
-module reports the raw ratio and has no mask parameter. Two consequences worth
-knowing without doing any of that work:
+module reports the raw ratio and has no mask parameter.
+
+**Computing it is a dozen lines, not a research project**, and this file used to
+imply otherwise. Everything needed is already published: the artifact ships raw
+keypoint `xy` in scene pixels, and **every detector in this family scores coverage
+on an 8×8 grid** — a fact recorded until now only in the individual modules'
+`artifact.md`, which is why readers assumed the analysis was out of reach. Bin the
+coordinates on that grid and you reproduce the module's own number exactly, which is
+the control that tells you your mask is aligned; then divide by the cells that carry
+content instead of by 64. Readers who did this reproduced the published metric to
+three decimals every time.
+
+**Judge "dead" by cells, not by area — they are not the same thing and the
+difference has already flipped a reading.** On a capture where sky filled a third to
+a half of every *frame*, masking found under a tenth of the *cells* content-free,
+because the sky met the horizon inside cells that also held building. The learned
+detector's coverage lead survived masking nearly intact, and the rule as it stood
+would have had the reader dismiss a true reading as an artefact. So: mask and
+recount before you either believe or dismiss a coverage gap. The inversion needs a
+large count of content-free **cells**.
+
+**And it does not need a dead region at all.** The failure was found on captures with
+blown backdrops, but it reproduces where the wanted region is merely *harder* than
+the rest — on a capture with zero clipped pixels anywhere, the even-spreading
+detector still scored higher while spending a smaller share of its budget on the
+surface the description called the subject. Even-spreading is what the metric
+rewards, and that is not always what you want. The general form: **coverage rewards
+reaching everywhere, and you usually want spending where the scene is.**
+
+Four consequences worth knowing without doing any of that work:
 
 - **A coverage number that will not move under any parameter is a ceiling, not a
-  failure to tune.** Several independent moves each shifting it by a rounding error
-  is the signature, and it means the unreached cells hold nothing to reach.
-- **A large coverage gap between a classical and a learned detector on a capture
-  with a dead region is evidence about the dead region, not about the detectors.**
-  Check where the winner's keypoints landed before believing it.
+  failure to tune** — *when the unreached cells are destroyed detail.* Several
+  independent moves each shifting it by a rounding error is the signature. Where the
+  empty region is flat rather than burnt the number does move, sometimes a great
+  deal, and that movement is a positive result about the capture.
+- **A large coverage gap between a classical and a learned detector is evidence
+  about the dead region, not about the detectors — only once you have confirmed the
+  dead region is large in cells.** Check where the winner's keypoints landed.
+- **Past roughly 0.99 the metric is exhausted, not healthy.** An 8×8 grid has 64
+  states, so differences under about 0.016 are less than one cell per image. Two runs
+  or two detectors separated by less than that are not separated. On a well-textured
+  capture both branches reach that band under mild tuning and coverage stops being
+  able to compare anything.
+- **Its healthy floor is a smoke test, not a target.** Observed readings sit far
+  above it on everything except a genuinely starved capture, and on the captures
+  where the metric is inverted the floor is measuring something other than what it
+  thinks. Treat a reading *below* the floor as informative and a reading above it as
+  saying almost nothing.
 
 `keypoints_min` matters for the same reason `min_frame_observations` does later:
 the weakest frame is the one that fails to register, and an average cannot see it.
@@ -114,17 +165,30 @@ judgement.
 ### 5. A cap is not a result
 
 Every detector in this family caps detections per image, and every one of them
-ships a default low enough that an ordinary capture reaches it. Across a set of
-captures each analysed from a standing start, **every single one came back partly
-or fully saturated at the module default** — so the first reading of
-`keypoints_per_image` measured the parameter rather than the capture, on all of
-them.
+ships a default low enough that most captures reach it. Across seventeen captures
+each analysed from a standing start, **the great majority came back partly or fully
+saturated at the module default** — so the first reading of `keypoints_per_image`
+measured the parameter rather than the capture.
 
-That makes the first move at this stage not a tuning move at all: raise the cap
-until `saturation` reaches zero, then read the count. Four out of five of those
-captures settled there and changed nothing else, which is worth saying plainly —
-**the common case is that removing the parameter from the measurement is the whole
-of the tuning.**
+That makes the first move at this stage not a tuning move at all: **raise the cap
+until `saturation` reaches zero, then read the count.** On most captures that is
+also the last move — a large fraction settle there and change nothing else, so
+removing the parameter from the measurement is frequently the whole of the tuning.
+
+**The check is mandatory; its outcome is not.** A minority of captures arrive at
+`saturation` 0.0 already, and on those the raised cap is a byte-identical no-op —
+which is still a result worth one run, because it says the ceiling is content. The
+kinds of capture that arrive unsaturated are the ones where something *upstream* of
+the cap already binds: a dim or low-contrast capture where the contrast filter cuts
+candidates first, a heavily downscaled one with little detail left to find, or a
+subject shot tight enough that there is simply not much in frame. On those, raising
+the cap is not the move and the tuning file's low-count branch is.
+
+Do not read the majority result as a promise. An earlier version of this section
+said *every* capture arrives saturated; the first captures analysed outside the set
+that produced that claim included several that did not, and a reader who trusts the
+universal wastes a run looking for saturation that is not there — or worse, doubts
+a correct reading.
 
 Two things this rule protects you from:
 
@@ -184,9 +248,21 @@ share little, and here is where that starts". The first is a correlation you are
 borrowing; the second is the mechanism, observed.
 
 **And know what you are paying.** On a well-connected capture the learned branch
-returned the SMALLEST model of the three on ten of fourteen — its keypoint budget
-is capped where a classical detector's is not. Buy it for connectivity and
-robustness, not for point count.
+returned the SMALLEST model of the three on ten of fourteen — often by a factor of
+two. Buy it for connectivity and robustness, not for point count.
+
+*That is the observation. The mechanism once written beside it was wrong and is
+worth naming, because it is a mistake this file warns against elsewhere.* It used to
+read "its keypoint budget is capped where a classical detector's is not" — which is
+an artefact of comparing each module at its own default cap, exactly what §5 exists
+to forbid. Measured at caps neither detector binds on, the learned detector has come
+back with substantially **more** keypoints than the classical one on more than one
+capture, and with fewer on others; which way it goes depends on whether the
+classical detector's contrast filter is starving on a dim or heavily downscaled
+capture, not on either module's cap. **A smaller final model is not explained by
+fewer keypoints.** The likelier account is what §3b.1 records — the learned branch
+recovers marginal *pairs* rather than enriching good ones — but that is an argument,
+not a measurement, and it is not settled here.
 
 **Neither**, when the detector fires on nothing: a textureless, blurred or
 low-contrast capture is a case for a detector-free matcher, which skips this stage

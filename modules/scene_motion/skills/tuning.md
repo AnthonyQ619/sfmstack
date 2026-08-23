@@ -112,3 +112,55 @@ displacement ones it is a direct statement about how much the *view* changed.
 **Null on an uncalibrated scene**, along with `large_rotation_risk` and
 `pure_rotation_risk` — see
 [limitations.md](limitations.md#what-needs-intrinsics).
+
+---
+
+## Reading a wide-stride run
+
+Raising `stride` is the cheap way to look at the pairs an exhaustive matcher will
+actually build — at the default the module reports on roughly a sixth of them, and
+connectivity failures live in the rest. It is worth doing. It is also the one probe
+in this module that **fails silently, and fails in the direction that reads as good
+news.**
+
+**Read the direction against the stride-1 run, never the level.**
+
+| the wide-stride reading | what it means |
+| --- | --- |
+| **higher** than stride 1 | Real. Frames that far apart genuinely have moved further apart, and you have measured how little non-adjacent pairs share instead of inferring it. This is the strongest pre-matching evidence about connectivity there is. |
+| **lower** than stride 1 | **The measurement failed.** Camera motion between frames *N* apart cannot be smaller than between adjacent frames. Dense flow returns small vectors when it cannot find correspondence, and it loses correspondence exactly when the frames stop overlapping — so the reading is evidence *of* the problem, dressed as evidence against it. |
+| **non-monotonic** across strides 1, 2, 3 | The mechanism is not reproducing on this capture. Not a reason to change the decision; a reason to hold it less firmly and say so. |
+
+Roughly a third of captures measured this way read down. Nothing in the artifact
+flags it — there is no validity or confidence field on the flow — so the check is
+yours to make: **compare against the rotations.** If the per-step rotations between
+frames *i* and *i+N* sum to far more than the stride-*N* pair reports, the wide read
+collapsed. A capture has been seen whose four adjacent steps summed to roughly 105°
+while the stride-4 pair reported 12°.
+
+The same collapse can fire `low_baseline` on a wide-stride run, which then reads as
+"the camera barely moved" on a pair that has no shared content at all. That
+diagnostic's suggested actions now say so.
+
+**Never locate a wide-stride number in a published band.** Every band quoted for
+this module's metrics is at the default stride, and a wide-stride run is a different
+quantity over a different set of pairs — the fractions especially, which are over
+*fitted* pairs, and a wide pair that fails to fit leaves the denominator entirely. A
+capture has been seen reading above a corpus maximum at stride 4 and comfortably
+mid-range at stride 1; taken against the band, the two artifacts place it in
+opposite groups.
+
+## The flow parameters move the headline number
+
+`max_side` and `flow_step` change what `overall_magnitude` reports on the same
+capture — raising the flow resolution has been measured to shift it by a sixth and
+`rotation_median_deg` by several degrees. That is not instability; a percentile over
+a denser, sharper field is a different statistic. But it means **a reading is only
+comparable to a published band, or to another capture, at the settings that produced
+them.** Note the settings whenever you quote the number, and do not sweep the flow
+resolution and the corpus band in the same argument.
+
+This bites hardest on the captures most likely to tempt you into raising it: the
+tuning advice for a scene whose textured area is a small part of the frame is to
+lower `flow_step`, and that is exactly the kind of capture whose motion reading is
+already being asked to carry a detector decision.
