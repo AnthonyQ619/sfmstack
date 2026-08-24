@@ -151,10 +151,27 @@ Four consequences worth knowing without doing any of that work:
 
 `keypoints_min` matters for the same reason `min_frame_observations` does later:
 the weakest frame is the one that fails to register, and an average cannot see it.
-It is published against an absolute floor, which is worth reading as a smoke test
-rather than a target — what actually signals trouble is one or two frames sitting
-far below the rest of their own set, which the floor does not see and a per-frame
-reading does.
+
+**Read it as a ratio against the mean, not against its floor.** The published floor
+is absolute and sits orders of magnitude below what an ordinary capture returns, so
+it is a smoke test that fires only on a genuinely starved capture — useful when it
+does, and silent the rest of the time. What actually signals trouble is one or two
+frames sitting far below the rest of *their own set*, and the two published scalars
+already give you that: `keypoints_min / keypoints_per_image`. Around 0.7–0.9 is an
+even capture. Down near a third means one frame is starved while the mean looks
+healthy, and that frame is where a track chain will break.
+
+Two things follow that are worth doing rather than reading:
+
+- **Watch the ratio across a tuning move, not just the mean.** A parameter that
+  raises the mean while the ratio falls has spent the budget where it was already
+  sufficient. A parameter that raises `keypoints_min` faster than the mean is the
+  targeted one, and on a capture with a starved frame that is the move to keep even
+  if another buys more total keypoints.
+- **The ratio names the frame's cause, with the triage per-frame series.** A frame
+  low here that was also low on `density_per_image` is short of content; one low
+  here but ordinary there is being rejected by a threshold, which is a parameter
+  problem rather than a capture problem.
 
 ### 4. CPU or GPU
 

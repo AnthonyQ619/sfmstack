@@ -102,9 +102,23 @@ params:
     default: false
     description: Contrast-limited adaptive histogram equalisation before detection.
     tuning: >
-      Try on scenes with strong shadow/highlight variation across the set. It
-      raises keypoint counts in dark regions but also raises repeatability across
-      exposure changes, which is the actual benefit.
+      Two different indications, and the second is the one that keeps coming up.
+      ACROSS-SET: strong shadow/highlight variation between frames, where the
+      benefit is repeatability across the exposure change rather than the extra
+      keypoints. WITHIN-FRAME: a dim or low-contrast capture whose WANTED surface is
+      flat but unclipped -- a shaded wall, a dark painted body, a roof in shadow.
+      CLAHE is adaptive over local windows, so it acts on within-frame contrast
+      whether or not the set varies, and this is where it has produced its largest
+      measured gains: on captures whose across-set photometric readings sat at the
+      corpus MINIMUM, i.e. exactly where the first indication says not to bother.
+      Check the description's `empty_regions` for a region graded wanted-and-flat.
+      WHERE IT GOES WRONG: it lifts every low-contrast region, not the one you
+      wanted. On captures with a large unwanted low-contrast area -- gravel, lawn,
+      sky -- most of the gain has landed there, and the subject's SHARE of the
+      keypoint budget fell while the count rose. A count gain is not the test. Band
+      the keypoints against the described regions, or at minimum check whether
+      `keypoints_min` rose faster than the mean, which is what a targeted gain on
+      the starved frames looks like.
 
 metrics:
   keypoints_per_image:

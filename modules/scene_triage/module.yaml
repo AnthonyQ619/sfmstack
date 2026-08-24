@@ -1,5 +1,5 @@
 name: SceneTriage
-version: 1.3.0
+version: 1.4.0
 kind: analysis
 summary: >
   CPU scene characterisation before anything is reconstructed: photometric
@@ -53,7 +53,7 @@ description: |
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 
-image: sfmstack/scene-triage:1.3.0
+image: sfmstack/scene-triage:1.4.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -292,9 +292,11 @@ diagnostics:
     severity: warn
     message: At least one image is far below the set's median sharpness.
     suggested_actions:
-      - OPEN the named frames before acting. This metric reports content, not focus - on every capture where it has fired it named frames aimed at a flat surface and sharply in focus.
-      - Only if they are genuinely soft, re-run SceneLoader without them; a soft frame usually fails to register rather than corrupting the model, so this is a coverage cost.
-      - If they are flat rather than blurred, the fix is exposure normalisation at detection or a larger working resolution upstream - not exclusion.
+      - This metric reports CONTENT, not focus. On every capture where it has fired, the frames it named were aimed at a flat surface and were sharply in focus. Separate the two causes before acting.
+      - The separation is already in this artifact - read density_per_image and textureless_per_image for the same frames. Low sharpness with low density and high textureless is flat content; low sharpness with density in line with the set is genuine softness.
+      - Detection settles it for free if you are unsure: a frame returning keypoints in line with the set was never soft.
+      - Only if genuinely soft, re-run SceneLoader without them; a soft frame usually fails to register rather than corrupting the model, so this is a coverage cost.
+      - If flat rather than blurred, the fix is exposure normalisation at detection or a larger working resolution upstream - not exclusion.
     metric: sharpness_ratio
     see_also: tuning.md#sharpness_ratio-below-04
 

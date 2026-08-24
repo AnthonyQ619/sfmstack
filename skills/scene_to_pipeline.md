@@ -203,6 +203,26 @@ through, will straddle it on its own. **Never read a per-frame value against a
 band computed from scene medians** — that applies to every series in this file,
 and this is the metric where it is easiest to do by accident.
 
+**That rule forbids something §3b asks you to do, and the two need reconciling
+rather than obeying in sequence.** §3b tells you to read the per-pair motion series
+when you ask the connectivity question — correctly, because the series is where the
+mechanism is visible — while the only calibration on offer is a corpus band built
+from per-capture medians. So there is no legal way to score a single fast pair
+against anything, and a reader following both instructions literally is stuck.
+
+The reconciliation is that **the series and the band answer different questions and
+neither substitutes for the other.** Locate your *capture* in the band using the
+capture-level number, which is what the band is denominated in. Then read the series
+for **shape, not level** — is the capture homogeneous, or does it break into a fast
+stretch and a slow one, and does the break land where the description says something
+changed. A break is interpretable without any band at all, because it is internal to
+the capture: the comparison is pair against pair, not pair against corpus. What you
+must not do is take the fastest pair's number and look it up in the range table.
+
+`fastest_pair` and `pair_p90_across` exist to make the capture-level half of that
+honest, since `overall_magnitude` and `high_motion_tail` are both medians and a
+minority of fast pairs cannot move either.
+
 **4. It cannot locate subject blowout, and must not be used to try.** On a
 studio-rig capture the per-frame reading ranks *how much backdrop is in view*,
 which is close to uncorrelated with whether the subject is damaged. Measured
@@ -551,11 +571,22 @@ for what they cover:
    first run of the swap experiment below passed no parameters and therefore
    measured sequential: the classical branch registered half the frames on two
    well-connected rig captures and appeared to collapse, and the write-up nearly
-   recorded a
-   texture band that does not exist. Re-run at the pairing the plans actually
-   specify, **every branch registers 12 of 12 on every scene** and the ordering
-   changes. Pass the parameters your plan names; a default is a decision
-   somebody else made.
+   recorded a texture band that does not exist. Re-run at the pairing the plans
+   actually specify, **those two captures register in full, the phantom texture band
+   disappears, and the ordering changes.** Pass the parameters your plan names; a
+   default is a decision somebody else made.
+
+   **What the re-run did *not* do is make fragmentation go away, and an earlier
+   version of this trap said it did.** It read "every branch registers 12 of 12 on
+   every scene", which is false against this repository's own evidence table: at
+   exhaustive pairing the classical branch still drops between a quarter and three
+   quarters of the frames on the fastest captures in the corpus. Taken literally the
+   old sentence erased §3b — the finding this file calls its strongest signal, and
+   the finding every detector choice downstream of it rests on. It was caught by a
+   reader who noticed the contradiction and correctly downgraded their confidence in
+   §3b as a result; two others cited the sentence as authority. **A correction that
+   overshoots is worse than the error it corrects**, because it arrives with the
+   credibility of a retraction. State what the re-run changed, not what it rescued.
 
 ---
 
@@ -752,6 +783,27 @@ move to try first, and it is far cheaper than re-running detection.
 Its benefit is **conditional and the condition is not reliably measurable** — see
 the `repetitiveness` entry in §2, which is the closest thing to a signal and is
 measuring a different axis than the one that matters.
+
+**And it is not unanimous. There is a counter-case in the evidence table, on the
+configuration this move is prescribed for.** A well-connected rig capture with loud
+object-level repetition — several castings of one mould, named by the description —
+returned roughly 40% FEWER points under the joint matcher than under the ratio test,
+with registration complete on both. That is the exact shape the rule says gains, and
+it lost.
+
+What makes it worth recording rather than dismissing is which source got it right.
+The `repetitiveness` metric read near the bottom of the corpus on that capture and
+so predicted no gain; the description read the repetition as severe and so predicted
+one. **The metric was right and the description was wrong** — which inverts the
+general finding elsewhere in this file that the description is the more trustworthy
+of the two, and means neither can be leaned on here.
+
+So read this move as: *cheap enough to try, reversible in one run, and not a thing
+to assume.* The revert is `FeatureMatchNN` at exhaustive on the same keypoints,
+which costs no re-detection either. If you are spending a run on the swap, spend the
+run on the comparison rather than on the assumption — the two branches share their
+detection artifact, so the A/B is nearly free and it is the only thing that settles
+it. `[measured: 14, one counter-case]`
 
 ### What this does NOT establish
 

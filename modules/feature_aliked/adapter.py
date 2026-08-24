@@ -209,8 +209,12 @@ def run(ctx: Ctx):
         f"ALIKED ({p.variant}) on {dev.type} over {len(paths)} images: "
         f"{mean_kp:.0f} keypoints per image (min {min_kp}), coverage {mean_cov:.2f}, "
         f"cap binding on {saturation:.0%} of frames, mean score {mean_score:.4f}. "
-        f"Descriptors are 128-d float; LightGlue with features='aliked' is the "
-        f"intended matcher -- note that is a DIFFERENT weight set from "
-        f"features='superpoint'."
+        f"Descriptors are 128-d float. FeatureMatchLightGlue is the intended "
+        f"matcher; its parameter is `weights`, NOT `features`, so the call is "
+        f"weights='aliked' -- and that is a DIFFERENT trained weight set from "
+        f"weights='superpoint', which would match silently and meaninglessly. "
+        f"`weights` defaults to `auto`, which reads the producer off this "
+        f"artifact's provenance and cross-checks the descriptor width, so leaving "
+        f"it alone is both correct and safer than naming it."
         + ("" if dev.type == "cuda" else " NOTE: ran on CPU, which is slow.")
     )

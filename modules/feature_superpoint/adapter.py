@@ -226,7 +226,11 @@ def run(ctx: Ctx):
         f"SuperPoint on {dev.type} over {len(paths)} images: {mean_kp:.0f} keypoints "
         f"per image (min {min_kp}), coverage {mean_cov:.2f}, cap binding on "
         f"{saturation:.0%} of frames, mean score {mean_score:.4f}. "
-        f"Descriptors are 256-d float; LightGlue with features='superpoint' is the "
-        f"intended matcher."
+        f"Descriptors are 256-d float. FeatureMatchLightGlue is the intended "
+        f"matcher; its parameter is `weights`, NOT `features`, so the call is "
+        f"weights='superpoint'. `weights` defaults to `auto`, which reads the "
+        f"producer off this artifact's provenance and cross-checks the descriptor "
+        f"width -- leaving it alone is both correct and safer than naming it, "
+        f"because the wrong weight set matches silently rather than failing."
         + ("" if dev.type == "cuda" else " NOTE: ran on CPU, which is slow.")
     )

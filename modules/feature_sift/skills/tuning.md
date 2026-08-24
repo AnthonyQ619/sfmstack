@@ -112,9 +112,26 @@ dim, flat, or soft.
    is the low-contrast rejection test, applied per octave layer [S1].
    *Expect:* counts rise substantially on dim scenes; below ~0.01 the added
    detections are noise and repeatability falls.
-2. `grayscale_clahe: true` if the set has strong shadow/highlight variation.
-   The point is not the extra keypoints in dark regions but that equalisation
-   makes detection more *repeatable* across frames with different exposure.
+2. `grayscale_clahe: true` — for either of **two** indications, and this file used
+   to name only the first.
+   *Across-set:* strong shadow/highlight variation between frames. The point there
+   is not the extra keypoints in dark regions but that equalisation makes detection
+   more *repeatable* across frames of different exposure.
+   *Within-frame:* a dim or low-contrast capture whose **wanted** surface is flat
+   but unclipped. CLAHE equalises over local windows, so it works on within-frame
+   contrast regardless of whether the set varies — and this is where its largest
+   measured gains have come from, on captures whose across-set photometric readings
+   were at the bottom of the observed range. Written the old way, the file
+   contraindicated the parameter on the very captures it then won on, and several
+   readers noticed the collision between the module's stated rationale and the
+   description's recommendation for their capture.
+   **The count is not the test.** CLAHE lifts every low-contrast region, and where a
+   large unwanted one exists — loose aggregate, lawn, sky — most of the gain lands
+   there: counts up by tens of percent while the subject's *share* of the budget
+   falls. Two cheap checks: does `keypoints_min` rise faster than the mean (a
+   targeted gain on the starved frames looks like that), and do the extra keypoints
+   land in the region `empty_regions` calls wanted. Where neither can be answered,
+   prefer the knob whose effect you can predict.
 3. `sigma` 1.6 → 1.0 if the inputs are soft or slightly out of focus. The default
    assumes the image already carries ~0.5 of blur [S1]; over-smoothing a soft
    image destroys the extrema.

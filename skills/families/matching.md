@@ -186,6 +186,15 @@ Measured across fourteen captures, that swap gains on well-connected repetitive
 subjects and loses a third to a half of the model on well-connected
 non-repetitive ones, so it is worth being right about which you have.
 
+**"Being right about which you have" is the hard part, and the evidence says you
+often cannot be.** One capture in that set had loud object-level repetition and
+still lost roughly 40% of its points to the swap. On it the `repetitiveness` metric
+read low and was right, while the description read the repetition as severe and was
+wrong — the opposite of the general pattern. Since the two branches share one
+detection artifact, the A/B is nearly free: **run both and compare rather than
+predicting.** That is the one thing here that settles it, and it costs less than
+being wrong does.
+
 **Detector-free** when the detector is the thing that failed: `keypoints_min` low,
 `spatial_coverage` low, a textureless or blurred capture. Expect to tune
 `merge_eps_px` in the tracker afterwards, and read the tracker's

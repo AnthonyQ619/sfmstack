@@ -49,13 +49,20 @@ params:
     type: string
     default: auto
     enum: [auto, superpoint, aliked, sift, disk]
-    description: Which trained weight set to use. `auto` infers it from provenance.
+    description: >
+      Which trained weight set to use. `auto` infers it from provenance. NOTE the
+      name: this parameter is `weights`, not `features` -- `features` is the INPUT
+      SLOT that carries the detector's artifact. Detector artifact notes used to say
+      `features='superpoint'`, which this schema rejects outright since it allows no
+      unknown keys.
     tuning: >
       Leave on `auto`. It reads the producing module from the features artifact and
       cross-checks the descriptor width, and it fails loudly when it cannot tell.
       Set it explicitly only for a detector this module does not know -- and be
       certain, because the wrong weights are SILENT: they produce matches, they are
-      just meaningless.
+      just meaningless. That silence is why `auto` is the default and why naming the
+      weight set by hand is the riskier of the two options, not the more careful one:
+      provenance cannot mistype a detector's name and you can.
 
   pairing:
     type: string

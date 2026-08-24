@@ -12,6 +12,8 @@ type is optional, which is what lets two producers cover it without a merge step
 motion.npz
   overall_magnitude    ()      float64  median over pairs of p75 flow / diagonal
   high_motion_tail     ()      float64  median over pairs of p90 flow / diagonal
+  fastest_pair         ()      float64  MAX over pairs of p75 -- the cross-pair view
+  pair_p90_across      ()      float64  p90 ACROSS pairs of p75 -- ditto, robust
   variability          ()      float64  IQR of the per-pair p75
   low_baseline_risk    ()      float64  fraction of pairs below low_motion_thresh
   rotation_median_deg  ()      float64  calibrated scenes only
@@ -60,6 +62,14 @@ non-zero reading measured so far.
 ---
 
 ## Units
+
+**`high_motion_tail` is a tail inside a pair, not across pairs.** It is the p90 of
+one pair's flow field, medianed over pairs — so it and `overall_magnitude` are both
+medians and neither can be moved by a minority of fast pairs. A capture that is slow
+for nine pairs and fast for two reads mid-range on both while carrying its whole risk
+in the two. `fastest_pair` and `pair_p90_across` are the summary numbers that see
+that shape; `pair_p75` tells you where it is. The naming is unfortunate and is worth
+saying out loud, because "tail" invites exactly the reading it does not support.
 
 **All flow magnitudes are fractions of the image diagonal at the flow
 resolution**, which is what makes them comparable across `max_side` settings and

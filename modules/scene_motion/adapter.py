@@ -365,6 +365,14 @@ def run(ctx: Ctx):
 
     overall = float(np.median(p75))
     tail = float(np.median(p90))
+    # ACROSS pairs, not within one. `high_motion_tail` is a tail inside a pair
+    # (p90 of that pair's flow field) medianed across pairs, so a capture whose fast
+    # pairs are a MINORITY is invisible to it and to `overall_magnitude` alike --
+    # both are medians and a minority cannot move a median. That shape is common:
+    # a slow walk that turns a corner at the end, a site captured in two passes.
+    # This is the statistic that sees it.
+    fastest_pair = float(np.max(p75))
+    pair_spread = float(np.percentile(p75, 90))
     variability = float(np.percentile(p75, 75) - np.percentile(p75, 25))
     low_baseline = float(np.mean(p75 < p.low_motion_thresh))
 
@@ -433,6 +441,8 @@ def run(ctx: Ctx):
     out.metric("n_pairs", len(pairs), direction="neutral")
     out.metric("overall_magnitude", round(overall, 5), direction="neutral")
     out.metric("high_motion_tail", round(tail, 5), direction="neutral")
+    out.metric("fastest_pair", round(fastest_pair, 5), direction="neutral")
+    out.metric("pair_p90_across", round(pair_spread, 5), direction="neutral")
     out.metric("variability", round(variability, 5),
                direction="lower_better", healthy=(None, 0.035))
     out.metric("low_baseline_risk", round(low_baseline, 4),

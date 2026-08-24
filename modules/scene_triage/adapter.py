@@ -520,13 +520,21 @@ def run(ctx: Ctx):
                 f"set median. Softest: {', '.join(blurred)}."
             ),
             suggested_actions=[
-                "OPEN these frames before acting. This metric reports content, "
-                "not focus: on every capture where it has fired it named frames "
-                "aimed at a flat surface that were sharply in focus.",
-                "Only if they are genuinely soft, re-run SceneLoader without them.",
-                "If they are flat rather than blurred, the fix is at detection "
-                "(exposure normalisation) or upstream (working resolution).",
-                "A soft frame usually fails to register rather than corrupting the model.",
+                "This metric reports CONTENT, not focus. On every capture where it "
+                "has fired, the frames it named were aimed at a flat surface and "
+                "were sharply in focus. Separate the two causes before acting.",
+                "The separation is already in this artifact: read `density_per_image` "
+                "and `textureless_per_image` for the SAME frames. Low sharpness "
+                "together with low density and high textureless is flat content. Low "
+                "sharpness with density in line with the rest of the set is genuine "
+                "softness.",
+                "Detection settles it for free if you are unsure: a frame that "
+                "returns keypoints in line with the set was never soft.",
+                "Only if genuinely soft, re-run SceneLoader without them; a soft "
+                "frame usually fails to register rather than corrupting the model, "
+                "so this is a coverage cost.",
+                "If flat rather than blurred, the fix is at detection (exposure "
+                "normalisation) or upstream (working resolution) -- not exclusion.",
             ],
             see_also="tuning.md#sharpness_ratio-below-04",
         )
