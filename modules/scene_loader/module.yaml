@@ -1,5 +1,5 @@
 name: SceneLoader
-version: 1.0.0
+version: 1.1.0
 kind: source
 summary: >
   Reads a directory of images and an optional calibration file into a scene/v1,
@@ -20,7 +20,7 @@ description: |
   from a single image and applied it to the whole set; ETH3D courtyard alone
   mixes 6208x4134 and 6205x4135, so that was silently wrong there.
 
-image: sfmstack/scene-loader:1.0.0
+image: sfmstack/scene-loader:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -134,9 +134,26 @@ diagnostics:
       - For classical pose estimation, supply calibration_path.
     see_also: limitations.md#uncalibrated-scenes
 
-  - code: heavy_downscale
+  - code: low_working_resolution
     severity: warn
-    message: Images were reduced past 0.4x; keypoint counts will fall noticeably.
+    message: The scene is small after resizing; detectors may be short of detail.
     suggested_actions:
-      - Raise max_edge if downstream detectors are starved.
+      - Confirm before acting - run a detector and read keypoints_min against keypoints_per_image. A low ratio with counts near the floor is a resolution problem; healthy counts mean this is only a note.
+      - To fix it, build a NEW scene at a larger size. This one cannot be adjusted in place, and every artifact downstream of it gets a new id.
+      - "The parameter depends on the resize mode - max_edge when resize is `auto`, target_resolution when it is `fixed` or `square`. They are two parameters for two modes, not two names for one knob."
+      - Detector-side resizing is not a substitute: on the sparse detectors, upsampling was measured to LOWER the keypoint count, because their suppression radius is denominated at inference resolution.
+    metric: megapixels
+    see_also: tuning.md#downscale_factor-below-04
+
+  - code: heavy_downscale
+    severity: info
+    message: >
+      Images were reduced past 0.4x. Recorded rather than flagged: a large-sensor
+      source reaches a normal working resolution at a small ratio, so the ratio
+      alone predicts nothing. This fired on every DSLR capture measured while the
+      detectors on them were not starved at all, which is why the actionable
+      version above is keyed on the resulting megapixels instead.
+    suggested_actions:
+      - No action unless a detector reports starved frames. The resulting resolution, not the ratio, is what limits detection.
+    metric: downscale_factor
     see_also: tuning.md#downscale_factor-below-04

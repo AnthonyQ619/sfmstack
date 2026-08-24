@@ -289,3 +289,63 @@ def test_a_failing_module_is_recorded_and_seals_nothing(orch, scene, monkeypatch
     assert len(failed) == 1
     assert "blew up" in failed[0]["error"]
     assert orch.store.list(type="features/v1") == []
+
+
+def test_a_truncated_run_record_does_not_poison_the_run_id(orch, scene):
+    """A crashed write used to make a run_id permanently unusable.
+
+    `Run.save` wrote in place, so a kill or a full filesystem mid-write left a file
+    whose frontmatter would not parse. Every later run under that id then died in
+    `open_run`, before reaching the module -- turning a transient container race
+    into a dead tag that had to be deleted by hand. Three separate sessions hit it.
+    """
+    orch.run("FakeDetector", run_id="crashy", inputs={"scene": scene.id},
+             params={"max_keypoints": 8})
+    record = orch.runs_dir / "crashy" / "run.md"
+    assert record.exists()
+
+    # Exactly what an interrupted write leaves behind: the opening delimiter and
+    # part of the frontmatter, with no closing one.
+    record.write_text("---\nrun: crashy\nste", encoding="utf-8")
+    orch._runs.clear()  # a fresh process would not have it cached
+
+    result = orch.run("FakeDetector", run_id="crashy", inputs={"scene": scene.id},
+                      params={"max_keypoints": 16})
+    assert result.primary.metric("keypoints_min") > 0
+
+    # The unreadable file is set aside rather than deleted, and the new record says
+    # where it went -- losing the attempt history silently would be its own bug.
+    assert (orch.runs_dir / "crashy" / "run.md.corrupt.0").exists()
+    body = record.read_text(encoding="utf-8")
+    assert "could not be read" in body
+    assert "run.md.corrupt.0" in body
+
+
+def test_a_failed_save_leaves_the_previous_record_intact(orch, scene, monkeypatch):
+    """The atomic-write half of the same fix.
+
+    Under ENOSPC the temp write fails; what must NOT happen is the live record
+    being truncated on the way out. Losing an update is recoverable, losing the
+    file is not.
+    """
+    orch.run("FakeDetector", run_id="nospace", inputs={"scene": scene.id},
+             params={"max_keypoints": 8})
+    record = orch.runs_dir / "nospace" / "run.md"
+    before = record.read_text(encoding="utf-8")
+
+    import pathlib
+    real = pathlib.Path.write_text
+
+    def full_disk(self, *a, **kw):
+        if self.name.startswith(".run.md"):
+            raise OSError(28, "No space left on device")
+        return real(self, *a, **kw)
+
+    monkeypatch.setattr(pathlib.Path, "write_text", full_disk)
+    run = orch.open_run("nospace")
+    with pytest.raises(OSError):
+        run.save()
+    monkeypatch.undo()
+
+    assert record.read_text(encoding="utf-8") == before
+    assert not list(record.parent.glob(".run.md.*.tmp"))

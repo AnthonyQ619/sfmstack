@@ -671,10 +671,54 @@ class SfmService:
                 {"SceneTriage", "SceneMotion", "SceneDescription"}
                 - {a["module"] for a in analyses}
             ),
+            # The analysis modules' own skills ARE fetchable -- module_skill resolves
+            # every one of them -- but nothing here said so, and the menu below lists
+            # only what consumes a scene. So every `see_also` an analysis diagnostic
+            # emits (tuning.md#..., limitations.md#...) read as a dangling citation,
+            # and readers reported the advice they most needed as unreachable when it
+            # was one call away.
+            "skills_available": {
+                "note": (
+                    "Fetch any of these with module_skill(<name>, <topic>), topics "
+                    "tuning / limitations / artifact / SKILL / sources. This is how "
+                    "a `see_also` on an analysis diagnostic resolves -- those "
+                    "modules are not in `menu`, which lists only what consumes a "
+                    "scene, but their skills are here."
+                ),
+                "modules": sorted(
+                    {"SceneLoader", "SceneTriage", "SceneMotion", "SceneDescription"}
+                    | {m["name"] for m in self.list_modules(consumes=SCENE_TYPE)["modules"]}
+                ),
+            },
             "how_to_read": self.workflow_skill(PLANNING_GUIDE),
             "families": families,
             "families_missing": missing,
             "menu": self.list_modules(consumes=SCENE_TYPE),
+            # The menu above is "what consumes this scene", which structurally
+            # EXCLUDES whatever produced it -- and the scene producer is exactly the
+            # module a heavy_downscale diagnostic and the planning guide both tell
+            # you to go and change. Nine readers in a row concluded no such module
+            # existed, then reasoned around a working-resolution decision they were
+            # never offered. Listed separately rather than merged, because reaching
+            # for one is a different kind of act: it builds a NEW scene and every
+            # artifact downstream of it gets a new id.
+            "rebuild_scene": {
+                "modules": self.list_modules(produces=SCENE_TYPE)["modules"],
+                "note": (
+                    "These produce a scene rather than consuming one, so they are "
+                    "not in `menu`. Running one does not adjust this scene -- it "
+                    "builds another, and every analysis and every downstream "
+                    "artifact must be recomputed against the new id. That cost is "
+                    "why it is a separate list. It is still the right move when the "
+                    "working resolution, and not a detector parameter, is what is "
+                    "limiting the pipeline: the guide's advice to raise the working "
+                    "resolution and the loader's own heavy_downscale action both "
+                    "land here. Note the resize mode -- `max_edge` applies under "
+                    "`resize: auto`, `target_resolution` under `resize: fixed` or "
+                    "`square`; they are two parameters for two modes, not two names "
+                    "for one knob."
+                ),
+            },
             "report_shape": PLAN_SHAPE,
         }
 

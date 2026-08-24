@@ -15,6 +15,7 @@ isolated from one another and still interoperate.
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 from sfmkit import ArtifactStore
@@ -22,12 +23,31 @@ from sfmkit import ArtifactStore
 from dataset_paths import DTU_CALIB, DTU_SCAN1, needs_dtu
 from sfmorch import ContainerRunner, DockerBackend, GpuBroker, Orchestrator
 
-IMAGES = (
-    "sfmstack/scene-loader:1.0.0",
-    "sfmstack/feature-sift:1.0.0",
-    "sfmstack/match-nn:1.0.0",
-    "sfmstack/track-union-find:1.0.0",
-)
+# Read out of the manifests, never pinned here. A literal tag list is a silent
+# skip waiting to happen: bump any module's version and the tag it names stops
+# existing, `_images_built` returns False, and this whole file skips while
+# reporting nothing wrong. That is strictly worse than the failure it replaces.
+MODULES = ("SceneLoader", "FeatureDetectionSIFT", "FeatureMatchNN",
+           "FeatureTrackUnionFind", "SceneTriage")
+
+
+def _image_of(module: str) -> str:
+    manifest = REPO / "modules" / _DIRS[module] / "module.yaml"
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        if line.startswith("image:"):
+            return line.split(maxsplit=1)[1].strip()
+    raise AssertionError(f"no image: line in {manifest}")
+
+
+_DIRS = {
+    "SceneLoader": "scene_loader",
+    "FeatureDetectionSIFT": "feature_sift",
+    "FeatureMatchNN": "match_nn",
+    "FeatureTrackUnionFind": "track_union_find",
+    "SceneTriage": "scene_triage",
+}
+REPO = Path(__file__).resolve().parents[1]
+IMAGES = tuple(_image_of(m) for m in MODULES)
 
 
 def _images_built() -> bool:
@@ -82,15 +102,15 @@ def test_modules_do_not_share_dependencies(orch):
     carry is the learned stack, which is the expensive half.
     """
     for image, present, absent in (
-        ("sfmstack/scene-loader:1.0.0", "PIL", "cv2"),
-        ("sfmstack/feature-sift:1.0.0", "cv2", "PIL"),
-        ("sfmstack/match-nn:1.0.0", "cv2", "PIL"),
-        ("sfmstack/track-union-find:1.0.0", "cv2", "torch"),
+        (_image_of("SceneLoader"), "PIL", "cv2"),
+        (_image_of("FeatureDetectionSIFT"), "cv2", "PIL"),
+        (_image_of("FeatureMatchNN"), "cv2", "PIL"),
+        (_image_of("FeatureTrackUnionFind"), "cv2", "torch"),
         # The reason scene analysis is two modules rather than one: the CPU half
         # carries no torch at all (578 MB) and is cheap enough to run on every
         # scene, where the flow half pays for the shared torch base (5.98 GB).
         # Splitting them is what keeps the always-run one affordable.
-        ("sfmstack/scene-triage:1.0.0", "cv2", "torch"),
+        (_image_of("SceneTriage"), "cv2", "torch"),
     ):
         probe = subprocess.run(
             ["docker", "run", "--rm", "--entrypoint", "python", image, "-c",
@@ -120,7 +140,11 @@ def test_provenance_records_the_image_that_actually_ran(orch):
     }).primary
 
     prov = scene.manifest.produced_by
-    assert prov.image == "sfmstack/scene-loader:1.0.0"
+    # From the live manifest, not a literal. What this test is about is that
+    # provenance records the image that ACTUALLY ran and that its digest resolves --
+    # a pinned tag turns that into a tripwire on every version bump, which has now
+    # happened twice.
+    assert prov.image == orch.registry.get("SceneLoader").image
     assert prov.image_digest.startswith("sha256:")
 
     live = subprocess.run(

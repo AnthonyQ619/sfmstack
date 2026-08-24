@@ -193,7 +193,7 @@ also the last move — a large fraction settle there and change nothing else, so
 removing the parameter from the measurement is frequently the whole of the tuning.
 
 **The check is mandatory; its outcome is not.** A minority of captures arrive at
-`saturation` 0.0 already, and on those the raised cap is a byte-identical no-op —
+`saturation` 0.0 already, and on those the raised cap changes nothing —
 which is still a result worth one run, because it says the ceiling is content. The
 kinds of capture that arrive unsaturated are the ones where something *upstream* of
 the cap already binds: a dim or low-contrast capture where the contrast filter cuts
@@ -220,8 +220,15 @@ Two things this rule protects you from:
   Match them at a cap neither one binds on.
 
 Raising the cap and finding the count barely moves is itself a result: it says the
-ceiling is content rather than the parameter. Raising it again and getting a
-byte-identical artifact says so conclusively, and costs one run.
+ceiling is content rather than the parameter. Raising it again and getting
+**identical metrics** says so conclusively, and costs one run.
+
+*Compare the metrics, not the artifact.* An earlier version of this line said "a
+byte-identical artifact", which is not a check anyone can perform: ids are derived
+from the recipe, so a different parameter always mints a new id even when the
+content is the same, and nothing in the tool surface exposes a content hash. Three
+readers tried and reported it as unperformable. Identical metrics across a doubled
+cap is the observable form of the same fact, and it is enough.
 
 ---
 

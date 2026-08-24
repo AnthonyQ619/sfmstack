@@ -112,6 +112,17 @@ Above 200 elements a series arrives summarised (min / median / max and the eight
 extremes at each end) rather than whole. Every scene measured here is 12 images,
 so nothing has been truncated yet.
 
+**That rule covers the ANALYSIS series described in this section, and nothing
+else.** A pipeline artifact's stored arrays come back whole however large they are —
+a detector's keypoint table is tens of thousands of rows and arrives as tens of
+thousands of rows, megabytes of it. Readers have been surprised in both directions:
+some expected a summary and got the raw array, one assumed the raw array was
+unavailable and did not try. Whole is the useful behaviour and worth knowing about,
+because it is what makes the content-masked coverage analysis in
+`families/detection.md` §3 possible at all — but ask for one deliberately rather
+than in passing, and check the row count against the array shape the artifact
+reports before you compute anything on it.
+
 ---
 
 ## 2. Metric by metric: what it decides
@@ -326,6 +337,12 @@ matches rather than missing ones, that no ratio-test threshold recovers from it,
 and the capability query that follows. Firing is how that text reaches a reader,
 and it is set above the band on purpose so it does not fire on most captures.
 
+*A naming trap worth one line: `repetition_notes` is the name of the field in the
+`report` parameter you SUBMIT, where it is a mapping of required questions. The
+artifact publishes the answers as flat fields — `repetition_objects` and
+`repetition_texture`. Both names are real and they live at different layers; a
+reader looking for `repetition_notes.objects` on an artifact will not find it.*
+
 **Moving either number cannot make this metric discriminate**, because the
 observed range is narrow and has no gap anywhere in it. Lower the trip and the
 text becomes boilerplate; raise it and it reaches almost nothing. The band was
@@ -344,7 +361,7 @@ reading is dominated by viewing geometry, not by ambiguity.**
 ambiguity — element *n* in one frame matching element *n+1* in the next. This
 metric is within-image only, and its own `limitations.md` says it cannot see
 between-image ambiguity at all. Nothing in the stack counts repeated objects at
-any level. **Read `repetition_notes` from `SceneDescription` for that, and treat
+any level. **Read `repetition_objects` from `SceneDescription` for that, and treat
 this number as weak corroboration at best.**
 
 #### The one use with evidence behind it, and its limits
@@ -513,7 +530,7 @@ for what they cover:
 | field | decides |
 | --- | --- |
 | `environment` | `setting: indoor \| outdoor` on `FeatureMatchLoFTR` and `FeatureMatchRoMa` — ScanNet against MegaDepth weights. **Nothing measured distinguishes these**, and the modules' tuning notes say the wrong one costs `inlier_ratio` outright. `studio` maps to neither; expect to try both. |
-| `repetition_notes.objects` | repeated *castings* — identical windows, dormers, street lamps. **Counted nowhere at any level.** |
+| `repetition_objects` | repeated *castings* — identical windows, dormers, street lamps. **Counted nowhere at any level.** |
 | `material_hazards` / `hazard_position` | whether a reflection carries a legible image, and where the phantom lands |
 | `dynamic_content` | movers. Both measuring modules list this as unimplemented. |
 | `empty_regions` | wanted-vs-not and clipped-vs-flat, which `textureless_fraction` cannot give |
@@ -550,7 +567,14 @@ for what they cover:
    and `split_rate` together.
 7. **`heavy_downscale` bites hardest where texture is already thin.** Office at
    0.165 destroys the only signal its walls have. On that scene the first move is
-   not a detector but a larger `target_resolution`.
+   not a detector but a larger working resolution — which means building a NEW
+   scene, since a scene cannot be resized in place. The parameter depends on the
+   loader's resize mode: `max_edge` under `resize: auto`, `target_resolution` under
+   `resize: fixed` or `square`. Both names appear in this stack and they are two
+   parameters for two modes, not two names for one knob. The scene producers are
+   listed in the brief's `rebuild_scene`, separately from `menu` — `menu` is what
+   consumes a scene, so the module that made it can never appear there, and readers
+   have repeatedly concluded from that it did not exist.
 8. **A capture can split into disconnected halves and no metric says so.**
    An outdoor site walked in two passes and a long frontage walked end to end have
    both done it. `pairing: exhaustive`, watch `graph_components`.

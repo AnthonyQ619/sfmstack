@@ -70,7 +70,10 @@ class Orchestrator:
         if run_id not in self._runs:
             root = self.runs_dir / run_id
             if (root / "run.md").exists():
-                self._runs[run_id] = Run.open(root)
+                # quarantine_corrupt: this path is on the way to running a module, so
+                # an unparseable record must not be able to block the run. See
+                # Run.open.
+                self._runs[run_id] = Run.open(root, quarantine_corrupt=True)
             else:
                 run = Run(id=run_id, root=root, scene=scene, dataset=dataset, goal=goal)
                 run.save()

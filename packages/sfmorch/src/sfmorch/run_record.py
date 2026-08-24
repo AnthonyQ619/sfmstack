@@ -11,6 +11,8 @@ body for whoever is reading.
 
 from __future__ import annotations
 
+import os
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -147,6 +149,19 @@ class Run:
         }
 
     def save(self) -> None:
+        """Write the record atomically: temp file in the same directory, then rename.
+
+        A bare write_text here was a permanent-failure bug. A process killed
+        mid-write -- or, as happened, a full filesystem -- left a truncated file
+        whose frontmatter would not parse, so `open` raised and EVERY subsequent
+        run under that id died before reaching the module. A transient container
+        race became a dead run_id that had to be deleted by hand.
+
+        os.replace is atomic within a filesystem, so a reader sees either the whole
+        old record or the whole new one. Under ENOSPC the temp write fails and the
+        previous record survives intact, which is the behaviour that matters: losing
+        an update is recoverable, losing the file is not.
+        """
         self.root.mkdir(parents=True, exist_ok=True)
         front = yaml.safe_dump(
             self.to_doc(),
@@ -156,7 +171,15 @@ class Run:
             width=100,
         )
         body = "\n\n".join([self._table(), *self.notes]).strip()
-        self.path.write_text(f"---\n{front}---\n\n{body}\n", encoding="utf-8")
+        text = f"---\n{front}---\n\n{body}\n"
+
+        tmp = self.path.with_name(f".{self.path.name}.{os.getpid()}.tmp")
+        try:
+            tmp.write_text(text, encoding="utf-8")
+            os.replace(tmp, self.path)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
 
     def _table(self) -> str:
         if not self.steps:
@@ -177,12 +200,42 @@ class Run:
         return "\n".join(lines)
 
     @classmethod
-    def open(cls, root: str | Path) -> "Run":
+    def open(cls, root: str | Path, *, quarantine_corrupt: bool = False) -> "Run":
+        """Load a record. With `quarantine_corrupt`, an unreadable one is set aside.
+
+        The caller that is about to RUN something passes the flag: a record it
+        cannot parse must not be allowed to block the work, because the attempt
+        history of a run that already crashed is worth less than the ability to
+        retry it. The corrupt file is moved aside rather than deleted, and the fresh
+        record says where it went, so nothing is silently lost. A caller that is
+        merely READING a record leaves the flag off and gets the error, because
+        there silence would be a wrong answer rather than an inconvenience.
+        """
         root = Path(root)
         path = root / "run.md"
         if not path.exists():
             raise FileNotFoundError(f"no run record at {path}")
-        doc, body = split_frontmatter(path.read_text(encoding="utf-8"), origin=str(path))
+        text = path.read_text(encoding="utf-8")
+        try:
+            doc, body = split_frontmatter(text, origin=str(path))
+        except Exception as exc:
+            if not quarantine_corrupt:
+                raise
+            n = 0
+            while (kept := path.with_name(f"run.md.corrupt.{n}")).exists():
+                n += 1
+            os.replace(path, kept)
+            run = cls(id=root.name, root=root)
+            run.notes.append(
+                f"**The previous record at `run.md` could not be read** "
+                f"({type(exc).__name__}: {exc}). It has been moved to "
+                f"`{kept.name}` and this record started fresh. The usual cause is a "
+                f"write interrupted by a kill or a full filesystem; the steps that "
+                f"ran before it are in the quarantined file and their artifacts, "
+                f"being content-addressed, are still in the store."
+            )
+            run.save()
+            return run
         return cls(
             id=str(doc.get("run", root.name)),
             root=root,

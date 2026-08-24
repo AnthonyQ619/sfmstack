@@ -136,10 +136,19 @@ dim, flat, or soft.
    assumes the image already carries ~0.5 of blur [S1]; over-smoothing a soft
    image destroys the extrema.
 
-**Check the scene first.** If `SceneLoader` reported `heavy_downscale`, the
-keypoints were thrown away before SIFT ever ran — raise `max_edge` there rather
-than loosening thresholds here. That is a pointer, not an ordering rule; loosen
-here first if you prefer, but the scene fix is usually the larger effect.
+**Check the scene first — but check the right flag.** `heavy_downscale` is a ratio
+and fires on every large-sensor source regardless of whether anything is starved;
+`low_working_resolution` is keyed on the megapixels that survived and is the one that
+means something. If *that* fired, the keypoints were thrown away before SIFT ever
+ran, and the fix is a new scene at a larger working resolution rather than looser
+thresholds here — `max_edge` under `resize: auto`, `target_resolution` under
+`resize: fixed` or `square`. A scene cannot be resized in place, so this rebuilds
+every id downstream, which is why it is worth confirming the detector is actually
+starved first: read `keypoints_min` against `keypoints_per_image` and see whether the
+counts are near the floor or merely uneven.
+
+That is a pointer, not an ordering rule; loosen here first if you prefer, but where
+the resolution really is the constraint the scene fix is much the larger effect.
 
 ---
 

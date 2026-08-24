@@ -222,12 +222,46 @@ def run(ctx: Ctx):
             see_also="artifact.md#per-image-geometry",
         )
 
-    if downscale < 0.4:
+    # Keyed on the RESULT, not the ratio. `downscale < 0.4` fires on every modern
+    # DSLR capture forever -- 1024px from a 6000px source is 0.17, and that is the
+    # intended working resolution, not a problem. A flag that cannot be cleared is a
+    # flag nobody reads, and this one was pointing readers at the one thing they
+    # could not change while the real constraint was elsewhere. Megapixels after
+    # resizing is what actually predicts a starved detector.
+    if megapixels < 0.35:
+        out.diagnostic(
+            "low_working_resolution",
+            severity="warn",
+            message=(
+                f"{megapixels:.2f} MP after resizing (median scale {downscale:.2f}). "
+                f"Detectors may be short of detail rather than short of threshold."
+            ),
+            suggested_actions=[
+                "Confirm it before acting: run a detector and read keypoints_min "
+                "against keypoints_per_image. A low ratio with counts near the floor "
+                "is a resolution problem; healthy counts mean this is only a note.",
+                "To fix it, build a NEW scene at a larger size -- this one cannot be "
+                "adjusted in place, and every artifact downstream gets a new id.",
+                "The parameter depends on the resize mode: max_edge under "
+                "resize: auto, target_resolution under resize: fixed or square.",
+                "Detector-side resizing is not a substitute: on the sparse detectors "
+                "upsampling was measured to LOWER the keypoint count, because their "
+                "suppression radius is denominated at inference resolution.",
+            ],
+            see_also="tuning.md#downscale_factor-below-04",
+        )
+    elif downscale < 0.4:
         out.diagnostic(
             "heavy_downscale",
-            severity="warn",
-            message=f"Median scale {downscale:.2f}; keypoint counts will fall.",
-            suggested_actions=["Raise max_edge if downstream detectors are starved."],
+            severity="info",
+            message=(
+                f"Median scale {downscale:.2f}, giving {megapixels:.2f} MP. Normal "
+                f"for a large-sensor source; recorded rather than flagged."
+            ),
+            suggested_actions=[
+                "No action unless a detector reports starved frames. The resulting "
+                "resolution, not the ratio, is what limits detection."
+            ],
             see_also="tuning.md#downscale_factor-below-04",
         )
 
