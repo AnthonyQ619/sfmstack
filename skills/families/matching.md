@@ -186,40 +186,6 @@ Measured across fourteen captures, that swap gains on well-connected repetitive
 subjects and loses a third to a half of the model on well-connected
 non-repetitive ones, so it is worth being right about which you have.
 
-**And on a capture inside the classical detector's design envelope, the metrics
-this stage produces will not tell you** — they have been measured pointing the
-other way from the only evidence that reaches the outcome.
-
-The envelope is a set of capture properties, not a dataset: **well lit, densely and
-aperiodically textured, short baselines between adjacent frames, no repeated
-objects, photometrically stable.** On a capture like that the joint matcher's
-advantages — repetition, illumination change, wide baseline — have nothing to act
-on, while its permissive threshold still admits correspondences a ratio test would
-reject. Those become contradictory tracks two stages later.
-
-What has been measured, and at which stage, because the two disagree:
-
-- **At this stage `[measured: 3]`.** With the detector held fixed, the joint
-  matcher won every published metric on one such capture — more pairs, three times
-  the matches per pair, a better weakest link and a higher inlier ratio. On a
-  second it won matches per pair by more than double while *losing* on pairs
-  kept. On a third the same pattern appeared on the detector axis: the learned
-  branch returned a complete graph with zero weak pairs, and per-pair counts showed
-  the extra connectivity was phantom.
-- **One stage past this one `[observed: 1]`.** A single recorded comparison on a
-  capture of this kind, everything downstream identical, has the ratio test
-  finishing with roughly three times the points at roughly a third of the final
-  reprojection error — while trailing on matches per pair, exactly as above.
-
-**So the honest claim is about the metrics, not about the matcher.** On this
-capture class a stage-four win by the joint matcher is *not evidence*, because the
-one measurement that reaches the outcome disagrees with the metrics that produce
-that win. It does **not** follow that the ratio test is better here: that rests on a
-single downstream measurement, and one of the three captures above split rather
-than inverting. Treat it as a reason to distrust the intermediate reading, spend
-the run on both branches, and record which one you kept and why — not as a rule
-that picks for you.
-
 **"Being right about which you have" is the hard part, and the evidence says you
 often cannot be.** One capture in that set had loud object-level repetition and
 still lost roughly 40% of its points to the swap. On it the `repetitiveness` metric
