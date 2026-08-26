@@ -52,6 +52,49 @@ def test_every_metric_named_in_a_manifest_is_documented(registry):
             assert m.direction != "unknown", f"{name}.{metric} has no direction"
 
 
+def test_the_manifest_and_the_adapter_agree_about_healthy_bands(registry):
+    """Two sources of truth, and the one the agent sees is the adapter's.
+
+    A band lives in the manifest (which `sfm_describe_module` serves) and again in
+    the adapter's `out.metric(...)` call (which is what lands on the artifact and
+    is therefore what a reader is actually judging against). They drifted apart on
+    `weak_pairs` across all six matchers -- manifest silent, adapter publishing an
+    unreachable ceiling of zero -- and every reader in a ten-capture sweep judged
+    against the adapter's version while the manifest said there was no band to
+    judge against. Nothing caught it because nothing compared them.
+    """
+    import re
+
+    def metric_calls(src):
+        for m in re.finditer(r"out\.metric\(", src):
+            i, depth = m.end(), 1
+            while depth and i < len(src):
+                depth += (src[i] == "(") - (src[i] == ")")
+                i += 1
+            yield src[m.start():i]
+
+    for name in registry.names():
+        spec = registry.get(name)
+        adapter = spec.root / "adapter.py"
+        if not adapter.exists():
+            continue
+        emits = {}
+        for call in metric_calls(adapter.read_text(encoding="utf-8")):
+            named = re.match(r'out\.metric\(\s*"([^"]+)"', call)
+            if named:
+                emits[named.group(1)] = "healthy=" in call
+        for metric, m in spec.metrics.items():
+            if metric not in emits:
+                continue
+            declared = m.healthy is not None
+            assert emits[metric] == declared, (
+                f"{name}.{metric}: manifest {'declares' if declared else 'declares NO'} "
+                f"healthy band, adapter {'emits' if emits[metric] else 'emits none'}. "
+                f"The artifact carries the adapter's version, so that is what a reader "
+                f"judges against -- they must agree."
+            )
+
+
 def test_every_diagnostic_points_into_the_skills(registry):
     for name in registry.names():
         spec = registry.get(name)

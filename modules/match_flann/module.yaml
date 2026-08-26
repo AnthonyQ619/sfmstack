@@ -1,5 +1,5 @@
 name: FeatureMatchFLANN
-version: 1.0.0
+version: 1.1.0
 kind: matching
 summary: >
   Approximate nearest-neighbour descriptor matching via FLANN, with the same
@@ -30,7 +30,7 @@ description: |
   Binary descriptors (ORB) use an LSH index rather than a KD-tree, which is
   selected automatically from the features artifact's `binary` flag.
 
-image: sfmstack/match-flann:1.0.0
+image: sfmstack/match-flann:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -206,9 +206,18 @@ metrics:
     direction: higher_better
     healthy: [1.0, null]
     meaning: Fraction of images in the biggest component.
+  min_image_degree:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: >
+      The fewest surviving pairs any one image has -- the margin graph_components
+      does not report. An image at degree 1 is connected and one pair from being
+      lost, and every track through it crosses that single edge. Read it beside
+      min_matches_per_pair: a thin edge on a high-degree image is redundant, the
+      same thin edge on a degree-1 image is the graph.
   weak_pairs:
-    direction: lower_better
-    healthy: [null, 0]
+    direction: neutral
+    healthy: null
     meaning: Pairs dropped for falling under min_matches.
   planarity:
     direction: lower_better

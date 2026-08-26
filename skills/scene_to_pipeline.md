@@ -49,24 +49,40 @@ id — a plan for a new capture can use "a controlled rig against a lit backdrop
 and cannot use a name. Per-capture numbers and their scene ids are in
 [`skills/runs/INDEX.md`](runs/INDEX.md) for traceability.
 
-| metric | min | median | max | spread |
+| metric | low end is | median | high end is | spread |
 | --- | --- | --- | --- | --- |
-| `combined_change` | 0.0325 tight-arc panel | 0.0696 | 0.1156 vegetated site | 3.6× |
-| `texture_density` | 475 blank-wall interior | 3479 | 5618 rig, high texture | **12×** |
-| `repetitiveness` | 0.6213 vegetated site | 0.7163 | 0.8092 flat-panel wall | 1.3× |
-| `textureless_fraction` | 0.1278 vegetated site | 0.3865 | 0.8013 blank-wall interior | 6.3× |
-| `sharpness_ratio` | 0.1629 blank-wall interior | 0.6280 | 0.9590 tight-arc panel | 5.9× |
-| `sharpness_median` | 140 blank-wall interior | 1363 | 2564 vegetated site | **18×** |
-| `highlight_clipped_fraction` | 0.0000 masonry courtyard | 0.0421 | 0.6837 rig on lit backdrop | **bimodal, see below** |
-| `shadow_clipped_fraction` | 0.0000 vegetated site | 0.0000 | 0.0223 shelved interior | 11 of 16 at zero |
-| `overall_magnitude` | 0.0319 tight-arc panel | 0.1193 | 0.3092 fast outdoor traverse | 9.7× |
-| `high_motion_tail` | 0.0413 tight-arc panel | 0.1490 | 0.3618 shelved interior | 8.8× |
-| `variability` | 0.0103 tight-arc panel | 0.0588 | 0.2077 shelved interior | 20× |
-| `rotation_median_deg` | 2.60 masonry courtyard | 18.03 | 29.47 shelved interior | 11× |
-| `large_rotation_risk` | 0.0000 vegetated site | 0.3636 | 0.8182 shelved interior | — |
-| `planar_dominance` | 0.0000 | **0.0000** | 0.1818 planar frontage, flat-panel wall | 13 of 16 at zero |
-| `pure_rotation_risk` | 0.0000 | **0.0000** | 0.0909 rig with overhead pass, planar frontage | 14 of 16 at zero |
-| `low_baseline_risk` | 0.0000 | 0.0000 | **0.0000** | 16 of 16 at zero |
+| `combined_change` | tight-arc panel | 0.0696 | vegetated site | 3.6× |
+| `texture_density` | blank-wall interior | 3479 | rig, high texture | **12×** |
+| `repetitiveness` | vegetated site | 0.7163 | flat-panel wall | 1.3× |
+| `textureless_fraction` | vegetated site | 0.3865 | blank-wall interior | 6.3× |
+| `sharpness_ratio` | blank-wall interior | 0.6280 | tight-arc panel | 5.9× |
+| `sharpness_median` | blank-wall interior | 1363 | vegetated site | **18×** |
+| `highlight_clipped_fraction` | masonry courtyard | 0.0421 | rig on lit backdrop | **bimodal, see below** |
+| `shadow_clipped_fraction` | vegetated site | 0.0000 | shelved interior | 11 of 16 at zero |
+| `overall_magnitude` | tight-arc panel | 0.1193 | fast outdoor traverse | 9.7× |
+| `high_motion_tail` | tight-arc panel | 0.1490 | shelved interior | 8.8× |
+| `variability` | tight-arc panel | 0.0588 | shelved interior | 20× |
+| `rotation_median_deg` | masonry courtyard | 18.03 | shelved interior | 11× |
+| `large_rotation_risk` | vegetated site | 0.3636 | shelved interior | — |
+| `planar_dominance` | — | **0.0000** | planar frontage, flat-panel wall | 13 of 16 at zero |
+| `pure_rotation_risk` | — | **0.0000** | rig with overhead pass, planar frontage | 14 of 16 at zero |
+| `low_baseline_risk` | — | 0.0000 | **0.0000** | 16 of 16 at zero |
+
+**The extremes are stated as capture KINDS, not values, and that is deliberate.**
+The minimum and maximum of a sixteen-capture range are two specific captures'
+readings, so printing them to four significant figures hands a reader a lookup key:
+when their own number matches, they read their own capture back and mistake recall
+for confirmation. Every reader in a ten-capture sweep identified its capture that
+way, several to five figures. The median survives because it is far less likely to
+be any single reading, and the spread column carries the shape of the range without
+carrying an identifier.
+
+**So locate yourself by kind, not by value.** "Is this a fast outdoor traverse or a
+tight-arc rig?" is answerable from the description and transfers to a capture from
+outside this corpus; "is 0.31 high?" is answerable only by lookup and does not. The
+per-capture numbers remain in [`skills/runs/INDEX.md`](runs/INDEX.md) for
+traceability — and following that link is how a reader leaks their own answer, so
+go there to re-run a claim, not to place a reading.
 
 **The four numbers that actually separate scenes** are `texture_density`,
 `textureless_fraction`, `sharpness_ratio` and `overall_magnitude`. They span an
@@ -252,6 +268,22 @@ third was a room of blank painted walls reading essentially **zero** clipped at
 is precisely what makes it a hard-but-attackable scene instead of an impossible
 one. Higher working resolution and exposure normalisation at detection are live
 options on the third and pointless on the first two.
+
+**Check that the branch you are on can execute that advice before you plan around
+it.** Exposure normalisation at detection exists as `grayscale_clahe`, and
+`grayscale_clahe` exists on the classical detector and on none of the learned ones.
+So on a capture where §3b's connectivity question sends you to a learned detector
+*and* the emptiness is flat-not-burnt on wanted surface, the two prescriptions
+collide and the photometric one has nowhere to run. Several readers have hit this
+and had no resolution to reach for.
+
+There is no parameter that resolves it. What is available, in order of preference:
+raise the working resolution instead, which addresses the same shortfall a stage
+earlier and is what the flat-not-burnt row already names first; or accept the
+detector's reading on those regions and carry the risk into the plan's watch line.
+What is *not* available is taking the classical detector for its CLAHE when the
+graph is at risk — that trades a connectivity failure for a contrast one, and only
+the first costs you frames.
 
 `textureless_fraction` alone cannot tell those apart — the three readings differ
 by four percentage points. The clipped fraction separates them completely, and
@@ -746,8 +778,27 @@ Two consequences, and neither of them overturns the reading:
    A capture has been seen reading above the corpus maximum at stride 4 and
    comfortably mid-range at stride 1, which would place it in the fragmenting group
    or well outside it depending only on which artifact you happened to read.
-4. **Watch `graph_components` and `largest_component_fraction`** at the matcher —
-   the first stage outputs that see the problem rather than predict it.
+4. **Watch `pairs_matched` against the number of pairs your pairing proposed** —
+   that is the reading that separates a matcher which recovered the marginal pairs
+   from one that did not. Below roughly half, registration starts dropping frames;
+   above it, every capture measured completed.
+
+   **`graph_components` and `largest_component_fraction` are not that reading**, and
+   an earlier version of this step said they were. They are *terminal conditions* —
+   they report a split after it has happened — and on a small ordered capture the
+   consecutive chain almost always survives, so they read healthy either way.
+   Measured across ten captures and fifty-nine matcher runs they read 1 and 1.0 on
+   fifty-four, including on two configurations that differed by half the possible
+   pairs, and including on a graph where two images hung off a single edge each.
+   Watch them, because when they *do* fire the failure is real and nothing
+   downstream repairs it — but do not read a component count of 1 as evidence the
+   graph is sound.
+
+   **`min_image_degree` is the margin.** An image at degree 1 is connected and one
+   pair from being lost. On the capture above, the two degree-1 images were exactly
+   the frames the description named as the join between the capture's two halves —
+   which is the shape to expect, because a weak image is weak for a reason the
+   description usually already states.
 5. **If the graph does fragment, change the detector and matcher together**, not
    the tracker. A tracker cannot connect components that were never matched.
 

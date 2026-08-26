@@ -125,13 +125,24 @@ dim, flat, or soft.
    contraindicated the parameter on the very captures it then won on, and several
    readers noticed the collision between the module's stated rationale and the
    description's recommendation for their capture.
-   **The count is not the test.** CLAHE lifts every low-contrast region, and where a
-   large unwanted one exists — loose aggregate, lawn, sky — most of the gain lands
-   there: counts up by tens of percent while the subject's *share* of the budget
-   falls. Two cheap checks: does `keypoints_min` rise faster than the mean (a
-   targeted gain on the starved frames looks like that), and do the extra keypoints
-   land in the region `empty_regions` calls wanted. Where neither can be answered,
-   prefer the knob whose effect you can predict.
+   **The count is not the test**, and neither is the cheap substitute for it. CLAHE
+   lifts every low-contrast region, and where a large unwanted one exists — loose
+   aggregate, lawn, sky — most of the gain lands there: counts up by tens of percent
+   while the subject's *share* of the budget falls.
+
+   *The real test* is where the extra keypoints landed: band the raw `xy` against
+   the regions `empty_regions` calls wanted, or — cheaper and available one stage
+   later — check whether the extra keypoints **survived matching.**
+
+   *A screen, not a test:* whether `keypoints_min` rose faster than the mean. It is
+   worth glancing at, and **it can pass on a change that hurt.** It has been
+   measured passing — the ratio moving from just outside the even band to inside it
+   — on a run that then lost three image pairs and nine percent of all verified
+   matches. It detects *evenness across frames*, which is not the same property as
+   *landing on wanted surface*: a gain spread evenly over an unwanted region passes
+   it. Treat a pass as "not obviously wrong" and a fail as informative.
+
+   Where nothing can be answered, prefer the knob whose effect you can predict.
 3. `sigma` 1.6 → 1.0 if the inputs are soft or slightly out of focus. The default
    assumes the image already carries ~0.5 of blur [S1]; over-smoothing a soft
    image destroys the extrema.

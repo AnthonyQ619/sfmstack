@@ -129,6 +129,24 @@ it is indexed by name and carries downstream results; so a reader sent there to
 locate a threshold meets their own capture's outcome. Anonymising the record would
 destroy the one thing it is for.
 
+**And the deeper form of the same mistake is writing a finding keyed to a dataset
+at all.** A measurement gets recorded as "measured on <dataset> <scene>", and a
+later reader weights it by *"same dataset, same capture shape"* — which is a
+judgement they cannot make about a capture from anywhere else. That has been
+observed: a reader gave a recorded comparison decisive weight because it came from
+the same dataset as the capture in front of them, and the finding it rested on was
+perfectly general — it was about captures that are well lit, densely textured,
+short-baselined and non-repetitive, and the dataset name was doing none of the work.
+Stated that way it fires on any capture with those properties. Stated as a dataset,
+it fires on one dataset and is dead weight everywhere else, which is precisely where
+an agent will be asked to work.
+
+So: **write the finding as capture properties plus the mechanism, and keep the
+dataset only in the evidence record.** The test is whether a reader could decide
+whether the finding applies to a capture they have only just seen, using the
+description and the metrics in front of them. If deciding requires knowing which
+dataset it came from, the finding has not been distilled yet — it has been filed.
+
 The honest resolutions are structural, not editorial: **declare corpus membership
 where the reading is served**, so a planner knows before they start whether they are
 reasoning or recalling; and **prefer evidence stated as a shape** — a gap between

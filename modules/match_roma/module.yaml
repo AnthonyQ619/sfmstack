@@ -1,5 +1,5 @@
 name: FeatureMatchRoMa
-version: 1.0.0
+version: 1.1.0
 kind: matching
 summary: >
   RoMa: dense warp plus per-pixel certainty from a DINOv2 backbone, sampled into
@@ -34,7 +34,7 @@ description: |
   planarity — is shared with the other matchers, so all six differ in exactly one
   stage.
 
-image: sfmstack/match-roma:1.0.0
+image: sfmstack/match-roma:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -203,6 +203,15 @@ metrics:
     direction: higher_better
     healthy: [1.0, null]
     meaning: Fraction of images in the biggest component.
+  min_image_degree:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: >
+      The fewest surviving pairs any one image has -- the margin graph_components
+      does not report. An image at degree 1 is connected and one pair from being
+      lost, and every track through it crosses that single edge. Read it beside
+      min_matches_per_pair: a thin edge on a high-degree image is redundant, the
+      same thin edge on a degree-1 image is the graph.
 
   planarity:
     direction: lower_better
@@ -213,8 +222,8 @@ metrics:
       rotation-only. Null when not measured.
 
   weak_pairs:
-    direction: lower_better
-    healthy: [null, 0]
+    direction: neutral
+    healthy: null
     meaning: Attempted pairs dropped for falling under min_matches.
 
   mean_certainty:

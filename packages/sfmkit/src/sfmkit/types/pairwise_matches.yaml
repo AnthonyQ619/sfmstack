@@ -23,6 +23,20 @@ files:
         description: |
           The image pairs that were matched. Not assumed consecutive -- a view
           graph from retrieval or exhaustive matching is equally valid here.
+      match_count:
+        required: false
+        shape: [null]
+        dtype: [int32, int64]
+        description: |
+          Surviving matches on each pair, aligned to image_pair. The scalar
+          metrics are a mean and a min over this array; this is the array.
+
+          It is here because the decisions at this stage are about WHICH pair, not
+          how many matches on average. The same count means opposite things in two
+          positions: twenty matches on an edge whose images already share a
+          thousand elsewhere is redundant, and twenty matches on the only link
+          between two halves of a capture is the reconstruction. No aggregate can
+          tell those apart. See skills/families/matching.md for how to read it.
 
   matches:
     required: true
@@ -80,7 +94,20 @@ metrics:
     direction: higher_better
     meaning: >
       The weakest kept pair. A pair at the floor is a hinge in the view graph and
-      the likeliest place for the reconstruction to break.
+      the likeliest place for the reconstruction to break -- IF it is load-bearing.
+      Whether it is depends on the degree of the images it joins, not on the count:
+      the same weak edge is a hinge on an image that has no other, and a rounding
+      error on an image carrying nine more. Read it beside min_image_degree and the
+      match_count array. Also not comparable across runs that dropped different
+      numbers of pairs -- discarding more thin pairs improves this number by
+      survivorship alone.
+
+  min_image_degree:
+    direction: higher_better
+    meaning: >
+      The fewest surviving pairs any one image has. The margin that
+      graph_components does not report: a component count of 1 says the graph has
+      not split, and says nothing about how close it came.
 
   inlier_ratio:
     direction: higher_better
@@ -92,7 +119,13 @@ metrics:
     direction: lower_better
     meaning: >
       Connected components of the view graph. Anything above 1 means images that
-      no track can ever link, and no downstream module can repair it.
+      no track can ever link, and no downstream module can repair it. A FAILURE
+      CONDITION rather than a health check: it reports the split after it has
+      happened, and on a small ordered set the consecutive chain almost always
+      survives, so a reading of 1 is the ordinary case and not evidence of a robust
+      graph. Two configurations differing by half the possible pairs have both
+      reported 1. Read min_image_degree for the margin and pairs_matched against
+      the pairing's own denominator for the reach.
 
   largest_component_fraction:
     direction: higher_better
@@ -109,10 +142,25 @@ metrics:
       and a baseline is what every geometric stage downstream needs. Null when the
       matcher was asked not to measure it.
 
-      THIS IS NOT A MATCHING FAILURE and no matcher parameter fixes it --
-      inlier_ratio is often excellent alongside it. It is the signal to change what
-      the pipeline does, not how well this stage did it. Two causes hide behind the
-      one number:
+      THIS IS NOT A MATCHING FAILURE and no matcher parameter fixes the underlying
+      GEOMETRY -- inlier_ratio is often excellent alongside it. It is the signal to
+      change what the pipeline does, not how well this stage did it.
+
+      But it is a property of the surviving MATCH SET as much as of the scene, and
+      it does move under matcher parameters -- which the older wording denied. It
+      has been measured rising monotonically with the RANSAC threshold on identical
+      inputs while pair count, component count and match counts stayed flat: a
+      looser threshold admits more of the homography's inliers than the fundamental
+      matrix's, so the ratio climbs. It also rises under a CLEANING move, because
+      the confident matches are the ones on the dominant plane and pruning the rest
+      concentrates them. Two consequences: a reading is only comparable across runs
+      at the same ransac_threshold and the same confidence filtering, and a rise
+      after a quality change is the expected direction rather than evidence the
+      capture became more degenerate. Sweep the threshold before believing a value
+      near the warning line -- if the reading moves with it, you are measuring
+      slack, and the scene_analysis degeneracy group is the authority instead.
+
+      Two causes hide behind the one number:
 
       PURE ROTATION -- the camera turned without translating. There is no parallax,
       so there is no structure to recover from these views at any quality of

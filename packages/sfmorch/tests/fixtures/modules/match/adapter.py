@@ -70,6 +70,16 @@ def run(ctx: Ctx):
         "largest_component_fraction", max(sizes.values()) / n_images,
         direction="higher_better", healthy=(1.0, None),
     )
+    # Required by the type: a component count of 1 says the graph did not split and
+    # says nothing about how close it came. On this fixture's consecutive chain the
+    # end images always sit at degree 1, which is exactly the shape the metric
+    # exists to make visible.
+    degree = [0] * n_images
+    for a_i, b_i in kept:
+        degree[a_i] += 1
+        degree[b_i] += 1
+    out.metric("min_image_degree", min(degree) if degree else 0,
+               direction="higher_better", healthy=(2, None))
     # Null, not zero: this fixture does not fit a homography, and reporting 0.0
     # would claim it measured perfectly general geometry.
     out.metric("planarity", None, direction="lower_better", healthy=(None, 0.7))

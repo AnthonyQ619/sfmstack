@@ -1,0 +1,19 @@
+# Captures the ranges in skills/scene_to_pipeline.md were fitted on.
+# Matched as a substring of the scene's image_dir. One per line.
+
+/ETH/courtyard
+/ETH/delivery_area
+/ETH/electro
+/ETH/facade
+/ETH/kicker
+/ETH/meadow
+/ETH/office
+/ETH/playground
+/ETH/relief
+/DTU/scan1
+/DTU/scan10
+/DTU/scan15
+/DTU/scan23
+/DTU/scan33
+/DTU/scan4
+/DTU/scan9

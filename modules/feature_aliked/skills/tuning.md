@@ -66,8 +66,21 @@ detector artifacts, which measure the wrong thing for this decision.
 
 ## A note on CPU
 
-This Docker daemon cannot pass a GPU through (see `docs/design/DECISIONS.md`), so
-timings observed here are CPU timings and are one to two orders of magnitude
-slower than this module should be. The metrics are unaffected — inference is
-deterministic and device-independent — but `expected_duration_s` is calibrated for
-GPU and will read as wildly optimistic until the toolkit is installed.
+The timings recorded here are CPU timings.
+
+**The recorded timings may not describe your environment.** They were taken when
+this stack could not reach a GPU, and GPU passthrough has since been observed
+working -- a run of this module has failed with a CUDA out-of-memory error raised
+inside the container, which is only possible with a device attached. So treat any
+absolute number here as a lower bound on speed and nothing more, and check
+`device` in the artifact's own note for what actually ran.
+
+**Read cost as relative, not absolute.** What transfers is the shape: this stage
+grows with the pair count, and the pair count grows with the square of the image
+count under exhaustive pairing. What does not transfer is seconds on a machine
+whose configuration changed under the file. A recorded wall-clock figure is a fact
+about a host, and a skill file is the wrong place to keep one.
+
+**The metrics are unaffected either way** -- inference is deterministic and
+device-independent; only the timing and the `expected_duration_s` calibration
+differ.

@@ -288,7 +288,19 @@ def run(ctx: Ctx):
         )
 
     out = ctx.output("matches")
-    out.save("pairs", image_pair=np.array(kept_pairs, np.int32))
+    # B: the per-pair count, beside the pair it belongs to. `matches_per_pair` and
+    # `min_matches_per_pair` are a mean and a min, and the decisions at this stage
+    # are about WHICH pair -- the same count means opposite things on a redundant
+    # edge and on the only link between two halves of a capture. Every reader in a
+    # ten-capture sweep rebuilt this by histogramming `pair_index` against a 60k-row
+    # array, and every structural finding any of them reached came out of that
+    # script. It is one line here and it rides as a recorded extra.
+    pair_counts = np.bincount(
+        np.concatenate(pair_idx_blocks) if pair_idx_blocks else np.zeros(0, np.int32),
+        minlength=len(kept_pairs),
+    ).astype(np.int32)
+    out.save("pairs", image_pair=np.array(kept_pairs, np.int32),
+             match_count=pair_counts)
     out.save(
         "matches",
         xy=np.concatenate(xy_blocks),
@@ -311,14 +323,32 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(50, None))
     out.metric("inlier_ratio", round(ratio, 3),
                direction="higher_better", healthy=(0.7, None))
+    # A: degree, not just connectivity. `graph_components` is a TERMINAL condition
+    # -- it fires only once the split has already happened -- and on a small set the
+    # consecutive chain almost always survives, so it reads 1 whether the graph is
+    # robust or one bad pair from breaking. Across a ten-capture sweep it read 1 on
+    # 54 of 59 runs. `min_image_degree` is the margin: an image on a single edge is
+    # connected and one pair from being lost, and nothing else published says so.
+    degree = [0] * n_images
+    for i, j in kept_pairs:
+        degree[i] += 1
+        degree[j] += 1
     out.metric("graph_components", len(components),
                direction="lower_better", healthy=(None, 1))
     out.metric("largest_component_fraction", round(components[0] / n_images, 3),
                direction="higher_better", healthy=(1.0, None))
+    out.metric("min_image_degree", int(min(degree)) if degree else 0,
+               direction="higher_better", healthy=(2, None))
     out.metric("planarity",
                None if mean_planarity is None else round(mean_planarity, 3),
                direction="lower_better", healthy=(None, 0.7))
-    out.metric("weak_pairs", weak_pairs, direction="lower_better", healthy=(None, 0))
+    # D: no band. Zero weak pairs is unreachable on any exhaustive sweep of a
+    # capture that visits more than one place -- pairs that share no content are
+    # SUPPOSED to be dropped, and this module's own tuning file says a pair it
+    # cannot link is evidence the gap is real. The band also fought the fix for
+    # a thin weakest link: raising min_matches makes this number worse by
+    # definition. Count, not verdict.
+    out.metric("weak_pairs", weak_pairs, direction="neutral")
     out.metric("mean_match_score", round(float(np.mean(all_scores)), 3),
                direction="higher_better", healthy=(0.4, None))
     out.metric("keypoints_used", round(used, 1), direction="neutral")

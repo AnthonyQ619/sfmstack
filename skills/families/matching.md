@@ -186,6 +186,40 @@ Measured across fourteen captures, that swap gains on well-connected repetitive
 subjects and loses a third to a half of the model on well-connected
 non-repetitive ones, so it is worth being right about which you have.
 
+**And on a capture inside the classical detector's design envelope, the metrics
+this stage produces will not tell you** — they have been measured pointing the
+other way from the only evidence that reaches the outcome.
+
+The envelope is a set of capture properties, not a dataset: **well lit, densely and
+aperiodically textured, short baselines between adjacent frames, no repeated
+objects, photometrically stable.** On a capture like that the joint matcher's
+advantages — repetition, illumination change, wide baseline — have nothing to act
+on, while its permissive threshold still admits correspondences a ratio test would
+reject. Those become contradictory tracks two stages later.
+
+What has been measured, and at which stage, because the two disagree:
+
+- **At this stage `[measured: 3]`.** With the detector held fixed, the joint
+  matcher won every published metric on one such capture — more pairs, three times
+  the matches per pair, a better weakest link and a higher inlier ratio. On a
+  second it won matches per pair by more than double while *losing* on pairs
+  kept. On a third the same pattern appeared on the detector axis: the learned
+  branch returned a complete graph with zero weak pairs, and per-pair counts showed
+  the extra connectivity was phantom.
+- **One stage past this one `[observed: 1]`.** A single recorded comparison on a
+  capture of this kind, everything downstream identical, has the ratio test
+  finishing with roughly three times the points at roughly a third of the final
+  reprojection error — while trailing on matches per pair, exactly as above.
+
+**So the honest claim is about the metrics, not about the matcher.** On this
+capture class a stage-four win by the joint matcher is *not evidence*, because the
+one measurement that reaches the outcome disagrees with the metrics that produce
+that win. It does **not** follow that the ratio test is better here: that rests on a
+single downstream measurement, and one of the three captures above split rather
+than inverting. Treat it as a reason to distrust the intermediate reading, spend
+the run on both branches, and record which one you kept and why — not as a rule
+that picks for you.
+
 **"Being right about which you have" is the hard part, and the evidence says you
 often cannot be.** One capture in that set had loud object-level repetition and
 still lost roughly 40% of its points to the swap. On it the `repetitiveness` metric
@@ -194,6 +228,52 @@ wrong — the opposite of the general pattern. Since the two branches share one
 detection artifact, the A/B is nearly free: **run both and compare rather than
 predicting.** That is the one thing here that settles it, and it costs less than
 being wrong does.
+
+---
+
+## Reading the per-pair counts
+
+`pairwise_matches/v1` publishes `pairs/match_count` beside `pairs/image_pair`. The
+scalar metrics are a mean and a min over that array; the array is where the
+decisions at this stage actually live, because **the same count means opposite
+things in different positions.** Four tests, all checkable on a capture nobody has
+seen, none of them requiring a corpus:
+
+**1. Does the count decay with frame separation?** On an ordered capture, shared
+content falls as frames get further apart. A count that *rises* at large separation
+is one of two things, and they are distinguishable: a genuine loop closure is
+**corroborated by its neighbours** — if the first and last frames really overlap,
+the second-to-last overlaps the first comparably — while a repetition phantom is
+**isolated and asymmetric.** A capture has been measured where one detector linked
+the two ends of a linear walk five times more strongly than it linked the first
+frame to its own fourth neighbour, and where the two adjacent end frames — sharing
+thousands of matches with each other — differed fourfold in what the far frame saw
+of them. Real overlap cannot behave that way, and it is what refuted a detector
+swap that had won every headline metric.
+
+**2. Is the weak edge load-bearing, or redundant?** Read `match_count` against
+`min_image_degree`. A thin edge on an image that carries nine others bounds
+nothing; the same count on an image that carries no other *is* the graph. Two
+configurations have been measured with near-identical weakest links — sixteen
+against seventeen — where one left two images on a single edge each and the other
+gave every image eight or more. No scalar separated them.
+
+**3. Where do the matches sit in the frame?** A genuine wide-baseline pair
+concentrates its matches in the sliver the two views actually share; a spurious
+pair scatters them across the whole image. Standard deviation of the `xy` columns
+per pair separates these by roughly an order of magnitude.
+
+**4. Do the counts split into two confidence populations?** Where the matcher
+publishes `confidence`, genuine and spurious pairs separate on the per-pair mean.
+Where they do, the low group is usually not *thin* but *wrong* — one capture's
+marginal pairs were carrying a few percent inlier ratio while the good pairs ran
+above ninety.
+
+**Use these before believing a connectivity gain.** Every one of them is a
+statement about the capture in front of you, and none needs to know which dataset
+it came from.
+
+---
 
 **Detector-free** when the detector is the thing that failed: `keypoints_min` low,
 `spatial_coverage` low, a textureless or blurred capture. Expect to tune

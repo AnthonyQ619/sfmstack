@@ -53,6 +53,13 @@ metrics:
     direction: higher_better
     healthy: [1.0, null]
     meaning: Fraction of images in the biggest component.
+  min_image_degree:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: >
+      Fewest surviving pairs on any one image -- the margin graph_components does
+      not report. A consecutive chain puts its end images at degree 1 by
+      construction.
   planarity:
     direction: lower_better
     healthy: [null, 0.7]

@@ -643,6 +643,51 @@ class SfmService:
             })
         analyses.sort(key=lambda a: (a["module"], a["module_version"]))
 
+        # H: say when an artifact is behind the module that would produce it now.
+        # The brief holds both numbers and used to print neither against the other,
+        # so a reader could be told to consult a metric the guide describes and the
+        # artifact in front of them does not carry -- which happened, on prose
+        # written against a newer version than the stored analyses. A version bump
+        # is not automatically meaningful, so this states the fact rather than
+        # advising a re-run.
+        stale = []
+        for entry in analyses:
+            try:
+                live = self.registry.get(entry["module"]).version
+            except OrchestratorError:
+                continue
+            if live != entry["module_version"]:
+                entry["module_is_behind"] = live
+                stale.append(f"{entry['module']} {entry['module_version']} "
+                             f"(module is now {live})")
+
+        # Everything ELSE already built on this scene. A brief that lists only the
+        # analyses is complete for planning stage one and wrong for every stage
+        # after it: a reader arriving at matching inherits a features/v1 chosen and
+        # tuned by someone else and could not see the module, the parameters or the
+        # metrics behind it. Whether to trust an inherited choice is a real question
+        # at every stage past the first, and it cannot be asked from an artifact id.
+        built = []
+        for aid in self.store.list():
+            art = self.store.open(aid)
+            if art.manifest.scene != scene_id or art.type in (SCENE_TYPE, ANALYSIS_TYPE):
+                continue
+            prov = art.manifest.produced_by
+            built.append({
+                "artifact": art.id,
+                "type": art.type,
+                "module": prov.module,
+                "module_version": prov.module_version,
+                # The parameters are the point. "Which detector" is half the
+                # question; "at what cap, and was that cap binding" is the other
+                # half, and only the params plus the metrics answer it together.
+                "params": dict(prov.params),
+                "metrics": {n: m.value for n, m in art.manifest.metrics.items()},
+                "diagnostics": [d.to_doc() for d in art.manifest.diagnostics],
+                "notes": art.manifest.body.strip(),
+            })
+        built.sort(key=lambda a: (a["type"], a["module"], a["artifact"]))
+
         wanted = list(stages or PLANNING_STAGES)
         families, missing = {}, []
         for stage in wanted:
@@ -690,6 +735,19 @@ class SfmService:
                     | {m["name"] for m in self.list_modules(consumes=SCENE_TYPE)["modules"]}
                 ),
             },
+            # A flat statement, not a warning: whether the difference matters
+            # depends on what changed, which the module's own version history says
+            # and this call does not.
+            "analysis_behind_module": stale,
+            # H, second half: whether the bands in the planning guide were fitted
+            # ON this capture. When they were, locating a reading in them is recall
+            # rather than confirmation, and the guide asks a planner to say so --
+            # which until now they could only discover by recognising their own
+            # number in a printed extreme, i.e. by performing the leak the guide
+            # warns about. Sourced from the corpus record so it cannot drift from
+            # the evidence it describes.
+            "in_planning_corpus": self._corpus_membership(scene),
+            "already_built": built,
             "how_to_read": self.workflow_skill(PLANNING_GUIDE),
             "families": families,
             "families_missing": missing,
@@ -720,6 +778,34 @@ class SfmService:
                 ),
             },
             "report_shape": PLAN_SHAPE,
+        }
+
+    # The captures the planning guide's ranges were fitted on, by the source path
+    # their scene was built from. A path rather than an artifact id because the id
+    # changes with every loader parameter while the capture does not.
+    _CORPUS_MARKER = "skills/runs/CORPUS.txt"
+
+    def _corpus_membership(self, scene) -> dict[str, Any]:
+        root = self.config.skills_dir
+        marker = (root / "runs" / "CORPUS.txt") if root else None
+        if marker is None or not marker.exists():
+            return {"known": False, "note": "no corpus record available"}
+        entries = [ln.strip() for ln in marker.read_text(encoding="utf-8").splitlines()
+                   if ln.strip() and not ln.startswith("#")]
+        source = str(scene.manifest.produced_by.params.get("image_dir", ""))
+        hit = next((e for e in entries if e and e in source), None)
+        return {
+            "known": True,
+            "is_member": hit is not None,
+            "note": (
+                "This capture is one the planning guide's ranges were fitted on. "
+                "Locating its readings in those ranges is RECALL, not independent "
+                "confirmation -- say so in the plan rather than presenting a band "
+                "match as evidence, and prefer the capture-kind labels over the "
+                "numbers." if hit else
+                "This capture is not in the set the planning guide's ranges were "
+                "fitted on, so locating a reading in them is out-of-sample."
+            ),
         }
 
     def run_summary(self, run_id: str) -> dict[str, Any]:

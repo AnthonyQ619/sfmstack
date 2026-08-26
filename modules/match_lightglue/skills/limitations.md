@@ -6,22 +6,41 @@ curated_at: 2026-08-08
 
 # When LightGlue is not the answer
 
-## Easy scenes
+## Captures inside the classical detector's design envelope
 
 *Symptom:* more matches and longer tracks than a classical matcher, and worse
 final accuracy.
 
-Measured on DTU scan1, 10 images, everything downstream identical:
+**The capture properties that produce it**, which is what to check yours against:
+well lit, densely and aperiodically textured, short baselines between adjacent
+frames, no repeated objects, photometrically stable across the set. Turntable and
+studio-rig captures of a textured subject are the common case; so is any short,
+slow, evenly-lit walk around something with real surface detail.
 
-| stack | matches/pair | long_track% | conflict | points | final error |
-|---|---:|---:|---:|---:|---:|
-| SIFT + NN | 494.9 | 0.491 | 0.004 | 6040 | **0.246 px** |
-| SuperPoint + LightGlue | 649.2 | 0.607 | **0.206** | 1834 | 0.645 px |
+*Why:* every advantage this module has — repetition, illumination change, wide
+baseline — needs something to act on, and on such a capture none of them do. What
+remains is the permissive default threshold, which admits correspondences the ratio
+test would have rejected. Those survive two-view verification (they are
+geometrically consistent) and become contradictory tracks two stages later, where
+the tracker's conflict rate is the first thing that sees them.
 
-*Why:* DTU is well-lit, high-texture and turntable-captured — inside SIFT's design
-envelope. LightGlue's advantages (repetition, illumination, wide baseline) do not
-apply, while its permissive default threshold admits matches the ratio test would
-have rejected. Those become contradictory tracks two stages later.
+*What that costs, one measurement, everything downstream held identical:* the
+classical stack finished with roughly **three times the points at roughly a third
+of the final reprojection error**, while trailing on matches per pair and on track
+length — and with a tracker conflict rate nearly two orders of magnitude lower.
+`[observed: 1]` — one capture, so read the direction rather than the factor.
+
+*The trap this sets:* every metric available at the matching stage prefers this
+module on such a capture, and the disagreement only becomes visible after bundle
+adjustment. **Do not read a matching-stage win as settling it.** Both branches share
+one detection artifact, so the A/B costs no re-detection; run it, and if you must
+choose before the outcome exists, say which reading you chose on.
+
+*Traceability:* the run behind the numbers above is in
+[`skills/runs/INDEX.md`](../../../skills/runs/INDEX.md). Do not locate your capture
+by matching its readings against that table — check it against the capture
+properties in the second paragraph instead. A number that matches a recorded run to
+several digits usually means you are reading your own capture back.
 
 *What to do:* raise `filter_threshold`, or use the classical matcher. This is not a
 defect; it is the model being applied outside the regime it was trained for.
@@ -90,14 +109,23 @@ for easy scenes — more accurate. The 6.2 GB image is also pure cost in that ca
 
 ## What would change the verdict
 
-Recorded so the DTU result is not over-generalised. The comparison should be re-run
-on a capture LightGlue is actually aimed at before concluding anything general:
+Recorded so the result above is not over-generalised. It is one capture *kind*, and
+the comparison should be re-run on a capture this module is actually aimed at
+before concluding anything general — that is, one where at least one of its
+advantages has something to act on:
 
-- ETH3D `courtyard` — outdoor, real illumination variation, mixed resolutions.
-- Any capture with repeated structure (facades, tiling).
-- Sparsely sampled sets where SIFT's descriptor fails across the baseline. The
-  measured case in `match_nn`'s limitations file — 6 of DTU's 49 images, where
-  SIFT produced 3 disconnected components — is exactly such a test, and LightGlue
-  should win it decisively.
+- **Outdoor, with real illumination variation across the set.**
+- **Repeated structure** — a facade of identical bays, tiling, a row of castings.
+- **Sparsely sampled**, so adjacent frames are far enough apart that a classical
+  descriptor fails across the baseline. `match_nn`'s limitations file records such
+  a case, where thinning a set until the baseline widened left the classical branch
+  in three disconnected components; this module should win that decisively.
+
+Since the original writing, the direction has held on captures of the second and
+third kinds: on fast, widely-spaced captures the joint matcher roughly doubled the
+surviving pair count and lifted every image off a single-edge connection, where the
+ratio test left two images one pair from being lost. So the split is not
+"LightGlue is worse" — it is that **the two branches win on different capture
+properties, and the matching stage's own metrics only see one of the two.**
 
 I expect the ordering to reverse on all three. It has not been measured.

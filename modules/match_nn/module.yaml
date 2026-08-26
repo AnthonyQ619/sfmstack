@@ -1,5 +1,5 @@
 name: FeatureMatchNN
-version: 1.0.0
+version: 1.1.0
 kind: matching
 summary: >
   Descriptor nearest-neighbour matching with Lowe's ratio test, a mutual
@@ -31,7 +31,7 @@ description: |
   is the failure the predecessor's `RANSAC_homography` flag asked the user to
   predict in advance; here it is observed per pair after the fact.
 
-image: sfmstack/match-nn:1.0.0
+image: sfmstack/match-nn:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -170,8 +170,17 @@ metrics:
     direction: higher_better
     healthy: [50, null]
     meaning: >
-      The weakest surviving link. Tracks can only cross the view graph through
-      its thinnest edge, so this bounds what the whole set can achieve.
+      The weakest surviving link. THE FLOOR ASSUMES A CHAIN, and an exhaustive
+      pairing does not produce one: the rationale is that tracks cross the graph
+      through its thinnest edge, which holds when every image has one route in and
+      out, and fails once images carry ten. A thin edge on a high-degree image is
+      redundant and bounds nothing -- measured on a capture whose weakest link was a
+      third of the floor while the same image carried nine other edges, several in
+      the hundreds. Read this WITH min_image_degree: thin-and-redundant is a
+      non-event, thin-and-load-bearing is the thing the floor was written for.
+      Also not comparable across runs that dropped different numbers of pairs: a
+      configuration that discards more thin pairs reports a better minimum for that
+      reason alone, which is survivorship rather than quality.
 
   inlier_ratio:
     direction: higher_better
@@ -189,6 +198,26 @@ metrics:
       Connected components of the view graph over surviving pairs. Anything above
       1 means the images split into groups with no correspondence between them,
       and reconstruction will produce that many disconnected models.
+      READ THIS AS A FAILURE CONDITION, NOT A HEALTH CHECK. It fires only once the
+      split has already happened, and on a small set the consecutive chain almost
+      always survives -- across a ten-capture sweep it read 1 on 54 of 59 runs,
+      including on a graph where two images hung off a single edge each. A reading
+      of 1 is the ordinary case and is NOT evidence the graph is robust. For that,
+      read min_image_degree, and read pairs_matched against the number of pairs
+      your pairing actually proposed.
+
+  min_image_degree:
+    direction: higher_better
+    healthy: [2, null]
+    meaning: >
+      The fewest surviving pairs any one image has. This is the margin
+      graph_components does not report: an image at degree 1 is connected and one
+      pair away from being lost, and every track through it crosses that one edge.
+      Degree 1 with graph_components at 1 is the shape to watch for -- it has been
+      measured on a capture whose two weakest images were exactly the frames the
+      scene description named as the join between its two halves. Read it beside
+      min_matches_per_pair rather than instead of it: a thin edge on a high-degree
+      image is redundant, the same thin edge on a degree-1 image is the graph.
 
   largest_component_fraction:
     direction: higher_better
@@ -196,8 +225,8 @@ metrics:
     meaning: Fraction of images in the biggest component. What one model can cover.
 
   weak_pairs:
-    direction: lower_better
-    healthy: [null, 0]
+    direction: neutral
+    healthy: null
     meaning: Pairs dropped for falling under min_matches.
 
   planarity:
