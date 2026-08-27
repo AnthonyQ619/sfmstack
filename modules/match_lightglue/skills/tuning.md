@@ -13,8 +13,21 @@ and both invalidate everything downstream if wrong.
 ## First: is the weight set right?
 
 `weights: auto` handles the known detectors. If you set it by hand, verify with
-`mean_match_score` — healthy is above ~0.5. A low score with a healthy
-`inlier_ratio` means wrong weights, not a hard scene.
+`mean_match_score` — **below ~0.4 with a healthy `inlier_ratio` is the
+wrong-weights signature**, and that is the only threshold on this number; the
+`low_confidence` diagnostic fires there too. This used to say healthy was above
+~0.5 and that a low score *means* wrong weights, stated absolutely, while
+`limitations.md` put the signature below ~0.4. Readers landed between the two —
+0.39 to 0.45 — with `weights: auto` already resolved from the features artifact's
+provenance, and went hunting a weight-set bug that could not exist.
+
+**Between ~0.4 and ~0.5 is an ordinary reading on a permissive threshold, not a
+fault.** The mean is dragged by a low-confidence tail, and the way to tell that
+from a real problem is one run: raise `filter_threshold` and read the score again.
+Measured on one capture, 0.394 → 0.575 with weights untouched. If the score climbs,
+it was the tail. If it does not move, the descriptors and the weight set are worth
+suspecting — but `auto` refuses rather than guessing on an unknown producer, so a
+wrong set is only reachable by naming one by hand.
 
 ## Second: is LightGlue winning?
 

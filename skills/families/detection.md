@@ -98,8 +98,17 @@ want.
 floor, ask what fraction of the frame could hold a repeatable keypoint at all. The
 scene description is where that lives — it names the blown backdrop, the empty sky,
 the glass. If a large part of the frame is in that state, the number you want is
-*occupied cells over cells with content*, and you have to compute it yourself; the
-module reports the raw ratio and has no mask parameter.
+*occupied cells over cells with content*, and the module reports the raw ratio and
+has no mask parameter.
+
+**Before spending effort on that denominator, know what it can and cannot buy you.**
+Nothing in this stack consumes a mask, a region, or a frame exclusion — not the
+detectors, not the matchers, not the trackers. So a masked coverage figure can tell
+you a reading is a ceiling rather than a shortfall, which stops you tuning against
+a number that cannot move; it cannot become an instruction to any module. Treat it
+as a reason to stop, as a WATCH line, and as input to the next stage's *choice of
+module* — never as work you are going to act on here. Every reader who computed it
+found it useful for exactly the first thing and had nowhere to put the rest.
 
 **Computing it is a dozen lines, not a research project**, and this file used to
 imply otherwise. Everything needed is already published: the artifact ships raw
@@ -191,6 +200,20 @@ That makes the first move at this stage not a tuning move at all: **raise the ca
 until `saturation` reaches zero, then read the count.** On most captures that is
 also the last move — a large fraction settle there and change nothing else, so
 removing the parameter from the measurement is frequently the whole of the tuning.
+
+**The check belongs to a CONFIGURATION, not to a capture, and any later parameter
+that changes candidate supply invalidates it.** It is easy to read this as a
+one-time gate cleared at the start of tuning; it is not. Enabling contrast
+normalisation on a capture that had already reached `saturation` 0.0 took it
+straight back to 0.75, because normalisation manufactures candidates — the reader
+caught it only because the number happened to print. Anything that changes how many
+candidates exist does this: exposure normalisation, a lower contrast or detection
+threshold, a smaller suppression radius, a higher working resolution.
+
+So: **re-read `saturation` after every change, not only the first.** A run that is
+saturated is not reporting the capture, whatever it reported an hour ago, and a
+count compared across one saturated run and one unsaturated run compares two
+different things.
 
 **The check is mandatory; its outcome is not.** A minority of captures arrive at
 `saturation` 0.0 already, and on those the raised cap changes nothing —

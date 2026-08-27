@@ -1,5 +1,5 @@
 name: FeatureMatchNN
-version: 1.2.0
+version: 1.3.0
 kind: matching
 summary: >
   Descriptor nearest-neighbour matching with Lowe's ratio test, a mutual
@@ -31,7 +31,7 @@ description: |
   is the failure the predecessor's `RANSAC_homography` flag asked the user to
   predict in advance; here it is observed per pair after the fact.
 
-image: sfmstack/match-nn:1.2.0
+image: sfmstack/match-nn:1.3.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -168,7 +168,6 @@ metrics:
 
   min_matches_per_pair:
     direction: higher_better
-    healthy: [50, null]
     meaning: >
       The weakest surviving link. THE FLOOR ASSUMES A CHAIN, and an exhaustive
       pairing does not produce one: the rationale is that tracks cross the graph
@@ -251,8 +250,8 @@ metrics:
     meaning: >
       Mean over pairs of homography inliers / fundamental inliers. Near 1.0 means
       a homography explains the pair as well as epipolar geometry does, i.e. the
-      pair is planar or pure rotation and triangulation is ill-conditioned. Near
-      0.5 or below is healthy general 3D structure.
+      pair is planar or pure rotation and triangulation is ill-conditioned. The
+      bands, and why a mid-range reading is not a verdict, are in the type.
 
 diagnostics:
   - code: broken_chain

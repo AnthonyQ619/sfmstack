@@ -342,8 +342,16 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1, None))
     out.metric("matches_per_pair", round(mean_matches, 1),
                direction="higher_better", healthy=(100, None))
+    # B: no band. The floor assumes a CHAIN, where every edge is load-bearing,
+    # and the guide mandates exhaustive pairing, which does not produce one --
+    # the thinnest pair usually sits on an image carrying nine others and
+    # bounds nothing. It also fought its own fix: raising min_matches to lift
+    # the weakest edge drops thin pairs, so pairs_matched falls and weak_pairs
+    # rises. Four readers judged against a band the metric text disowns; one
+    # used it to stop a parameter sweep. Read it beside min_image_degree and
+    # the match_count array, or not at all.
     out.metric("min_matches_per_pair", int(inliers.min()),
-               direction="higher_better", healthy=(50, None))
+               direction="higher_better")
     out.metric("inlier_ratio", round(ratio, 3),
                direction="higher_better", healthy=(0.7, None))
     # A: degree, not just connectivity. `graph_components` is a TERMINAL condition
@@ -406,14 +414,29 @@ def run(ctx: Ctx):
             see_also="tuning.md#inlier_ratio-below-05",
         )
 
-    if mean_score < 0.5:
+    # F: one threshold, and it is the wrong-weights line. This fired at 0.5 while
+    # limitations.md put the wrong-weights symptom below ~0.4 and tuning.md said
+    # flatly that a low score with a healthy inlier_ratio MEANS wrong weights.
+    # Three readers landed at 0.39-0.45 -- inside that gap -- with `weights: auto`
+    # already resolved from provenance and cross-checked on descriptor width,
+    # which is the only verification this module offers. Both old suggestions were
+    # dead ends there: one was already done, the other is not a move.
+    #
+    # The cause was measured instead: on one capture the score moved 0.394 -> 0.575
+    # on filter_threshold ALONE, weights untouched. A permissive threshold admits a
+    # low-confidence tail that drags the mean, so responsiveness to that dial is
+    # what separates a tail from a weight-set error.
+    if mean_score < 0.4:
         out.diagnostic(
             "low_confidence",
             severity="warn",
             message=f"Mean match confidence is {mean_score:.2f}.",
             suggested_actions=[
-                "Verify `weights` matches the detector.",
-                "The capture may be beyond what these descriptors support.",
+                f"Raise filter_threshold above {p.filter_threshold} and re-read this. "
+                "If the score climbs, it was a low-confidence tail, not wrong weights.",
+                "If it does not move, verify `weights` -- but `auto` resolves from "
+                "the features artifact's provenance and refuses on an unknown "
+                "producer, so a wrong set is only possible if it was named by hand.",
             ],
             see_also="limitations.md#when-lightglue-is-not-the-answer",
         )

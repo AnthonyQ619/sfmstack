@@ -65,6 +65,23 @@ files:
         required: false
         shape: [null]
         dtype: [float32, float64]
+        description: |
+          Per-match confidence, present on EVERY matcher in this repo including
+          the classical ones -- which is worth saying because it was documented
+          nowhere reachable and readers found it by listing the arrays in the npz.
+
+          The scale is the matcher's own and is not comparable across modules. A
+          ratio-test matcher writes 1 - d1/d2, so its values are a transform of
+          the test that already ran; a learned matcher writes its assignment
+          score. Both are usable the same way -- RANKED WITHIN ONE ARTIFACT,
+          never thresholded against a number from another.
+
+          What it is for is the per-pair test that worked on every capture it was
+          tried on: average it per pair and ask whether the pairs fall into two
+          populations. A group sitting well below the rest, on a handful of pairs,
+          is the shape of matches that are wrong rather than merely thin -- and it
+          separates them when count and spatial spread do not. See
+          skills/families/matching.md.
 
 invariants:
   - check: same_length
@@ -217,6 +234,34 @@ metrics:
       THIS IS NOT A MATCHING FAILURE and no matcher parameter fixes the underlying
       GEOMETRY -- inlier_ratio is often excellent alongside it. It is the signal to
       change what the pipeline does, not how well this stage did it.
+
+      THE BANDS, stated here once because three files used to give three
+      incompatible answers -- one calling 0.5 and below healthy, one giving the
+      symptom as above 0.9, one giving none -- and a capture read 0.78 to 0.87 in
+      every configuration, above the first and below the second, with no diagnostic
+      firing. That middle region is a real and common state, not a gap:
+
+      BELOW ~0.5 -- general 3D structure. Nothing to do.
+      ~0.5 to ~0.9 -- a real baseline with a dominant plane in view. Ordinary for a
+      compact subject against a backdrop, for a facade with some depth, and for any
+      capture where most correspondences land on one surface. Not a reason to
+      change the solver. It IS a reason to watch the triangulation angle rather
+      than the reprojection error downstream, because a model can reproject
+      beautifully while resolving almost no depth.
+      ABOVE ~0.9 -- the warning line. Triangulation is ill-conditioned.
+
+      READ THE BAND ONLY AFTER CHECKING THAT THE NUMBER IS NOT SLACK. It moves with
+      ransac_threshold on identical inputs and it moves between matchers on
+      identical features -- measured 0.72 against 0.88 on one capture. Sweep the
+      threshold before believing a value near a boundary: if the reading moves with
+      it you are measuring the verification, not the geometry.
+
+      AND IT CAN DISAGREE WITH THE PRE-STAGE PROBE IN THE DIRECTION NOTHING
+      ANTICIPATED. scene_analysis reports planar_dominance and pure_rotation_risk
+      over CONSECUTIVE pairs only. A capture has read 0.0 on all of them while this
+      metric read 0.85 over an exhaustive sweep -- no consecutive pair is planar,
+      and most of the correspondences still land on one wall. The probe reading
+      zero does not clear an exhaustive graph.
 
       But it is a property of the surviving MATCH SET as much as of the scene, and
       it does move under matcher parameters -- which the older wording denied. It

@@ -246,8 +246,16 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1, None))
     out.metric("matches_per_pair", round(float(inliers.mean()), 1),
                direction="higher_better", healthy=(500, None))
+    # B: no band. The floor assumes a CHAIN, where every edge is load-bearing,
+    # and the guide mandates exhaustive pairing, which does not produce one --
+    # the thinnest pair usually sits on an image carrying nine others and
+    # bounds nothing. It also fought its own fix: raising min_matches to lift
+    # the weakest edge drops thin pairs, so pairs_matched falls and weak_pairs
+    # rises. Four readers judged against a band the metric text disowns; one
+    # used it to stop a parameter sweep. Read it beside min_image_degree and
+    # the match_count array, or not at all.
     out.metric("min_matches_per_pair", int(inliers.min()),
-               direction="higher_better", healthy=(100, None))
+               direction="higher_better")
     out.metric("inlier_ratio", round(ratio, 3),
                direction="higher_better", healthy=(0.4, None))
     # A: degree, not just connectivity. `graph_components` is a TERMINAL condition
@@ -266,9 +274,14 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1.0, None))
     out.metric("min_image_degree", int(min(degree)) if degree else 0,
                direction="higher_better", healthy=(2, None))
+    # J: no module-local band. Three files gave three different answers and a
+    # capture sat in the gap between them with nothing firing. The bands live
+    # in the type now, together with the reason a mid-range reading is a real
+    # state rather than a fault, and the warning that this number moves with
+    # ransac_threshold and between matchers on identical features.
     out.metric("planarity",
                None if mean_planarity is None else round(mean_planarity, 3),
-               direction="lower_better", healthy=(None, 0.7))
+               direction="lower_better")
     # D: no band. Zero weak pairs is unreachable on any exhaustive sweep of a
     # capture that visits more than one place -- pairs that share no content are
     # SUPPOSED to be dropped, and this module's own tuning file says a pair it

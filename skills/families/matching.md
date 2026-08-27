@@ -203,41 +203,74 @@ being wrong does.
 scalar metrics are a mean and a min over that array; the array is where the
 decisions at this stage actually live, because **the same count means opposite
 things in different positions.** Four tests, all checkable on a capture nobody has
-seen, none of them requiring a corpus:
+seen, none of them requiring a corpus.
 
-**1. Does the count decay with frame separation?** On an ordered capture, shared
-content falls as frames get further apart. A count that *rises* at large separation
-is one of two things, and they are distinguishable: a genuine loop closure is
-**corroborated by its neighbours** — if the first and last frames really overlap,
-the second-to-last overlaps the first comparably — while a repetition phantom is
-**isolated and asymmetric.** A capture has been measured where one detector linked
-the two ends of a linear walk five times more strongly than it linked the first
-frame to its own fourth neighbour, and where the two adjacent end frames — sharing
-thousands of matches with each other — differed fourfold in what the far frame saw
-of them. Real overlap cannot behave that way, and it is what refuted a detector
-swap that had won every headline metric.
+**Read them in this order, and do not stop at the first one that clears.** Two of
+the four have preconditions that ordinary captures break, and driven across seven
+captures they misfired more often than they fired. The two that held everywhere are
+first.
 
-**2. Is the weak edge load-bearing, or redundant?** Read `match_count` against
-`min_image_degree`. A thin edge on an image that carries nine others bounds
-nothing; the same count on an image that carries no other *is* the graph. Two
-configurations have been measured with near-identical weakest links — sixteen
-against seventeen — where one left two images on a single edge each and the other
-gave every image eight or more. No scalar separated them.
+**1. Do the pairs split into two confidence populations?** *(No precondition. This
+one held on every capture it was tried on, and it arbitrates when the others
+disagree.)* Average `matches/confidence` per pair. Every matcher here publishes it,
+classical ones included. A group sitting well below the rest, on a handful of
+pairs, is usually not *thin* but *wrong* — one capture's marginal pairs carried a
+few percent inlier ratio while the good pairs ran above ninety; on another, the
+low group at 0.30–0.32 against the rest at 0.42–0.58 was the two ends of a linear
+walk matched onto the wrong copy of a repeated structure. Rank within the artifact;
+the scale is the matcher's own and means nothing across modules.
 
-**3. Where do the matches sit in the frame?** A genuine wide-baseline pair
-concentrates its matches in the sliver the two views actually share; a spurious
-pair scatters them across the whole image. Standard deviation of the `xy` columns
-per pair separates these by roughly an order of magnitude.
+**2. Is the weak edge load-bearing, or redundant?** *(No precondition.)* Read
+`match_count` against `min_image_degree`. A thin edge on an image that carries nine
+others bounds nothing; the same count on an image that carries no other *is* the
+graph. Two configurations have been measured with near-identical weakest links —
+sixteen against seventeen — where one left two images on a single edge each and the
+other gave every image eight or more. No scalar separated them.
 
-**4. Do the counts split into two confidence populations?** Where the matcher
-publishes `confidence`, genuine and spurious pairs separate on the per-pair mean.
-Where they do, the low group is usually not *thin* but *wrong* — one capture's
-marginal pairs were carrying a few percent inlier ratio while the good pairs ran
-above ninety.
+**3. Does the count decay with frame separation?** ***Precondition: index distance
+must track viewpoint distance, and `ordered: 1` does not establish that.*** Where
+it holds, a count that *rises* at large separation is either a genuine loop closure
+— **corroborated by its neighbours**, so if the first and last frames really
+overlap the second-to-last overlaps the first comparably — or a repetition phantom,
+**isolated and asymmetric**. That reading refuted a detector swap that had won every
+headline metric.
 
-**Use these before believing a connectivity gain.** Every one of them is a
-statement about the capture in front of you, and none needs to know which dataset
-it came from.
+Where the precondition fails it returns nothing or the wrong answer, and both have
+been measured. On a capture whose path reverses, the rank correlation between
+separation and count came out near zero, because the far-index pairs are
+near-duplicate viewpoints. On another, eight phantom edges **decayed monotonically**
+into the `min_matches` floor — exactly the shape this test calls genuine — and only
+tests 1 and 4 caught them. Check the precondition first: one adjacent pair rotating
+far less than its neighbours is a reversal, and a subsampled capture keeps its
+filenames in order while multiplying the viewpoint change between them.
+
+**4. Where do the matches sit in the frame?** ***Precondition: the shared region
+must shrink as the baseline widens.*** The idea is that a genuine wide-baseline
+pair concentrates its matches in the sliver the two views actually share while a
+spurious one scatters them. Compute the standard deviation of the `xy` columns per
+pair — **and compare it against the median of the ADJACENT pairs in the same
+artifact**, which is the reference that makes the number mean anything. There is
+no absolute threshold and the separation is roughly **twofold**, not the order of
+magnitude this once claimed.
+
+It fails on three ordinary shapes, all measured: a compact subject that stays fully
+co-visible across an arc, a capture where every pair already shares most of the
+frame, and a path that folds back so its far-index pairs are near-duplicates. On
+all three the genuine pairs scatter and the marginal ones concentrate, so read
+literally the test **inverts**. Treat a null result as normal and a positive result
+as needing test 1 to agree.
+
+**Use these before believing a connectivity gain**, and when they disagree, **test
+1 wins**. Every one of them is a statement about the capture in front of you, and
+none needs to know which dataset it came from.
+
+**Where all four saturate, there is a fifth reading.** On a well-connected capture
+`pairs_matched` and `min_image_degree` can both sit at their arithmetic ceilings
+across every configuration you try, with no diagnostic firing and `inlier_ratio`
+spanning a narrow band over runs that differ tenfold in quality. `cycle_merge_rate`
+is the reading that still separates them: it counts the matches that pass their own
+two-view check and contradict themselves once a third view is compared, which is
+the failure none of the four tests above can see.
 
 ---
 

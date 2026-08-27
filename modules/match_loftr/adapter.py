@@ -279,8 +279,16 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1, None))
     out.metric("matches_per_pair", round(mean_matches, 1),
                direction="higher_better", healthy=(200, None))
+    # B: no band. The floor assumes a CHAIN, where every edge is load-bearing,
+    # and the guide mandates exhaustive pairing, which does not produce one --
+    # the thinnest pair usually sits on an image carrying nine others and
+    # bounds nothing. It also fought its own fix: raising min_matches to lift
+    # the weakest edge drops thin pairs, so pairs_matched falls and weak_pairs
+    # rises. Four readers judged against a band the metric text disowns; one
+    # used it to stop a parameter sweep. Read it beside min_image_degree and
+    # the match_count array, or not at all.
     out.metric("min_matches_per_pair", int(inliers.min()),
-               direction="higher_better", healthy=(50, None))
+               direction="higher_better")
     out.metric("inlier_ratio", round(ratio, 3),
                direction="higher_better", healthy=(0.6, None))
     # A: degree, not just connectivity. `graph_components` is a TERMINAL condition

@@ -115,10 +115,22 @@ params:
       WHERE IT GOES WRONG: it lifts every low-contrast region, not the one you
       wanted. On captures with a large unwanted low-contrast area -- gravel, lawn,
       sky -- most of the gain has landed there, and the subject's SHARE of the
-      keypoint budget fell while the count rose. A count gain is not the test. Band
-      the keypoints against the described regions, or at minimum check whether
-      `keypoints_min` rose faster than the mean, which is what a targeted gain on
-      the starved frames looks like.
+      keypoint budget fell while the count rose. A COUNT GAIN IS NOT THE TEST.
+
+      Two readings, in order. First, whether `keypoints_min` rose faster than the
+      mean: a targeted gain lands on the starved frames, so the minimum outruns the
+      average. Treat that as a SCREEN and not a verdict -- it has passed on a change
+      that then cost pairs, because evenness is not the same as landing on wanted
+      surface. Second, and this is what settles it: RE-RUN THE MATCHER ON BOTH
+      FEATURE ARTIFACTS AND SEE WHETHER THE EXTRA KEYPOINTS SURVIVED. That costs one
+      cheap run, needs no mask, and has decided it correctly every time it was
+      tried -- twice confirming the change and once refuting one the screen had
+      passed.
+
+      Do not try to band keypoints against the described regions to settle it
+      earlier. Nothing in the stack consumes a region or a mask, so the analysis
+      ends in a number you cannot act on, and the answer arrives one stage later
+      for free.
 
 metrics:
   keypoints_per_image:
