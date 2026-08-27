@@ -18,7 +18,7 @@ scene is hard".
 matching cost matters. LightGlue prunes points and exits layers early;
 SuperGlue's attention runs over every keypoint at every layer.
 
-**Measured on DTU scan1** (12 images at 1024px, SuperPoint, sequential window 1,
+**Measured on a turntable capture of a compact object** (12 images at 1024px, SuperPoint, sequential window 1,
 GPU, in containers):
 
 | | SuperGlue | LightGlue |

@@ -44,7 +44,8 @@ assignment layer enforces it. So within a single pair there are no many-to-one
 matches, which is what the classical matchers need the `mutual` check to achieve.
 
 That does **not** prevent contradictory tracks. Across different pairs, union-find
-can still fuse two distinct scene points, and on DTU it did so at 20x the classical
+can still fuse two distinct scene points, and on a capture inside the classical
+detector's envelope it did so at 20x the classical
 rate. Per-pair injectivity is not global consistency.
 
 ## Which weight set ran
@@ -74,7 +75,7 @@ same as a uniformly mediocre one.
 ## Metrics that mislead
 
 `matches_per_pair` and the tracker's `long_track_fraction` both look better for
-LightGlue than for the classical matchers on DTU, and the final reconstruction is
+LightGlue than for the classical matchers on such a capture, and the final reconstruction is
 worse. Read the tracker's `inconsistent_rate` and the bundle adjuster's
 `reprojection_error_after` before concluding anything from match counts.
 

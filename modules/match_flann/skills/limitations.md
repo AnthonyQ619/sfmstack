@@ -10,7 +10,7 @@ curated_at: 2026-08-07
 
 *Symptom:* the module works fine and takes longer than `FeatureMatchNN`.
 
-Measured, DTU scan1, 8 images, 4096 SIFT keypoints, exhaustive pairing: 4.2s
+Measured on a turntable capture of a compact object, 8 images, 4096 SIFT keypoints, exhaustive pairing: 4.2s
 against 0.7s. With ORB: 3.2s against 0.3s.
 
 *Why:* a fresh index is built for every pair, and brute force over

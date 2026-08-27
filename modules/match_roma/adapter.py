@@ -20,6 +20,7 @@ import torch
 from PIL import Image
 from romatch import roma_indoor, roma_outdoor
 from sfmkit import Ctx, module
+from sfmkit.cycles import cycle_rates
 
 MIN_FOR_FUNDAMENTAL = 8
 MIN_FOR_HOMOGRAPHY = 4
@@ -282,6 +283,29 @@ def run(ctx: Ctx):
         round(floor_removed / max(floor_total, 1), 3) if p.min_certainty > 0 else None,
         direction="neutral",
     )
+
+    # A: the two failures a two-view check cannot see, one stage before the
+    # tracker reports them. A correspondence displaced onto a repeated structure
+    # is epipolar-consistent by construction when the camera slides along the
+    # repeat, so it counts as an INLIER here and only contradicts itself once a
+    # third view is compared. Graded by displacement because the two failures cost
+    # differently and the cheap one dominates by volume: a couple of pixels is one
+    # point detected twice, which shortens a track, while tens of pixels is a
+    # different piece of scene, which corrupts geometry. Summed into one number
+    # the split rate buries the merge rate and the reading inverts.
+    merge_rate, split_rate, n_chains = cycle_rates(
+        np.array(kept_pairs, np.int32),
+        np.concatenate(pair_idx_blocks) if pair_idx_blocks else np.zeros(0, np.int32),
+        None,  # detector-free: no keypoint table to cite, so there is no
+        # identity to agree about and the rates are undefined rather than 0,
+        np.concatenate(xy_blocks) if xy_blocks else np.zeros((0, 4), np.float32),
+    )
+    out.metric("cycle_merge_rate",
+               None if merge_rate is None else round(merge_rate, 6),
+               direction="lower_better")
+    out.metric("cycle_split_rate",
+               None if split_rate is None else round(split_rate, 6),
+               direction="lower_better")
 
     out.diagnostic(
         "detector_free_output",

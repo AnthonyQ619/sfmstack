@@ -1,5 +1,5 @@
 name: FeatureMatchSuperGlue
-version: 1.1.0
+version: 1.2.0
 kind: matching
 summary: >
   SuperGlue: attentional GNN over both keypoint sets plus a Sinkhorn optimal
@@ -32,7 +32,7 @@ description: |
   redistribution, so the base image clones them from upstream at build time. The
   predecessor kept a copy of both in its tree.
 
-image: sfmstack/match-superglue:1.1.0
+image: sfmstack/match-superglue:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -206,6 +206,23 @@ metrics:
       lost, and every track through it crosses that single edge. Read it beside
       min_matches_per_pair: a thin edge on a high-degree image is redundant, the
       same thin edge on a degree-1 image is the graph.
+
+  cycle_merge_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Three-view chains that land on a different keypoint than the direct match,
+      far enough to be different scene structure. The only reading here that sees
+      a wrong-but-epipolar-consistent match; arrives later as the tracker's
+      inconsistent_rate. Null when undefined rather than zero.
+
+  cycle_split_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      The same test at a couple of pixels: one point detected twice. Shortens
+      tracks rather than corrupting geometry, and dominates by volume -- judge on
+      cycle_merge_rate and read this as the cost in track length.
 
   planarity:
     direction: lower_better

@@ -16,6 +16,7 @@ Lifecycle, and why:
 
 from __future__ import annotations
 
+import atexit
 import threading
 import time
 import uuid
@@ -69,6 +70,15 @@ class ContainerRunner:
         self._slots: dict[str, _Slot] = {}
         self._lock = threading.RLock()
 
+        # Pooling is per-process: a new process starts with no slots and spawns
+        # its own servers on its own ports, so nothing is ever reused ACROSS
+        # processes and there is nothing to preserve by outliving one. Without
+        # this, every script that runs a module and exits leaves its servers up
+        # holding a GPU, and the only thing that would ever reap them is another
+        # process happening to start a job -- which for a one-shot script never
+        # comes. `shutdown` is idempotent, so this composes with `with`.
+        atexit.register(self.shutdown)
+
     # ------------------------------------------------------------------ pool
 
     @staticmethod
@@ -109,7 +119,7 @@ class ContainerRunner:
             self.reap_idle()
 
             lease: Lease | None = None
-            if spec.resources.gpu:
+            if spec.resources.gpu and self.gpus.devices:
                 try:
                     lease = self.gpus.acquire(key, timeout=0)
                 except NoGpuAvailable:
@@ -117,6 +127,21 @@ class ContainerRunner:
                         lease = self.gpus.acquire(key, timeout=self.gpu_timeout)
                     else:
                         lease = self.gpus.acquire(key, timeout=self.gpu_timeout)
+            elif spec.resources.gpu:
+                # O': a broker with NO devices means "this runner gets none", and
+                # the honest response is to run on CPU -- which is what the
+                # backend already does when the daemon cannot pass a GPU through,
+                # and what every GPU module's limitations file promises. Before
+                # this it raised instead, so the one documented way to say "run
+                # this without a GPU" was the one way that could not work. Someone
+                # whose devices were all full read that promise, passed an empty
+                # broker, and got an error rather than a slow answer.
+                #
+                # Only for a deliberately empty broker. Devices that exist but are
+                # busy still wait: a caller who assigned devices wants those
+                # devices, and silently dropping to a 50x slower path because a
+                # neighbour is mid-job would be a worse surprise than the wait.
+                pass
 
             try:
                 endpoint = self.backend.start(

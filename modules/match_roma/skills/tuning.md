@@ -19,7 +19,7 @@ Then, in order: `graph_components`, `inlier_ratio`, `mean_certainty`,
 single most important thing to carry over from one detector-free matcher to the
 other, and it does not carry over.
 
-Measured on the same 8 DTU frames at 1024 px:
+Measured on the same 8 frames at 1024 px:
 
 | matcher | `merge_eps_px` | `inconsistent_rate` | `merge_headroom` | reading |
 |---|---:|---:|---:|---|
@@ -40,7 +40,7 @@ catches.
 
 ## Reference run
 
-DTU scan1, 8 contiguous images, `max_edge: 1024`, `pairing: sequential`,
+A turntable capture of a compact object, 8 contiguous images, `max_edge: 1024`, `pairing: sequential`,
 `window: 2`, `setting: outdoor`, GPU, in a container:
 
 | metric | value |

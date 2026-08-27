@@ -82,7 +82,14 @@ metrics:
     direction: higher_better
     meaning: >
       Pairs that survived min_matches. Read against the pairing policy: a
-      sequential window and an exhaustive sweep are not the same denominator.
+      sequential window and an exhaustive sweep are not the same denominator, and
+      the denominator is not published -- an exhaustive sweep proposes n(n-1)/2.
+
+      Survived MIN_MATCHES, which is a parameter, so this is a reading about a
+      configuration as much as about a capture, and it is not comparable across
+      runs that set that floor differently. See min_image_degree for what that
+      costs and for the two ways to check whether a recovered pair is content or
+      noise.
 
   matches_per_pair:
     direction: higher_better
@@ -109,6 +116,26 @@ metrics:
       graph_components does not report: a component count of 1 says the graph has
       not split, and says nothing about how close it came.
 
+      BOTH THIS AND pairs_matched ARE RELATIVE TO min_matches, AND COUNT EDGES
+      WITHOUT ASKING WHETHER THEY ARE REAL. They are the readings to trust after
+      graph_components is demoted, but they are not unconditional. Lowering
+      min_matches manufactures both: measured on two captures, dropping it to the
+      algebraic floor took a graph from two thirds of its pairs at degree four to
+      EVERY pair at degree eleven, with every added edge carrying eight to
+      fourteen matches -- a seven-degree-of-freedom fit with no redundancy, which
+      is noise fitted, not content found. And a matcher can inflate them with
+      wrong-but-verified edges: on a repetitive capture the ratio test returned a
+      denser graph than the joint matcher, and the extra edges were the two ends
+      of a linear walk matched onto the wrong repeat.
+
+      Two ways to tell manufactured connectivity from the real thing, both cheap:
+      re-run once with geometric_model: none and compare the RAW candidate counts
+      on kept versus dropped pairs -- a real pair and a noise pair sit either side
+      of an empty gap, measured as thirty-seven-and-up against ten-to-thirty on
+      one capture -- and read cycle_merge_rate, which counts the wrong-but-
+      verified edges directly. inlier_ratio also falls when the graph is padded,
+      which is the cheapest hint that it happened.
+
   inlier_ratio:
     direction: higher_better
     meaning: >
@@ -132,6 +159,51 @@ metrics:
     meaning: >
       Fraction of images in the biggest component. Says how bad a split is:
       graph_components of 2 is one stray frame or two half-scenes.
+
+  cycle_merge_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Fraction of three-view chains where matching i->j->k lands on a DIFFERENT
+      keypoint than the direct i->k match, far enough away to be a different piece
+      of the scene rather than the same one detected twice.
+
+      The only reading at this stage that can see a wrong-but-verified match. A
+      two-view check tests each pair against its own model, so a correspondence
+      displaced onto a repeated structure passes it -- and when the camera slides
+      along the repeat, that displacement lies along the epipolar line, so no
+      ransac_threshold rejects it. Such a match is counted as an inlier by
+      inlier_ratio, leaves planarity unmoved, and adds an edge that
+      graph_components and min_image_degree both read as connectivity. This is
+      what the tracker later reports as inconsistent_rate; it does not need to
+      wait for the tracker.
+
+      Null, not zero, when undefined: a detector-free matcher publishes no
+      feature_index so there is no identity to agree about, and a view graph with
+      no closed triple offers nothing to test -- which is why a sequential run
+      reports null here instead of a flattering zero.
+
+      Read it as the tiebreak when the stage's own metrics disagree or saturate,
+      not as a ranking on its own. Compare two runs on the same detection
+      artifact; across different detectors the keypoint tables differ and the
+      denominators are not the same population.
+
+  cycle_split_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      The same test, for chains that disagree by only a pixel or two: one scene
+      point detected twice rather than two points confused. It SHORTENS tracks
+      where cycle_merge_rate corrupts geometry, so it is the cheaper failure and
+      the far more common one -- measured, it is 70-78% of all disagreements.
+
+      Published separately for that reason. Summed with the merge rate it
+      dominates by volume and inverts the comparison: a matcher has been measured
+      at thirty-four times another's total disagreement rate while producing ZERO
+      of the geometry-corrupting kind against the other's fifty-four. Judge on
+      cycle_merge_rate; read this one as the cost in track length, and expect a
+      permissive matcher to be worse on it without that being a reason to reject
+      it.
 
   planarity:
     direction: lower_better

@@ -1,5 +1,5 @@
 name: FeatureMatchFLANN
-version: 1.1.0
+version: 1.2.0
 kind: matching
 summary: >
   Approximate nearest-neighbour descriptor matching via FLANN, with the same
@@ -30,7 +30,7 @@ description: |
   Binary descriptors (ORB) use an LSH index rather than a KD-tree, which is
   selected automatically from the features artifact's `binary` flag.
 
-image: sfmstack/match-flann:1.1.0
+image: sfmstack/match-flann:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -219,6 +219,23 @@ metrics:
     direction: neutral
     healthy: null
     meaning: Pairs dropped for falling under min_matches.
+  cycle_merge_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Three-view chains that land on a different keypoint than the direct match,
+      far enough to be different scene structure. The only reading here that sees
+      a wrong-but-epipolar-consistent match; arrives later as the tracker's
+      inconsistent_rate. Null when undefined rather than zero.
+
+  cycle_split_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      The same test at a couple of pixels: one point detected twice. Shortens
+      tracks rather than corrupting geometry, and dominates by volume -- judge on
+      cycle_merge_rate and read this as the cost in track length.
+
   planarity:
     direction: lower_better
     meaning: >

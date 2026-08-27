@@ -33,6 +33,13 @@ from .modulespec import ModuleSpec
 
 STARTUP_TIMEOUT = 180.0  # generous: a GPU module may load several GB of weights
 
+# Stamped on every container this package starts. The owner is a uid so a sweep
+# on a shared host can never touch another user's containers; the pid is the
+# process that started it, which is the only reliable way to know whether anyone
+# is still using it.
+OWNER_LABEL = "sfmstack.owner_uid"
+PID_LABEL = "sfmstack.owner_pid"
+
 NO_GPU_WARNING = """\
 [sfmorch] '{module}' declares resources.gpu but this Docker daemon cannot pass a
 GPU into a container, so it will run on CPU. Expect it to be slow -- often 10-50x.
@@ -52,6 +59,24 @@ installed and wired into the daemon:
     docker run --rm --gpus device=0 sfmstack/runtime:1.0 -c "print('ok')"
 
 Pass cpu_fallback=False to DockerBackend to make this an error instead."""
+
+
+def _pid_alive(pid: int) -> bool:
+    """Is this process still running?
+
+    PermissionError means it exists and belongs to someone else, which is still
+    alive -- the distinction matters because reading it as dead would reap a
+    container out from under a running job.
+    """
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return True
+    return True
 
 
 class BackendError(OrchestratorError):
@@ -276,6 +301,7 @@ class DockerBackend:
         self.gpu_probe_image = gpu_probe_image
         self._gpu_supported: bool | None = None
         self._warned_no_gpu = False
+        self._swept = False
 
     def available(self) -> bool:
         return shutil.which(self.docker) is not None
@@ -311,11 +337,20 @@ class DockerBackend:
         store = Path(store).resolve()
         port = free_port()
 
+        self.sweep_orphans()
+
         cmd = [
             self.docker, "run", "--rm", "--detach",
             "--name", f"sfm-{spec.name.lower()}-{port}",
             "--publish", f"127.0.0.1:{port}:8080",
             "--volume", f"{store}:{store}",
+            # Who to blame, and who to reap. `--rm` fires when a container STOPS
+            # and nothing stopped these: a process that starts a server and exits
+            # leaves it running forever, holding its GPU. These two labels are
+            # what let a later process tell "still working" from "abandoned"
+            # without guessing from a clock. See sweep_orphans.
+            "--label", f"{OWNER_LABEL}={os.getuid()}",
+            "--label", f"{PID_LABEL}={os.getpid()}",
         ]
 
         if self.run_as_host_user:
@@ -402,6 +437,66 @@ class DockerBackend:
             capture_output=True, text=True,
         )
         return result.stdout.strip() if result.returncode == 0 else ""
+
+    def orphans(self) -> list[tuple[str, str, int]]:
+        """Our containers whose starting process is gone: (id, name, pid).
+
+        The pool only reaps servers from inside a live process that is starting
+        another job, and `shutdown()` only runs if the caller used `with`. Neither
+        covers the common case -- a script that runs one module and exits -- or a
+        process that is killed. Those servers stay up holding a GPU with nothing
+        left that knows about them, which is how this host accumulated 501 of them
+        holding 347 GB across every device.
+
+        Liveness is asked of the OWNING PID rather than of a clock, because an
+        idle timeout cannot tell a finished process from a slow one. Filtered by
+        uid first: on a shared machine another user's containers are never ours to
+        stop, whatever their age.
+        """
+        result = subprocess.run(
+            [self.docker, "ps", "--filter", f"label={OWNER_LABEL}={os.getuid()}",
+             "--format", "{{.ID}}\t{{.Names}}\t{{.Label \"" + PID_LABEL + "\"}}"],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            return []
+
+        out = []
+        for line in result.stdout.splitlines():
+            parts = line.split("\t")
+            if len(parts) != 3 or not parts[2].isdigit():
+                continue
+            cid, name, pid = parts[0], parts[1], int(parts[2])
+            if pid == os.getpid() or _pid_alive(pid):
+                continue
+            out.append((cid, name, pid))
+        return out
+
+    def sweep_orphans(self) -> list[str]:
+        """Stop every orphan. Returns the names stopped.
+
+        Called on each `start`, so a new run cleans up after dead ones before
+        asking for a device -- the point at which a leaked server actually costs
+        something. Never fatal: failing to reap is worth a warning, not a run.
+        """
+        if self._swept or not self.available():
+            return []
+        self._swept = True
+
+        stopped = []
+        for cid, name, pid in self.orphans():
+            killed = subprocess.run(
+                [self.docker, "rm", "-f", cid], capture_output=True, text=True
+            )
+            if killed.returncode == 0:
+                stopped.append(name)
+        if stopped:
+            print(
+                f"[sfmorch] reaped {len(stopped)} module server(s) left by processes "
+                f"that are no longer running.",
+                file=sys.stderr,
+            )
+        return stopped
 
     def stop(self, endpoint: Endpoint) -> None:
         subprocess.run(

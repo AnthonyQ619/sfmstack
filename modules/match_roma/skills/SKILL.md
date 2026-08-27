@@ -16,10 +16,11 @@ correspondences everywhere and weights them by an estimated certainty rather tha
 by descriptor distance, so nothing has to be repeatable.
 
 **Prefer LoFTR when** cost matters — same family, several times cheaper. Prefer a
-sparse matcher when the scene is well textured; on DTU all three land in the same
+sparse matcher when the scene is well textured; inside the classical detector's
+envelope all three land in the same
 place and the sparse ones are far faster.
 
-**Measured on DTU scan1** (8 images at 1024px, `window: 2`, GPU, in containers):
+**Measured on a turntable capture of a compact object** (8 images at 1024px, `window: 2`, GPU, in containers):
 13 pairs, **4951.8 matches per pair**, inlier ratio **0.99**, mean certainty
 **0.997**, 19.8 s. Through union-find at `merge_eps_px: 4.0` and the incremental
 pose estimator: **8/8 registered at 0.33 px**.

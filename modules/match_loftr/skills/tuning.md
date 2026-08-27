@@ -11,7 +11,7 @@ curated_at: 2026-08-08
 The tracker's `merge_eps_px`. This module emits no `feature_index`, so the tracker
 merges endpoints by proximity, and its default tolerance is wrong for this input.
 
-Measured, DTU scan1, 5 contiguous images at 640px, exhaustive pairing, only the
+Measured on a turntable capture of a compact object, 5 contiguous images at 640px, exhaustive pairing, only the
 tracker's tolerance changing:
 
 | `merge_eps_px` | tracks | avg len | long_track% | conflict | registered | final error |

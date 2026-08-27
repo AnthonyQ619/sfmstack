@@ -10,6 +10,7 @@ import itertools
 import cv2
 import numpy as np
 from sfmkit import Ctx, module
+from sfmkit.cycles import cycle_rates
 
 MIN_FOR_FUNDAMENTAL = 8  # the 8-point algorithm's floor
 MIN_FOR_HOMOGRAPHY = 4
@@ -328,6 +329,28 @@ def run(ctx: Ctx):
         None if mean_planarity is None else round(mean_planarity, 3),
         direction="lower_better",
     )
+
+    # A: the two failures a two-view check cannot see, one stage before the
+    # tracker reports them. A correspondence displaced onto a repeated structure
+    # is epipolar-consistent by construction when the camera slides along the
+    # repeat, so it counts as an INLIER here and only contradicts itself once a
+    # third view is compared. Graded by displacement because the two failures cost
+    # differently and the cheap one dominates by volume: a couple of pixels is one
+    # point detected twice, which shortens a track, while tens of pixels is a
+    # different piece of scene, which corrupts geometry. Summed into one number
+    # the split rate buries the merge rate and the reading inverts.
+    merge_rate, split_rate, n_chains = cycle_rates(
+        np.array(kept_pairs, np.int32),
+        np.concatenate(pair_idx_blocks) if pair_idx_blocks else np.zeros(0, np.int32),
+        np.concatenate(feat_idx_blocks) if feat_idx_blocks else None,
+        np.concatenate(xy_blocks) if xy_blocks else np.zeros((0, 4), np.float32),
+    )
+    out.metric("cycle_merge_rate",
+               None if merge_rate is None else round(merge_rate, 6),
+               direction="lower_better")
+    out.metric("cycle_split_rate",
+               None if split_rate is None else round(split_rate, 6),
+               direction="lower_better")
 
     if len(components) > 1:
         out.diagnostic(

@@ -19,7 +19,8 @@ and both invalidate everything downstream if wrong.
 ## Second: is LightGlue winning?
 
 Run `FeatureMatchNN` on the same features and compare the **final** reprojection
-error after bundle adjustment, not the match count. On DTU the classical stack won
+error after bundle adjustment, not the match count. Inside the classical
+detector's envelope the classical stack won
 by 2.6x on the output metric while losing on every intermediate one — see
 [SKILL.md](SKILL.md).
 

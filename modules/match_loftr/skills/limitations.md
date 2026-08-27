@@ -10,7 +10,8 @@ curated_at: 2026-08-08
 
 *Symptom:* it works, it is slow, and the reconstruction is no better than SIFT's.
 
-On DTU scan1 — well-lit, high-texture, turntable — LoFTR is not competitive with a
+On a well-lit, high-texture turntable capture — inside the classical detector's
+envelope — LoFTR is not competitive with a
 classical sparse stack, and costs far more. Detector-free matching earns its place
 where detectors fail, not everywhere.
 
@@ -69,12 +70,20 @@ is simply not reconstructible with what is available.
 
 ## What has not been measured
 
-Recorded so the DTU numbers are not over-read. LoFTR has been run here only on DTU,
-which is exactly the wrong scene for it. The comparison that would be informative:
+Recorded so the numbers above are not over-read. This module has been run here only
+on captures inside the classical detector's envelope — well lit, densely and
+aperiodically textured, short baselines — which is exactly the regime it is not for.
+Every one of its advantages needs something to act on, and on such a capture none
+of them do. The comparisons that would be informative, stated as capture
+properties so you can tell whether you are holding one:
 
-- ETH3D `courtyard` — outdoor, real illumination variation.
-- Any genuinely textureless interior, where SIFT's `spatial_coverage` collapses and
-  a detector-free matcher should win outright.
+- **Outdoors with real illumination variation across the set** — sun moving,
+  exposure shifting, the same surface a different brightness in different frames.
+- **Genuinely textureless interiors**, where the classical detector's
+  `spatial_coverage` collapses because there is nothing to fire on. A detector-free
+  matcher does not need a keypoint to exist first, so it should win outright.
 
-The expected result is that LoFTR wins decisively on the second and that DTU stays
-a poor showcase. It has not been run.
+The expected result is that it wins decisively on the second and that a capture
+inside the classical envelope stays a poor showcase. It has not been run. Until it
+is, read the numbers above as "what this costs where it has no advantage", not as
+a verdict on the module.

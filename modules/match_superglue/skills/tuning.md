@@ -14,7 +14,7 @@ curated_at: 2026-08-10
 
 ## Reference run
 
-DTU scan1, 12 contiguous images, `max_edge: 1024`, SuperPoint at defaults,
+A turntable capture of a compact object, 12 contiguous images, `max_edge: 1024`, SuperPoint at defaults,
 `pairing: sequential`, `window: 1`, `weights: outdoor`, on GPU in a container:
 
 | metric | value |

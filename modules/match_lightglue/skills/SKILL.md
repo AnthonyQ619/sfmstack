@@ -14,7 +14,9 @@ exactly the information Lowe's ratio test discards.
 baselines, illumination change, low texture. Those are the regimes it was built
 for and where it beats the ratio test decisively.
 
-**Do not assume it wins on easy scenes.** Measured on DTU scan1 (10 contiguous
+**Do not assume it wins inside the classical detector's envelope.** Measured on
+a well-lit, densely and aperiodically textured turntable capture of a compact
+object with short baselines and no repeated structure (10 contiguous
 images, 1024px, exhaustive pairing), against the same pipeline downstream:
 
 | stack | matches/pair | long_track% | tracker conflict | final reproj error |
@@ -27,7 +29,7 @@ LightGlue wins every intermediate metric — most matches, longest tracks — an
 loses the only one that is the output. The tracker's `inconsistent_rate` is fifty
 times higher, meaning one in five merged tracks is self-contradictory.
 
-DTU is a well-lit, high-texture turntable capture: squarely inside SIFT's comfort
+That is a capture squarely inside the classical detector's comfort
 zone and outside the regime LightGlue targets. The conclusion is not "SIFT is
 better" — it is **run the comparison on your capture**, because one run settles it
 and reputation does not. See [limitations](limitations.md).

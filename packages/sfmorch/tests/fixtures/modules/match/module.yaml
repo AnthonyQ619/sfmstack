@@ -60,6 +60,18 @@ metrics:
       Fewest surviving pairs on any one image -- the margin graph_components does
       not report. A consecutive chain puts its end images at degree 1 by
       construction.
+  cycle_merge_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Three-view chains landing on different scene structure than the direct
+      match. Null on this fixture: a consecutive chain closes no triple.
+  cycle_split_rate:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      The same test at a couple of pixels -- one point detected twice. Null here
+      for the same reason.
   planarity:
     direction: lower_better
     healthy: [null, 0.7]

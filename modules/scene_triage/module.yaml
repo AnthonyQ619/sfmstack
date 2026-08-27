@@ -257,6 +257,31 @@ metrics:
       capture order. 0 means sequential pairing and video-trained trackers are
       being applied to a set that does not support the assumption.
 
+      IT SAYS THE FILENAMES ARE A SEQUENCE. IT DOES NOT SAY THAT DISTANCE ALONG
+      THAT SEQUENCE TRACKS DISTANCE IN VIEWPOINT, and that is the thing sequential
+      pairing actually needs. Two ordinary capture shapes break the second while
+      satisfying the first:
+
+      A TRAJECTORY THAT REVISITS. A path that folds back, or an orbit that closes,
+      puts its most-overlapping pair at opposite ends of the index. Measured on
+      such a capture: the first frame shared hundreds of verified matches with a
+      frame ten positions away and fewer than fifteen with its neighbours four
+      through seven, and the rank correlation between index separation and match
+      count came out near zero. Read as a trajectory claim, `ordered: 1` argues for
+      a sequential window there, which discards the loop closure and still reports
+      one connected component while doing it.
+
+      A SUBSAMPLED ORDERED CAPTURE. Keeping every Nth frame of a rig sweep leaves
+      the filenames in order while multiplying the viewpoint change between
+      consecutive indices -- far enough, measured, that most pairs share nothing at
+      all. The scene artifact's own provenance records which sampling produced the
+      set; the brief does not.
+
+      So use it for what it states -- whether an ORDER exists at all -- and settle
+      the pairing question on evidence: one adjacent pair rotating far less than
+      its neighbours is a reversal, and per-pair match counts that rise again at
+      large separation are a revisit. Both are readable before choosing a pairing.
+
 diagnostics:
   - code: illumination_unstable
     severity: warn

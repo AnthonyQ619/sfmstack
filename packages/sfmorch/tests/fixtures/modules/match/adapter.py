@@ -80,6 +80,11 @@ def run(ctx: Ctx):
         degree[b_i] += 1
     out.metric("min_image_degree", min(degree) if degree else 0,
                direction="higher_better", healthy=(2, None))
+    # Required by the type. Null for the same reason planarity is: this fixture's
+    # consecutive chain closes no triple, so there are no three-view chains to
+    # test and a reported 0.0 would claim a clean result it never measured.
+    out.metric("cycle_merge_rate", None, direction="lower_better")
+    out.metric("cycle_split_rate", None, direction="lower_better")
     # Null, not zero: this fixture does not fit a homography, and reporting 0.0
     # would claim it measured perfectly general geometry.
     out.metric("planarity", None, direction="lower_better", healthy=(None, 0.7))

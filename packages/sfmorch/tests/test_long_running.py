@@ -261,3 +261,51 @@ def test_a_module_can_declare_its_own_timeout(registry, store):
     spec = registry.get("SlowModule")
     assert spec.resources.timeout_s == 60
     assert spec.resources.expected_duration_s == 120
+
+
+def test_a_runner_reaps_its_servers_when_the_process_exits(store, registry):
+    """A one-shot process must not leave its module servers running.
+
+    Pooling is per-process -- a new process starts with no slots and spawns its
+    own servers -- so nothing is reused across processes and there is nothing to
+    gain by outliving one. Before this hook, the ONLY thing that reaped a server
+    was another job starting inside the same live process, which for a script
+    that runs one module and exits never comes. On this host that leaked 501
+    containers holding 347 GB across every GPU, and readers driving the pipeline
+    misreported it in writing as other tenants' load.
+    """
+    import atexit
+
+    backend = SubprocessBackend()
+    runner = ContainerRunner(backend, gpus=GpuBroker(devices=[]), idle_ttl=3600)
+    orch = Orchestrator(store=store, registry=registry, runner=runner)
+    orch.run("SlowModule", run_id="r", params={"steps": 1, "step_s": 0.01})
+
+    assert runner.endpoints(), "expected a live server to reap"
+
+    # The registration is the contract; call it the way interpreter shutdown
+    # would. `unregister` first so the real hook cannot fire twice at exit.
+    atexit.unregister(runner.shutdown)
+    runner.shutdown()
+
+    assert runner.endpoints() == {}
+    # Idempotent: a caller using `with` shuts down too, and the hook still fires.
+    runner.shutdown()
+
+
+def test_a_dead_process_id_is_not_mistaken_for_a_live_one(store, registry):
+    """The orphan sweep asks the OWNING PID whether anyone still needs a server.
+
+    An idle clock cannot tell a finished process from a slow one, which is why
+    the TTL never caught the leak. Liveness has to be exact in both directions:
+    a live pid must never be reaped (that kills a running job), and a permission
+    error means the process exists under another uid, which is alive.
+    """
+    import os
+
+    from sfmorch.backends import _pid_alive
+
+    assert _pid_alive(os.getpid())
+    assert _pid_alive(1)  # init: exists, not ours to signal
+    # A pid that cannot exist. 2^22 is above any Linux pid_max default.
+    assert not _pid_alive(2**22 + 7)

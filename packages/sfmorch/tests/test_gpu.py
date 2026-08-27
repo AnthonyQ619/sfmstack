@@ -97,3 +97,54 @@ def test_held_reports_who_has_what():
     broker = GpuBroker(devices=[0, 1])
     broker.acquire("vggt")
     assert list(broker.held.values()) == ["vggt"]
+
+
+def test_an_empty_broker_runs_a_gpu_module_on_cpu_instead_of_refusing(store, registry):
+    """`gpus=[]` means "this runner gets no devices", and that has to mean CPU.
+
+    It used to raise NoGpuAvailable, which made the one documented way to say
+    "run this without a GPU" the one way that could not work -- while every GPU
+    module's limitations file promises a CPU fallback. The situation that needs it
+    is a host whose devices are all held: the backend's own fallback only triggers
+    when the daemon cannot pass a GPU AT ALL, so a visible-but-full device had no
+    escape and the run simply failed.
+
+    Exercised through the slot acquisition rather than a full run, because that is
+    where the device decision is made and a renamed spec cannot get past the
+    server's own name guard.
+    """
+    import dataclasses
+
+    from sfmorch import SubprocessBackend
+    from sfmorch.container import ContainerRunner
+    from sfmorch.gpu import GpuBroker
+
+    base = registry.get("SlowModule")
+    gpu_spec = dataclasses.replace(
+        base, resources=dataclasses.replace(base.resources, gpu=True)
+    )
+
+    runner = ContainerRunner(SubprocessBackend(), gpus=GpuBroker(devices=[]))
+    try:
+        slot = runner._acquire_slot(gpu_spec, store.root)
+        # No lease, and nothing claiming a device it never had.
+        assert slot.lease is None
+        assert slot.endpoint.device is None
+    finally:
+        runner.shutdown()
+
+
+def test_a_busy_device_still_waits_rather_than_silently_dropping_to_cpu(registry):
+    """The CPU fallback is only for a broker with NO devices.
+
+    A caller who assigned devices wants those devices; quietly taking a 50x slower
+    path because a neighbour is mid-job would be a worse surprise than the wait.
+    """
+    import dataclasses
+
+    from sfmorch.gpu import GpuBroker, NoGpuAvailable
+
+    broker = GpuBroker(devices=[0])
+    broker.acquire("someone-else", timeout=0)
+    with pytest.raises(NoGpuAvailable):
+        broker.acquire("me", timeout=0)

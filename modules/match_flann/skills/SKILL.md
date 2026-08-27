@@ -11,7 +11,7 @@ Everything after the search — ratio test, mutual check, MAGSAC verification, v
 graph, planarity — is deliberately identical, so the two are directly comparable
 and the search is the only variable.
 
-**Measure before you switch.** On DTU scan1, 8 contiguous images at 1024px, 4096
+**Measure before you switch.** On a turntable capture of a compact object, 8 contiguous images at 1024px, 4096
 SIFT keypoints, exhaustive pairing:
 
 | matcher | time | matches/pair | inlier_ratio | agreement |

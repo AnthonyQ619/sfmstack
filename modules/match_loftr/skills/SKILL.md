@@ -24,7 +24,7 @@ absence is a signal: `FeatureTrackUnionFind` branches on it and merges endpoints
 proximity instead of by identity. **You must set the tracker's `merge_eps_px`
 accordingly** — its default of 1.5px is far too small for this input.
 
-Measured, DTU scan1, 5 contiguous images at 640px, exhaustive, everything else fixed:
+Measured on a turntable capture of a compact object, 5 contiguous images at 640px, exhaustive, everything else fixed:
 
 | tracker `merge_eps_px` | long_track_fraction | conflict | registered |
 |---:|---:|---:|---:|
@@ -38,7 +38,8 @@ the resize.
 
 **Prefer a sparse matcher when** the scene has adequate texture. LoFTR is by far
 the most expensive matcher here — semi-dense attention over the whole image pair,
-quadratic in pair count — and on DTU it is not competitive with SIFT.
+quadratic in pair count — and inside the classical detector's envelope it is not
+competitive with SIFT.
 
 **`setting` is not cosmetic.** `indoor` (ScanNet) and `outdoor` (MegaDepth) are
 separately trained. The wrong one typically halves the match count with no other

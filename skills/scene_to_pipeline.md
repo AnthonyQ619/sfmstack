@@ -983,17 +983,26 @@ clear.
 
 **Write the SCENARIO, not the scene.** This is the rule that decides whether an
 entry is worth anything later. A plan for a capture nobody has seen cannot use
-"scan15 gained 20%"; it can use "a capture whose subject repeats and whose graph
+"&lt;scene&gt; gained 20%"; it can use "a capture whose subject repeats and whose graph
 is not at risk gains from a joint matcher". Every claim here must be phrased so
 that a reader can tell **whether their capture is the kind being described**,
 without knowing any of ours.
 
 | write this | not this |
 | --- | --- |
-| *a built interior whose blank walls are the subject* | *ETH3D office* |
-| *a near-planar surface shot nearly square-on* | *facade and delivery_area* |
+| *a built interior whose blank walls are the subject* | *&lt;dataset&gt; &lt;scene&gt;* |
+| *a near-planar surface shot nearly square-on* | *&lt;two scenes you happen to remember&gt;* |
 | *a capture that covers ground quickly between adjacent frames* | *the four high-`overall_magnitude` scenes* |
 | *the highest readings you have seen, with a gap below them* | *above &lt;the cut point you happened to fit&gt;* |
+
+**The right-hand column is deliberately empty of real names, and that is part of
+the rule rather than tidiness.** A table that pairs a capture description with the
+capture it came from is a lookup key: a reader who recognises one of those names
+has been handed their own answer and will read it as confirmation. This section
+was itself the leak — it used to name a capture beside its measured swap outcome,
+and a reader driving that very capture found its own prior result here, in the file
+telling it not to do that. Illustrate the mistake with a placeholder; the evidence
+record is where names belong.
 
 ### A corpus member cannot be a cold reading of itself
 

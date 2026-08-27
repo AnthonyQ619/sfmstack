@@ -494,6 +494,21 @@ class SfmService:
             },
             "sidecars": art.sidecars(),
             "path": str(art.root),
+            # N': whose execution this describes. An artifact id is derived from
+            # the recipe, so asking for the same module, params and inputs returns
+            # the artifact SOMEONE ELSE'S run already produced -- and its
+            # provenance still records that run's device, wall-clock and duration.
+            # Read as the requesting run's, those fields are simply wrong: a
+            # reader here concluded from `device` that its own job had been placed
+            # on a device it was told not to use, and reported the violation in
+            # writing. It had run nothing at all. Nothing in the artifact said so.
+            "produced_by_run": art.manifest.run,
+            "provenance_describes": (
+                f"the run '{art.manifest.run}' that FIRST produced this recipe, "
+                f"including its device, start time and duration. If you asked for "
+                f"this artifact and got it back instantly, those fields are that "
+                f"run's and not yours -- check `cached` on your own run result."
+            ),
         }
         if full:
             doc["artifact_md"] = (art.root / "artifact.md").read_text(encoding="utf-8")
@@ -686,6 +701,31 @@ class SfmService:
                 "diagnostics": [d.to_doc() for d in art.manifest.diagnostics],
                 "notes": art.manifest.body.strip(),
             })
+            # H': the same staleness question the analyses get, asked of the
+            # artifacts a later stage actually INHERITS. It was only asked of the
+            # three analysis modules, so a reader could be handed a detector
+            # artifact a minor version behind the live module with the brief
+            # reporting nothing behind at all -- which happened on two captures.
+            # It matters most at exactly the moment it is least visible: a reader
+            # that decides to backtrack and re-runs detection at the inherited
+            # parameters does NOT reproduce the inherited artifact, because the id
+            # is derived from the module version too. Without this the divergence
+            # surfaces as a mysterious second artifact.
+            try:
+                live = self.registry.get(prov.module).version
+            except OrchestratorError:
+                continue
+            if live != prov.module_version:
+                built[-1]["module_is_behind"] = live
+                # One line per module and version, not per artifact: a capture
+                # with eight runs of one bumped matcher was reporting the same
+                # sentence eight times, which buries the one line that matters
+                # -- the inherited detector sitting a version back.
+                line = (f"{prov.module} {prov.module_version} (module is now "
+                        f"{live}; re-running at the same params will not "
+                        f"reproduce those artifacts)")
+                if line not in stale:
+                    stale.append(line)
         built.sort(key=lambda a: (a["type"], a["module"], a["artifact"]))
 
         wanted = list(stages or PLANNING_STAGES)
@@ -738,7 +778,10 @@ class SfmService:
             # A flat statement, not a warning: whether the difference matters
             # depends on what changed, which the module's own version history says
             # and this call does not.
-            "analysis_behind_module": stale,
+            # Renamed with H': it no longer covers only the analyses, and a name
+            # that says "analysis" while carrying an inherited detector is the
+            # kind of thing a reader trusts and should not.
+            "behind_live_module": stale,
             # H, second half: whether the bands in the planning guide were fitted
             # ON this capture. When they were, locating a reading in them is recall
             # rather than confirmation, and the guide asks a planner to say so --

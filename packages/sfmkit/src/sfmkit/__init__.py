@@ -24,6 +24,7 @@ from .module import Ctx, Params, module, run_module
 from .geometry import scene_intrinsics, trifocal_transfer
 from .ply import read_ply_header, write_ply
 from .tracks import SPLIT_TOLERANCE_PX, split_rate
+from .cycles import MERGE_TOLERANCE_PX, cycle_rates
 from .schema import TypeRegistry, TypeSchema, parse_schema, registry
 from .store import ArtifactStore
 
@@ -34,6 +35,8 @@ __all__ = [
     "trifocal_transfer",
     "scene_intrinsics",
     "split_rate",
+    "cycle_rates",
+    "MERGE_TOLERANCE_PX",
     "SPLIT_TOLERANCE_PX",
     "read_ply_header",
     "Artifact",

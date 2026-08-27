@@ -88,7 +88,7 @@ rotation but not to out-of-plane rotation. Past roughly 40-50 degrees of viewpoi
 change the descriptors of the same patch stop resembling each other.
 
 The window sweep in [tuning.md](tuning.md) shows the benign version of this:
-beyond window 8, DTU scan1 stopped producing new pairs entirely. That was a
+beyond window 8, that capture stopped producing new pairs entirely. That was a
 correctly ordered capture where the far views really do share nothing. The
 malignant version is the same reading on a set where you know the views overlap.
 

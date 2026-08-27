@@ -26,7 +26,7 @@ identical parameters give identical artifacts and a re-run is a cache hit.
 
 1. `window` is the biggest lever here, and it is not a matching parameter at all —
    it decides which pairs exist. A track cannot span two frames that were never
-   compared. On a 12-image uniform sample of DTU scan1, going from window 1 to
+   compared. On a 12-image uniform sample of an ordered rig capture, going from window 1 to
    window 4 took `long_track_fraction` from 0.06 to 0.32 while every matching
    parameter stayed fixed.
 

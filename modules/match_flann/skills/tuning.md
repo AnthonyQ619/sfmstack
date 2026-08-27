@@ -14,7 +14,7 @@ Once you are using it, `checks` is the parameter and everything else is secondar
 
 ## Reference run
 
-DTU scan1, 8 contiguous images, 1024px, SIFT at 4096 keypoints, exhaustive pairing:
+A turntable capture of a compact object, 8 contiguous images, 1024px, SIFT at 4096 keypoints, exhaustive pairing:
 
 | setting | time | matches/pair | inlier_ratio | match_agreement |
 |---|---:|---:|---:|---:|

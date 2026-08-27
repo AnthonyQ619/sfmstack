@@ -26,8 +26,10 @@ threshold. Tuning the ratio test on a disconnected graph is wasted work.
 The view graph is disconnected. Raise `window` until it reaches 1, then stop —
 past that point the extra pairs cost time and find almost nothing.
 
-**Measured, DTU scan1, 12 images sampled uniformly from 49, max_edge 1024, SIFT
-at defaults.** Only `window` changes:
+**Measured on a turntable capture of a compact object, sampled UNIFORMLY so that
+index distance tracks viewpoint distance, 12 images, SIFT at defaults.** That
+sampling property is not a footnote — it is the precondition for everything below,
+and the next section is what happens without it. Only `window` changes:
 
 | window | pairs kept | matches/pair | inlier_ratio | components | tracks | long_track_fraction | min_frame_obs |
 |-------:|-----------:|-------------:|-------------:|-----------:|-------:|--------------------:|--------------:|
@@ -43,11 +45,35 @@ Three things to take from this.
 no link between them, and `long_track_fraction` is stuck near zero because tracks
 cannot cross a gap that was never matched.
 
-**Window 8 and exhaustive are identical.** Every pair beyond window 8 fell under
-`min_matches` — on a uniformly sampled turntable capture the far-apart views
-genuinely share nothing. Exhaustive is not a stronger setting here, only a slower
-one. Check whether raising `window` has stopped changing `pairs_matched` before
-reaching for `exhaustive`.
+**Window 8 and exhaustive were identical HERE, and that does not generalise.**
+Every pair beyond window 8 fell under `min_matches`, because on this capture the
+camera goes around once and never comes back, so far-in-index really is
+far-in-viewpoint and those views share nothing.
+
+**The property that makes that true is that the trajectory never revisits.** When
+it does, the same reasoning inverts, and it inverts hard: on a capture whose path
+folds back on itself, the single strongest pair in the whole set was a far-index
+one, and non-adjacent pairs carried the majority of all verified correspondences —
+around a third of them at separations of six or more. A window sweep on that
+capture stops improving long before it reaches the fold, so "raising `window` has
+stopped changing `pairs_matched`" reads as convergence when it is a plateau
+between two humps. Sequential pairing would have discarded the loop closure and
+reported a healthy `graph_components` while doing it.
+
+Two cheap ways to know which kind of capture you have, before spending the sweep:
+
+- **Ask whether the ordering means anything.** A capture with a `sampling` that
+  subsamples an ordered rig is not the same shape as one that took the first N
+  frames, and the brief does not say which you got — the scene artifact's own
+  provenance does.
+- **Read the per-pair rotations for a reversal.** One adjacent pair rotating far
+  less than its neighbours is the trajectory turning around; the fold centre sits
+  there, and the match counts will show a second hump across it.
+
+So: check whether raising `window` has stopped changing `pairs_matched` before
+reaching for `exhaustive` — and on any capture that might revisit, confirm it
+against one exhaustive run rather than against the plateau. At a dozen images the
+exhaustive run costs seconds and settles it.
 
 **`matches_per_pair` falls as the graph improves** (259 → 175). Newly admitted
 pairs are wider-baseline and thinner, which drags the mean down while making the
@@ -62,7 +88,7 @@ holiday photos it is alphabetical, which is nothing.
 
 ### When `exhaustive` does not fix it either, look two stages upstream
 
-**Measured, DTU scan1, 6 images, max_edge 800, SIFT at 2048 keypoints,
+**Measured on one ordered rig capture, 6 images, SIFT at 2048 keypoints,
 `pairing: exhaustive` in both cases.** Only SceneLoader's `sampling` changes:
 
 | SceneLoader sampling | pairs kept (of 15) | components | tracks | long_track_fraction |
@@ -70,8 +96,8 @@ holiday photos it is alphabetical, which is nothing.
 | `uniform` | 3 | **3** | 678 | **0.000** |
 | `head` | 15 | 1 | 1704 | 0.349 |
 
-Uniformly sampling 6 of 49 images takes every eighth frame of a turntable
-capture. Exhaustive pairing tried all 15 pairs and 12 of them shared nothing —
+Uniform sampling of a long ordered capture takes every Nth frame — here every
+eighth. Exhaustive pairing tried all 15 pairs and 12 of them shared nothing —
 the viewpoint change between eighth frames is past what SIFT's descriptor
 survives. Not one track reached a third view.
 
@@ -168,15 +194,25 @@ No matcher parameter fixes this; the capture geometry is what it is. What helps:
   degeneracy if there is any depth in the scene at all.
 - If the target genuinely is planar, this is not an SfM problem.
 
-DTU scan1 sits at 0.70-0.78, which is normal for a turntable capture of a compact
-object: substantial depth, but a dominant background plane. Treat above 0.9 as the
-warning line, not above 0.7.
+A turntable capture of a compact object has been measured across 0.70-0.78 —
+substantial depth, but a dominant background plane. Treat above 0.9 as the warning
+line, not above 0.7.
+
+**Do not read that range as a property of a capture, because it is not one.** The
+same scene and the same detection artifact moved 0.72 to 0.88 under two different
+matchers, and moved with `ransac_threshold` alone on identical inputs — a looser
+threshold admits more of the homography's inliers than the fundamental matrix's,
+so the ratio climbs while nothing about the geometry changed. A reading is
+comparable only against another at the same matcher, the same threshold and the
+same confidence filtering. If a value near the warning line moves when you sweep
+the threshold, you are measuring slack; `scene_analysis`'s degeneracy group is the
+authority on the capture itself.
 
 ---
 
 ## Cost
 
-Matching cost is (pairs x keypoints²). On the 12-image DTU scene at 4096
+Matching cost is (pairs x keypoints²). On a 12-image capture at 4096
 keypoints: window 1 took 0.3s, window 4 took 0.85s, exhaustive 1.1s. Doubling the
 detector's `max_keypoints` roughly quadruples all of these. `exhaustive` on 40
 images is 780 pairs against 30 for sequential window 1 — a real cost at full
