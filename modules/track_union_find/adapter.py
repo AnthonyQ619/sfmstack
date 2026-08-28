@@ -379,8 +379,8 @@ def run(ctx: Ctx):
     # scene in a way the rest does not.
     transfer_started = time.monotonic()
     K_all = scene_intrinsics(scene, n_images)
-    transfer, transfer_n, transfer_triples = (
-        trifocal_transfer(obs, K_all) if K_all is not None else (None, 0, 0)
+    transfer, transfer_mad, transfer_n, transfer_triples = (
+        trifocal_transfer(obs, K_all) if K_all is not None else (None, None, 0, 0)
     )
     transfer_seconds = time.monotonic() - transfer_started
 
@@ -392,6 +392,20 @@ def run(ctx: Ctx):
         direction="lower_better", healthy=(None, 3.0),
     )
     out.metric("trifocal_samples", transfer_n, direction="higher_better")
+    # 3: both published because the median alone cannot be compared. The triples
+    # are drawn off a fixed seed but SKIPPED when too few tracks are common to all
+    # three frames, so a sparser table qualifies a different set -- two medians from
+    # two matcher settings are middles of different populations. `trifocal_triples`
+    # says how much evidence is behind the number (a reading over two triples is
+    # not the same claim as one over twelve), and `trifocal_mad_px` says how far
+    # apart two readings must be to mean anything. Readers without these had to
+    # re-run sweeps to find the noise floor by hand, and two nearly settled on it.
+    out.metric("trifocal_triples", transfer_triples, direction="higher_better")
+    out.metric(
+        "trifocal_mad_px",
+        round(transfer_mad, 4) if transfer_mad is not None else None,
+        direction="neutral",
+    )
     out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(fragmentation, 4),
                direction="lower_better", healthy=(None, 0.1))
@@ -428,7 +442,20 @@ def run(ctx: Ctx):
             see_also="tuning.md#long_track_fraction-below-03",
         )
 
-    if inconsistent_rate > 0.1:
+    # B3: fire at the healthy band, not at twice it. This used to trip at 0.1
+    # while the metric's healthy ceiling is 0.05, and captures sat in that gap
+    # reading 0.06-0.08 with no diagnostic at all. The procedure tells readers to
+    # act on diagnostics, so a metric that goes unhealthy silently is a metric that
+    # gets shipped: one capture would have kept a matcher producing 60% more
+    # contradictions than its settled configuration.
+    if inconsistent_rate > 0.05:
+        # B1: name a dial that exists on the matcher that produced this. The old
+        # actions were `ratio_test` and `mutual` -- neither of which exists on a
+        # learned matcher, whose schema refuses unknown keys, so following them was
+        # a hard error. Six of eight readers hit that on this stage, and the
+        # escalation's last rung ("use a learned matcher on repetitive scenes") is
+        # already where they were. Both families are named now, and the learned
+        # branch's direction is the opposite of the classical one.
         out.diagnostic(
             "high_conflict_rate",
             severity="warn",
@@ -437,8 +464,15 @@ def run(ctx: Ctx):
                 f"one image; the matcher is producing contradictory correspondences."
             ),
             suggested_actions=[
-                "Lower the matcher's ratio_test toward 0.7.",
-                "Ensure the matcher's mutual check is on.",
+                "Learned matcher (LightGlue, SuperGlue): RAISE filter_threshold. "
+                "Its documented 0.2-0.3 is a starting point, not a ceiling -- "
+                "settled values across a capture sweep ran 0.5 to 0.7.",
+                "Classical matcher (NN, FLANN): lower ratio_test toward 0.7 and "
+                "confirm mutual is on.",
+                "Stop when the view graph starts paying: watch pairs_matched "
+                "against pairs_proposed, min_image_degree, and max_track_length. "
+                "This rate keeps falling long after tightening has begun buying it "
+                "by shrinking the graph.",
             ],
             see_also="limitations.md#contradictory-tracks-come-from-the-matcher",
         )
@@ -448,7 +482,7 @@ def run(ctx: Ctx):
             "under_merged",
             severity="warn",
             message=(
-                f"Doubling merge_eps_px would raise long_track_fraction by "
+                f"Widening merge_eps_px would raise long_track_fraction by "
                 f"{merge_headroom:+.3f} (from {long_fraction:.3f}) at "
                 f"{headroom_at:g}x the current tolerance. Endpoints that are one "
                 f"physical point are being split into separate tracks."
@@ -456,6 +490,9 @@ def run(ctx: Ctx):
             suggested_actions=[
                 f"Raise merge_eps_px toward {p.merge_eps_px * headroom_at:g} and re-check.",
                 "inconsistent_rate cannot see this; it only detects over-merging.",
+                "Guard the move with trifocal_transfer_px: this probe reads track "
+                "LENGTH only, and a tolerance wide enough to fuse distinct points "
+                "raises length while wrecking position. Stop when that climbs.",
             ],
             see_also="tuning.md#merge_headroom-above-003",
         )

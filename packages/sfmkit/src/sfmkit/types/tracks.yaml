@@ -160,6 +160,48 @@ metrics:
       triple are both capped -- so it does not grow with the scene. Measured at
       0.07-0.7 s on 8- and 20-image sets, reported per run as trifocal_seconds.
 
+      AND IT IS NOT STABLE ACROSS DIFFERENT TRACK TABLES, WHICH IS THE COMPARISON
+      MOST READERS ACTUALLY MAKE. Two runs of the same recipe return byte-identical
+      values -- the seed is fixed. But comparing two matcher settings with one
+      tracker changes the table underneath the sample: a triple is skipped unless
+      enough tracks are common to all three of its frames, and the per-triple
+      sample is drawn from whatever is common, so a sparser table qualifies
+      different triples. Observed wandering non-monotonically across a parameter
+      sweep on which every other metric moved cleanly, with the sample count
+      swinging from tens to thousands. READ trifocal_triples AND trifocal_mad_px
+      BEFORE BELIEVING A DIFFERENCE: a median over two triples is not the same
+      claim as one over twelve, and two medians closer together than the dispersion
+      are not distinguishable at all.
+
+  trifocal_triples:
+    direction: higher_better
+    nullable: true
+    meaning: >
+      How many frame triples the measurement actually used, out of the twelve it
+      attempts. The evidence behind trifocal_transfer_px, and the first thing to
+      read beside it: a reading over two triples samples two baselines and is a
+      different kind of statement from one over twelve. A low count on an otherwise
+      healthy capture also says something on its own -- the track table has little
+      three-view structure, whatever its length metrics report.
+
+  trifocal_mad_px:
+    direction: neutral
+    nullable: true
+    meaning: >
+      Median absolute deviation of the same residuals, in the same pixels. The
+      scale of the thing the median is a middle of, published so that two readings
+      can be told apart from noise.
+
+      Use it as the resolution of trifocal_transfer_px, not as a quality signal --
+      it has no healthy band and a large value is a property of the capture's
+      baselines as much as of the tracker. Two medians a small fraction of this
+      apart, measured over different track tables, are not distinguishable, and
+      readers without it were re-running sweeps to find that floor by hand.
+
+      MAD rather than a standard deviation because the residual distribution has a
+      heavy tail: a handful of bad tracks project far, and a moment-based spread
+      would report them rather than the bulk the median sits in.
+
   median_track_length:
     direction: higher_better
     meaning: >

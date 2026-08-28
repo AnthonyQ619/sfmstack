@@ -44,14 +44,41 @@ This is not a formality. The comparison costs one pipeline run.
 Defaults to 0.1, which is deliberately permissive because geometric verification
 follows. On an easy scene that permissiveness is where the conflicts come from.
 
-Raise to 0.2-0.3 when:
-- the tracker reports `high_conflict_rate`
-- `inlier_ratio` is below 0.5
-- final reprojection error is worse than a classical stack's
+**Start at 0.2-0.3 and sweep upward.** That band was written as the answer and it
+is about half of where the dial works: settled values across six captures came out
+at 0.5, 0.5, 0.55, 0.6 and 0.7, and on two of them the inherited value was already
+inside the band and still producing a badly contradictory track table — a reader
+obeying the band had no next move.
 
-The metric to judge it by is the tracker's `inconsistent_rate`, not
-`matches_per_pair` — you are deliberately trading matches for correctness, so the
-match count going down is the intended effect, not a regression.
+**Judge it by the tracker's `inconsistent_rate`**, not by `matches_per_pair` and
+not by `inlier_ratio`. The match count going down is the intended effect. And
+`inlier_ratio` is actively misleading here: it read 0.93-0.99 on every run that
+still needed tightening, and it *rises* as you tighten, so it confirms whatever you
+just did. Two-view verification structurally cannot see this error — a match
+displaced onto a repeated structure satisfies the epipolar constraint by
+construction — which is the whole reason the criterion lives one stage downstream.
+
+**Where to stop, which is the harder half.** `inconsistent_rate` keeps falling long
+after tightening has started buying it by deleting the graph, so it cannot be its
+own stopping rule. Stop when the graph begins to pay:
+
+- `pairs_matched` against `pairs_proposed`
+- `min_image_degree` — the margin, not `graph_components`, which stays at 1 while
+  pairs quietly disappear
+- the tracker's `max_track_length`, which falls when real chains start being cut
+
+One capture kept improving on both headline metrics at 0.8 while shedding two pairs
+and a degree with `graph_components` still reading 1. Guard the final step with
+`trifocal_transfer_px`, and read `trifocal_mad_px` and `trifocal_triples` beside it
+before believing a small difference — that median is not stable across different
+track tables, which is exactly the comparison a sweep makes.
+
+**Pricing the sweep without spending it.** The matches artifact publishes
+`matches/confidence` and `pair_index`. Thresholding that array per pair predicts,
+before any run, how many matches survive at a candidate value and which pairs fall
+below `min_matches`. One capture predicted its surviving match count exactly and
+named the pair it would lose; that turns a blind six-run search into one
+calculation, and it is the cheapest thing on this page.
 
 ## `graph_components` above 1
 

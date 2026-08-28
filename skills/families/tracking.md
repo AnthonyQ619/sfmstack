@@ -12,8 +12,24 @@ property drives both.**
 
 A **chaining** tracker (`FeatureTrackUnionFind`) builds tracks from verified
 two-view matches. A track can only be as long as the view graph's connectivity
-allows — it dies at every missing edge — and its observations are *detected*
-keypoints in every frame, so they carry the detector's sub-pixel accuracy.
+allows — it dies at every missing edge — and **when the matcher is detector-based**
+its observations are *detected* keypoints in every frame, so they carry the
+detector's sub-pixel accuracy.
+
+**That precision claim holds only for detector-based input, and the whole trade
+inverts without it.** A detector-free matcher has no keypoints to cite: it emits
+coordinates of its own, and a coarse-to-fine one quantises **one endpoint of every
+match** onto a lattice while refining only the other. Measured on such a capture,
+one side of every correspondence took 76 distinct x-values, each an exact multiple
+of the lattice pitch, against 22,000 continuous values on the other — so half of
+every chained observation carried up to half a cell of pure quantisation error, and
+that set the floor the precision metric sat on. Halving the pitch lowered the
+reading, which is the falsifying check.
+
+On that capture a predictive tracker won **both** ends of this table: 1.8× the
+reach *and* 3.4× the precision. So read the row below as describing a
+detector-based chain. Where the matcher is detector-free, chaining has no precision
+advantage to trade, and the comparison has to be run rather than assumed.
 
 A **predictive** tracker (`FeatureTrackVGGSfM`, `FeatureTrackTapir`) is given
 keypoints in a few query frames and predicts where they land everywhere else.
@@ -25,6 +41,8 @@ contributes any of its own.
 ```
                     reach                              precision
   chaining          bounded by the view graph          detector sub-pixel
+                                                       (detector-BASED input only;
+                                                        detector-free forfeits it)
   predictive        bounded by nothing                 bounded by model resolution
 ```
 
@@ -106,6 +124,21 @@ See [`docs/import_lessons.md`](../../docs/import_lessons.md).
 
 ---
 
+## Read the bands, not the diagnostics
+
+This stage is where that habit is cheapest to lose. Three of its metrics have gone
+outside their published bands with **no diagnostic firing** — a conflict rate in the
+gap between a ≤0.05 ceiling and a warning that tripped at 0.1, a split rate above
+its ceiling with no diagnostic defined at all, and a median track length under its
+floor. On one capture the silent one was the real defect, and fixing it improved
+every other reading.
+
+The conflict-rate gap is now closed, but the habit is the point: **check every
+published metric against its own band, and treat diagnostics as the second pass.**
+And where a metric's own text disagrees with its band — several here are documented
+as unreachable given the detector or the pairing in use — the text wins. See
+`scene_to_pipeline.md` §3.0.
+
 ## Which end to reach for
 
 **Reach for chaining when the matcher works.** A calibrated, well-textured,
@@ -126,6 +159,27 @@ TAPIR comes from video and **image order is genuine input** — a shuffled or
 unordered collection is a different and harder problem than the one it was trained
 on, and `mostly_occluded` on a capture that should be continuous is the symptom.
 On an ordered capture TAPIR reaches furthest; on an unordered one, prefer VGGSfM.
+
+**`ordered` is necessary and nowhere near sufficient, and taken alone this rule has
+mispredicted on every capture that tested it.** `SceneTriage`'s `ordered` is a
+statement about filenames. What disqualifies a video-trained model is the
+**magnitude of the motion between frames**, which `SceneMotion` measures and which
+this file did not previously mention: a capture can be perfectly ordered and still
+move further between consecutive frames than anything in a video. Read
+`rotation_median_deg` and `large_rotation_risk` beside `ordered` — on captures
+where the median inter-frame rotation ran to tens of degrees, TAPIR came last of
+three by a wide margin, with `mean_occlusion` above 0.85 and frames receiving no
+observations at all. Its own `mostly_occluded` diagnostic is the confirmation, and
+it is a statement about the capture, not the query selection: changing the query
+frames left it unmoved.
+
+**And check where the query frames will land before paying for the run.** Both
+modules choose them by a rule that knows nothing about scene content, and on two
+captures the default landed squarely on the emptiest frames — one capture's
+geometric midpoint *was* its least-textured pass. Cross-reference the selection rule
+against `SceneTriage`'s `density_per_image` and the description's frame ranges. On
+a capture where both available selections are wrong, that is a reason to prefer
+chaining rather than a parameter to tune.
 
 ---
 

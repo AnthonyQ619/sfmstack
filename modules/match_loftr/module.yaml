@@ -1,5 +1,5 @@
 name: FeatureMatchLoFTR
-version: 1.4.0
+version: 1.5.0
 kind: matching
 summary: >
   Detector-free semi-dense matching straight from images. No keypoint detection
@@ -24,7 +24,7 @@ description: |
   `setting` selects between two separately trained models. Indoor and outdoor are
   not interchangeable and picking the wrong one is a common cause of thin matches.
 
-image: sfmstack/match-loftr:1.4.0
+image: sfmstack/match-loftr:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -151,6 +151,11 @@ params:
     description: Also fit a homography per pair to detect degenerate geometry.
 
 metrics:
+  pairs_proposed:
+    direction: neutral
+    meaning: >
+      Pairs the pairing policy offered, before any survived. The denominator for
+      pairs_matched and weak_pairs; only the module knows it.
   pairs_matched:
     direction: higher_better
     healthy: [1, null]

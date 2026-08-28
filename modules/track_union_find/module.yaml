@@ -1,5 +1,5 @@
 name: FeatureTrackUnionFind
-version: 1.0.0
+version: 1.1.0
 kind: tracking
 summary: >
   Chains pairwise correspondences into multi-view tracks by union-find, detecting
@@ -30,7 +30,7 @@ description: |
   this module -- it means the matcher is producing contradictory correspondences,
   and the useful response is to tighten the matcher or replace it.
 
-image: sfmstack/track-union-find:1.0.0
+image: sfmstack/track-union-find:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -102,7 +102,20 @@ params:
       output at 640px: 1.5px leaves tracks unable to chain (long_track_fraction
       0.078) and two of five images unregisterable; 3px fixes registration; 6px
       chains further at 30x the conflict rate; 12px breaks reconstruction entirely.
-      Start at 3-4px for ~640px and scale with the resize. Too small fragments one
+      Start at 3-4px for ~640px and scale with the resize -- BUT SCALE IT WITH THE
+      RESOLUTION THE MATCHES ARE EXPRESSED IN, WHICH IS THE SCENE'S, NOT THE
+      MATCHER'S. That distinction was implicit and it inverts the answer. A
+      detector-free matcher may resize internally (LoFTR's resize_long_edge) while
+      still writing coordinates in scene pixels, so the sweep above -- run where the
+      two happened to coincide -- reads as 3-4px only when they do. On a capture
+      whose scene was 1024px and whose matcher ran at 640, the measured optimum was
+      0.25px: twenty times below this text, with 3px giving the same track length
+      at nineteen times the conflict rate. The governing quantity is the matcher's
+      output GRID, not any resolution named here: a coarse-grid matcher quantises
+      one endpoint onto a lattice, and the tolerance only has to separate lattice
+      cells. Read the diagnostic on the matches artifact, which states a figure for
+      that matcher, over this paragraph -- and note the two currently disagree by
+      4-6x, which is a known defect, not a subtlety. Too small fragments one
       scene point into short tracks; too large fuses neighbours and shows up as a
       rising inconsistent_rate. See tuning.md -- a synthetic experiment on stripped
       SIFT matches endorses 1-2px and is misleading for real detector-free input.
@@ -156,6 +169,18 @@ metrics:
     meaning: >
       Held-out observations the transfer error was measured over. Small means few
       frame triples shared enough tracks, which makes the median above soft.
+  trifocal_triples:
+    direction: higher_better
+    nullable: true
+    meaning: >
+      Frame triples the transfer measurement actually used, of the twelve it
+      attempts. The evidence behind trifocal_transfer_px; read it beside the median.
+  trifocal_mad_px:
+    direction: neutral
+    nullable: true
+    meaning: >
+      Median absolute deviation of the same residuals. The resolution of
+      trifocal_transfer_px -- two medians closer than this are not distinguishable.
 
   trifocal_seconds:
     direction: lower_better
@@ -207,8 +232,16 @@ metrics:
     healthy: [null, 0.03]
     meaning: >
       Detector-free input only; null otherwise. How much long_track_fraction would
-      RISE if merge_eps_px were doubled, measured by rebuilding the tracks at that
-      tolerance. Strongly positive means endpoints that are one physical point are
+      RISE at a wider merge_eps_px, measured by rebuilding the tracks at 2x, 4x and
+      8x and reporting the best -- together with the multiplier that achieved it,
+      which the diagnostic quotes.
+
+      NOT a plain doubling, which is what this said until the ladder was
+      documented. A single 2x probe reads exactly 0.0 at every tolerance from 0.5
+      to 3.0px on data where all of them are badly too tight, so it was silent
+      precisely when the parameter was wrong by an order of magnitude. The fix
+      landed in the adapter and not here, and a reader who trusted the old wording
+      would misread the diagnostic's stated multiplier as a bug. Strongly positive means endpoints that are one physical point are
       being split into separate tracks -- the direction inconsistent_rate is
       structurally blind to. Near zero means the tolerance is on a plateau.
       Negative means doubling would start fusing distinct points, so the current

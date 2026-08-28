@@ -47,7 +47,7 @@ def arc_scene(n_points=800, n_frames=8, sigma=0.0, seed=0, outlier_fraction=0.0)
 
 def test_perfect_observations_measure_essentially_zero(tmp_path):
     obs, K_all = arc_scene(sigma=0.0)
-    median, n, triples = trifocal_transfer(obs, K_all)
+    median, median_mad, n, triples = trifocal_transfer(obs, K_all)
 
     assert median < 0.02
     assert n > 0 and triples > 0
@@ -88,18 +88,18 @@ def test_it_is_deterministic():
 
 def test_fewer_than_three_frames_is_null_not_an_error():
     obs, K_all = arc_scene(n_frames=2)
-    assert trifocal_transfer(obs, K_all[:2]) == (None, 0, 0)
+    assert trifocal_transfer(obs, K_all[:2]) == (None, None, 0, 0)
 
 
 def test_an_empty_table_is_null():
-    assert trifocal_transfer(np.zeros((0, 4)), np.repeat(K[None], 3, 0)) == (None, 0, 0)
+    assert trifocal_transfer(np.zeros((0, 4)), np.repeat(K[None], 3, 0)) == (None, None, 0, 0)
 
 
 def test_too_few_shared_tracks_is_null_and_says_so():
     """Null because the table has no three-view structure to check -- which is a
     statement about the tracker, not a failure of the metric."""
     obs, K_all = arc_scene(n_points=10)
-    median, n, triples = trifocal_transfer(obs, K_all)
+    median, median_mad, n, triples = trifocal_transfer(obs, K_all)
     assert median is None and triples == 0
 
 

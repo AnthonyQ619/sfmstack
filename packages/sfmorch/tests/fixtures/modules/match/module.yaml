@@ -33,6 +33,9 @@ metrics:
     direction: higher_better
     healthy: [8, null]
     meaning: Mean correspondences per image pair.
+  pairs_proposed:
+    direction: neutral
+    meaning: Pairs the pairing offered, before any survived.
   pairs_matched:
     direction: higher_better
     healthy: [1, null]

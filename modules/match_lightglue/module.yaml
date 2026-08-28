@@ -1,5 +1,5 @@
 name: FeatureMatchLightGlue
-version: 1.3.0
+version: 1.4.0
 kind: matching
 summary: >
   Learned sparse matcher with adaptive depth and width. Reasons about the whole
@@ -26,7 +26,7 @@ description: |
   planarity -- is identical to the classical matchers, so all three are directly
   comparable and only the correspondence step differs.
 
-image: sfmstack/match-lightglue:1.3.0
+image: sfmstack/match-lightglue:1.4.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -92,10 +92,32 @@ params:
     maximum: 0.95
     description: Minimum match confidence. Higher gives fewer, stronger matches.
     tuning: >
-      THE quality dial. 0.1 is permissive by design because geometric verification
-      follows. Raise to 0.2-0.3 when inlier_ratio is poor and you would rather have
-      fewer, cleaner matches; the tracker's inconsistent_rate is the metric that
-      tells you whether it helped.
+      THE quality dial, and the single most consequential parameter on this module.
+      0.1 is permissive by design because geometric verification follows.
+
+      THE CRITERION IS THE TRACKER'S inconsistent_rate, NOT inlier_ratio. This
+      used to condition the raise on a poor inlier_ratio; measured across a
+      capture sweep, inlier_ratio was 0.93-0.99 -- excellent -- on every run that
+      still produced a badly contradictory track table, and it RISES as you tighten,
+      so it confirms whatever you just did. Two-view verification cannot see the
+      error this dial fixes: a match displaced onto a repeated structure is
+      epipolar-consistent by construction.
+
+      THE USEFUL RANGE REACHES MUCH FURTHER THAN 0.2-0.3. That was the old
+      guidance and it is roughly half of where the dial works. Settled values
+      across six captures: 0.5, 0.5, 0.55, 0.6, 0.7 -- and on two of them the
+      INHERITED value was already inside the old band and still unhealthy, so a
+      reader obeying it had no next step. Treat 0.2-0.3 as where to start and sweep
+      upward.
+
+      WHERE TO STOP, which the old text did not say. inconsistent_rate keeps
+      falling long after tightening has begun buying it by deleting the graph, so
+      it cannot be its own stopping rule. Stop when the graph starts paying:
+      pairs_matched against pairs_proposed, min_image_degree, and the tracker's
+      max_track_length -- one capture kept improving on both headline metrics at
+      0.8 while quietly shedding two pairs and a degree, with graph_components
+      still reading 1. Guard the last step with trifocal_transfer_px, and read its
+      dispersion before believing a small difference.
 
   n_layers:
     type: integer
@@ -177,6 +199,11 @@ params:
     description: Also fit a homography per pair to detect degenerate geometry.
 
 metrics:
+  pairs_proposed:
+    direction: neutral
+    meaning: >
+      Pairs the pairing policy offered, before any survived. The denominator for
+      pairs_matched and weak_pairs; only the module knows it.
   pairs_matched:
     direction: higher_better
     healthy: [1, null]

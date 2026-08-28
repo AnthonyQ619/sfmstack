@@ -96,9 +96,28 @@ should be, indistinguishable from tracks that are genuinely short.
 tolerance **fixed by `tracks/v1`** in at least two distinct frames are the same
 point; the metric is the fraction that would disappear if they were merged.
 
-For this module it reads the **view graph**: a fragmented graph leaves one point in
-several disconnected chains. That is not fixable here — it is the matcher's pairing
-and verification that decides it.
+**On detector-based input it reads the DETECTOR, not the view graph** — which is
+the opposite of what this said, and the correction cost two readers a wasted
+backtrack each. A classical detector assigns several keypoints to one physical
+point (different dominant orientations at the same location and scale); one capture
+measured **39% of its keypoints sharing an exact location and scale with another**,
+99.9% of the coincidences at distance zero. Chaining merges by `feature_index`, so
+those are permanently distinct nodes carrying one point in parallel tracks, and no
+matcher setting can join them. Two independent widenings of a view graph — from two
+thirds of its pairs to nine tenths — moved this metric by **0.0002**. A predictive
+tracker on the same features read a quarter of the value, because it merges by
+proximity and collapses exactly those twins.
+
+The consequence worth stating plainly: **the 0.1 ceiling is not reachable on a
+classical-detector-plus-chaining run**, and a reading in the 0.1–0.2 band there is
+a capture-and-detector fact rather than a fault. The cost is redundancy, not
+geometry — two honest observations of one real point — so it trades against
+`inconsistent_rate`, which is the one that corrupts.
+
+**On detector-free input it does read the view graph**, and a fragmented graph
+leaving one point in several disconnected chains is the failure the metric was
+written for. That is not fixable here either — it is the matcher's pairing and
+verification that decides it.
 
 Two pitfalls:
 

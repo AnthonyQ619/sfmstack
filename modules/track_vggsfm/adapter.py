@@ -380,8 +380,8 @@ def run(ctx: Ctx):
     # scene in a way the rest does not.
     transfer_started = time.monotonic()
     K_all = scene_intrinsics(scene, n_images)
-    transfer, transfer_n, transfer_triples = (
-        trifocal_transfer(observations, K_all) if K_all is not None else (None, 0, 0)
+    transfer, transfer_mad, transfer_n, transfer_triples = (
+        trifocal_transfer(observations, K_all) if K_all is not None else (None, None, 0, 0)
     )
     transfer_seconds = time.monotonic() - transfer_started
 
@@ -396,6 +396,20 @@ def run(ctx: Ctx):
         direction="lower_better", healthy=(None, 3.0),
     )
     out.metric("trifocal_samples", transfer_n, direction="higher_better")
+    # 3: both published because the median alone cannot be compared. The triples
+    # are drawn off a fixed seed but SKIPPED when too few tracks are common to all
+    # three frames, so a sparser table qualifies a different set -- two medians from
+    # two matcher settings are middles of different populations. `trifocal_triples`
+    # says how much evidence is behind the number (a reading over two triples is
+    # not the same claim as one over twelve), and `trifocal_mad_px` says how far
+    # apart two readings must be to mean anything. Readers without these had to
+    # re-run sweeps to find the noise floor by hand, and two nearly settled on it.
+    out.metric("trifocal_triples", transfer_triples, direction="higher_better")
+    out.metric(
+        "trifocal_mad_px",
+        round(transfer_mad, 4) if transfer_mad is not None else None,
+        direction="neutral",
+    )
     out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(split_rate(observations, track_count), 4),
                direction="lower_better", healthy=(None, 0.1))

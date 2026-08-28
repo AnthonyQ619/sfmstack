@@ -55,6 +55,14 @@ metrics:
   trifocal_samples:
     direction: higher_better
     meaning: Observations behind it.
+  trifocal_triples:
+    direction: higher_better
+    nullable: true
+    meaning: Frame triples used. Null on this fixture, which measures no transfer.
+  trifocal_mad_px:
+    direction: neutral
+    nullable: true
+    meaning: Dispersion of the transfer residuals. Null here for the same reason.
   split_rate:
     direction: lower_better
     healthy: [null, 0.1]

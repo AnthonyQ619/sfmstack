@@ -242,6 +242,14 @@ def run(ctx: Ctx):
     components = connected_components(n_images, kept_pairs)
     mean_planarity = float(np.mean(planarity)) if planarity else None
 
+    # 2: the denominator. scene_to_pipeline.md tells a reader to watch
+    # pairs_matched "against the number of pairs your pairing proposed" -- a
+    # number the module HAS (it built the list) and used to throw away. Every
+    # reader recovered it as n(n-1)/2 by hand, which is right only under
+    # exhaustive pairing; under a sequential window the arithmetic is
+    # edge-truncated and nobody will do it reliably. It also gives weak_pairs a
+    # denominator, which it has never had.
+    out.metric("pairs_proposed", len(graph), direction="neutral")
     out.metric("pairs_matched", len(kept_pairs),
                direction="higher_better", healthy=(1, None))
     out.metric("matches_per_pair", round(float(inliers.mean()), 1),

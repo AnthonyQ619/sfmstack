@@ -95,12 +95,23 @@ invariants:
 # is what makes a brute-force matcher, an approximate one, a learned one and a
 # detector-free one comparable at this stage.
 metrics:
+  pairs_proposed:
+    direction: neutral
+    meaning: >
+      Pairs the pairing policy offered to the matcher, before any survived. The
+      denominator for pairs_matched and for weak_pairs, and the module is the only
+      thing that knows it: an exhaustive sweep proposes n(n-1)/2, a sequential
+      window proposes fewer and the arithmetic is edge-truncated. Published because
+      the guidance says to read pairs_matched against it and readers were computing
+      it by hand -- correctly under exhaustive pairing, and by an expression nobody
+      reliably gets right under any other.
+
   pairs_matched:
     direction: higher_better
     meaning: >
-      Pairs that survived min_matches. Read against the pairing policy: a
-      sequential window and an exhaustive sweep are not the same denominator, and
-      the denominator is not published -- an exhaustive sweep proposes n(n-1)/2.
+      Pairs that survived min_matches. Read against pairs_proposed, which is the
+      denominator and is published beside this: a sequential window and an
+      exhaustive sweep are not the same denominator.
 
       Survived MIN_MATCHES, which is a parameter, so this is a reading about a
       configuration as much as about a capture, and it is not comparable across
@@ -200,10 +211,30 @@ metrics:
       no closed triple offers nothing to test -- which is why a sequential run
       reports null here instead of a flattering zero.
 
-      Read it as the tiebreak when the stage's own metrics disagree or saturate,
-      not as a ranking on its own. Compare two runs on the same detection
-      artifact; across different detectors the keypoint tables differ and the
-      denominators are not the same population.
+      READ THE SUM OF THIS AND cycle_split_rate, NOT THIS ALONE. That correction is
+      measured. This metric was annotated as the thing that "arrives later as the
+      tracker's inconsistent_rate" and on its own it does not: a capture read 0.0016
+      here -- clean by any standard -- and produced a track table 17% self-
+      contradictory, while across a parameter sweep it moved 25% and the tracker's
+      reading moved nine-fold. The reason is mechanical. The tracker counts a merged
+      group observed twice in one image, and BOTH failures produce that: two scene
+      points fused, and one point carried on two keypoints matched inconsistently.
+      It sees their union.
+
+      Over 54 paired runs the sum tracked inconsistent_rate MONOTONICALLY WITHIN
+      EVERY CAPTURE -- five of seven sweeps without a single inversion, the other
+      two with one each between near-equal values. Across captures the constant
+      relating them ranges about fourfold, so this is a TUNING INSTRUMENT AND NOT A
+      THRESHOLD: sweep a matcher parameter and take the direction, do not read an
+      absolute number and predict a tracker value from it.
+
+      What each term separately buys you is WHICH REPAIR. A high merge rate means
+      the matcher is admitting wrong correspondences -- tighten it. A high split
+      rate with a clean merge rate means the detector is emitting duplicates at one
+      physical point, which no matcher setting reaches.
+
+      Compare two runs on the same detection artifact; across different detectors
+      the keypoint tables differ and the denominators are not the same population.
 
   cycle_split_rate:
     direction: lower_better
@@ -214,13 +245,21 @@ metrics:
       where cycle_merge_rate corrupts geometry, so it is the cheaper failure and
       the far more common one -- measured, it is 70-78% of all disagreements.
 
-      Published separately for that reason. Summed with the merge rate it
-      dominates by volume and inverts the comparison: a matcher has been measured
-      at thirty-four times another's total disagreement rate while producing ZERO
-      of the geometry-corrupting kind against the other's fifty-four. Judge on
-      cycle_merge_rate; read this one as the cost in track length, and expect a
-      permissive matcher to be worse on it without that being a reason to reject
-      it.
+      Published separately for that reason. When you are ranking two MATCHERS,
+      judge on cycle_merge_rate and read this as the cost in track length: summed
+      for that purpose it dominates by volume and inverts the comparison -- a
+      matcher has been measured at thirty-four times another's total disagreement
+      rate while producing ZERO of the geometry-corrupting kind against the other's
+      fifty-four.
+
+      When you are FORECASTING THE TRACKER, add the two. The tracker's
+      inconsistent_rate sees the union of both failures, and on three captures this
+      term carried nearly all of the signal while the merge rate sat near zero. It
+      is also the term that survives into tracking on a classical detector, because
+      duplicate keypoints at one physical point are what it is measuring.
+
+      Two questions, two readings, and the difference between them is why these are
+      not one number.
 
   planarity:
     direction: lower_better

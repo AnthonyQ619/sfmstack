@@ -1,5 +1,5 @@
 name: FeatureMatchFLANN
-version: 1.3.0
+version: 1.4.0
 kind: matching
 summary: >
   Approximate nearest-neighbour descriptor matching via FLANN, with the same
@@ -30,7 +30,7 @@ description: |
   Binary descriptors (ORB) use an LSH index rather than a KD-tree, which is
   selected automatically from the features artifact's `binary` flag.
 
-image: sfmstack/match-flann:1.3.0
+image: sfmstack/match-flann:1.4.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -179,6 +179,11 @@ params:
       general. Leave it on unless the descriptor set is enormous.
 
 metrics:
+  pairs_proposed:
+    direction: neutral
+    meaning: >
+      Pairs the pairing policy offered, before any survived. The denominator for
+      pairs_matched and weak_pairs; only the module knows it.
   pairs_matched:
     direction: higher_better
     healthy: [1, null]

@@ -59,6 +59,8 @@ def run(ctx: Ctx):
             parent[rb] = ra
     roots = [find(i) for i in range(n_images)]
     sizes = {r: roots.count(r) for r in set(roots)}
+    # The denominator. This fixture pairs consecutively, so it offers n-1.
+    out.metric("pairs_proposed", max(n_images - 1, 0), direction="neutral")
     out.metric("pairs_matched", len(pair_list), direction="higher_better", healthy=(1, None))
     out.metric(
         "min_matches_per_pair", min((len(r) for r in rows), default=0),

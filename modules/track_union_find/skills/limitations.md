@@ -90,9 +90,16 @@ consuming `pairwise_matches/v1` at all:
 sfm_find_modules(produces="tracks/v1", not_consuming="pairwise_matches/v1")
 ```
 
-That returns nothing today. VGGSfM's tracker and TAPIR are the candidates. When
-one exists, it replaces both the matcher and this module in one step, which is why
-the query is phrased against the *type* rather than against this module's name.
+**That query returns two modules: `FeatureTrackVGGSfM` and `FeatureTrackTapir`.**
+This paragraph used to say it returned nothing, and four readers found the modules
+anyway — a reader who trusts the old wording loses the alternative the family file
+tells them to compare against.
+
+Either replaces both the matcher and this module in one step, which is why the
+query is phrased against the *type* rather than against this module's name. That is
+also the reason to reach for one: not more reach, but a different dependency. On a
+capture whose matcher is detector-free, this module's precision advantage does not
+exist (see the family file), and a predictive tracker has beaten it on BOTH axes.
 
 ---
 

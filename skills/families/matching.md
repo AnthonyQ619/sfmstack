@@ -202,23 +202,40 @@ being wrong does.
 `pairwise_matches/v1` publishes `pairs/match_count` beside `pairs/image_pair`. The
 scalar metrics are a mean and a min over that array; the array is where the
 decisions at this stage actually live, because **the same count means opposite
-things in different positions.** Four tests, all checkable on a capture nobody has
+things in different positions.** Three tests, all checkable on a capture nobody has
 seen, none of them requiring a corpus.
 
-**Read them in this order, and do not stop at the first one that clears.** Two of
-the four have preconditions that ordinary captures break, and driven across seven
-captures they misfired more often than they fired. The two that held everywhere are
-first.
+**Read them in this order, and do not stop at the first one that clears.** The
+third has a precondition that ordinary captures break; the first two hold
+everywhere and come first. A fourth was cut — see the end of this section for what
+it was and why, so it does not get reinvented.
 
-**1. Do the pairs split into two confidence populations?** *(No precondition. This
-one held on every capture it was tried on, and it arbitrates when the others
-disagree.)* Average `matches/confidence` per pair. Every matcher here publishes it,
+**1. Do the pairs split into two confidence populations?** *(No precondition. It
+arbitrates when the others disagree, and it is the only one of these that has ever
+identified a specific bad edge in advance.)* Average `matches/confidence` per pair. Every matcher here publishes it,
 classical ones included. A group sitting well below the rest, on a handful of
 pairs, is usually not *thin* but *wrong* — one capture's marginal pairs carried a
 few percent inlier ratio while the good pairs ran above ninety; on another, the
 low group at 0.30–0.32 against the rest at 0.42–0.58 was the two ends of a linear
 walk matched onto the wrong copy of a repeated structure. Rank within the artifact;
 the scale is the matcher's own and means nothing across modules.
+
+**It fires on perhaps a quarter of captures and is silent on the rest, and the
+silence is a result.** A smooth continuum with no separated group means the kept
+graph holds nothing that is wrong-rather-than-thin — which is worth knowing before
+you spend runs hunting for it. What it cannot do is find a problem that lives in
+the matches a pair kept rather than in which pairs survived.
+
+**Two things make it pay beyond flagging edges.** First, when it does find a low
+group, check whether raising the matcher's quality dial removes exactly those pairs
+— on two captures the threshold that fixed the tracker's conflict rate dropped
+precisely the pairs this test had named, which turns a coincidence into
+corroboration from two stages. Second, and cheaper than any of these tests: the
+same array **prices a threshold sweep before you run it.** Thresholding
+`matches/confidence` per pair predicts how many matches survive at a candidate
+value and which pairs fall under `min_matches`. One capture predicted its surviving
+count exactly and named the pair it would lose, turning a six-run search into one
+calculation.
 
 **2. Is the weak edge load-bearing, or redundant?** *(No precondition.)* Read
 `match_count` against `min_image_degree`. A thin edge on an image that carries nine
@@ -244,33 +261,43 @@ tests 1 and 4 caught them. Check the precondition first: one adjacent pair rotat
 far less than its neighbours is a reversal, and a subsampled capture keeps its
 filenames in order while multiplying the viewpoint change between them.
 
-**4. Where do the matches sit in the frame?** ***Precondition: the shared region
-must shrink as the baseline widens.*** The idea is that a genuine wide-baseline
-pair concentrates its matches in the sliver the two views actually share while a
-spurious one scatters them. Compute the standard deviation of the `xy` columns per
-pair — **and compare it against the median of the ADJACENT pairs in the same
-artifact**, which is the reference that makes the number mean anything. There is
-no absolute threshold and the separation is roughly **twofold**, not the order of
-magnitude this once claimed.
-
-It fails on three ordinary shapes, all measured: a compact subject that stays fully
-co-visible across an arc, a capture where every pair already shares most of the
-frame, and a path that folds back so its far-index pairs are near-duplicates. On
-all three the genuine pairs scatter and the marginal ones concentrate, so read
-literally the test **inverts**. Treat a null result as normal and a positive result
-as needing test 1 to agree.
+**A fourth test was cut, and the reason is worth keeping so it is not
+reinvented.** It read the spatial spread of each pair's matches, on the premise
+that a genuine wide-baseline pair concentrates them in the sliver two views share
+while a spurious one scatters. Across eighteen capture-applications it produced one
+positive — and on that capture test 1 flagged the same edge, more cheaply. Its
+premise is false for the most common shape in this work: a compact subject that
+stays fully co-visible across an arc, where the genuine pairs scatter and the
+marginal ones concentrate, so read literally it inverts. If you notice matches
+looking concentrated on a pair, that is not evidence of anything; use test 1.
 
 **Use these before believing a connectivity gain**, and when they disagree, **test
 1 wins**. Every one of them is a statement about the capture in front of you, and
 none needs to know which dataset it came from.
 
-**Where all four saturate, there is a fifth reading.** On a well-connected capture
-`pairs_matched` and `min_image_degree` can both sit at their arithmetic ceilings
-across every configuration you try, with no diagnostic firing and `inlier_ratio`
-spanning a narrow band over runs that differ tenfold in quality. `cycle_merge_rate`
-is the reading that still separates them: it counts the matches that pass their own
-two-view check and contradict themselves once a third view is compared, which is
-the failure none of the four tests above can see.
+**Where the tests saturate, there is a further reading.** On a well-connected
+capture `pairs_matched` and `min_image_degree` can both sit at their arithmetic
+ceilings across every configuration you try, with no diagnostic firing and
+`inlier_ratio` spanning a narrow band over runs that differ tenfold in quality.
+`cycle_merge_rate` and `cycle_split_rate` still separate them: they count the
+matches that pass their own two-view check and contradict themselves once a third
+view is compared, which is the failure none of the tests above can see.
+
+**Read the SUM of the two when you are asking what the tracker will report, and
+each one separately when you are asking what to fix.** That distinction is measured
+and it is not a nicety. The merge rate alone was annotated as the forecast and it
+is not one: a capture read 0.0016 on it — clean — and produced a track table 17%
+self-contradictory, because all of its signal was in the split term. Over 54 paired
+runs the sum moved monotonically with the tracker's `inconsistent_rate` within
+every capture, and the constant relating them varies about fourfold between
+captures — so **sweep with it, do not threshold on it.**
+
+Which term carries the signal tells you where the repair is:
+
+- **merge high** — the matcher is admitting wrong correspondences. Tighten it.
+- **split high, merge clean** — the detector is emitting several keypoints at one
+  physical point, which no matcher setting reaches, and which arrives at the
+  tracker as an unreachable floor on its `split_rate`.
 
 ---
 

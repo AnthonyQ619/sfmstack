@@ -1,5 +1,5 @@
 name: FeatureTrackVGGSfM
-version: 1.0.0
+version: 1.1.0
 kind: tracking
 summary: >
   Learned multi-view tracking: keypoints from selected query frames are propagated
@@ -37,7 +37,7 @@ description: |
   capture is the worst available choice — an endpoint sees the least of the scene.
   Here the selection is `dino` by default and frame 0 gets no special treatment.
 
-image: sfmstack/track-vggsfm:1.0.0
+image: sfmstack/track-vggsfm:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -265,6 +265,18 @@ metrics:
     meaning: >
       Held-out observations the transfer error was measured over. Small means few
       frame triples shared enough tracks, which makes the median above soft.
+  trifocal_triples:
+    direction: higher_better
+    nullable: true
+    meaning: >
+      Frame triples the transfer measurement actually used, of the twelve it
+      attempts. The evidence behind trifocal_transfer_px; read it beside the median.
+  trifocal_mad_px:
+    direction: neutral
+    nullable: true
+    meaning: >
+      Median absolute deviation of the same residuals. The resolution of
+      trifocal_transfer_px -- two medians closer than this are not distinguishable.
 
   trifocal_seconds:
     direction: lower_better

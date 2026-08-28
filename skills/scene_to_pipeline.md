@@ -572,6 +572,35 @@ for what they cover:
 
 ## 3. The traps, in the order they have bitten
 
+### 0. Read the bands, not the diagnostics
+
+A diagnostic firing is sufficient evidence that something is wrong. **Its silence is
+not evidence that nothing is.** Diagnostic thresholds and healthy bands are set
+independently, and where they disagree the gap between them is a region where a
+metric is out of band and nothing says so.
+
+Measured across one stage on eight captures, three metrics sat outside their
+published bands with **no diagnostic on any of them**: a conflict rate at 0.08
+against a ≤0.05 ceiling on a warning that does not trip until 0.1; a split rate at
+0.15 against ≤0.1; a median track length at 2.0 against a ≥3.0 floor. The first of
+those was the capture's real defect, and fixing it improved every other reading —
+a reader working from diagnostics alone would have shipped it.
+
+So the order is: **read every published metric against its own band first, and
+treat diagnostics as a second pass that catches what you did not think to check.**
+A band with no diagnostic behind it is the common case, not an anomaly.
+
+Two corollaries worth stating, because both have cost runs:
+
+- **A band can be wrong, or unreachable, and the metric's own text is the
+  authority over the band.** Several here are documented as inapplicable under the
+  pairing this guide mandates, or unreachable given the detector in use. When the
+  gloss and the band disagree, the gloss wins — and say so in the plan rather than
+  tuning against a number that cannot move.
+- **A diagnostic's suggested actions can name parameters the module in use does not
+  have.** Check the action against the schema before spending a run on it.
+
+
 1. **A textureless reading is meaningless alone.** 0.5954, 0.5981 and 0.8013 —
    two non-events and one fatal case. Read `empty_regions`.
 2. **`blurred_frames` fires on flat content, not blur.** Five for five. Open the

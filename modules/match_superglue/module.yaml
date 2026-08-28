@@ -1,5 +1,5 @@
 name: FeatureMatchSuperGlue
-version: 1.3.0
+version: 1.4.0
 kind: matching
 summary: >
   SuperGlue: attentional GNN over both keypoint sets plus a Sinkhorn optimal
@@ -32,7 +32,7 @@ description: |
   redistribution, so the base image clones them from upstream at build time. The
   predecessor kept a copy of both in its tree.
 
-image: sfmstack/match-superglue:1.3.0
+image: sfmstack/match-superglue:1.4.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -159,6 +159,11 @@ params:
     description: Also fit a homography per pair to detect degenerate geometry.
 
 metrics:
+  pairs_proposed:
+    direction: neutral
+    meaning: >
+      Pairs the pairing policy offered, before any survived. The denominator for
+      pairs_matched and weak_pairs; only the module knows it.
   pairs_matched:
     direction: higher_better
     healthy: [1, null]
