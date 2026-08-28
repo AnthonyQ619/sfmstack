@@ -807,7 +807,7 @@ Two consequences, and neither of them overturns the reading:
    A capture has been seen reading above the corpus maximum at stride 4 and
    comfortably mid-range at stride 1, which would place it in the fragmenting group
    or well outside it depending only on which artifact you happened to read.
-4. **Watch `pairs_matched` against the number of pairs your pairing proposed** —
+4. **Watch `pairs_matched` against `pairs_proposed`, which the matcher publishes beside it** —
    that is the reading that separates a matcher which recovered the marginal pairs
    from one that did not. Below roughly half, registration starts dropping frames;
    above it, every capture measured completed.

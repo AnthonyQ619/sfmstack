@@ -164,43 +164,46 @@ metrics:
       MOST READERS ACTUALLY MAKE. Two runs of the same recipe return byte-identical
       values -- the seed is fixed. But comparing two matcher settings with one
       tracker changes the table underneath the sample: a triple is skipped unless
-      enough tracks are common to all three of its frames, and the per-triple
-      sample is drawn from whatever is common, so a sparser table qualifies
-      different triples. Observed wandering non-monotonically across a parameter
-      sweep on which every other metric moved cleanly, with the sample count
-      swinging from tens to thousands. READ trifocal_triples AND trifocal_mad_px
-      BEFORE BELIEVING A DIFFERENCE: a median over two triples is not the same
-      claim as one over twelve, and two medians closer together than the dispersion
-      are not distinguishable at all.
+      enough tracks are common to all three of its frames, so a sparser table
+      qualifies FEWER TRIPLES, and the per-triple sample is drawn from whatever is
+      common. READ trifocal_triples BEFORE COMPARING TWO MEDIANS.
 
   trifocal_triples:
     direction: higher_better
     nullable: true
     meaning: >
-      How many frame triples the measurement actually used, out of the twelve it
-      attempts. The evidence behind trifocal_transfer_px, and the first thing to
-      read beside it: a reading over two triples samples two baselines and is a
-      different kind of statement from one over twelve. A low count on an otherwise
-      healthy capture also says something on its own -- the track table has little
-      three-view structure, whatever its length metrics report.
+      How many frame triples the measurement used, of the twelve it attempts. Read
+      it every time you read the median, because it is what says whether two
+      medians are the same kind of claim.
 
-  trifocal_mad_px:
-    direction: neutral
-    nullable: true
-    meaning: >
-      Median absolute deviation of the same residuals, in the same pixels. The
-      scale of the thing the median is a middle of, published so that two readings
-      can be told apart from noise.
+      TWELVE IS THE ORDINARY VALUE and most runs reach it. Anything materially
+      below means the track table did not have enough three-view structure to fill
+      the sample: triples are skipped when too few tracks are common to all three
+      frames. Readings at 1, 4 and 5 triples have all been produced in normal use,
+      and a one-triple reading is ONE PAIR OF BASELINES -- a fact about two
+      viewpoints, not a summary of the capture.
 
-      Use it as the resolution of trifocal_transfer_px, not as a quality signal --
-      it has no healthy band and a large value is a property of the capture's
-      baselines as much as of the tracker. Two medians a small fraction of this
-      apart, measured over different track tables, are not distinguishable, and
-      readers without it were re-running sweeps to find that floor by hand.
+      WHY THIS MATTERS MORE THAN THE SPREAD OF THE RESIDUALS. The obvious way to
+      ask "is this difference real" is to look at how scattered the individual
+      errors are. That is the wrong instrument twice over. It is nearly useless on
+      its own -- measured across 86 runs spanning a 55x range of medians and three
+      trackers, the residual dispersion was a near-constant 0.62 of the median with
+      a standard deviation of 0.07, so it is predictable from the median and adds
+      no information. And it answers a question nobody is asking: the uncertainty
+      of a MEDIAN is far smaller than the spread of the values it summarises.
 
-      MAD rather than a standard deviation because the residual distribution has a
-      heavy tail: a handful of bad tracks project far, and a moment-based spread
-      would report them rather than the bulk the median sits in.
+      The uncertainty that actually limits a cross-configuration comparison is
+      WHICH TRIPLES WERE DRAWN. Two runs with different triple counts sampled
+      different baselines, and baselines transfer at different accuracies for
+      reasons that have nothing to do with the tracker. A comparison between a
+      twelve-triple reading and a five-triple one is not a comparison of trackers
+      or settings; it is partly a comparison of viewpoints.
+
+      SO: equal triple counts, compare the medians. Unequal, and materially so,
+      treat the difference as unresolved and find another reading -- one such
+      comparison was cited as confirming a mechanism when the two runs had twelve
+      triples against five, and the mechanism turned out to rest on a direct
+      structural measurement instead.
 
   median_track_length:
     direction: higher_better

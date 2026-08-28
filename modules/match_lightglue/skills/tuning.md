@@ -69,8 +69,8 @@ own stopping rule. Stop when the graph begins to pay:
 
 One capture kept improving on both headline metrics at 0.8 while shedding two pairs
 and a degree with `graph_components` still reading 1. Guard the final step with
-`trifocal_transfer_px`, and read `trifocal_mad_px` and `trifocal_triples` beside it
-before believing a small difference — that median is not stable across different
+`trifocal_transfer_px`, and read `trifocal_triples` beside it before believing a
+small difference — that median is not stable across different
 track tables, which is exactly the comparison a sweep makes.
 
 **Pricing the sweep without spending it.** The matches artifact publishes

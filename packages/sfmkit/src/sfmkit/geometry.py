@@ -103,30 +103,29 @@ def trifocal_transfer(
     `obs` is the (N, 4) tracks/v1 table; `K_all` is (n_images, 3, 3) intrinsics at
     the same working resolution the observations are in.
 
-    Returns `(median_px, mad_px, n_measurements, n_triples)`. The median is None
-    when the scene cannot support the measurement -- fewer than three frames, or no
-    triple with `min_common` tracks in all three. That null is informative: it says
-    the track table has no three-view structure to check.
+    Returns `(median_px, n_measurements, n_triples)`. The median is None when the
+    scene cannot support the measurement -- fewer than three frames, or no triple
+    with `min_common` tracks in all three. That null is informative: it says the
+    track table has no three-view structure to check.
 
     Deterministic FOR ONE TRACK TABLE. The triples are drawn with a fixed seed,
     because a metric that moves between two runs of the same recipe is not a
     metric -- and two runs of the same recipe do return byte-identical values.
 
-    IT IS NOT STABLE ACROSS DIFFERENT TRACK TABLES, WHICH IS THE COMPARISON
-    READERS ACTUALLY MAKE. The frame triples come off a fixed seed, but a triple is
-    SKIPPED unless `min_common` tracks are shared by all three frames, and the
-    per-triple sample is drawn from whatever is common. So a sparser table
-    disqualifies different triples and samples different tracks: the held-out set
-    changes underneath a comparison of two matcher settings. Observed swinging the
-    sample count from tens to thousands across one capture's parameter sweep, with
-    the median wandering non-monotonically while every other metric moved cleanly.
+    IT IS NOT COMPARABLE ACROSS DIFFERENT TRACK TABLES WITHOUT `n_triples`, which
+    is the comparison readers actually make. A triple is SKIPPED unless
+    `min_common` tracks are shared by all three frames, so a sparser table
+    qualifies fewer of them and the surviving set samples different baselines.
+    Readings over one, four and five triples have all been produced in normal use
+    and are not the same kind of claim as one over twelve.
 
-    That is why the dispersion is returned and not just the median. `mad_px` is the
-    median absolute deviation of the residuals -- the scale of the thing the median
-    is a middle of. Two medians a small fraction of it apart, measured over
-    different sample sets, are not distinguishable; readers who lacked this had to
-    establish a noise floor by re-running a sweep and eyeballing which differences
-    reproduced.
+    A dispersion figure was tried here and removed. It looked like the right way to
+    ask whether two medians differ, and it is not: measured across 86 runs spanning
+    a 55x range of medians, the median absolute deviation was a near-constant 0.62
+    of the median (sd 0.07), so it is predictable from the median and carries no
+    information -- and the spread of the residuals is in any case not the
+    uncertainty of their median. `n_triples` is the reading that limits a
+    comparison, and it is already returned.
     """
     try:
         import cv2
@@ -140,7 +139,7 @@ def trifocal_transfer(
 
     obs = np.asarray(obs, dtype=np.float64)
     if len(obs) == 0:
-        return None, None, 0, 0
+        return None, 0, 0
     K_all = np.asarray(K_all, dtype=np.float64)
 
     ids = obs[:, 0].astype(np.int64)
@@ -149,7 +148,7 @@ def trifocal_transfer(
 
     present = sorted(np.unique(frames).tolist())
     if len(present) < 3:
-        return None, None, 0, 0
+        return None, 0, 0
 
     # frame -> {track: row}. One row per (track, frame): a track observed twice in
     # one frame is inconsistent_rate's business, and taking either observation
@@ -239,11 +238,5 @@ def trifocal_transfer(
         used_triples += 1
 
     if not residuals:
-        return None, None, 0, used_triples
-    r = np.asarray(residuals)
-    median = float(np.median(r))
-    # MAD rather than a standard deviation: the residual distribution has a heavy
-    # tail (a handful of bad tracks project far), and a moment-based spread would
-    # report the tail rather than the scale of the bulk the median sits in.
-    mad = float(np.median(np.abs(r - median)))
-    return median, mad, len(r), used_triples
+        return None, 0, used_triples
+    return float(np.median(residuals)), len(residuals), used_triples

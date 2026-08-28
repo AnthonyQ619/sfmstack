@@ -94,7 +94,6 @@ def run(ctx: Ctx):
     out.metric("trifocal_transfer_px", None, direction="lower_better")
     out.metric("trifocal_samples", 0, direction="higher_better")
     out.metric("trifocal_triples", None, direction="higher_better")
-    out.metric("trifocal_mad_px", None, direction="neutral")
     out.metric("split_rate", round(split_rate(obs_array, track_id), 4),
                direction="lower_better", healthy=(None, 0.1))
     out.metric("max_track_length", max(lengths) if lengths else 0, direction="neutral")
