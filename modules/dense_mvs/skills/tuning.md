@@ -13,7 +13,7 @@ curated_at: 2026-08-11
 
 ## Reference run
 
-DTU scan1, 8 contiguous images, `max_edge: 1024`, sparse model from
+A controlled-rig capture, 8 contiguous images, `max_edge: 1024`, sparse model from
 `SparseTriangulation` (4671 points, 8/8 registered), on one A6000 in a container:
 
 | metric | 600 px no geom | 600 px | 1200 px |

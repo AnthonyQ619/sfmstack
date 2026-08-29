@@ -12,7 +12,7 @@ downstream behaviour.
 
 ## Reference run
 
-DTU scan1, 8 contiguous images, `max_edge: 1024`, defaults:
+A controlled-rig capture, 8 contiguous images, `max_edge: 1024`, defaults:
 
 | metric | `suppression: none` | `suppression: ssc` |
 |---|---:|---:|

@@ -11,6 +11,7 @@ round trip on every single step and the metrics are the whole reason to look.
 
 from __future__ import annotations
 
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -163,6 +164,21 @@ def _series(array) -> Any:
             f"Read it from the artifact directly."
         )
     return doc
+
+
+_PARAM_TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _named_params(actions, vocab: set[str]) -> set[str]:
+    """Which tunable knobs a set of suggested_actions actually names.
+
+    Words that are not parameters anywhere are prose and carry no obligation;
+    what the reader acts on is the knob.
+    """
+    found: set[str] = set()
+    for action in actions or ():
+        found |= {t for t in _PARAM_TOKEN.findall(str(action)) if t in vocab}
+    return found
 
 
 def _sink(holder: dict):
@@ -1020,6 +1036,19 @@ class SfmService:
             "warnings": [str(w) for w in fresh.warnings],
         }
 
+    def _param_vocabulary(self) -> set[str]:
+        """Every tunable knob name in the registry.
+
+        The vocabulary is deliberately every module's, not just the one being
+        checked: an action legitimately names another stage's knob ("raise the
+        matcher's `window`"), and that cross-module pointer is the most common
+        shape a real action takes.
+        """
+        vocab: set[str] = set()
+        for name in self.registry.names():
+            vocab |= set(self.registry.get(name).params.specs)
+        return vocab
+
     def smoke_test(
         self,
         name: str,
@@ -1084,7 +1113,9 @@ class SfmService:
                     f"emitted but not declared in module.yaml: {undeclared}. The "
                     f"agent has no interpretation for these."
                 )
-            problems += self._diagnostic_problems(spec, outcome)
+            problems += self._diagnostic_problems(
+                spec, outcome, self._param_vocabulary()
+            )
 
         return {
             "module": name,
@@ -1094,7 +1125,9 @@ class SfmService:
         }
 
     @staticmethod
-    def _diagnostic_problems(spec, outcome: dict[str, Any]) -> list[str]:
+    def _diagnostic_problems(
+        spec, outcome: dict[str, Any], param_vocab: set[str]
+    ) -> list[str]:
         """Check what the adapter raised against what the manifest advertises.
 
         Only what the run actually exercised. A declared diagnostic that did not
@@ -1140,6 +1173,39 @@ class SfmService:
                 problems.append(
                     f"diagnostic '{code}' was raised with no suggested_actions."
                 )
+            else:
+                # The drift the severity and see_also checks did not reach. A
+                # diagnostic can keep its code, severity and pointer while its
+                # ACTIONS say something else -- which is what happened to
+                # `high_conflict_rate`: the adapter learned to branch on matcher
+                # family and name `filter_threshold`, the manifest went on telling
+                # readers to lower a `ratio_test` the matcher in use does not have.
+                # Three readers in a row were handed it, because
+                # `sfm_describe_module` serves the manifest and the procedure
+                # requires reading it before the run.
+                #
+                # Compared as the SET OF PARAMETERS NAMED, not as text. An adapter
+                # that fills a measured value into the manifest's advice ("lower
+                # detection_threshold from 5e-4") is giving the reader a better
+                # version of the same instruction, and 28 of them do. Naming a
+                # DIFFERENT knob is the drift, because the knob is the part the
+                # reader acts on. Measured across the module set: text equality
+                # flagged 85 divergences, almost all of them rewording; this rule
+                # flags 12, and every one is a real disagreement about what to do.
+                declared_knobs = _named_params(
+                    declared.suggested_actions, param_vocab
+                )
+                raised_knobs = _named_params(
+                    raised["suggested_actions"], param_vocab
+                )
+                if declared_knobs != raised_knobs:
+                    problems.append(
+                        f"diagnostic '{code}' names parameters "
+                        f"{sorted(raised_knobs)} but the manifest declares "
+                        f"{sorted(declared_knobs)}. The manifest's is what the "
+                        f"agent read before running, so the two must point at the "
+                        f"same knobs."
+                    )
 
             # The threshold/band check. One direction only, deliberately: a
             # diagnostic that fires while its own metric reads healthy is

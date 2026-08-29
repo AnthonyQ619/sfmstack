@@ -12,7 +12,7 @@ curated_at: 2026-08-11
 
 ## Reference run
 
-DTU scan1, 8 contiguous images, `max_edge: 1024`, poses from
+A controlled-rig capture, 8 contiguous images, `max_edge: 1024`, poses from
 `PoseEssentialToPnP`, `stride: 2`, `min_confidence: 1.0`, GPU, in a container:
 
 | metric | without tracks | with tracks |

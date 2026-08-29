@@ -66,10 +66,6 @@ metrics:
   max_track_length:
     direction: neutral
     meaning: Longest surviving track.
-  median_track_length:
-    direction: higher_better
-    healthy: [3.0, null]
-    meaning: Median observations per track.
   track_survival_5:
     direction: higher_better
     healthy: [0.0, null]

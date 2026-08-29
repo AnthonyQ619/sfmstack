@@ -2,7 +2,7 @@
 
 Indexed by what you observe, not by parameter. Sourced claims carry a tag
 resolved in [sources.md](sources.md). **Observed** sections come from real runs
-and carry their scene context, because a DTU number need not transfer to ETH3D.
+and carry their scene context, because a controlled-rig number need not transfer to a field capture.
 
 ---
 
@@ -38,9 +38,9 @@ condition for reading this file at all, rather than as one of its branches.
 
 ### Observed
 
-> **L-0001 · Doubling from 1024 to 8192 on DTU scan1**
+> **L-0001 · Doubling from 1024 to 8192 on a controlled-rig capture**
 > **Run:** first real pilot, 2026-08-08 · **Seen in:** 1 run · **Confidence:** low
-> **Context:** DTU scan1, 8 images, 1600×1200, calibrated, well-lit turntable object.
+> **Context:** a controlled-rig capture, 8 images, 1600×1200, calibrated, well-lit turntable object.
 > **Observed:** 1024 → mean 1024/image, saturation 1.00, coverage 0.65.
 > 8192 → mean 7672/image (min 4677), saturation 0.75, coverage 0.80.
 > **Takeaway:** at 8192 the cap is no longer fully binding on this kind of scene,
@@ -52,7 +52,7 @@ condition for reading this file at all, rather than as one of its branches.
 > **L-0002 · The coverage half of L-0001 does not transfer**
 > **Run:** detection phase, five captures analysed cold · **Seen in:** 4 captures
 > **Confidence:** medium — consistent across four, and the mechanism is understood.
-> **Context:** DTU scan10/scan15/scan33 and ETH3D facade, 12 images each at ~0.7-0.8 MP.
+> **Context:** three controlled-rig captures and a repetitive building frontage, 12 images each at ~0.7-0.8 MP.
 > **Observed:** raising the cap to clear saturation reliably did what L-0001 says
 > for *count*, and reliably did not for *coverage* — the coverage move was an order
 > of magnitude smaller than L-0001's on every one, and on one capture raising the cap
@@ -76,7 +76,7 @@ condition for reading this file at all, rather than as one of its branches.
 > **Run:** detection phase, twelve further captures analysed cold · **Seen in:** 3
 > captures moving, 8 not · **Confidence:** medium-high — the two groups separate on
 > a reading available before the run.
-> **Context:** ETH3D delivery_area, office, courtyard, 12 images each at ~0.7 MP.
+> **Context:** an industrial bay, a shop interior and a masonry courtyard, 12 images each at ~0.7 MP.
 > **Observed:** on a loading-bay capture whose large empty region is a flat panel
 > door at a heavy downscale — unclipped, `highlight_clipped_fraction` effectively
 > zero, and graded *merely flat* by the description — halving `contrast_threshold`

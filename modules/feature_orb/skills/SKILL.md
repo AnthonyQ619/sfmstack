@@ -24,7 +24,7 @@ corners — which are concentrated exactly where texture is already strongest, s
 the default selection makes clustering worse. ANMS-SSC selects a spatially even
 subset at the same count.
 
-Measured on DTU scan1, 8 contiguous images at 1024px, 4096 keypoints:
+Measured on a controlled-rig capture, 8 contiguous images at 1024px, 4096 keypoints:
 
 | suppression | keypoints/image | spatial_coverage |
 |---|---:|---:|

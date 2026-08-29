@@ -12,7 +12,7 @@ establish — `saturation` tells you.
 
 ## Reference run
 
-DTU scan1, 6 contiguous images, `max_edge: 640`, `max_keypoints: 1024`, run in a
+a controlled-rig capture, 6 contiguous images, `max_edge: 640`, `max_keypoints: 1024`, run in a
 container **on CPU** (see the note below):
 
 | metric | value |

@@ -12,7 +12,7 @@ a table — so "switching away from it" almost always means switching away from 
 
 ## Contradictory tracks come from the matcher
 
-*Symptom:* `inconsistent_rate` above 0.1.
+*Symptom:* `inconsistent_rate` above 0.05, which is where the diagnostic fires.
 
 *Why no parameter here helps:* union-find has no basis on which to reject a match.
 Two correspondences sharing an endpoint are, as far as this module can know, the
@@ -61,7 +61,7 @@ the cell boundaries fall. There is no exact radius, and a nearest-neighbour
 structure would be needed to provide one.
 
 The bound is deliberately one-sided in the safe direction, but it is a real
-approximation. On the measured DTU sweep the module was stable between 0.5 and
+approximation. On the measured rig sweep the module was stable between 0.5 and
 1.5px and degraded visibly at 4.0.
 
 *What to do:* stay in the 1-2px range for a ~1600px working resolution and treat

@@ -35,7 +35,7 @@ scale = scene.load("images", "scale")     # [n_images, 2]
 orig  = xy / scale[idx]
 ```
 
-Use the per-image row, not a set-wide scalar. On ETH3D courtyard the source
+Use the per-image row, not a set-wide scalar. On a masonry-courtyard capture the source
 images differ by a few pixels across the set, so scales differ in the fourth
 decimal — small, but it is a systematic bias in triangulated geometry, not noise.
 

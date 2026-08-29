@@ -1,5 +1,5 @@
 name: FeatureMatchLightGlue
-version: 1.4.0
+version: 1.5.0
 kind: matching
 summary: >
   Learned sparse matcher with adaptive depth and width. Reasons about the whole
@@ -26,7 +26,7 @@ description: |
   planarity -- is identical to the classical matchers, so all three are directly
   comparable and only the correspondence step differs.
 
-image: sfmstack/match-lightglue:1.4.0
+image: sfmstack/match-lightglue:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -116,8 +116,13 @@ params:
       pairs_matched against pairs_proposed, min_image_degree, and the tracker's
       max_track_length -- one capture kept improving on both headline metrics at
       0.8 while quietly shedding two pairs and a degree, with graph_components
-      still reading 1. Guard the last step with trifocal_transfer_px, and read its
-      dispersion before believing a small difference.
+      still reading 1. Guard the last step with the tracker's
+      trifocal_transfer_px -- and before believing a small difference, price its
+      uncertainty as 1.14 * value / sqrt(trifocal_samples), and check that the two
+      runs report the same trifocal_triples. Measured across a threshold sweep on
+      one capture the reading ran 0.43 / 0.56 / 0.48 / 0.63 with no monotone trend,
+      so a difference inside a few percent is noise and the dial that minimises it
+      is NOT always the dial that minimises inconsistent_rate.
 
   n_layers:
     type: integer
@@ -263,8 +268,36 @@ metrics:
   planarity:
     direction: lower_better
     meaning: >
-      Homography inliers over fundamental inliers. Near 1.0 means planar or
-      rotation-only geometry and ill-conditioned triangulation.
+      Homography inliers over fundamental inliers, averaged over pairs. Near 1 the
+      correspondences are explained by a PLANE as well as by a BASELINE, and a
+      baseline is what every geometric stage downstream needs. Not a matching
+      failure -- no matcher parameter fixes the underlying geometry, and
+      inlier_ratio is often excellent alongside it.
+
+      THE BANDS. Below ~0.5, general 3D structure, nothing to do. ~0.5 to ~0.9, a
+      real baseline with a dominant plane in view -- ordinary for a compact subject
+      against a backdrop or a facade with some depth, and NOT a reason to change
+      the solver; it is a reason to watch the triangulation angle rather than the
+      reprojection error downstream, because a model can reproject beautifully
+      while resolving almost no depth. Above ~0.9, triangulation is
+      ill-conditioned. The middle region is a real and common state, not a gap
+      between two bands.
+
+      CHECK THE NUMBER IS NOT SLACK BEFORE READING THE BAND. It moves with
+      ransac_threshold on identical inputs, it moves between matchers on identical
+      features, and it moves with this module's own quality dial -- measured
+      climbing 0.40 to 0.49 and 0.55 to 0.71 across two threshold sweeps, because
+      tightening preferentially keeps the plane-consistent correspondences and
+      strips the parallax-carrying ones. Sweep before believing a value near a
+      boundary.
+
+      IT CAN DISAGREE WITH THE PRE-STAGE PROBE, AND THE PROBE IS NOT THE
+      AUTHORITY HERE. scene_analysis reports planar_dominance and
+      pure_rotation_risk over CONSECUTIVE pairs only, an 11-pair boolean against
+      this metric's mean over the whole verified graph. A capture has read 0.0 on
+      every consecutive pair while this read 0.85 over an exhaustive sweep: no
+      adjacent pair is planar and most correspondences still land on one wall.
+      A zero from the probe does not clear an exhaustive graph.
   mean_match_score:
     direction: higher_better
     healthy: [0.5, null]
@@ -295,8 +328,8 @@ diagnostics:
     severity: warn
     message: LightGlue is unsure about the matches it produced.
     suggested_actions:
-      - Verify `weights` matches the detector.
-      - The capture may be beyond what these descriptors support.
+      - "Raise filter_threshold and re-read this. If the score climbs, it was a low-confidence tail rather than wrong weights."
+      - "If it does not move, verify `weights` -- but `auto` resolves from the features artifact's provenance and refuses on an unknown producer, so a wrong set is only possible if it was named by hand."
     see_also: limitations.md#when-lightglue-is-not-the-answer
 
   - code: degenerate_geometry

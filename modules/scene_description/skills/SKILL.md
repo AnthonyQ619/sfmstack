@@ -35,12 +35,12 @@ prepares something to look at and holds the answer; the looking is yours.
 
 **Two fixed, one earned, and both halves matter.** The sheet is two downscales
 deep -- SceneLoader resized the capture and the sheet resized that again, so on a
-6200px ETH3D frame loaded at 1024 a 384px cell is 0.4% of the original pixels.
+6200px DSLR frame loaded at 1024 a 384px cell is 0.4% of the original pixels.
 Gloss, clipping and printed detail are not decidable there.
 
 Two frames are prescribed because a reader who picks all their own picks the
 interesting ones, and then no two scenes were read the same way. The third is
-free because fixity cost something real: on ETH3D facade the worst reflector in
+free because fixity cost something real: on a repetitive building frontage the worst reflector in
 the scene sits only in cells [2]-[6], so a two-frame protocol could only grade it
 from a thumbnail. The choice is checked -- it must name a real cell, not one of
 the fixed two, and carry a reason. All three names go into the artifact as

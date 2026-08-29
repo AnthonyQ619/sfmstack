@@ -38,10 +38,12 @@ failed once is the most useful kind.
 ## 1. What the numbers actually range over
 
 **Sixteen captures across two benchmark families**, all at 12 images with
-`sampling: head`: seven controlled-rig captures of a single object on a lit
-backdrop, and nine field captures — building frontages, a courtyard, an interior
-of blank walls, a shelved indoor room, and outdoor sites with vegetation. Working
-resolution around 1024px on the long edge throughout.
+`sampling: head`: roughly half controlled-rig captures of a single object on a
+lit backdrop, and roughly half field captures — building frontages, indoor
+interiors, and open outdoor sites. Deliberately not enumerated: an earlier
+version listed the kinds one by one, which made each a countable label, and a
+reader recognised its own capture from a kind that had exactly one member.
+Working resolution around 1024px on the long edge throughout.
 
 **The ranges below are what has been seen, not what is possible**, and their
 extremes are named by the KIND of capture that produced them rather than by scene
@@ -51,21 +53,21 @@ and cannot use a name. Per-capture numbers and their scene ids are in
 
 | metric | low end is | median | high end is | spread |
 | --- | --- | --- | --- | --- |
-| `combined_change` | tight-arc panel | 0.0696 | vegetated site | 3.6× |
-| `texture_density` | blank-wall interior | 3479 | rig, high texture | **12×** |
-| `repetitiveness` | vegetated site | 0.7163 | flat-panel wall | 1.3× |
-| `textureless_fraction` | vegetated site | 0.3865 | blank-wall interior | 6.3× |
-| `sharpness_ratio` | blank-wall interior | 0.6280 | tight-arc panel | 5.9× |
-| `sharpness_median` | blank-wall interior | 1363 | vegetated site | **18×** |
-| `highlight_clipped_fraction` | masonry courtyard | 0.0421 | rig on lit backdrop | **bimodal, see below** |
-| `shadow_clipped_fraction` | vegetated site | 0.0000 | shelved interior | 11 of 16 at zero |
-| `overall_magnitude` | tight-arc panel | 0.1193 | fast outdoor traverse | 9.7× |
-| `high_motion_tail` | tight-arc panel | 0.1490 | shelved interior | 8.8× |
-| `variability` | tight-arc panel | 0.0588 | shelved interior | 20× |
-| `rotation_median_deg` | masonry courtyard | 18.03 | shelved interior | 11× |
-| `large_rotation_risk` | vegetated site | 0.3636 | shelved interior | — |
-| `planar_dominance` | — | **0.0000** | planar frontage, flat-panel wall | 13 of 16 at zero |
-| `pure_rotation_risk` | — | **0.0000** | rig with overhead pass, planar frontage | 14 of 16 at zero |
+| `combined_change` | controlled rig | 0.0696 | open outdoor site | 3.6× |
+| `texture_density` | indoor interior | 3479 | controlled rig | **12×** |
+| `repetitiveness` | open outdoor site | 0.7163 | planar frontage | 1.3× |
+| `textureless_fraction` | open outdoor site | 0.3865 | indoor interior | 6.3× |
+| `sharpness_ratio` | indoor interior | 0.6280 | controlled rig | 5.9× |
+| `sharpness_median` | indoor interior | 1363 | open outdoor site | **18×** |
+| `highlight_clipped_fraction` | open outdoor site | 0.0421 | controlled rig | **bimodal, see below** |
+| `shadow_clipped_fraction` | open outdoor site | 0.0000 | indoor interior | 11 of 16 at zero |
+| `overall_magnitude` | controlled rig | 0.1193 | fast outdoor traverse | 9.7× |
+| `high_motion_tail` | controlled rig | 0.1490 | indoor interior | 8.8× |
+| `variability` | controlled rig | 0.0588 | indoor interior | 20× |
+| `rotation_median_deg` | open outdoor site | 18.03 | indoor interior | 11× |
+| `large_rotation_risk` | open outdoor site | 0.3636 | indoor interior | — |
+| `planar_dominance` | — | **0.0000** | planar frontage, planar frontage | 13 of 16 at zero |
+| `pure_rotation_risk` | — | **0.0000** | controlled rig, planar frontage | 14 of 16 at zero |
 | `low_baseline_risk` | — | 0.0000 | **0.0000** | 16 of 16 at zero |
 
 **The extremes are stated as capture KINDS, not values, and that is deliberate.**

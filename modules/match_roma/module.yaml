@@ -1,5 +1,5 @@
 name: FeatureMatchRoMa
-version: 1.4.0
+version: 1.5.0
 kind: matching
 summary: >
   RoMa: dense warp plus per-pixel certainty from a DINOv2 backbone, sampled into
@@ -34,7 +34,7 @@ description: |
   planarity — is shared with the other matchers, so all six differ in exactly one
   stage.
 
-image: sfmstack/match-roma:1.4.0
+image: sfmstack/match-roma:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -238,8 +238,36 @@ metrics:
     direction: lower_better
     nullable: true
     meaning: >
-      Homography inliers over fundamental inliers. Near 1 the pair is planar or
-      rotation-only. Null when not measured.
+      Homography inliers over fundamental inliers, averaged over pairs. Near 1 the
+      correspondences are explained by a PLANE as well as by a BASELINE, and a
+      baseline is what every geometric stage downstream needs. Not a matching
+      failure -- no matcher parameter fixes the underlying geometry, and
+      inlier_ratio is often excellent alongside it.
+
+      THE BANDS. Below ~0.5, general 3D structure, nothing to do. ~0.5 to ~0.9, a
+      real baseline with a dominant plane in view -- ordinary for a compact subject
+      against a backdrop or a facade with some depth, and NOT a reason to change
+      the solver; it is a reason to watch the triangulation angle rather than the
+      reprojection error downstream, because a model can reproject beautifully
+      while resolving almost no depth. Above ~0.9, triangulation is
+      ill-conditioned. The middle region is a real and common state, not a gap
+      between two bands.
+
+      CHECK THE NUMBER IS NOT SLACK BEFORE READING THE BAND. It moves with
+      ransac_threshold on identical inputs, it moves between matchers on identical
+      features, and it moves with this module's own quality dial -- measured
+      climbing 0.40 to 0.49 and 0.55 to 0.71 across two threshold sweeps, because
+      tightening preferentially keeps the plane-consistent correspondences and
+      strips the parallax-carrying ones. Sweep before believing a value near a
+      boundary.
+
+      IT CAN DISAGREE WITH THE PRE-STAGE PROBE, AND THE PROBE IS NOT THE
+      AUTHORITY HERE. scene_analysis reports planar_dominance and
+      pure_rotation_risk over CONSECUTIVE pairs only, an 11-pair boolean against
+      this metric's mean over the whole verified graph. A capture has read 0.0 on
+      every consecutive pair while this read 0.85 over an exhaustive sweep: no
+      adjacent pair is planar and most correspondences still land on one wall.
+      A zero from the probe does not clear an exhaustive graph.
 
   weak_pairs:
     direction: neutral

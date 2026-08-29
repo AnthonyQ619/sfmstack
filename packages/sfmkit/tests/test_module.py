@@ -74,8 +74,6 @@ def build_tracks(ctx: Ctx):
     out.metric("trifocal_transfer_px", None, direction="lower_better")
     out.metric("trifocal_triples", None, direction="higher_better")
     out.metric("max_track_length", n_images, direction="neutral")
-    out.metric("median_track_length", float(n_images),
-               direction="higher_better", healthy=(3.0, None))
     out.metric("track_survival_5", 1.0 if n_images >= 5 else 0.0,
                direction="higher_better", healthy=(0.0, None))
     out.metric("track_survival_10", 1.0 if n_images >= 10 else 0.0,

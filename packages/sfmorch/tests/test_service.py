@@ -551,6 +551,28 @@ def test_smoke_test_catches_a_see_also_that_drifted_from_the_manifest(service, s
     assert any("pointing at" in p for p in result["contract_problems"])
 
 
+def test_smoke_test_catches_suggested_actions_that_drifted_from_the_manifest(
+    service, scene
+):
+    """The field the other drift checks did not reach. A diagnostic can keep its
+    code, severity and see_also while its ACTIONS say something else -- which is
+    exactly how `high_conflict_rate` went on telling readers to lower a
+    `ratio_test` the matcher in use does not have, past three separate checks."""
+    from sfmorch import DiagnosticSpec
+
+    spec = service.registry.get("FakeMatcher")
+    declared = spec.diagnostics["weak_matching"]
+    spec.diagnostics["weak_matching"] = DiagnosticSpec(
+        code="weak_matching", severity=declared.severity, metric=declared.metric,
+        see_also=declared.see_also,
+        suggested_actions=("Raise the tracker's min_track_len.",),
+    )
+    result = weak_match(service, scene["outputs"]["scene"], 0.1)
+
+    assert result["passed"] is False
+    assert any("names parameters" in p for p in result["contract_problems"])
+
+
 def test_smoke_test_catches_a_diagnostic_raised_but_never_declared(service, scene):
     spec = service.registry.get("FakeMatcher")
     del spec.diagnostics["weak_matching"]

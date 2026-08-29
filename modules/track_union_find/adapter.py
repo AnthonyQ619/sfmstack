@@ -368,8 +368,6 @@ def run(ctx: Ctx):
     # verified pairs could reach is THIS module's over-merge signal, and no
     # predictive tracker has a use for it.
     out.metric("max_track_length", max_len, direction="neutral")
-    out.metric("median_track_length", round(median_len, 2),
-               direction="higher_better", healthy=(3.0, None))
     out.metric("track_survival_5", round(survival_5, 3),
                direction="higher_better", healthy=(0.1, None))
     out.metric("min_frame_observations", min_frame_obs,
@@ -402,7 +400,7 @@ def run(ctx: Ctx):
     out.metric("trifocal_triples", transfer_triples, direction="higher_better")
     out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(fragmentation, 4),
-               direction="lower_better", healthy=(None, 0.1))
+               direction="lower_better", healthy=(None, 0.2))
     out.metric(
         "merge_headroom",
         None if merge_headroom is None else round(merge_headroom, 4),
@@ -415,8 +413,12 @@ def run(ctx: Ctx):
             severity="error",
             message=f"Only {track_count} tracks survived; reconstruction will not start.",
             suggested_actions=[
-                "Raise the matcher's window so more pairs link, before touching this module.",
+                "Widen the view graph first: raise the matcher's window under "
+                "`pairing: sequential`, or switch it to `pairing: exhaustive`, "
+                "which is what a plan should already have specified. Under "
+                "exhaustive, window is inert and raising it changes nothing.",
                 "Raise the detector's max_keypoints.",
+                "Lower min_track_len to 2 if it was raised.",
             ],
             see_also="tuning.md#track_count-below-200",
         )
@@ -430,8 +432,14 @@ def run(ctx: Ctx):
                 f"(mean length {avg_len:.2f})."
             ),
             suggested_actions=[
-                "Raise the matcher's window, or switch it to pairing: exhaustive.",
-                "Check the matcher's graph_components -- isolated pairs cannot merge.",
+                "Widen the view graph: under `pairing: sequential` raise the "
+                "matcher's window; under `pairing: exhaustive` every pair "
+                "already exists, window is inert, and the ceiling is "
+                "co-visibility rather than pairing.",
+                "Check the matcher's graph_components and min_image_degree -- a "
+                "chain of thin or isolated pairs cannot merge into long tracks.",
+                "Judge reach on long_track_fraction -- the fraction of tracks "
+                "reaching a third view.",
             ],
             see_also="tuning.md#long_track_fraction-below-03",
         )
@@ -503,7 +511,10 @@ def run(ctx: Ctx):
             ),
             suggested_actions=[
                 "Check the detector's keypoints_min for that frame.",
-                "Raise the matcher's window so the frame links to more neighbours.",
+                "Link the frame to more neighbours: raise the matcher's window "
+                "under `pairing: sequential`; under exhaustive the pairs already "
+                "exist and the frame is thin because it shares little with the "
+                "rest.",
             ],
             see_also="tuning.md#min_frame_observations-below-50",
         )

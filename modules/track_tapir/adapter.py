@@ -377,7 +377,7 @@ def run(ctx: Ctx):
     )
     transfer_seconds = time.monotonic() - transfer_started
 
-    out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.0))
+    out.metric("inconsistent_rate", 0.0, direction="lower_better")
     # See FeatureTrackVGGSfM: duplicate_track_rate is what dedupe removed at this
     # module's tolerance, split_rate is what remains at the type's fixed one.
     out.metric(
@@ -397,10 +397,8 @@ def run(ctx: Ctx):
     out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(split_rate(observations, track_count), 4),
                direction="lower_better", healthy=(None, 0.1))
-    out.metric("median_track_length", float(np.median(lengths)),
-               direction="higher_better")
     out.metric("track_survival_5", round(float((lengths >= 5).mean()), 4),
-               direction="higher_better")
+               direction="higher_better", healthy=(0.1, None))
     out.metric("duplicate_track_rate", round(duplicate_rate, 4),
                direction="lower_better", healthy=(None, 0.5))
     out.metric("query_frames", len(query_frames), direction="neutral")
@@ -418,10 +416,9 @@ def run(ctx: Ctx):
                 f"{query_frames}."
             ),
             suggested_actions=[
-                "Use midpoint rather than interval on a sequential capture.",
-                "Raise query_frame_num.",
-                f"Mean predicted occlusion is {mean_occlusion:.2f} -- above 0.5 the "
-                f"points are leaving view, below it the model cannot localise them.",
+                "Check what query_selection ALREADY is -- this fires on midpoint runs too, and the artifact note names the frames it picked. midpoint centres the queries, which starves an endpoint on a capture whose halves differ.",
+                "interval spreads the queries and is the move when a frame is carrying no observations; midpoint is the move when the middle of the capture is the best-covered part. Read min_frame_observations to tell which you have.",
+                "Raise query_frame_num if a frame is starved rather than the whole set thin.",
             ],
             see_also="tuning.md#query-frames-and-image-order",
         )

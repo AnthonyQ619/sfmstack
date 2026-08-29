@@ -196,7 +196,7 @@ would report how self-consistent the network is rather than how accurate it is.
 | `scene/v1` | `n_images`, `megapixels`, `mixed_resolution` |
 | `features/v1` | `keypoints_per_image`, `keypoints_min`, `spatial_coverage` |
 | `pairwise_matches/v1` | `pairs_matched`, `matches_per_pair`, `min_matches_per_pair`, `inlier_ratio`, `graph_components`, `largest_component_fraction`, `planarity`\* |
-| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `inconsistent_rate`, `split_rate`, `trifocal_transfer_px`\*, `median_track_length`, `track_survival_5` |
+| `tracks/v1` | `track_count`, `avg_track_length`, `long_track_fraction`, `min_frame_observations`, `inconsistent_rate`, `split_rate`, `trifocal_transfer_px`\*, `track_survival_5` |
 | `poses/v1` | `registered_fraction`, `registered_images`, `mean_reprojection_error`\*, `median_reprojection_error`\* |
 | `sparse_model/v1` | `point_count`, `observation_count`, `mean_reprojection_error`\*, `registered_images` |
 | `dense_model/v1` | `point_count`, `views_contributing`, `mean_depth_confidence`\* |

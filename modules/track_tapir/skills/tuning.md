@@ -13,7 +13,7 @@ curated_at: 2026-08-11
 
 ## Reference run
 
-DTU scan1, 8 contiguous images at `max_edge: 1024`, SIFT at 4096 keypoints,
+A controlled-rig capture, 8 contiguous images at `max_edge: 1024`, SIFT at 4096 keypoints,
 `query_selection: midpoint`, `query_frame_num: 3`, on one A6000 in a container:
 
 | metric | 256 | **384** | interval, 256 | `min_confidence: 0.3` |
@@ -105,12 +105,12 @@ at different resolutions. 0.50 of raw tracks merged on the reference run.
 
 **This module is the one that fails at 0.** Of the two trackers it is the one whose
 positions are least precise, so it is the one with most to lose from leaving real
-duplicates in the table — see the `electro` figure below.
+duplicates in the table — see the a glazed-elevation traverse figure below.
 
 **Ceiling 2.0, enforced by the schema.** `tracks/v1` fixes its duplicate test at
 2.0 px, so a merge at 2.0 has already removed everything the type will call a
 duplicate — every merge above it fuses tracks the type classifies as **distinct**.
-Measured across nine scenes (six ETH3D with ground-truth poses, three DTU), by
+Measured across nine scenes (six field captures with ground-truth poses, three controlled-rig captures), by
 6.0 px the median run has lost **74% of its tracks and 81% of its bundle-adjusted
 points** at unchanged registration, and the error at a fixed observation count is
 worse in about 70% of cases. Wins above 2.0 are the model shrinking: one reached
@@ -118,8 +118,8 @@ worse in about 70% of cases. Wins above 2.0 are the model shrinking: one reached
 
 **Inside 0–2 it is worth sweeping, and it cannot be guessed.** The best value
 landed at 0.0, 0.5, 1.0, 1.5 and 2.0 on different scenes, and the *direction* of
-the effect flips — on ETH3D `facade` more merging helped monotonically; on
-`electro` any merging at all cost ~60% of the pose accuracy. Nothing upstream
+the effect flips — on a repetitive building frontage more merging helped monotonically; on
+a glazed-elevation traverse any merging at all cost ~60% of the pose accuracy. Nothing upstream
 predicts which: not `trifocal_transfer_px`, not the track statistics, not the
 scene. Getting it right rather than leaving it at 1.5 is worth a median ~8%
 (VGGSfM) to ~25% (TAPIR) on rotation error.
@@ -131,7 +131,7 @@ better on every aggregate, so a row with fewer registered images — or fewer po
 — is not a better row.
 
 **0 is not the safe default either.** Deduplication off cost TAPIR **9.86°** of
-median rotation error on ETH3D `electro` against 1.63° with a tolerance set, and
+median rotation error on a fast traverse past a glazed elevation against 1.63° with a tolerance set, and
 broke a 16-image `courtyard` reconstruction outright. Both ends fail.
 
 See [`docs/import_lessons.md`](../../../docs/import_lessons.md).

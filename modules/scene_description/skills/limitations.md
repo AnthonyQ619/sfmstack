@@ -49,7 +49,7 @@ Three fields cover things a measurement **sees partially**:
 
 - `empty_regions` resolves the ambiguity in `textureless_fraction`, which counts
   area and cannot say whether the empty region was wanted. This is the exact trap
-  DTU scan10 sets: 60% textureless, entirely harmless, because it is a blown-out
+  a studio-rig set: 60% textureless, entirely harmless, because it is a blown-out
   white studio sweep.
 - `repetition_notes.texture` covers the between-image case that `repetitiveness`
   explicitly cannot see, being a within-image measurement. Its `objects` half
@@ -116,7 +116,7 @@ like a sheet with 12 readable ones.
 ## The rubric is version 3 and thinly tested
 
 Eight required fields, targeting the documented blind spots above, exercised
-against **three scenes**: DTU scan10, ETH3D meadow, ETH3D courtyard. Across three
+against **three scenes**: a studio rig, a low-contrast field capture, and a masonry courtyard. Across three
 versions it has added two fields and cut two. Expect more to move — three scenes
 is enough to see that a field is missing and not enough to know that one is
 right. [rubric.md](rubric.md) carries a revision log; the closed vocabularies

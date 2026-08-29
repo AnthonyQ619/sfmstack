@@ -385,7 +385,7 @@ def run(ctx: Ctx):
     )
     transfer_seconds = time.monotonic() - transfer_started
 
-    out.metric("inconsistent_rate", 0.0, direction="lower_better", healthy=(None, 0.0))
+    out.metric("inconsistent_rate", 0.0, direction="lower_better")
     # What deduplication did NOT catch, at the tolerance tracks/v1 fixes rather
     # than at dedupe_eps_px. duplicate_track_rate says what was merged; this says
     # what is still split in the table as written, comparably with every other
@@ -407,10 +407,8 @@ def run(ctx: Ctx):
     out.metric("trifocal_seconds", round(transfer_seconds, 2), direction="lower_better")
     out.metric("split_rate", round(split_rate(observations, track_count), 4),
                direction="lower_better", healthy=(None, 0.1))
-    out.metric("median_track_length", float(np.median(lengths)),
-               direction="higher_better")
     out.metric("track_survival_5", round(float((lengths >= 5).mean()), 4),
-               direction="higher_better")
+               direction="higher_better", healthy=(0.1, None))
     out.metric("duplicate_track_rate", round(duplicate_rate, 4),
                direction="lower_better", healthy=(None, 0.5))
     out.metric("query_frames", len(query_frames), direction="neutral")
@@ -427,10 +425,9 @@ def run(ctx: Ctx):
                 f"frames {query_frames}; they see little of the scene."
             ),
             suggested_actions=[
-                "Switch query_selection to dino, which ranks frames by coverage.",
-                "Raise query_frame_num.",
-                "On a sequential capture, avoid the endpoints -- measured, an "
-                "endpoint gave 0.22 against 0.54 from the middle of the same set.",
+                "Check what query_selection ALREADY is. dino is the default and ranks frames by coverage, so on a default run this diagnostic is not telling you to change it -- the artifact note names the frames it picked.",
+                "Raising query_frame_num is NOT reliably the fix: measured on two captures it lowered mean_visibility further while costing long_track_fraction and trifocal_transfer_px. Read duplicate_track_rate, not track_count, if you try it.",
+                "On a capture whose ends share no common surface, low visibility is a fact about the capture rather than the selection: no query frame sees much of the scene, and three selections landed within 0.01 of each other. Judge the run on trifocal_transfer_px and long_track_fraction instead.",
             ],
             see_also="tuning.md#query-frames-are-the-whole-game",
         )

@@ -360,7 +360,8 @@ def run(ctx: Ctx):
                 f"exact one at checks={p.checks}."
             ),
             suggested_actions=[
-                f"Raise checks above {p.checks}.",
+                f"Raise checks above {p.checks}; it is the accuracy dial.",
+                "Raise trees for float descriptors, or lsh_tables for binary.",
                 "Below a few thousand keypoints per image, use FeatureMatchNN instead.",
             ],
             see_also="tuning.md#match_agreement-below-09",

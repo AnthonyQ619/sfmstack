@@ -34,17 +34,36 @@ advantage to trade, and the comparison has to be run rather than assumed.
 A **predictive** tracker (`FeatureTrackVGGSfM`, `FeatureTrackTapir`) is given
 keypoints in a few query frames and predicts where they land everywhere else.
 Nothing truncates the track, because there is no view graph to have a hole in. But
-the observations are predictions, and every such model runs at reduced resolution,
-so the positional error has a floor set by the resampling before the model
-contributes any of its own.
+the observations are predictions, and the precision floor is set by THE MODEL'S
+OWN WORKING RESOLUTION RELATIVE TO THE SCENE -- which is a fact about the module,
+not about predictive tracking. One of these modules runs at the scene's working
+resolution and pays no resampling penalty at all; the other resamples to a fixed
+384px square, and on a 1024px scene that 2.67x ratio showed up as a transfer error
+of 2.78px against a chaining tracker's 0.78 on the same capture, and ~3x on two
+others. Neither module publishes its working resolution as a metric -- it appears
+only in the run note -- so this has to be read from the artifact after the run.
 
 ```
                     reach                              precision
   chaining          bounded by the view graph          detector sub-pixel
                                                        (detector-BASED input only;
                                                         detector-free forfeits it)
-  predictive        bounded by nothing                 bounded by model resolution
+  predictive        bounded by nothing                 bounded by the MODULE's
+                                                       working resolution, which
+                                                       differs between the two
 ```
+
+**The precision half of that table is weaker than it looks, and two captures
+measured it.** On captures where the predictive module runs at full scene
+resolution, it won reach decisively (`long_track_fraction` +57% and +72%) and its
+transfer error was 7% and 23% BETTER than the chaining tracker's on
+detector-based input -- the configuration this table says chaining should win.
+Both margins sit inside the range each tracker spans by itself under its own
+parameter changes on the same capture (2.0x and 1.3x), so the honest reading is
+that precision was not measurably different, not that predictive won it. Price
+the difference before believing it: the standard error is roughly
+`1.14 * value / sqrt(trifocal_samples)`, and compare only at equal
+`trifocal_triples`.
 
 The ordering is not a coincidence of one dataset. Predicting rather than matching
 buys reach and costs precision, and the further a model runs from the image's
@@ -168,10 +187,19 @@ this file did not previously mention: a capture can be perfectly ordered and sti
 move further between consecutive frames than anything in a video. Read
 `rotation_median_deg` and `large_rotation_risk` beside `ordered` — on captures
 where the median inter-frame rotation ran to tens of degrees, TAPIR came last of
-three by a wide margin, with `mean_occlusion` above 0.85 and frames receiving no
-observations at all. Its own `mostly_occluded` diagnostic is the confirmation, and
-it is a statement about the capture, not the query selection: changing the query
-frames left it unmoved.
+three by a wide margin.
+
+**The ORDERING is reliable; the symptom this file used to name is not.** It
+previously said to confirm with `mean_occlusion` above 0.85 and frames receiving
+no observations. Measured across four captures, TAPIR came last on every one --
+and `mean_occlusion` read 0.85, 0.79, 0.72 and 0.32, with `mostly_occluded` firing
+on some and not others. On the capture reading 0.32 it fired nothing at all, had
+the LONGEST tracks of all three trackers, and was still 3.6x the chaining
+tracker's transfer error. A reader checking the stated symptom would have cleared
+it. **The confirmation is `trifocal_transfer_px`, which is the only reading that
+exposed it on every capture.** Where `mean_occlusion` IS high it is a statement
+about the capture rather than the query selection -- changing the query frames
+left it unmoved.
 
 **And check where the query frames will land before paying for the run.** Both
 modules choose them by a rule that knows nothing about scene content, and on two
@@ -182,6 +210,44 @@ a capture where both available selections are wrong, that is a reason to prefer
 chaining rather than a parameter to tune.
 
 ---
+
+## The tracker is where the matcher gets judged, so backtracking is the normal move
+
+**This stage is the first place a matcher's real quality becomes visible, and
+going back to change it is expected rather than a failure.** Two-view
+verification cannot see a match displaced onto a repeated structure: it is
+epipolar-consistent by construction, so `inlier_ratio` reads excellent on exactly
+the runs that produce a badly self-contradictory track table. `inconsistent_rate`
+is the first reading in the pipeline that sees it.
+
+Across a sweep of captures driven through this stage, the matcher was changed on
+the tracker's evidence on more than half of them, and on one the matcher MODULE
+was replaced outright — a decision the matching stage had settled the other way,
+because the dial that would have saved it was swept only as far as the range
+documented at the time.
+
+**What this looks like in practice.** The tracker reports `inconsistent_rate`
+above its ceiling. There is no fix on the tracker: `on_conflict` decides what to
+do with the damage, not whether it happens. So you re-run the matcher at a
+tighter setting, feed the new matches to the same tracker, and read again. One
+matcher run plus one tracker run per step, both cheap, and the detector artifact
+is shared so nothing upstream of the matcher is rebuilt.
+
+**Do it on this stage's measurements, not on an argument.** A capture whose
+description warns about repeated structure is not evidence; `inconsistent_rate`
+above its band is. The counter-case is worth as much: on one capture a detector
+change that every prose reading recommended was run end-to-end and made the
+pipeline worse at every later stage, and on another the inherited value turned
+out to be the measured optimum in both directions. A backtrack that is tried and
+refuted is a result, and cheaper than carrying the doubt forward.
+
+**Where to stop is not "when the metric is in band".** Tightening keeps lowering
+the conflict rate long after it has started buying that by deleting the view
+graph. Watch `pairs_matched` against `pairs_proposed`, `min_image_degree`, and
+this stage's `max_track_length`. On several captures the setting that finally
+cleared the band cost pairs and a degree with `graph_components` still reading 1
+— the completeness metrics do not see it. Settling one notch OUTSIDE the band,
+with the reason written down, is a legitimate answer.
 
 ## What has NOT been measured
 

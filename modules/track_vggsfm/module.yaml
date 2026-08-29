@@ -1,5 +1,5 @@
 name: FeatureTrackVGGSfM
-version: 1.2.0
+version: 1.3.0
 kind: tracking
 summary: >
   Learned multi-view tracking: keypoints from selected query frames are propagated
@@ -30,14 +30,14 @@ description: |
   `dedupe_eps_px` merges tracks whose observations coincide, and the merge rate is
   reported.
 
-  **Query frame choice dominates the result.** Measured on 8 DTU views with 2048
+  **Query frame choice dominates the result.** Measured on 8 controlled-rig views with 2048
   SIFT keypoints: tracking from frame 0 leaves each point visible in a mean of
   **1.77** frames; from frame 4, **4.40**. The predecessor always forced frame 0
   into the query set "matching the VGGT demo behavior", which on a sequential
   capture is the worst available choice — an endpoint sees the least of the scene.
   Here the selection is `dino` by default and frame 0 gets no special treatment.
 
-image: sfmstack/track-vggsfm:1.2.0
+image: sfmstack/track-vggsfm:1.3.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -66,7 +66,7 @@ params:
       `dino` ranks frames by DINOv2 feature similarity and picks a spread that
       covers the scene — the best default and the only one that adapts to an
       unordered set. `midpoint` works outwards from the centre and, measured on 8
-      DTU views, matched dino's track quality with three query frames instead of
+      controlled-rig views, matched dino's track quality with three query frames instead of
       five and a third of the runtime. `interval` samples evenly spaced bins, which
       necessarily reaches the ends of the set and did worst here — mean visibility
       0.23 against 0.35. The rule behind all three: an endpoint of a sequential
@@ -176,8 +176,8 @@ params:
       MEASURED CEILING: 2.0. tracks/v1 fixes its duplicate test at 2.0 px, so a
       merge at 2.0 has already removed everything the type is willing to call a
       duplicate -- every merge above it fuses tracks the type classifies as
-      DISTINCT. Swept 0-6 px on nine scenes (six ETH3D with ground-truth poses,
-      three DTU) the cost is measured: by 6.0 px the median run has lost 74% of its
+      DISTINCT. Swept 0-6 px on nine scenes (six field captures with ground-truth poses,
+      three controlled-rig captures) the cost is measured: by 6.0 px the median run has lost 74% of its
       tracks and 81% of its bundle-adjusted points, at unchanged registration, and
       error at a fixed observation count is worse in about 70% of cases. The
       apparent wins above 2.0 are the model shrinking -- one reached 0.89 px on 44
@@ -185,7 +185,8 @@ params:
 
       INSIDE 0-2 IT IS WORTH SWEEPING and cannot be guessed. The best value moved
       to 0.0, 0.5, 1.0, 1.5 and 2.0 on different scenes, and the DIRECTION of the
-      effect flips: on ETH3D facade more merging helped monotonically, on electro
+      effect flips: on a repetitive building frontage more merging helped monotonically, on a
+      fast traverse past a glazed elevation
       any merging at all cost ~60% of the pose accuracy. Nothing upstream predicts
       which -- not trifocal_transfer_px, not the track statistics, not the scene.
       Median gain from getting it right rather than leaving it at 1.5: about 8%
@@ -199,7 +200,7 @@ params:
       wrong for exactly that reason before the control was added.
 
       0 IS NOT THE SAFE DEFAULT EITHER. Deduplication off cost TAPIR 9.86 deg of
-      median rotation error on ETH3D electro against 1.63 deg with a tolerance set,
+      median rotation error on that traverse against 1.63 deg with a tolerance set,
       and broke a 16-image courtyard reconstruction outright. Both ends fail.
 
 metrics:
@@ -218,7 +219,7 @@ metrics:
 
   long_track_fraction:
     direction: higher_better
-    healthy: [0.5, null]
+    healthy: [0.3, null]
     meaning: Fraction of tracks seen in 3+ views.
 
   min_frame_observations:
@@ -231,13 +232,18 @@ metrics:
 
   inconsistent_rate:
     direction: lower_better
-    healthy: [null, 0.0]
+    healthy: null
     meaning: >
-      Structurally ZERO for this module and therefore uninformative. Each query
-      point yields at most one position per frame, so a track cannot contradict
-      itself the way a union-find track can. Read duplicate_track_rate instead —
-      that is this module's analogous failure, and it is the one union-find's
-      metric is blind to.
+      NOT APPLICABLE ON THIS MODULE, and reported only so the tracks/v1 contract
+      is complete. It counts merged groups observed twice in one image, which is a
+      failure of CHAINING pairwise matches; this module predicts a point's path
+      directly and never merges, so the value is structurally 0.0 -- it was 0.0 in
+      all 54 runs measured, at every parameter setting, on every capture.
+
+      A band here would be a ceiling nothing can approach, and reading it as a
+      health signal makes this module look better than a chaining tracker for a
+      reason that is an artefact of how the two work. Judge this module on
+      trifocal_transfer_px, long_track_fraction and duplicate_track_rate instead.
 
   trifocal_transfer_px:
     direction: lower_better
@@ -282,20 +288,22 @@ metrics:
     direction: lower_better
     healthy: [null, 0.1]
     meaning: >
-      Fraction of tracks that still coincide with another track after
-      deduplication, at the tolerance tracks/v1 fixes rather than at this module's
-      dedupe_eps_px. duplicate_track_rate says what dedupe REMOVED; this says what
-      the table as written still holds apart, comparably with every other tracker.
-      A high value with dedupe on means dedupe_eps_px is too tight.
+      Fraction of tracks that coincide with another track -- one physical point
+      spread across several tracks.
 
-  median_track_length:
-    direction: higher_better
-    meaning: >
-      Median observations per track. Read with the mean: a mean well above the
-      median means a few long tracks are carrying the average.
+      THE CEILING IS TIGHTER HERE THAN ON THE CHAINING TRACKER (0.1 against 0.2),
+      and deliberately: this module merges by PROXIMITY, so it collapses the
+      duplicate detections a classical detector emits instead of carrying them as
+      separate tracks. Measured across 54 runs its median is 0.015 against the
+      chaining tracker's 0.065 on the same captures. A reading near the ceiling
+      here means the merge tolerance is too tight, which is a parameter on this
+      module -- unlike on the chaining side, where the same number reads the
+      detector and nothing at this stage reaches it.
+
 
   track_survival_5:
     direction: higher_better
+    healthy: [0.1, null]
     meaning: Fraction of tracks seen in 5+ views.
 
   duplicate_track_rate:
@@ -346,9 +354,9 @@ diagnostics:
     severity: warn
     message: The query frames see little of the scene.
     suggested_actions:
-      - Switch query_selection to dino, which ranks frames by coverage.
-      - Raise query_frame_num.
-      - On a sequential capture, avoid the endpoints — they see the least.
+      - "Check what query_selection ALREADY is. dino is the default and ranks frames by coverage, so on a default run this diagnostic is not telling you to change it -- the artifact note names the frames it picked."
+      - "Raising query_frame_num is NOT reliably the fix: measured on two captures it lowered mean_visibility further while costing long_track_fraction and trifocal_transfer_px. Read duplicate_track_rate, not track_count, if you try it."
+      - "On a capture whose ends share no common surface, low visibility is a fact about the capture rather than the selection: no query frame sees much of the scene, and three selections landed within 0.01 of each other. Judge the run on trifocal_transfer_px and long_track_fraction instead."
     see_also: tuning.md#query-frames-are-the-whole-game
 
   - code: thin_frame

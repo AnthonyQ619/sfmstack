@@ -168,6 +168,31 @@ metrics:
       qualifies FEWER TRIPLES, and the per-triple sample is drawn from whatever is
       common. READ trifocal_triples BEFORE COMPARING TWO MEDIANS.
 
+      WHETHER A DIFFERENCE IS REAL. The uncertainty of this reading is set by how
+      many measurements it is a median of, and that is computable from what is
+      already published here:
+
+          SE  ~=  1.14 * trifocal_transfer_px / sqrt(trifocal_samples)
+
+      A median's standard error is 1.253*sigma/sqrt(n); the residual spread was
+      measured across 86 runs spanning a 55x range of medians and came out a
+      near-constant 0.615 of the median (sd 0.066), which is what collapses the
+      expression to the median and the sample count. Worked: 1.406 over 947
+      samples is +/-0.052, and 1.504 over 621 is +/-0.069, so a gap of 0.098
+      between two trackers is about ONE standard error and settles nothing. Two
+      readings that differ by less than roughly three times this are the same
+      reading.
+
+      AND CHECK trifocal_triples BEFORE COMPARING AT ALL. The medians are over
+      whichever triples each run could form, so two runs with different
+      trifocal_triples are medians of different populations and the standard error
+      above does not bridge them -- one capture read 1.46 on 3 triples and 1.71 on
+      12 from the same tracker, which looks like a regression and is a change of
+      denominator. Compare runs at equal trifocal_triples, or not at all. A
+      dispersion figure was tried here and removed: it is predictable from the
+      median and says nothing about which triples were drawn, which is the part
+      that actually varies.
+
   trifocal_triples:
     direction: higher_better
     nullable: true
@@ -205,13 +230,6 @@ metrics:
       triples against five, and the mechanism turned out to rest on a direct
       structural measurement instead.
 
-  median_track_length:
-    direction: higher_better
-    meaning: >
-      Median observations per track, beside the mean. The pair separates "a few
-      very long tracks" from "uniformly long tracks", and a mean well above the
-      median is the signature of the former -- which reads as a healthy tracker
-      and is not one.
 
   track_survival_5:
     direction: higher_better

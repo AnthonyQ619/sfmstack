@@ -96,7 +96,8 @@ def run(ctx: Ctx):
             "weak_matching",
             severity="warn",
             message=f"Inlier yield {keep:.2f} is below 0.15.",
-            suggested_actions=["Raise the detector's max_keypoints."],
+            suggested_actions=["Raise the detector's max_keypoints.",
+                               "Loosen this module's keep_ratio."],
             see_also="tuning.md#inlier_yield-below-015",
         )
 

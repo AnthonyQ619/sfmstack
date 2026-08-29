@@ -99,7 +99,7 @@ frictionless.
 
 **Know what the sheet cannot settle.** It is two downscales deep: SceneLoader
 resized the capture, and each cell resizes that again to a
-`thumbnail_max_side` long edge. An ETH3D frame at 6221x4146 loaded with
+`thumbnail_max_side` long edge. A DSLR frame at 6221x4146 loaded with
 `resize=fixed [1024, 682]` reaches the sheet as a 384x256 cell — 6% of the
 original linear scale, 0.4% of its pixels. Whether a surface is glossy, whether a
 white region is *clipped* or merely bright, whether a shopfront is glass or
@@ -130,7 +130,7 @@ in the other:
 | — | `dynamic_content`, `material_hazards` | nothing else measures these at all |
 | — | `main_subject`, `subject_completeness` | whether "coverage" means an object or a volume, and whether the object even fits |
 
-A worked reading, DTU scan10 — and the first field is why this module exists:
+A worked reading on a studio-rig capture — and the first field is why this module exists:
 
 ```
 SceneTriage       textureless_fraction 0.5954   repetitiveness 0.6515

@@ -14,7 +14,7 @@ below exists to show you which upstream knob to reach for instead.
 
 The most important thing on this page.
 
-**Measured, DTU scan1, 12 images sampled uniformly from 49, max_edge 1024, SIFT
+**Measured, a controlled-rig capture, 12 images sampled uniformly from 49, max_edge 1024, SIFT
 at defaults, FeatureMatchNN window 4.** Only the matcher's `ratio_test` changes;
 every parameter of this module is at its default:
 
@@ -84,25 +84,46 @@ If `min_track_len` was raised above 2, that is the first thing to undo.
 
 ---
 
-## `inconsistent_rate` above 0.1
+## `inconsistent_rate` above 0.05
 
 A merged group was observed twice in the same image. One scene point cannot
 project to two places in one view, so at least one of the matches that built that
 track is wrong.
 
 **This reads upstream, and there is no fix here.** `on_conflict` decides what to
-do about the damage, not how to prevent it. Prevention is in the matcher:
+do about the damage, not how to prevent it. Prevention is in the matcher, and
+**which knob depends on the matcher family** — a point that used to be missing
+here and sent three readers to parameters their matcher does not have:
 
-- Lower its `ratio_test` toward 0.7. In the sweep above this took
-  `inconsistent_rate` from 0.0175 to 0.0000.
-- Confirm its `mutual` check is on. Without it, several keypoints in one image can
-  match the same keypoint in another, which is a direct mechanism for fusing
-  distinct points.
-- On repetitive scenes, a learned matcher — see the matcher's limitations.md.
+- **Learned matcher (LightGlue, SuperGlue): raise `filter_threshold`.** There is
+  no `ratio_test` and no `mutual` on these modules — both are artefacts of
+  nearest-neighbour descriptor search, and a joint matcher does not do one. Its
+  documented 0.2–0.3 is where to start, not a ceiling: settled values across a
+  sweep of captures ran 0.4 to 0.85, and on several the inherited value was
+  already inside the old band and still producing a badly contradictory table.
+- **Classical matcher (NN, FLANN): lower `ratio_test` toward 0.7, and confirm
+  `mutual` is on.** Without mutual, several keypoints in one image can match the
+  same keypoint in another, which is a direct mechanism for fusing distinct points.
+- On repetitive scenes where neither dial is enough, a different matcher — see the
+  matcher's limitations.md.
 
-Healthy values on clean data are very small: 0.0003 at ratio_test 0.8, and exactly
-0.0000 at 0.7. Treat anything above 0.01 as worth investigating and above 0.1 as
-a matcher that needs replacing.
+**Where to stop, which is the part that is easy to get wrong.** This rate keeps
+falling long after tightening has begun buying it by deleting the graph. Stop when
+the graph starts paying: watch `pairs_matched` against `pairs_proposed`,
+`min_image_degree`, and this module's `max_track_length`. On one capture the
+threshold that finally cleared the band cost two cross-half pairs and a degree,
+with `graph_components` still reading 1 — the completeness metrics do not see it.
+
+**Do not read `inlier_ratio` as evidence that the tightening worked.** It rises
+monotonically as you tighten and therefore confirms whatever you just did; across
+one sweep it ran 0.906 → 0.975 while the conflict rate was still three times its
+ceiling.
+
+**On absolute levels: do not carry them between captures.** A reference run on a
+window-4 sequential graph reported 0.0003 at `ratio_test` 0.8; the same nominal
+setting on an exhaustive graph over a different subject read 0.0113, thirty-eight
+times higher, with nothing wrong. The band (≤0.05, which is also where the
+diagnostic fires) is the comparison; another capture's number is not.
 
 ### `on_conflict`
 
@@ -110,12 +131,20 @@ a matcher that needs replacing.
 about the solution: you know one of its matches is wrong and you cannot tell
 which, so keeping any of it puts a wrong observation into bundle adjustment.
 
-`first` keeps the earliest observation per frame and salvages the rest. On real
-DTU data the two policies are nearly indistinguishable (3744 vs 3748 tracks at
-exhaustive pairing) precisely because `inconsistent_rate` is tiny — which is the
-condition under which either is fine. Use `first` only when `track_count` is too
-low to start reconstruction at all, and treat needing it as evidence about the
-matcher.
+`first` keeps the earliest observation per frame and salvages the rest.
+
+**The two policies cannot be compared on `trifocal_transfer_px`, and the earlier
+claim that they are "nearly indistinguishable" was measured on track counts
+alone.** Counts do stay close — 3744 vs 3748 on one capture, +55 and +63 on two
+others. But the transfer error moved by −27%, +40% and +43% on three captures,
+in *both directions*, because `first` changes which tracks exist: it salvages long
+tracks, so the held-out sample population is different and the two medians are
+over different sets. Neither number is evidence about position.
+
+Keep `drop` on the argument the policy is made of, not on a metric: you know one
+observation in that group is wrong and you cannot tell which. Use `first` only
+when `track_count` is too low to start reconstruction at all, and treat needing it
+as evidence about the matcher.
 
 ---
 
@@ -128,9 +157,14 @@ Check in this order:
 
 1. The detector's `keypoints_min` — if that frame was starved of keypoints, this
    is downstream of a detection problem (blur, underexposure, textureless view).
-2. The matcher's `window` — a frame at the end of a sequence has only half as many
-   neighbours as one in the middle, and at window 1 that is a single link. The
-   sweep above lifted this from 19 to 79 by widening the window alone.
+2. The matcher's pairing. Under `pairing: sequential` a frame at the end of a
+   sequence has only half as many neighbours as one in the middle, and at
+   `window` 1 that is a single link; the sweep above lifted this from 19 to 79 by
+   widening the window alone. **Under `pairing: exhaustive` — which is what a plan
+   should already have specified — every pair exists and `window` is inert**, so
+   raising it produces a byte-identical artifact. There the frame is thin because
+   it genuinely shares little with the rest, and the reading to check is the
+   matcher's `min_image_degree` and which pairs on that frame survived.
 
 ---
 
@@ -141,7 +175,7 @@ sets the grid used to decide which endpoints are the same feature.
 
 ### Measured twice, and the two measurements disagree. Read both.
 
-**First, on DTU SIFT matches with `feature_index` artificially stripped**, to
+**First, on rig-capture SIFT matches with `feature_index` artificially stripped**, to
 exercise the proximity path without a detector-free matcher:
 
 | merge_eps_px | track_count | avg_track_length | long_track_fraction | inconsistent_rate |
@@ -154,7 +188,7 @@ exercise the proximity path without a detector-free matcher:
 falls 17% while `inconsistent_rate` jumps 34x. That looks like a clean answer —
 "stay at 1-2px" — and it is **wrong for real detector-free input**.
 
-**Second, on genuine LoFTR output** (DTU scan1, 5 contiguous images at 640px,
+**Second, on genuine LoFTR output** (a controlled-rig capture, 5 contiguous images at 640px,
 exhaustive pairing, everything downstream identical):
 
 | merge_eps_px | tracks | avg_track_length | long_track_fraction | conflict | registered | final error |

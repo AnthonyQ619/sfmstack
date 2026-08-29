@@ -34,13 +34,13 @@ designed for that:
 
 | Unhealthy metric | Points at |
 |---|---|
-| `avg_track_length` near 2.0, `long_track_fraction` low | the matcher's view graph — raise its `window` |
+| `avg_track_length` near 2.0, `long_track_fraction` low | the matcher's view graph — widen its pairing; under `exhaustive` the ceiling is co-visibility, not pairing |
 | `track_count` low with healthy lengths | the detector — raise `max_keypoints` |
 | `min_frame_observations` low on one frame | that frame's detection, or its links in the view graph |
-| `inconsistent_rate` above ~0.1 | the matcher is producing contradictory matches |
+| `inconsistent_rate` above 0.05 | the matcher is producing contradictory matches |
 
 **Cheapest thing that usually works:** run it at defaults. If
-`long_track_fraction` is below 0.3, go raise the matcher's `window` and run it
+`long_track_fraction` is below 0.3, go widen the matcher's pairing (`window` under sequential; under exhaustive every pair already exists) and run it
 again — do not touch anything here.
 
 **Reading the output:** [artifact.md](artifact.md). Note that `avg_track_length`

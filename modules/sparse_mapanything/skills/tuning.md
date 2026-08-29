@@ -14,7 +14,7 @@ curated_at: 2026-08-11
 
 ## Reference run
 
-DTU scan1, 8 contiguous images at `max_edge: 1024`, SIFT tracks, poses from
+A controlled-rig capture, 8 contiguous images at `max_edge: 1024`, SIFT tracks, poses from
 `PoseEssentialToPnP`, on one A6000 in a container:
 
 | metric | conditioned | not conditioned |
