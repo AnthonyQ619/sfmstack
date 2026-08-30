@@ -73,6 +73,17 @@ can place. It is not in this family because it produces `sparse_model/v1`; see
 **Geometric**, by default, on a calibrated scene whose matcher produced one
 connected view graph. It is the only option here that reports whether it worked.
 
+**When there is no matcher, which is a legal chain.** A predictive tracker consumes
+`features/v1` directly, so a detector → tracker → pose chain has no view graph and
+none of `graph_components`, `min_image_degree`, `inlier_ratio` or `planarity`
+exists. The default above still applies — read the tracker in the matcher's place:
+`min_frame_observations` and `long_tracks_per_frame` for whether every frame is
+carried, `trifocal_transfer_px` for whether the correspondences are any good.
+Connectivity is not at risk on such a chain in the way it is with a view graph,
+because nothing was ever cut off. Note that the third option below,
+global reconstruction, consumes `pairwise_matches/v1` and is simply **unavailable**
+here — not a judgement call, an absence.
+
 **Feed-forward** when the scene is **uncalibrated** — there is no alternative — or
 when the geometric estimator reports `registered_fraction` below 1 and the missing
 images are ones you need.
@@ -95,6 +106,35 @@ free, independent check on the calibration the geometric branch depends on, and
 nothing else in the pipeline performs it.
 
 ---
+
+## Whether a difference is real
+
+Two rules, in this order. Both were transferred here from other family files by
+readers who needed them and found nothing at this stage; they are written down now
+so the next reader does not have to.
+
+**FIRST, REGISTRATION IS A PRECONDITION, NOT A TIEBREAK.** `registered_fraction` is
+the one unambiguous axis this stage has. **Never compare reprojection error between
+two runs that registered different numbers of images** — a smaller model is an
+easier one, and error will flatter the run that gave up. Three separate
+configurations in one sweep produced better mean error by dropping cameras or
+deleting a third of the structure, and each looked like an improvement until the
+count was read beside it. If `registered_images` differs, the comparison is void;
+say so and stop.
+
+**THEN, PRICE THE MARGIN AGAINST THE MODULE'S OWN SPAN.** Sweep one cheap parameter
+with everything else held, and record the range the metric covers across that
+sweep. A gap between two configurations narrower than that span is not
+interpretable — it is inside the noise the module generates by itself. Measured on
+one capture, fifteen configurations spanned 0.207 to 0.246 px of mean error, so a
+6% difference between two of them settles nothing, and a reader correctly refused a
+change on that basis. This is the same rule `families/tracking.md` gives for
+`trifocal_transfer_px`; there is no pose-specific span published, so measure it on
+the capture in front of you.
+
+**What neither rule can do:** establish that a configuration is *right*. There is no
+ground truth here — see below. These rules tell you when a difference is too small
+to mean anything, which is a different and more modest claim.
 
 ## What this stage can and cannot settle about the stages above it
 

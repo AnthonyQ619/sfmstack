@@ -321,6 +321,23 @@ def run(ctx: Ctx):
     obs = tracks.load("observations", "obs")
     n_tracks_in = int(tracks.load("observations", "track_count"))
 
+    # The registrability floor. PnP resects a new image against points something
+    # else already triangulated, so what a frame needs is not observations but
+    # observations belonging to tracks that reach a third view. The tracker
+    # publishes this per frame when it is recent enough; recompute otherwise, so
+    # this metric does not depend on the tracker's version.
+    _group = tracks.load("observations")
+    if "long_tracks_per_frame" in _group:
+        long_per_frame = np.asarray(_group["long_tracks_per_frame"], dtype=np.int64)
+    else:
+        _tid = obs[:, 0].astype(np.int64)
+        _frm = obs[:, 1].astype(np.int64)
+        _keep = np.bincount(_tid)[_tid] >= 3
+        long_per_frame = np.bincount(_frm[_keep], minlength=n_images)
+    if len(long_per_frame) < n_images:
+        long_per_frame = np.pad(long_per_frame, (0, n_images - len(long_per_frame)))
+    min_long_tracks = int(long_per_frame[:n_images].min()) if n_images else 0
+
     tracks_in, pixels_in, frames_of = observations_by_frame(obs, n_images, p.min_track_len)
     # Undistorted pixels are what reprojection error is measured against; the
     # raw ones carry lens distortion that the geometry has already removed.
@@ -639,6 +656,8 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(3.0, None))
     out.metric("track_utilization", round(utilisation, 3),
                direction="higher_better", healthy=(0.3, None))
+    out.metric("min_frame_long_tracks", min_long_tracks,
+               direction="higher_better", healthy=(20.0, None))
     out.metric("init_pair_angle", round(float(init_angle), 2),
                direction="higher_better", healthy=(4.0, None))
 
@@ -666,7 +685,11 @@ def run(ctx: Ctx):
                 f"{[str(names[m]) for m in missing[:5]]}."
             ),
             suggested_actions=[
-                "Check the tracker's min_frame_observations for those frames.",
+                "Read min_frame_long_tracks, NOT the tracker's "
+                "min_frame_observations: PnP needs points a third view already "
+                "triangulated, so a frame can sit far above the observation floor "
+                "and still be unregisterable. The tracks artifact's "
+                "long_tracks_per_frame array says which frame is short.",
                 "Link those frames to more neighbours at the matcher -- under "
                 "sequential pairing that is `window`; under exhaustive the pairs "
                 "already exist and were dropped, so the dial is min_matches.",
@@ -780,9 +803,18 @@ def run(ctx: Ctx):
         )
 
     ba_note = (
-        f"Local BA ran {ba_runs} times over a {p.local_ba_window}-camera window "
-        f"({ba_iterations} Ceres iterations total), moving window reprojection "
-        f"error by {mean_gain:+.3f}px per solve on average. "
+        (
+            f"Local BA ran {ba_runs} times over a {p.local_ba_window}-camera "
+            f"window ({ba_iterations} Ceres iterations total), moving window "
+            f"reprojection error by {mean_gain:+.3f}px per solve on average. "
+            if mean_gain is not None else
+            # A diverged solve: the gain is suppressed rather than printed, which
+            # is the whole point of the guard -- an earlier version rendered the
+            # raw value into this sentence as a 150-digit float.
+            f"Local BA ran {ba_runs} times over a {p.local_ba_window}-camera "
+            f"window ({ba_iterations} Ceres iterations total) and DIVERGED; the "
+            f"per-solve gain is suppressed and these poses are not trustworthy. "
+        )
         if ba_runs else
         ("Local BA was enabled but never had a window with enough structure to solve. "
          if p.local_ba else

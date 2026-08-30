@@ -11,6 +11,28 @@ import time
 import numpy as np
 from sfmkit import Ctx, module, scene_intrinsics, split_rate, trifocal_transfer
 
+
+def long_tracks_per_frame(obs: np.ndarray, n_frames: int, min_views: int = 3) -> np.ndarray:
+    """Per frame, how many of its tracks are seen in `min_views`+ views.
+
+    The number that decides whether a frame can be REGISTERED, which is not the
+    number of observations it carries. PnP needs 2D-3D correspondences, so it
+    needs points that something else already triangulated -- and only a track
+    reaching three or more views can be. A frame can sit far above
+    min_frame_observations and still be unregisterable because almost all of its
+    observations belong to two-view tracks. Measured on a capture that failed
+    exactly that way: 138 observations against a floor of 50, and 9 long tracks.
+    """
+    if len(obs) == 0:
+        return np.zeros(n_frames, dtype=np.int64)
+    track_id = obs[:, 0].astype(np.int64)
+    frame = obs[:, 1].astype(np.int64)
+    lengths = np.bincount(track_id)
+    keep = lengths[track_id] >= min_views
+    # Full length, indexable by frame: a frame with no long tracks must read 0
+    # rather than fall off the end, since "which frame is short" is the question.
+    return np.bincount(frame[keep], minlength=n_frames)[:n_frames]
+
 PROGRESS_EVERY = 50_000  # union steps between progress reports
 
 
@@ -333,7 +355,12 @@ def run(ctx: Ctx):
     track_count = int(track_id.max()) + 1
 
     obs = np.column_stack([track_id, frame.astype(np.float32), point]).astype(np.float32)
-    out.save("observations", obs=obs, track_count=np.int64(track_count))
+    out.save(
+        "observations",
+        obs=obs,
+        track_count=np.int64(track_count),
+        long_tracks_per_frame=long_tracks_per_frame(obs, n_images, 3).astype(np.int64),
+    )
 
     # The other half of inconsistent_rate, at the tolerance tracks/v1 fixes rather
     # than at merge_eps_px -- the point of the metric is comparison across

@@ -1,5 +1,5 @@
 name: FeatureTrackVGGSfM
-version: 1.4.0
+version: 1.5.0
 kind: tracking
 summary: >
   Learned multi-view tracking: keypoints from selected query frames are propagated
@@ -37,7 +37,7 @@ description: |
   capture is the worst available choice — an endpoint sees the least of the scene.
   Here the selection is `dino` by default and frame 0 gets no special treatment.
 
-image: sfmstack/track-vggsfm:1.4.0
+image: sfmstack/track-vggsfm:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: true

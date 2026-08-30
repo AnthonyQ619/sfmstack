@@ -35,6 +35,27 @@ files:
         description: |
           Per-observation confidence, when the tracker reports one. Learned
           trackers do; union-find over verified matches does not.
+      long_tracks_per_frame:
+        required: false
+        shape: [null]
+        dtype: [int32, int64]
+        description: |
+          Per frame, how many of the tracks it appears in reach three or more
+          views. Every tracker in this repository emits it; `required: false` so
+          that artifacts built before it remain readable.
+
+          THIS IS THE NUMBER THAT DECIDES WHETHER A FRAME CAN BE REGISTERED, and
+          min_frame_observations is not. Incremental pose estimation resects a new
+          image by PnP, which needs 2D-3D correspondences -- points something else
+          has already triangulated -- and only a track reaching three or more views
+          can supply one. A frame can therefore sit far above the observation floor
+          and still be unregisterable because almost all of its observations belong
+          to two-view tracks. Measured on a capture that failed exactly that way:
+          138 observations against a floor of 50, and 9 long tracks.
+
+          It is a per-frame array rather than a scalar on purpose. Every remedy
+          that routes here is phrased per-frame ("check it for the missing
+          frames"), and a scalar minimum cannot say WHICH.
 
 invariants:
   - check: finite

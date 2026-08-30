@@ -1,5 +1,5 @@
 name: FeatureTrackTapir
-version: 1.4.0
+version: 1.5.0
 kind: tracking
 summary: >
   Point tracking with BootsTAPIR. Keypoints from selected query frames are followed
@@ -33,7 +33,7 @@ description: |
   Deduplication and query-frame selection work exactly as in `FeatureTrackVGGSfM`,
   and for the same reasons — see `duplicate_track_rate` below.
 
-image: sfmstack/track-tapir:1.4.0
+image: sfmstack/track-tapir:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: true

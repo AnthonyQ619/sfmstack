@@ -1,5 +1,5 @@
 name: PoseEssentialToPnP
-version: 1.1.0
+version: 1.2.0
 kind: pose
 summary: >
   Incremental SfM: essential-matrix bootstrap on a chosen initial pair, then
@@ -42,7 +42,7 @@ description: |
   Scale is arbitrary and unrecoverable from images alone. The initial pair's
   baseline is fixed to unit length, so every distance downstream is in that unit.
 
-image: sfmstack/pose-incremental:1.1.0
+image: sfmstack/pose-incremental:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -308,6 +308,34 @@ metrics:
       do with this module. Compare it only between runs that differ in something
       other than which tracks were admitted.
 
+  min_frame_long_tracks:
+    direction: higher_better
+    healthy: [20.0, null]
+    meaning: >
+      In the weakest frame, how many of its tracks reach three or more views.
+      THIS IS THE REGISTRABILITY FLOOR, and min_frame_observations is not.
+
+      Resection needs 2D-3D correspondences: points some other pair already
+      triangulated, seen again in the image being registered. Only a track
+      reaching a third view can supply one. So a frame can carry many
+      observations and still fail PnP, because almost all of them belong to
+      two-view tracks -- measured on a capture that failed exactly that way with
+      138 observations against a floor of 50 and 9 long tracks, while the metric
+      its own remedy section named read three times healthy.
+
+      THE BAND IS min_pnp_inliers, stated here at that parameter's default of 20.
+      Below it, the weakest frame cannot in principle reach the inlier count
+      registration demands, and it will drop. If you have changed
+      min_pnp_inliers, compare against your value rather than this band.
+
+      This metric exists only on the geometric estimator, because only the
+      geometric estimator resects. A feed-forward module poses every image in one
+      pass and has no such floor -- the quantity is meaningless there rather than
+      merely absent.
+
+      WHICH frame is short is in the tracks artifact, as
+      observations.long_tracks_per_frame. This is its minimum.
+
   init_pair_angle:
     direction: higher_better
     healthy: [4.0, null]
@@ -380,7 +408,7 @@ diagnostics:
     severity: warn
     message: Some images could not be registered and carry valid=False.
     suggested_actions:
-      - Check the tracker's min_frame_observations for the missing frames.
+      - "Read min_frame_long_tracks, NOT the tracker's min_frame_observations: PnP needs points a third view already triangulated, so a frame can sit far above the observation floor and still be unregisterable. The tracks artifact's observations.long_tracks_per_frame array says which frame is short."
       - "Link those frames to more neighbours at the matcher -- under `pairing:\
         sequential` that is `window`; under `exhaustive` the pairs already exist\
         and were dropped, so the dial is min_matches or the acceptance threshold."

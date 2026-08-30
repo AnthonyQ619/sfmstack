@@ -107,6 +107,28 @@ def select_query_frames(n_images: int, p) -> list[int]:
     return sorted(list(dict.fromkeys(int(f) for f in ranking))[:wanted])
 
 
+
+def long_tracks_per_frame(obs: np.ndarray, n_frames: int, min_views: int = 3) -> np.ndarray:
+    """Per frame, how many of its tracks are seen in `min_views`+ views.
+
+    The number that decides whether a frame can be REGISTERED, which is not the
+    number of observations it carries. PnP needs 2D-3D correspondences, so it
+    needs points that something else already triangulated -- and only a track
+    reaching three or more views can be. A frame can sit far above
+    min_frame_observations and still be unregisterable because almost all of its
+    observations belong to two-view tracks. Measured on a capture that failed
+    exactly that way: 138 observations against a floor of 50, and 9 long tracks.
+    """
+    if len(obs) == 0:
+        return np.zeros(n_frames, dtype=np.int64)
+    track_id = obs[:, 0].astype(np.int64)
+    frame = obs[:, 1].astype(np.int64)
+    lengths = np.bincount(track_id)
+    keep = lengths[track_id] >= min_views
+    # Full length, indexable by frame: a frame with no long tracks must read 0
+    # rather than fall off the end, since "which frame is short" is the question.
+    return np.bincount(frame[keep], minlength=n_frames)[:n_frames]
+
 def dedupe(observations, n_tracks, eps):
     """Union-find over tracks whose observations coincide within `eps` in a frame.
 
@@ -352,6 +374,7 @@ def run(ctx: Ctx):
         obs=observations,
         track_count=np.int64(track_count),
         visibility=confidence.astype(np.float64),
+        long_tracks_per_frame=long_tracks_per_frame(observations, n_images, 3).astype(np.int64),
     )
 
     avg_length = float(lengths.mean())
