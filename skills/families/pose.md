@@ -84,6 +84,43 @@ the correspondences are there and the order is the problem.
 A geometric estimator that stalls on a scene whose view graph is already fragmented
 is not the pose stage's failure. Fix the graph.
 
+**The choice is one-sided in what it can prove, and that is worth knowing before
+you spend a run on the alternative.** The feed-forward branch's reprojection
+metrics are null by construction, so its artifact contains nothing that answers
+"is this right", and the first reading that does is a triangulator's yield one
+stage later. So at this stage the geometric branch can be shown to have *worked*
+and the feed-forward branch cannot be shown to have failed. Running it anyway is
+still worth it on a calibrated scene for one reason: `estimated_focal_ratio` is a
+free, independent check on the calibration the geometric branch depends on, and
+nothing else in the pipeline performs it.
+
+---
+
+## What this stage can and cannot settle about the stages above it
+
+**It can refute an upstream choice. It cannot confirm one.** With no ground truth,
+two candidate chains are each internally consistent and neither can be shown
+correct — but a chain that produces a diverged solve, a lost registration or a
+collapsed seed angle has been shown *broken*, and that is a decision you can act
+on. Across a seventeen-capture sweep every backtrack attempted at this stage was
+settled negatively or not at all; none was settled in favour.
+
+**And an upstream verdict can be exactly wrong until this stage sees it.** On one
+capture, four of five matching- and tracking-stage quality readings preferred the
+branch that the pose stage then showed produced 41% fewer points at 38% worse
+error, from a seed with a third of the parallax. The upstream readings were not
+misreported — the losing branch really was cleaner — it had bought that cleanliness
+by discarding most of its correspondences, which only shows up once something tries
+to build a model. **So a matcher question that could not be settled at tracking is
+worth carrying forward rather than closing.**
+
+**Two things follow for how you read this stage's own numbers.** Point count is
+bounded by the subject, so it does not compare across captures — a cropped subject,
+a mostly-empty frame, or a capture that is two disconnected sites all return correct
+results that look like failures. And `median_triangulation_angle` and reprojection
+error genuinely disagree; a configuration that improves the error while lowering the
+angle is usually buying a smaller, easier model rather than a better one.
+
 ---
 
 ## What has NOT been measured

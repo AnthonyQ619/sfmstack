@@ -152,7 +152,8 @@ diagnostics:
     severity: warn
     message: Points are supported by two views each; BA has no redundancy.
     suggested_actions:
-      - Widen the matcher's window so tracks reach further.
+      - "Widen the matcher's pairing so tracks reach further -- `window` under\
+        sequential; under exhaustive lower min_matches instead."
       - Raise min_observations to 3 to see how much genuine multi-view structure exists.
     see_also: tuning.md#mean_track_length-near-20
 

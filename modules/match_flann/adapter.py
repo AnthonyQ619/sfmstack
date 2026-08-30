@@ -346,7 +346,7 @@ def run(ctx: Ctx):
     out.metric("weak_pairs", weak_pairs, direction="neutral")
     out.metric("planarity",
                None if mean_planarity is None else round(mean_planarity, 3),
-               direction="lower_better")
+               direction="lower_better", healthy=(None, 0.9))
     out.metric("match_agreement",
                None if agreement is None else round(agreement, 3),
                direction="higher_better", healthy=(0.9, None))

@@ -1,5 +1,5 @@
 name: PoseEssentialToPnP
-version: 1.0.0
+version: 1.1.0
 kind: pose
 summary: >
   Incremental SfM: essential-matrix bootstrap on a chosen initial pair, then
@@ -42,7 +42,7 @@ description: |
   Scale is arbitrary and unrecoverable from images alone. The initial pair's
   baseline is fixed to unit length, so every distance downstream is in that unit.
 
-image: sfmstack/pose-incremental:1.0.0
+image: sfmstack/pose-incremental:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -152,7 +152,16 @@ params:
     default: true
     description: Refine a window of recent cameras and their structure during registration.
     tuning: >
-      Leave on. Off is only correct when you are deliberately measuring how much
+      Leave on, and expect it to buy less the shorter and better-connected the
+      set is. It removes drift that accumulates along a registration chain; on a
+      small exhaustively-matched set every frame shares structure with every
+      other, there is barely a chain, and it has been measured making the raw
+      mean reprojection error WORSE on such a capture while the median improved.
+      That is not a reason to turn it off -- the median is the statistic that
+      survives a few bad observations -- but it does mean the measured benefit
+      tables below are not predictions for a set of that shape.
+
+      Off is only correct when you are deliberately measuring how much
       drift the registration itself produces, or when pycolmap is unavailable --
       the module raises rather than silently skipping in that case. Turning it off
       does not save as much as it looks like it does: the cost is roughly linear
@@ -165,12 +174,27 @@ params:
     maximum: 100
     description: Cameras in the sliding window. The two oldest are held fixed.
     tuning: >
-      The cost/benefit dial. Cost grows faster than linearly, benefit does not.
-      Below 5 there is almost no freedom left after the two fixed cameras. Above
-      ~20 you are paying global-BA prices per registration to correct drift that
-      global BA at the end will correct anyway -- widen this only when
-      local_ba_gain_px stays high late in the sequence, which means drift is
-      outrunning the window.
+      READ THE IMAGE COUNT FIRST. Everything below is written for a sequence
+      LONGER than the window, where "local" and "global" are different solves. On
+      a set at or below the window size there is no such distinction: the window
+      is the whole model, every camera is in it, and the drift this parameter
+      exists to bound cannot accumulate because there is no chain to accumulate
+      along. On such a set WIDENING IT TO THE IMAGE COUNT IS THE BEST SETTING,
+      measured -- reprojection error fell monotonically as the window grew to the
+      image count and then stopped changing, because past that there is nothing
+      left to add. Narrowing it there is strictly harmful, and narrowing is what
+      the rest of this note and the not-converging diagnostic would otherwise
+      tell you to do.
+
+      ON A SEQUENCE LONGER THAN THE WINDOW, the cost/benefit dial. Cost grows
+      faster than linearly, benefit does not. Below 5 there is almost no freedom
+      left after the two fixed cameras. Above ~20 you are paying global-BA prices
+      per registration to correct drift that global BA at the end will correct
+      anyway -- widen this only when local_ba_gain_px stays high late in the
+      sequence, which means drift is outrunning the window. Note that the
+      artifact publishes only the MEAN gain over all solves, so "late in the
+      sequence" is not something this module lets you read; treat that trigger as
+      unavailable and sweep the window instead.
 
   local_ba_interval:
     type: integer
@@ -275,6 +299,15 @@ metrics:
       reprojection error means the filters are strict; low with poor error means
       the tracks were wrong.
 
+      NOT COMPARABLE ACROSS min_track_len SETTINGS. The denominator is the FULL
+      input track table and does not shrink when min_track_len filters tracks out
+      before triangulation, so raising that parameter makes this metric fall
+      mechanically -- it is not evidence that the setting hurt. Nor is it
+      comparable across captures: a cropped subject, a dead backdrop, or a capture
+      that is two disconnected sites all bound it for reasons that have nothing to
+      do with this module. Compare it only between runs that differ in something
+      other than which tracks were admitted.
+
   init_pair_angle:
     direction: higher_better
     healthy: [4.0, null]
@@ -302,6 +335,18 @@ metrics:
       local_ba_robust_loss on, because Ceres is minimising the robust cost and this
       metric reports the raw mean.
 
+      WHAT IT CANNOT DO, all measured. It is NOT comparable across
+      local_ba_window settings -- a narrower window leaves each solve further from
+      its own optimum, so the per-solve gain RISES while the finished model gets
+      worse. It does NOT rank local_ba_loss_scale: swept downward it rises
+      monotonically straight through the point where median_reprojection_error
+      turns and starts climbing. And it is NOT the size of what local BA is worth:
+      an ablation on a capture reading a gain of 0.02 px found switching local BA
+      off cost 14% of the mean error. Use it to see that in-loop refinement is
+      doing something; use median_reprojection_error to choose between settings.
+
+      Suppressed to null when a solve diverges, which raises local_ba_diverged.
+
   median_reprojection_error:
     direction: lower_better
     healthy: [null, 2.0]
@@ -325,7 +370,10 @@ diagnostics:
     suggested_actions:
       - Check the matcher's `planarity` -- a planar or rotation-only capture cannot seed.
       - Lower init_min_angle_deg only after confirming the capture has baseline.
-      - Widen the matcher's window so more pairs are candidates.
+      - "Widen the matcher's PAIRING so more pairs are candidates -- `window` only\
+        does this under `pairing: sequential`; under `exhaustive` every pair is\
+        already proposed and the knob is inert. There, the dial is the matcher's\
+        acceptance threshold or its min_matches floor."
     see_also: limitations.md#degenerate-captures
 
   - code: partial_registration
@@ -333,7 +381,9 @@ diagnostics:
     message: Some images could not be registered and carry valid=False.
     suggested_actions:
       - Check the tracker's min_frame_observations for the missing frames.
-      - Widen the matcher's window so those frames link to more neighbours.
+      - "Link those frames to more neighbours at the matcher -- under `pairing:\
+        sequential` that is `window`; under `exhaustive` the pairs already exist\
+        and were dropped, so the dial is min_matches or the acceptance threshold."
       - Lower min_pnp_inliers only if you accept weaker poses.
     see_also: tuning.md#registered_fraction-below-10
 
@@ -346,12 +396,24 @@ diagnostics:
       - Run bundle adjustment; this module does not refine globally.
     see_also: tuning.md#mean_reprojection_error-above-2
 
+  - code: local_ba_diverged
+    severity: error
+    message: A local bundle-adjustment solve diverged; the poses are not trustworthy.
+    suggested_actions:
+      - "Exclude under-constrained points from the window: raise min_triangulation_angle_deg, or min_track_len to 3. A two-view track and a near-parallel point are the same defect here and both were measured causing this."
+      - "Do NOT read local_ba_gain_px on this run; it is suppressed."
+      - "If it persists, set local_ba: false to get a usable model and report the configuration."
+    see_also: tuning.md#local-ba-diverged
+
   - code: local_ba_not_converging
     severity: warn
-    message: Local solves are hitting the iteration cap.
+    message: >
+      Local solves are hitting the iteration cap. Raised at INFO when the window is
+      already consistent, which is the ordinary case and costs nothing.
     suggested_actions:
-      - Raise local_ba_max_iterations.
-      - Or narrow local_ba_window; a wide window is a harder problem per solve.
+      - "Check local_ba_loss_scale FIRST: a scale far above the residuals leaves the robust loss disengaged, and it is the only one of these knobs measured to improve anything."
+      - Raise local_ba_max_iterations only if the gain is large relative to the residual; where it is not, this was measured to buy nothing at eight times the cost.
+      - On a set at or below local_ba_window, WIDEN the window to the image count rather than narrowing it -- narrowing was measured strictly harmful there.
     see_also: tuning.md#local-ba-is-not-converging
 
   - code: local_ba_not_helping
@@ -361,6 +423,7 @@ diagnostics:
       - Nothing, if mean_reprojection_error is already low; there is no drift to remove.
       - With local_ba_robust_loss on, the robust cost can fall while the raw mean rises.
       - Set local_ba false if the runtime is not worth it for this stack.
+      - This metric is NOT comparable across local_ba_window settings, and it does not rank local_ba_loss_scale settings -- it rose monotonically through the point where the model started getting worse. Judge those two on median_reprojection_error instead.
     see_also: tuning.md#local_ba_gain_px-at-or-below-zero
 
   - code: weak_structure

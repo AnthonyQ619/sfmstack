@@ -276,7 +276,8 @@ def run(ctx: Ctx):
             severity="warn",
             message=f"Points carry {mean_len:.2f} observations each on average.",
             suggested_actions=[
-                "Widen the matcher's window so tracks reach further.",
+                "Widen the matcher's pairing so tracks reach further -- `window` "
+                "under sequential; under exhaustive lower min_matches.",
                 "Raise min_observations to 3 to measure the genuine multi-view structure.",
             ],
             see_also="tuning.md#mean_track_length-near-20",

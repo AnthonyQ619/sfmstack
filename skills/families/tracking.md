@@ -167,10 +167,19 @@ See [`docs/import_lessons.md`](../../docs/import_lessons.md).
 
 This stage is where that habit is cheapest to lose. Three of its metrics have gone
 outside their published bands with **no diagnostic firing** — a conflict rate in the
-gap between a ≤0.05 ceiling and a warning that tripped at 0.1, a split rate above
-its ceiling with no diagnostic defined at all, and a median track length under its
-floor. On one capture the silent one was the real defect, and fixing it improved
-every other reading.
+gap between its ceiling and a warning that tripped later, a split rate above the
+ceiling published at the time with no diagnostic defined at all, and a median track
+length under its floor. On one capture the silent one was the real defect, and
+fixing it improved every other reading.
+
+**Two of those three have since been retired**: the split-rate ceiling was raised
+after it was measured being breached routinely with nothing wrong, and the median
+track length was dropped for carrying no information. **Take the bands from the
+module manifest and never from a guide** — a guide's numbers are a snapshot and
+this paragraph has already gone stale once. A capture reading a split rate between
+the old ceiling and the new one followed the stale prose toward a detector
+backtrack that the manifest says cannot work, and was saved only by checking the
+manifest.
 
 The conflict-rate gap is now closed, but the habit is the point: **check every
 published metric against its own band, and treat diagnostics as the second pass.**
@@ -198,6 +207,16 @@ TAPIR comes from video and **image order is genuine input** — a shuffled or
 unordered collection is a different and harder problem than the one it was trained
 on, and `mostly_occluded` on a capture that should be continuous is the symptom.
 On an ordered capture TAPIR reaches furthest; on an unordered one, prefer VGGSfM.
+
+**Read the rotation metric as a LOWER BOUND, because it under-reads on exactly the
+captures this rule is about.** It is recovered from dense optical flow, and where
+the motion is large the flow fails on most of the frame and the fitted angle
+describes whatever slow region survived. Measured against a reconstruction on one
+capture, it reported single-digit median rotation with the large-rotation flag at
+zero while the true median was past twenty degrees. **A low reading is therefore
+not evidence that a capture is slow** — a high one is evidence that it is fast.
+Where the reading is low and the capture looks fast, corroborate with the matcher's
+per-pair counts before trusting it, and prefer the module whose failure is graceful.
 
 **`ordered` is necessary and nowhere near sufficient, and taken alone this rule has
 mispredicted on every capture that tested it.** `SceneTriage`'s `ordered` is a

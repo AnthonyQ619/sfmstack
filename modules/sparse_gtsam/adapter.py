@@ -361,7 +361,8 @@ def run(ctx: Ctx):
             ),
             suggested_actions=[
                 "Use SparseTriangulation; it computes the same answer far more cheaply.",
-                "Or widen the matcher's window so tracks reach more views.",
+                "Or widen the matcher's pairing so tracks reach more views -- "
+                "`window` under sequential; under exhaustive lower min_matches.",
             ],
             see_also="limitations.md#two-view-tracks",
         )

@@ -14,10 +14,19 @@ GPU required.
 patterns, wide baselines — or when the scene is uncalibrated. It is what
 `PoseEssentialToPnP` names when it refuses an uncalibrated scene.
 
-**Prefer PoseEssentialToPnP when** the scene is calibrated and well textured. On
-12 DTU frames, triangulating the same SIFT tracks: VGGT poses give 5899 points at
-**1.05 px**, the classical poses give 6900 at **0.365 px**. VGGT is
-initialisation-grade; follow it with bundle adjustment when precision matters.
+**Prefer PoseEssentialToPnP when** the scene is calibrated and well textured.
+Triangulating one track table against both, the classical poses returned more
+points at roughly a third of the reprojection error. VGGT is initialisation-grade;
+follow it with bundle adjustment when precision matters.
+
+**And note what this module cannot tell you about itself.** Its reprojection
+metrics are null by construction, so nothing in its own artifact answers "is this
+right" — the first number that does is a triangulator's yield, one stage later.
+Across a seventeen-capture sweep every reader that ran both chose the geometric
+branch on exactly that asymmetry, and none of them could have refuted the choice
+at the pose stage. What running this module IS reliably worth on a calibrated
+scene is `estimated_focal_ratio`: a free, independent check on the calibration the
+whole geometric branch rests on.
 
 **It fills `poses/v1` and only `poses/v1`.** The same forward pass also produces
 point maps and depth; those are `SparseVGGT` and `DenseVGGT`. Three modules, three

@@ -42,8 +42,12 @@ There is no parameter that fixes this. Sample fewer images instead.
 
 ## What it cannot tell you
 
-**Whether the capture had translation.** `baseline_span` is a proxy and a weak one.
-A pure-rotation capture yields poses that look fine and triangulate to nothing.
+**Whether the capture had translation.** `baseline_span` is a proxy and a weak one,
+and it is a ratio rather than a size — it measures how EVENLY the cameras are
+spread, not how far. A pure-rotation capture yields poses that look fine and
+triangulate to nothing, and can read a perfectly healthy span while doing it.
+`median_camera_separation` is the size, and it is in the model's arbitrary unit,
+so neither number answers "did the camera move" on its own.
 
 **Which images are wrong.** Every image is posed with equal confidence. There is no
 per-image inlier count and no `valid=False` case — anything below

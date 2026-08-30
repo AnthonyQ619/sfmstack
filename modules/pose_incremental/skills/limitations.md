@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-07
 ---
 
@@ -60,15 +60,26 @@ curves.
 against fixed structure and never moves a point once accepted, so small errors
 compound. That is inherent to incremental SfM without refinement.
 
-*What helps:* run `BundleAdjustmentGlobal` after it — that is exactly what it is
-for. For very long sequences, interleaved local BA during registration is the
-principled answer. The predecessor did this by taking a
-`BundleAdjustmentOptimizerLocal` *instance* as a constructor argument, making one
-module's behaviour a function of another module's object; this architecture
-deliberately does not reproduce that coupling.
+*What helps, and it is already on:* **interleaved local bundle adjustment during
+registration is implemented in this module and enabled by default** — `local_ba`
+plus six parameters that shape it. It refines a sliding window of recent cameras
+and their structure as registration proceeds, which is the principled answer to
+compounding drift. Follow it with `BundleAdjustmentGlobal`, which this module does
+not do and is not a substitute for.
 
-Recorded as a known gap: if drift proves to be the binding constraint, the right
-shape is a pose estimator that calls BA as a sub-step, not a parameter here.
+**Correction, because this section said the opposite.** An earlier version
+described in-loop local BA as an unimplemented known gap, on the grounds that the
+predecessor achieved it by taking a `BundleAdjustmentOptimizerLocal` *instance* as
+a constructor argument and this architecture would not reproduce that coupling.
+The coupling was indeed not reproduced — the solve is internal rather than another
+module's object — but the capability was, and the text was never updated. A reader
+arriving here from either local-BA diagnostic was told the feature they were
+already running did not exist.
+
+*The residual limit:* local BA bounds drift within its window and cannot bound it
+across a sequence much longer than the window. On a set at or below the window
+size there is no drift to bound at all, and the parameter guidance changes shape
+accordingly — see `tuning.md` and the `local_ba_window` note in the manifest.
 
 ## When a global method is simply better
 

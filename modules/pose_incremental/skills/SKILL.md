@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: OpenCV essential matrix + SQPnP, the COLMAP incremental strategy
 curated_at: 2026-08-07
 sources: 4
@@ -51,9 +51,11 @@ pipeline can fix this; it needs a known length in the scene or metric depth.
    depth *even when reprojection error looks fine*. The two genuinely disagree,
    and this one is the more honest.
 
-**Cheapest thing that usually works:** defaults. On DTU scan1 (12 contiguous
-images, SIFT + exhaustive NN matching) that gives 12/12 registered, 6893 points,
-0.44px mean reprojection error and 15.5° median parallax in 2 seconds.
+**Cheapest thing that usually works:** defaults. On a small calibrated set with a
+connected view graph they register every image at sub-pixel reprojection error in
+seconds, and across a seventeen-capture sweep defaults were the settled answer on
+about a third of them. The one parameter worth reaching for beyond that is
+`local_ba_loss_scale` — see [tuning.md](tuning.md).
 
 **Reading the output:** [artifact.md](artifact.md). This module does not refine
 globally — run [BundleAdjustmentGlobal](../../ba_global/skills/SKILL.md) after it.

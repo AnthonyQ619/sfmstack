@@ -363,7 +363,7 @@ def run(ctx: Ctx):
     # ransac_threshold and between matchers on identical features.
     out.metric("planarity",
                None if mean_planarity is None else round(mean_planarity, 3),
-               direction="lower_better")
+               direction="lower_better", healthy=(None, 0.9))
     # D: no band. Zero weak pairs is unreachable on any exhaustive sweep of a
     # capture that visits more than one place -- pairs that share no content are
     # SUPPOSED to be dropped, and this module's own tuning file says a pair it

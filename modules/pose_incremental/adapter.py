@@ -404,7 +404,9 @@ def run(ctx: Ctx):
             f"tracks and {p.init_min_angle_deg} degrees of median parallax. Check the "
             f"matcher's `planarity` metric -- a planar or rotation-only capture "
             f"cannot seed an incremental reconstruction at all. If the capture does "
-            f"have baseline, widen the matcher's window so more pairs are candidates."
+            f"have baseline, widen the matcher's PAIRING so more pairs are candidates -- "
+            f"`window` only does this under sequential pairing; under exhaustive "
+            f"every pair already exists and the dial is min_matches instead."
         )
 
     _, i0, j0, R, t, init_angle = best
@@ -641,6 +643,15 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(4.0, None))
 
     mean_gain = float(np.mean(ba_gains)) if ba_gains else None
+    # A window solve that diverges produces a gain of ~1e150, which is not a
+    # measurement. Publishing it as one put a 150-digit float into an artifact
+    # note and an info-severity diagnostic whose first action was "nothing"; six
+    # captures hit it through five unrelated parameters. The bound is deliberately
+    # loose -- anything past a thousand pixels on a scene whose images are ~1e3 px
+    # across is a solver failure, not a bad model.
+    ba_diverged = mean_gain is not None and not (abs(mean_gain) < 1e3)
+    if ba_diverged:
+        mean_gain = None
     out.metric("local_ba_runs", ba_runs, direction="neutral")
     out.metric("local_ba_gain_px", round(mean_gain, 4) if mean_gain is not None else None,
                direction="higher_better", healthy=(0.0, None))
@@ -656,7 +667,9 @@ def run(ctx: Ctx):
             ),
             suggested_actions=[
                 "Check the tracker's min_frame_observations for those frames.",
-                "Widen the matcher's window so they link to more neighbours.",
+                "Link those frames to more neighbours at the matcher -- under "
+                "sequential pairing that is `window`; under exhaustive the pairs "
+                "already exist and were dropped, so the dial is min_matches.",
             ],
             see_also="tuning.md#registered_fraction-below-10",
         )
@@ -685,18 +698,64 @@ def run(ctx: Ctx):
             see_also="limitations.md#degenerate-captures",
         )
 
-    if ba_failures:
+    if ba_diverged:
         out.diagnostic(
-            "local_ba_not_converging",
-            severity="warn",
+            "local_ba_diverged",
+            severity="error",
             message=(
-                f"{ba_failures} of {ba_runs} local solves hit the "
-                f"{p.local_ba_max_iterations}-iteration cap without converging."
+                f"A local bundle-adjustment solve diverged: window error moved by "
+                f"a non-finite or absurd amount over {ba_runs} solves. The poses "
+                f"above are not trustworthy."
             ),
             suggested_actions=[
-                f"Raise local_ba_max_iterations above {p.local_ba_max_iterations}.",
-                "Or narrow local_ba_window; a wide window is a harder problem.",
+                "Exclude under-constrained points from the window: raise "
+                "min_triangulation_angle_deg, or min_track_len to 3. A two-view "
+                "track and a near-parallel point are the same defect here and "
+                "both were measured causing this.",
+                "Do NOT read local_ba_gain_px on this run; it is suppressed.",
+                "If it persists, set local_ba: false to get a usable model and "
+                "report the configuration.",
             ],
+            see_also="tuning.md#local-ba-diverged",
+        )
+    elif ba_failures:
+        # Gated on whether non-convergence is CONSEQUENTIAL. Hitting the cap is a
+        # Ceres termination condition, not a statement about the model: forcing
+        # convergence by raising the cap eightfold converted solves and moved no
+        # published metric at all. It matters only when the window still has real
+        # drift to remove, which is what a gain large relative to the residual says.
+        consequential = (
+            mean_gain is not None and errors
+            and mean_gain > 0.25 * mean_err
+        )
+        out.diagnostic(
+            "local_ba_not_converging",
+            severity="warn" if consequential else "info",
+            message=(
+                f"{ba_failures} of {ba_runs} local solves hit the "
+                f"{p.local_ba_max_iterations}-iteration cap without converging"
+                + (
+                    ", and the window still has drift to remove."
+                    if consequential else
+                    f", but the window is already consistent (gain "
+                    f"{mean_gain:+.4f}px against {mean_err:.3f}px of residual), so "
+                    f"this is expected and costs nothing."
+                )
+            ),
+            suggested_actions=(
+                [
+                    "Check local_ba_loss_scale FIRST: a scale far above the "
+                    "residuals leaves the robust loss disengaged, and it is the "
+                    "only one of these knobs measured to improve anything.",
+                    "Raise local_ba_max_iterations only if the gain is large; "
+                    "where it is not, this was measured to buy nothing at 8x cost.",
+                    "On a set at or below local_ba_window, WIDEN the window to the "
+                    "image count rather than narrowing it -- narrowing was measured "
+                    "strictly harmful there.",
+                ] if consequential else
+                ["Nothing. Converging these solves was measured to change no "
+                 "published metric; see tuning.md."]
+            ),
             see_also="tuning.md#local-ba-is-not-converging",
         )
 
@@ -712,6 +771,10 @@ def run(ctx: Ctx):
                 "Nothing, if reprojection error is already low -- there is no drift to remove.",
                 "With robust_loss on, the robust cost can fall while the raw mean rises.",
                 "Set local_ba: false if the runtime is not worth it for this stack.",
+                "This metric is NOT comparable across local_ba_window settings, and "
+                "it does not rank local_ba_loss_scale settings: it rose monotonically "
+                "through the point where the model started getting worse. Judge those "
+                "two on median_reprojection_error instead.",
             ],
             see_also="tuning.md#local_ba_gain_px-at-or-below-zero",
         )

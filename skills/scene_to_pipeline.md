@@ -511,10 +511,20 @@ The indices are separate per series because the subsets differ: a pair can admit
 homography fit and no rotation estimate, and an uncalibrated scene fills the planar
 series and neither of the others. Do not zip one against the other's index.
 
-Two things this makes possible that the fraction alone did not. **Keep the named
-pairs out of the seed** rather than raising `init_min_angle_deg` globally and
-hoping. And **recompute the fraction over a subset**, to see whether the planarity
-is spread through the capture or concentrated in a few views.
+Two things this makes possible that the fraction alone did not. **Check the seed
+the estimator actually chose against the named pairs** — the pose artifact's note
+says which pair it seeded on, and the flagged list says which pairs it must not
+have. And **recompute the fraction over a subset**, to see whether the planarity is
+spread through the capture or concentrated in a few views.
+
+**What this does NOT make possible, corrected.** An earlier version of this
+paragraph said to "keep the named pairs out of the seed rather than raising
+`init_min_angle_deg` globally and hoping." **There is no parameter that does that.**
+No pose module here takes a pair or frame exclusion; `init_min_angle_deg` is the
+only seed lever and it is exactly the global one the sentence disparaged. The
+executable version is a post-run check: run it, read the seed, confirm it is not a
+flagged pair. On every capture measured, the scorer avoided them unprompted —
+because it prefers parallax and a degenerate pair has little.
 
 **Localised does not mean harmless, and this is a correction.** An earlier draft
 of this paragraph said that if the flagged pairs cluster, "a global solver switch
@@ -530,8 +540,8 @@ connected to the rest?*
 
 | what the series shows | what it means for POSE |
 | --- | --- |
-| a single flagged pair, the rest clean and well connected | the seed is safe. Exclude that pair, stay incremental, and say which pair you excluded |
-| flagged pairs sharing a common frame | that frame is the problem, not the geometry. Exclude the frame from seed candidacy; incremental still works |
+| a single flagged pair, the rest clean and well connected | the seed is almost certainly safe. Stay incremental, then READ which pair it seeded on and confirm it was not the flagged one |
+| flagged pairs sharing a common frame | that frame is the suspect. Same check after the run. If the seed did land there, `init_min_angle_deg` is the only lever and it is global -- which is where a global solver becomes the cheaper answer |
 | flagged pairs spread across the capture, or covering the only wide-baseline pairs | there is no clean seed to find. **Use a solver that does not bootstrap from two views** |
 | the reading is high enough to fire `planar_scene` | the same conclusion, reached without needing the series at all |
 
@@ -583,10 +593,18 @@ metric is out of band and nothing says so.
 
 Measured across one stage on eight captures, three metrics sat outside their
 published bands with **no diagnostic on any of them**: a conflict rate at 0.08
-against a ≤0.05 ceiling on a warning that does not trip until 0.1; a split rate at
-0.15 against ≤0.1; a median track length at 2.0 against a ≥3.0 floor. The first of
-those was the capture's real defect, and fixing it improved every other reading —
-a reader working from diagnostics alone would have shipped it.
+against a ≤0.05 ceiling on a warning that does not trip until 0.1; a split rate
+above the ceiling published at the time; a median track length under its floor.
+The first of those was the capture's real defect, and fixing it improved every
+other reading — a reader working from diagnostics alone would have shipped it.
+
+**Two of those three examples have since been retired, and how they were retired
+is the more useful lesson.** The split-rate ceiling was raised once it was measured
+being breached routinely with nothing wrong, and the median-track-length metric was
+dropped once it was found to carry no information its neighbours did not. So do not
+read the numbers in this paragraph as current bands — **read the module's manifest
+for that, always.** A band quoted in a guide is a snapshot; the manifest is the
+contract, and when the two disagree the manifest wins.
 
 So the order is: **read every published metric against its own band first, and
 treat diagnostics as a second pass that catches what you did not think to check.**
@@ -628,9 +646,12 @@ Two corollaries worth stating, because both have cost runs:
    `feature_index` means the tracker merges by proximity, and `merge_eps_px` is
    specific to the matcher *and* the working resolution. Read `inconsistent_rate`
    and `split_rate` together.
-7. **`heavy_downscale` bites hardest where texture is already thin.** Office at
-   0.165 destroys the only signal its walls have. On that scene the first move is
-   not a detector but a larger working resolution — which means building a NEW
+7. **`heavy_downscale` bites hardest where texture is already thin.** On a capture
+   whose wanted surfaces carry only faint, fine-grained signal — a built interior
+   of plain painted walls is the type case — an aggressive downscale destroys the
+   only thing there was to detect, and no detector parameter recovers it. There
+   the first move is not a detector but a larger working resolution — which means
+   building a NEW
    scene, since a scene cannot be resized in place. The parameter depends on the
    loader's resize mode: `max_edge` under `resize: auto`, `target_resolution` under
    `resize: fixed` or `square`. Both names appear in this stack and they are two

@@ -116,10 +116,23 @@ metrics:
     direction: higher_better
     healthy: [0.1, null]
     meaning: >
-      Largest camera-centre separation over the median one. Near 1 means every
-      camera sits at nearly the same distance from its neighbours -- a turntable.
-      Near 0 means the cameras are nearly coincident and no triangulation against
-      these poses will condition well.
+      THE MEDIAN camera-centre separation OVER THE LARGEST one, so it is bounded
+      by 1 and falls as the spread of baselines widens. It is a UNIFORMITY ratio,
+      not a size: it says nothing about how far apart the cameras are, only how
+      evenly. Read median_camera_separation for the size.
+
+      Near 1 means every camera pair is about as far apart as every other. Note
+      that an ORBIT DOES NOT PRODUCE THAT -- on a ring, adjacent cameras are close
+      and opposite ones are a diameter apart, so a clean partial orbit reads
+      around a third and that is healthy. Values well under 0.1, which is where
+      the diagnostic fires, mean the separations are dominated by a few distant
+      pairs while most cameras sit nearly on top of each other; that is the case
+      where triangulation against these poses will not condition well.
+
+      An earlier version of this text had the ratio the wrong way up and read
+      "near 1 means a turntable". Under that reading every well-formed orbit in a
+      capture sweep looked like near-coincident cameras. The computation was
+      always median-over-largest; the description was what was wrong.
 
   estimated_focal_ratio:
     direction: neutral

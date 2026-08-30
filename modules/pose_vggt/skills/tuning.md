@@ -85,9 +85,15 @@ quadratic in image count. Prefer sampling fewer images (`SceneLoader`'s
 
 ## `baseline_span` low
 
-Camera separations are dominated by a few distant pairs, or the cameras are nearly
-coincident. Nothing triangulated against these poses will condition well. No
-parameter here recovers translation the capture did not have.
+The median camera separation is a small fraction of the largest, so a few distant
+pairs dominate while most cameras sit nearly on top of each other. Nothing
+triangulated against those close pairs will condition well. No parameter here
+recovers translation the capture did not have.
+
+**Do not read a mid-range value as a warning.** The metric is a uniformity ratio,
+not a size, and an orbit is inherently non-uniform — adjacent cameras are close,
+opposite ones are a diameter apart. Readings around a third are what a healthy
+partial orbit produces; the diagnostic fires below 0.1, which is a tenfold spread.
 
 ## `dtype`
 

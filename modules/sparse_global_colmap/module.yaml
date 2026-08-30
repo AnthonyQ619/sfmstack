@@ -276,7 +276,9 @@ diagnostics:
     message: Some images were not placed by the global solve.
     suggested_actions:
       - Check largest_component_fraction; a split graph cannot be one model.
-      - Widen the matcher's window or use pairing exhaustive.
+      - "Widen the matcher's pairing: `window` under sequential, or `exhaustive`.\
+        If it is already exhaustive the pairs exist and were dropped -- lower\
+        min_matches or loosen the acceptance threshold instead."
     see_also: limitations.md#what-global-cannot-recover-from
 
   - code: split_into_models

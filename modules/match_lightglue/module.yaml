@@ -1,5 +1,5 @@
 name: FeatureMatchLightGlue
-version: 1.5.0
+version: 1.6.0
 kind: matching
 summary: >
   Learned sparse matcher with adaptive depth and width. Reasons about the whole
@@ -26,7 +26,7 @@ description: |
   planarity -- is identical to the classical matchers, so all three are directly
   comparable and only the correspondence step differs.
 
-image: sfmstack/match-lightglue:1.5.0
+image: sfmstack/match-lightglue:1.6.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -271,12 +271,21 @@ metrics:
 
   planarity:
     direction: lower_better
+    healthy: [null, 0.9]
     meaning: >
       Homography inliers over fundamental inliers, averaged over pairs. Near 1 the
       correspondences are explained by a PLANE as well as by a BASELINE, and a
       baseline is what every geometric stage downstream needs. Not a matching
       failure -- no matcher parameter fixes the underlying geometry, and
       inlier_ratio is often excellent alongside it.
+
+      THE CEILING IS 0.9 AND IT IS DELIBERATELY HIGH. Across a seventeen-capture
+      sweep this metric ran between roughly 0.4 and 0.87 on captures whose
+      consecutive-pair degeneracy probe read exactly ZERO, and every one of them
+      seeded an incremental reconstruction at ample parallax. A large flat surface
+      filling the frame raises this number; it does not make a two-view bootstrap
+      fail. A band any tighter fires on ordinary captures and buys solver switches
+      that are not needed.
 
       THE BANDS. Below ~0.5, general 3D structure, nothing to do. ~0.5 to ~0.9, a
       real baseline with a dominant plane in view -- ordinary for a compact subject
@@ -298,10 +307,21 @@ metrics:
       IT CAN DISAGREE WITH THE PRE-STAGE PROBE, AND THE PROBE IS NOT THE
       AUTHORITY HERE. scene_analysis reports planar_dominance and
       pure_rotation_risk over CONSECUTIVE pairs only, an 11-pair boolean against
-      this metric's mean over the whole verified graph. A capture has read 0.0 on
-      every consecutive pair while this read 0.85 over an exhaustive sweep: no
-      adjacent pair is planar and most correspondences still land on one wall.
+      this metric's mean over the whole verified graph. Captures have read ZERO on
+      every consecutive pair while this read high over an exhaustive sweep: no
+      adjacent pair is planar and most correspondences still land on one surface.
       A zero from the probe does not clear an exhaustive graph.
+
+      NEITHER DOES A HIGH READING HERE CONDEMN THE CAPTURE. Across a seventeen-
+      capture sweep this metric ran well above half on six captures whose
+      consecutive-pair probe read exactly zero, and every one of them seeded an
+      incremental reconstruction at ample parallax. The number rises whenever a
+      large flat surface dominates the frame, which is a fact about the subject
+      and not about whether a two-view bootstrap will condition. THE THRESHOLD
+      THAT MATTERS IS ~0.9, published in the incremental pose module's
+      limitations, above which a homography explains the pairs as well as epipolar
+      geometry does. Between roughly 0.5 and that, the action is to watch the
+      triangulation angle downstream, not to change solver.
   mean_match_score:
     direction: higher_better
     healthy: [0.5, null]

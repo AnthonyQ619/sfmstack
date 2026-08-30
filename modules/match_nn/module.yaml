@@ -1,5 +1,5 @@
 name: FeatureMatchNN
-version: 1.5.0
+version: 1.6.0
 kind: matching
 summary: >
   Descriptor nearest-neighbour matching with Lowe's ratio test, a mutual
@@ -31,7 +31,7 @@ description: |
   is the failure the predecessor's `RANSAC_homography` flag asked the user to
   predict in advance; here it is observed per pair after the fact.
 
-image: sfmstack/match-nn:1.5.0
+image: sfmstack/match-nn:1.6.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -252,12 +252,21 @@ metrics:
 
   planarity:
     direction: lower_better
+    healthy: [null, 0.9]
     meaning: >
       Homography inliers over fundamental inliers, averaged over pairs. Near 1 the
       correspondences are explained by a PLANE as well as by a BASELINE, and a
       baseline is what every geometric stage downstream needs. Not a matching
       failure -- no matcher parameter fixes the underlying geometry, and
       inlier_ratio is often excellent alongside it.
+
+      THE CEILING IS 0.9 AND IT IS DELIBERATELY HIGH. Across a seventeen-capture
+      sweep this metric ran between roughly 0.4 and 0.87 on captures whose
+      consecutive-pair degeneracy probe read exactly ZERO, and every one of them
+      seeded an incremental reconstruction at ample parallax. A large flat surface
+      filling the frame raises this number; it does not make a two-view bootstrap
+      fail. A band any tighter fires on ordinary captures and buys solver switches
+      that are not needed.
 
       THE BANDS. Below ~0.5, general 3D structure, nothing to do. ~0.5 to ~0.9, a
       real baseline with a dominant plane in view -- ordinary for a compact subject

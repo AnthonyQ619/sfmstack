@@ -52,8 +52,13 @@ one.
 written so a downstream threshold in scene units can be derived rather than
 guessed.
 
-**`baseline_span` near 1.0 means uniform spacing**, which a turntable produces.
-Near 0 means near-coincident cameras. Neither says anything about correctness.
+**`baseline_span` is the median camera separation over the largest**, so it is a
+uniformity ratio bounded by 1 and not a size. Near 1 means every pair is about as
+far apart as every other — **an orbit does not do this**, because adjacent cameras
+are close and opposite ones are a diameter apart, so a clean partial orbit reads
+around a third. Low values mean a few distant pairs dominate while the rest sit
+nearly on top of each other. Read `median_camera_separation` for the size, and
+note that neither says anything about correctness.
 
 ## What is NOT here
 

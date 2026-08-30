@@ -405,7 +405,8 @@ def run(ctx: Ctx):
             ),
             suggested_actions=[
                 "Check largest_component_fraction; a split graph cannot be one model.",
-                "Widen the matcher's window, or use pairing: exhaustive.",
+                "Widen the matcher's pairing: `window` under sequential, or "
+                "`exhaustive`. If already exhaustive, lower min_matches instead.",
             ],
             see_also="limitations.md#what-global-cannot-recover-from",
         )

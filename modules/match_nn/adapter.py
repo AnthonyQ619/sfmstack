@@ -344,6 +344,7 @@ def run(ctx: Ctx):
         "planarity",
         None if mean_planarity is None else round(mean_planarity, 3),
         direction="lower_better",
+        healthy=(None, 0.9),
     )
 
     # A: the two failures a two-view check cannot see, one stage before the

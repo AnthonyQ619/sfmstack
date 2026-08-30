@@ -282,6 +282,25 @@ metrics:
       correspondences. Null on an uncalibrated scene, where there is no metric
       angle to report.
 
+      IT DEGRADES EXACTLY WHERE IT IS BEING READ, AND IT UNDER-READS WHEN IT DOES.
+      The angle comes from dense optical flow between the pair. Where the motion is
+      large the flow loses correspondence on much of the frame, the essential
+      matrix is fitted to whatever slow-moving region survived, and the recovered
+      rotation is that region's -- which is smaller than the true one. Verified
+      against a reconstruction on one capture: this metric read single digits with
+      large_rotation_risk at zero, while the reconstructed poses put the median
+      past twenty degrees with several pairs past sixty.
+
+      SO TREAT IT AS A LOWER BOUND, and treat a LOW reading on a capture that looks
+      fast as unproven rather than as reassurance. A high reading is trustworthy --
+      flow that survived enough to fit a wide-angle essential matrix did survive.
+      There is no confidence or correspondence-count field on this series to
+      discount it with, which is a known gap. The only cheap corroboration
+      available before a reconstruction exists is the matcher's per-pair match
+      counts: a pair whose rotation is genuinely large loses matches, and one that
+      this metric calls slow while the matcher barely pairs it is the case where
+      this number is wrong.
+
   large_rotation_risk:
     direction: lower_better
     healthy: [null, 0.33]

@@ -105,11 +105,17 @@ Read them at planning time, from `sfm_plan_brief`. **Both read zero on the large
 majority of captures**, which is what makes a non-zero reading worth acting on
 rather than weighing. The readings observed so far, as capture shapes:
 
-| what was captured | what the pair read | what it meant |
-| --- | --- | --- |
-| a near-planar built surface walked past nearly parallel, with a mirrored object in front of it | a fifth of pairs planar, a tenth rotation-only | genuinely the planar row above — real baseline, flat structure |
-| a wall of flat panels shot nearly square-on | a fifth of pairs planar, rotation-only at zero | the cleanest confirmation the pair works: a flat subject, with the rotation discriminator correctly silent because the camera did translate |
-| an orbit around an object with one overhead pass across a flat roof plane | one pair of eleven on both | a single frame's geometry, not the capture's. Watch the seed; not a reason to change solver |
+| what the pair read | what it meant |
+| --- | --- |
+| a minority of pairs planar, a smaller minority rotation-only | the planar row above — real baseline, flat structure |
+| a minority of pairs planar, rotation-only at zero | the pair working as designed: a flat subject, with the rotation discriminator correctly silent because the camera did translate |
+| one pair of many on both | one frame's geometry, not the capture's. Read the seed the scorer chose; not a reason to change solver |
+
+**The capture descriptions that produced these rows have been removed on purpose.**
+They were specific enough to identify individual captures, which made the table a
+lookup key rather than a rule — a reader recognising its own capture in a row reads
+its own prior answer back and calls it confirmation. What generalises is the
+*shape* of the reading, which is what the table now carries.
 
 **The fraction is not the actionable half, and as of SceneMotion 1.1.0 you get the
 rest.** Every non-zero reading above is one or two pairs of eleven, so no
@@ -122,13 +128,44 @@ whether the degeneracy is local — it is **whether a clean seed still exists af
 the flagged pairs are excluded.** An incremental solver needs exactly one
 well-conditioned pair to bootstrap from and then grows by resection.
 
-- **One flagged pair, the rest clean and connected** → the seed is safe. Exclude
-  that pair, stay incremental, and name the pair you excluded.
-- **Flagged pairs sharing a common frame** → that frame is the problem, not the
-  geometry. Keep it out of seed candidacy.
+**First, a correction about what is executable.** Earlier wording here told you to
+"exclude that pair" or "keep it out of seed candidacy." **No pose module in this
+repository has a pair- or frame-exclusion parameter.** The incremental estimator
+exposes one seed lever, `init_min_angle_deg`, and it is a global threshold — the
+blunt instrument this passage was written to avoid. So the flagged pairs are a
+thing to CHECK THE SEED AGAINST after the run, not a thing to exclude before it.
+
+- **One flagged pair, the rest clean and connected** → the seed is almost certainly
+  safe, because the scorer prefers parallax and a degenerate pair has little.
+  Run it, read which pair it seeded on, and confirm it is not a flagged one.
+  Measured on several captures: it never was.
+- **Flagged pairs sharing a common frame** → that frame is the suspect. Same
+  procedure: run, read the seed, check. If the seed *did* land on that frame,
+  raising `init_min_angle_deg` is the only lever available and it is global —
+  which is the point at which the global solver becomes the cheaper answer.
 - **Flagged pairs spread across the capture, or covering the only wide-baseline
   pairs** → there is no clean seed to find. Use a solver that does not bootstrap
   from two views.
+
+**The row this table was missing: a high `planarity` with the per-pair probe at
+zero.** That is the most common shape in the corpus, not an anomaly — a large flat
+surface filling the frame raises the matcher's `planarity` while no *consecutive*
+pair is degenerate, and the two numbers then disagree by a wide margin under
+near-identical names. They are different measurements: `planarity` is a mean over
+the whole verified graph, `planar_dominance` is a boolean fraction over consecutive
+pairs only. **Neither overrides the other, and the resolution is a threshold rather
+than an argument:** the incremental estimator's own limitations put the level at
+which a homography explains the pairs as well as epipolar geometry does at about
+0.9, and that figure is now the published ceiling on the metric. Below it, with the
+probe silent, there is nothing to act on — measured on six captures reading well
+above half with the probe at exactly zero, every one of which seeded at ample
+parallax.
+
+**Raising `init_min_angle_deg` is worth one run and rarely more.** Measured across
+the corpus it moved the seed on some captures and left every downstream metric
+unchanged on most of them; on one it improved every metric at once, and on one it
+pushed the seed so wide the local solve diverged. Treat it as a probe with a
+known-cheap cost, not as a fix with a known payoff.
 
 **What the global solver costs, measured.** Run on the same matches, on captures
 reading up to a fifth of pairs planar, it registered every frame and returned
