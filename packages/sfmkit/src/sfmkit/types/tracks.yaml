@@ -168,20 +168,38 @@ metrics:
       qualifies FEWER TRIPLES, and the per-triple sample is drawn from whatever is
       common. READ trifocal_triples BEFORE COMPARING TWO MEDIANS.
 
-      WHETHER A DIFFERENCE IS REAL. The uncertainty of this reading is set by how
-      many measurements it is a median of, and that is computable from what is
-      already published here:
+      WHETHER A DIFFERENCE IS REAL. There are two uncertainties here, and the one
+      that is easy to compute is the smaller and less important of them.
+
+      WITHIN one track table -- the same tracks, re-measured -- the median's
+      standard error is computable from what is already published:
 
           SE  ~=  1.14 * trifocal_transfer_px / sqrt(trifocal_samples)
 
-      A median's standard error is 1.253*sigma/sqrt(n); the residual spread was
-      measured across 86 runs spanning a 55x range of medians and came out a
-      near-constant 0.615 of the median (sd 0.066), which is what collapses the
-      expression to the median and the sample count. Worked: 1.406 over 947
-      samples is +/-0.052, and 1.504 over 621 is +/-0.069, so a gap of 0.098
-      between two trackers is about ONE standard error and settles nothing. Two
-      readings that differ by less than roughly three times this are the same
-      reading.
+      A median's standard error is 1.253*sigma/sqrt(n), and the residual spread
+      was measured across a large run corpus spanning a wide range of medians and
+      three trackers as a near-constant fraction of the median, which is what
+      collapses the expression to the median and the sample count.
+
+      ACROSS TWO TRACK TABLES -- WHICH IS EVERY COMPARISON ANYONE ACTUALLY MAKES
+      -- THAT FIGURE IS A FLOOR AND NOT THE ANSWER. Changing a tracker, a matcher
+      setting or a conflict policy changes which tracks exist, so the two medians
+      summarise different populations and sampling noise is the smallest of the
+      terms that separate them. Measured: a conflict policy that altered well
+      under one percent of the tracks moved this reading by more than a quarter,
+      roughly ten times the within-table SE. Used as the headline test, this
+      formula calls a difference real that is not.
+
+      SO USE THE TRACKER'S OWN SPAN AS THE YARDSTICK. Sweep one cheap parameter on
+      the tracker you are judging, with nothing else changed, and record the range
+      this metric covers across that sweep. A gap between two configurations
+      narrower than that span is not interpretable: it is inside the noise the
+      tracker generates by itself. Measured spans have run to roughly one and a
+      half times, which is why a several-fold difference decides a tracker choice
+      and a twenty-percent one settles nothing -- and two captures whose readers
+      applied this rule correctly withdrew a precision claim the SE alone would
+      have let them keep. Equal trifocal_triples is a precondition for comparing
+      at all, not a substitute for this test.
 
       AND CHECK trifocal_triples BEFORE COMPARING AT ALL. The medians are over
       whichever triples each run could form, so two runs with different

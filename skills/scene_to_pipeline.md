@@ -1074,6 +1074,27 @@ wrong way to write a lesson, including where the name would let a reader detect
 contamination — an evidence record is the place for names. The two problems have
 different fixes and solving one with the other makes both worse.
 
+### The same rule binds the family files, and a number leaks as surely as a name
+
+**Everything above is written about this file, and that scoping was itself the
+gap.** The de-naming rule and the corpus-membership warning were both phrased
+around this file's range table, so a worked example carrying one capture's
+measured readings into `skills/families/*.md` passed every check here — and one
+did, quoting a pair of transfer errors to three significant figures in a file
+whose whole job is to be read by someone who has never seen that capture.
+
+**A quoted measurement is a lookup key whether or not a name is attached to it.**
+A reader whose run reproduces a figure to the digit has found their own result,
+and the family files are read on every capture rather than only at planning time,
+so they leak more often than this one does. The rule for a worked example in a
+family file is the rule for a band here: give the RATIO, the DIRECTION and the
+SCENARIO, and let the evidence record hold the digits.
+
+| write this | not this |
+| --- | --- |
+| *several times the chaining tracker's error, on captures where the ratio ran well above one* | *&lt;x.xx&gt;px against &lt;y.yy&gt;px* |
+| *moved by nearly an order of magnitude on some captures and almost nothing on others* | *moved this metric by &lt;0.00xx&gt; across &lt;n&gt; runs* |
+
 **Thresholds are the same mistake in numeric form.** A cut point derived from N
 captures is a property of those captures. **Do not print the number even as an
 example of what not to write** — a reader in a hurry lifts it straight out of the

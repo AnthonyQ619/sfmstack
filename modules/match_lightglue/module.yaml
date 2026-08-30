@@ -117,12 +117,16 @@ params:
       max_track_length -- one capture kept improving on both headline metrics at
       0.8 while quietly shedding two pairs and a degree, with graph_components
       still reading 1. Guard the last step with the tracker's
-      trifocal_transfer_px -- and before believing a small difference, price its
-      uncertainty as 1.14 * value / sqrt(trifocal_samples), and check that the two
-      runs report the same trifocal_triples. Measured across a threshold sweep on
-      one capture the reading ran 0.43 / 0.56 / 0.48 / 0.63 with no monotone trend,
-      so a difference inside a few percent is noise and the dial that minimises it
-      is NOT always the dial that minimises inconsistent_rate.
+      trifocal_transfer_px, AND PRICE THE DIFFERENCE BEFORE BELIEVING IT. Two runs
+      of this dial produce two different track tables, so the sampling error of
+      either median is a floor rather than the answer; the yardstick is the range
+      the metric covers across this dial's own sweep with nothing else changed.
+      Measured across such a sweep on one capture the reading rose and fell with
+      no monotone trend over a range wider than most of the differences readers
+      try to interpret -- so a difference inside that range is noise, and the
+      setting that minimises this metric is NOT always the one that minimises
+      inconsistent_rate. See tracks/v1 on trifocal_transfer_px, and compare only
+      at equal trifocal_triples.
 
   n_layers:
     type: integer

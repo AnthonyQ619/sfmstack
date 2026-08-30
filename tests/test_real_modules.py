@@ -52,6 +52,16 @@ def test_every_metric_named_in_a_manifest_is_documented(registry):
             assert m.direction != "unknown", f"{name}.{metric} has no direction"
 
 
+def _band(text):
+    """`healthy=(0.5, None)` -> (0.5, None).
+
+    Literal arguments only, which is what every adapter writes. A computed band
+    would raise here, and should: a band a reader cannot see in the source is a
+    band the manifest cannot state either.
+    """
+    return tuple(None if t.strip() == "None" else float(t) for t in text.split(","))
+
+
 def test_the_manifest_and_the_adapter_agree_about_healthy_bands(registry):
     """Two sources of truth, and the one the agent sees is the adapter's.
 
@@ -62,6 +72,13 @@ def test_the_manifest_and_the_adapter_agree_about_healthy_bands(registry):
     unreachable ceiling of zero -- and every reader in a ten-capture sweep judged
     against the adapter's version while the manifest said there was no band to
     judge against. Nothing caught it because nothing compared them.
+
+    THIS COMPARES THE VALUES, NOT MERELY THAT BOTH SIDES DECLARE SOMETHING. The
+    presence-only version of this test passed while a tracker published a floor of
+    0.5 on the artifact and 0.3 in the manifest, and readers spent a whole sweep
+    judging against a number `sfm_describe_module` never served. "Both sides say
+    something" is not agreement, and the weaker check is the one that let a live
+    divergence through.
     """
     import re
 
@@ -82,16 +99,18 @@ def test_the_manifest_and_the_adapter_agree_about_healthy_bands(registry):
         for call in metric_calls(adapter.read_text(encoding="utf-8")):
             named = re.match(r'out\.metric\(\s*"([^"]+)"', call)
             if named:
-                emits[named.group(1)] = "healthy=" in call
+                band = re.search(r"healthy=\(([^)]*)\)", call)
+                emits[named.group(1)] = _band(band.group(1)) if band else None
         for metric, m in spec.metrics.items():
             if metric not in emits:
                 continue
-            declared = m.healthy is not None
+            declared = tuple(m.healthy) if m.healthy is not None else None
             assert emits[metric] == declared, (
-                f"{name}.{metric}: manifest {'declares' if declared else 'declares NO'} "
-                f"healthy band, adapter {'emits' if emits[metric] else 'emits none'}. "
-                f"The artifact carries the adapter's version, so that is what a reader "
-                f"judges against -- they must agree."
+                f"{name}.{metric}: manifest declares {declared}, adapter emits "
+                f"{emits[metric]}. The artifact carries the adapter's version, so "
+                f"that is what a reader judges against -- they must agree, and "
+                f"agreeing means the same NUMBERS, not merely that both sides "
+                f"declare a band."
             )
 
 

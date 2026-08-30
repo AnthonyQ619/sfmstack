@@ -102,10 +102,25 @@ Unlike the confidences elsewhere in this repository — VGGT's, MapAnything's, b
 unbounded — this one is a genuine 0–1 visibility prediction, so 0.5 means what it
 looks like.
 
-Raise toward 0.7 to shed observations in frames where the point is occluded or out
-of frame; tracks get shorter and what survives is better placed. Lower it only if
-`avg_track_length` is collapsing, and check `mean_visibility` first — a low
-threshold cannot fix a query set that sees nothing.
+**Raising it does not buy precision.** That is the intuition the parameter invites
+— shed the occluded observations and what remains is better placed — and it has
+been tested against `trifocal_transfer_px`, which is the metric that would show
+it. Across every capture where the comparison was legal (same query selection,
+same `dedupe_eps_px`, equal `trifocal_triples`), raising the threshold discarded
+observations, shortened tracks, thinned the weakest frame, and left transfer error
+unchanged or **worse** — never better, on any capture, in either dataset family
+tried.
+
+**The mechanism is why, and it is not a property of these captures.** Predicted
+*visibility* and positional *error* are different quantities. The model's
+confidence that a point is in view says nothing about whether it put that point in
+the right place, so the observations a higher threshold removes are not
+disproportionately the mispredicted ones. You pay coverage and get no accuracy
+back.
+
+**So treat it as a floor to leave alone.** Lower it only if `avg_track_length` is
+collapsing, and check `mean_visibility` first — no threshold fixes a query set
+that sees nothing.
 
 ## Nothing survives
 

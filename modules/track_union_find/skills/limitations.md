@@ -23,9 +23,19 @@ notice it and choose how much of the damage to keep.
 `on_conflict` is damage control, not a fix. If you find yourself choosing `first`
 to keep `track_count` viable, the matcher is what needs attention.
 
-*What to do:* go to the matcher's `ratio_test` and `mutual` settings first, then
-to the matcher's own limitations.md. Repeated structure is the usual underlying
-cause, and it defeats the ratio test by construction.
+*What to do:* tighten the matcher's acceptance, then read the matcher's own
+limitations.md. **Which knob that is depends on the matcher's family, and naming
+the wrong one sends you looking for a parameter that does not exist.** A learned
+matcher scores an assignment globally and exposes a single acceptance threshold;
+a classical one searches descriptors and exposes a ratio test and a
+mutual-consistency check, neither of which a learned matcher has an analogue for
+— there is no second-best distance to take a ratio against, and one-to-one is
+structural rather than checked. Read the matcher's own parameter list before
+choosing the dial.
+
+Repeated structure is the usual underlying cause, and it defeats a ratio test by
+construction — which is why the classical route needs the geometric filters
+behind it and the learned route does not.
 
 ---
 

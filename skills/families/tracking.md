@@ -38,10 +38,18 @@ the observations are predictions, and the precision floor is set by THE MODEL'S
 OWN WORKING RESOLUTION RELATIVE TO THE SCENE -- which is a fact about the module,
 not about predictive tracking. One of these modules runs at the scene's working
 resolution and pays no resampling penalty at all; the other resamples to a fixed
-384px square, and on a 1024px scene that 2.67x ratio showed up as a transfer error
-of 2.78px against a chaining tracker's 0.78 on the same capture, and ~3x on two
-others. Neither module publishes its working resolution as a metric -- it appears
-only in the run note -- so this has to be read from the artifact after the run.
+square and pays the ratio between that square and the scene's working resolution.
+On captures where that ratio ran well above one, the fixed-square module's transfer
+error came out several times the chaining tracker's -- consistently, in the same
+direction, and by a margin far outside what either tracker spans under its own
+parameter changes.
+
+**Read that ratio before paying for the run.** The fixed-square module publishes
+its resampling size as a PARAMETER DEFAULT, so `sfm_describe_module` answers this
+against the scene's working resolution without running anything. The
+full-resolution module does not publish one, and there the fact has to be read
+from the run note afterwards -- but it is also the module that has no penalty to
+find.
 
 ```
                     reach                              precision
@@ -53,17 +61,24 @@ only in the run note -- so this has to be read from the artifact after the run.
                                                        differs between the two
 ```
 
-**The precision half of that table is weaker than it looks, and two captures
-measured it.** On captures where the predictive module runs at full scene
-resolution, it won reach decisively (`long_track_fraction` +57% and +72%) and its
-transfer error was 7% and 23% BETTER than the chaining tracker's on
-detector-based input -- the configuration this table says chaining should win.
-Both margins sit inside the range each tracker spans by itself under its own
-parameter changes on the same capture (2.0x and 1.3x), so the honest reading is
-that precision was not measurably different, not that predictive won it. Price
-the difference before believing it: the standard error is roughly
-`1.14 * value / sqrt(trifocal_samples)`, and compare only at equal
-`trifocal_triples`.
+**The precision half of that table is a claim about DETECTOR-BASED input, and
+that qualifier carries the whole result.** Across a capture sweep driven through
+this stage, chaining won precision on detector-based input by margins running from
+a few tens of percent to several-fold, and lost decisively on the one capture
+whose matcher was detector-free -- which is what the table's parenthesis already
+predicts. Two detector-based captures did read better for a predictive tracker,
+and both margins were small.
+
+**Price a margin before believing it, and the yardstick is the tracker's own
+span.** Sweep one cheap parameter on the tracker you are judging, with nothing
+else changed, and record the range this metric covers across that sweep. A gap
+between two configurations narrower than that span is not interpretable -- it is
+inside the noise the tracker generates by itself. Both of the small margins above
+failed that test, so they are unresolved comparisons rather than counter-examples,
+and one capture's reader reached that verdict unprompted. Measured spans have run
+to roughly one-and-a-half times, which is why a several-fold difference decides a
+tracker choice and a twenty-percent one settles nothing. Equal `trifocal_triples`
+is a precondition for comparing at all, not a substitute for this test.
 
 The ordering is not a coincidence of one dataset. Predicting rather than matching
 buys reach and costs precision, and the further a model runs from the image's
@@ -97,9 +112,14 @@ triples.
 
 ### Use it as a guard when you move a merge tolerance
 
-Every tracker here has a tolerance that decides when two tracks are one point —
-`dedupe_eps_px` on the predictive ones, `merge_eps_px` on the chaining one for
-detector-free input. Set it too wide and distinct scene points get fused, which
+**Skip this section if you are chaining detector-based matches.** Every tracker
+here has a tolerance that decides when two tracks are one point — `dedupe_eps_px`
+on the predictive ones, `merge_eps_px` on the chaining one — but the chaining
+module's is **inert whenever the matches carry a `feature_index`**, because a node
+is then a keypoint identity rather than a position and nothing is merged by
+proximity at all. That is the common case, and on it there is no tolerance here to
+guard. The section below is live on every predictive run, and on chaining only
+where the matcher is detector-free. Set it too wide and distinct scene points get fused, which
 `track_count` and `avg_track_length` report as an *improvement*: fewer tracks, and
 longer ones, because merging concatenates.
 
@@ -201,13 +221,25 @@ exposed it on every capture.** Where `mean_occlusion` IS high it is a statement
 about the capture rather than the query selection -- changing the query frames
 left it unmoved.
 
-**And check where the query frames will land before paying for the run.** Both
-modules choose them by a rule that knows nothing about scene content, and on two
-captures the default landed squarely on the emptiest frames — one capture's
-geometric midpoint *was* its least-textured pass. Cross-reference the selection rule
-against `SceneTriage`'s `density_per_image` and the description's frame ranges. On
-a capture where both available selections are wrong, that is a reason to prefer
-chaining rather than a parameter to tune.
+**Where the query frames land decides the run, and the reading that decides it is
+`min_frame_observations`.** The two modules select differently — one ranks frames
+by a learned image descriptor and adapts to content, the other places them
+positionally and does not — and neither publishes its choice until the run is
+over, so this is a check on the result rather than a pre-flight veto.
+
+**A selection landing on frames that look thin is not by itself a reason to change
+it.** On a capture where the content-adaptive rule picked the two lowest-density
+frames — exactly the trap this paragraph used to warn about — it was still the
+only selection of three that left every frame registerable, and both alternatives
+that avoided the trap starved a frame to zero observations. Read the metric, not
+the choice: a frame no query frame tracks into will not register whatever the
+totals say, and which selection avoids that is not predictable from frame
+density.
+
+So: if one available selection keeps every frame populated, take it regardless of
+which frames it chose. If every available selection leaves a frame at or near
+zero, that is a fact about the capture rather than a parameter to tune, and it is
+a reason to prefer chaining.
 
 ---
 

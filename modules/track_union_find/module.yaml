@@ -83,10 +83,17 @@ params:
       Detector-free input only. Rebuild the tracks at twice merge_eps_px to measure
       whether the tolerance is too tight.
     tuning: >
-      Leave on. It roughly doubles this module's runtime, which is small next to any
-      matcher, and it is the ONLY signal for under-merging -- inconsistent_rate
-      detects the opposite error and nothing else here sees this one. Turn it off
-      only when the tolerance is already known-good and runtime matters.
+      Leave on. IT COSTS NOTHING ON DETECTOR-BASED INPUT, where it does not run at
+      all -- merge_eps_px is inert there, so there is no tolerance to probe and the
+      metric comes back null. On detector-free input it rebuilds the tracks at each
+      rung of a 2x/4x/8x ladder, so budget roughly four times this module's own
+      runtime, which is still small next to any matcher. An earlier version of this
+      text said it doubles the runtime; that described a single 2x probe, which the
+      adapter no longer does.
+
+      It is the ONLY signal for under-merging -- inconsistent_rate detects the
+      opposite error and nothing else here sees this one. Turn it off only when the
+      tolerance is already known-good and runtime matters.
 
   merge_eps_px:
     type: number
@@ -194,10 +201,20 @@ metrics:
       MATCHER. A classical detector assigns several keypoints to one physical point
       at different orientations and adjacent scales; chaining merges by
       feature_index, so those never join and each becomes its own track. Measured
-      directly on two captures: 27.7% and 38.9% of keypoints share an exact
-      location and scale with another keypoint in the same image. The floor that
-      produces is unreachable from here -- across 124 runs a matcher sweep that
-      moved the view graph from 61 to 66 pairs moved this metric by 0.0038.
+      directly on three captures spanning two detectors: between a quarter and two
+      fifths of keypoints share an exact location and scale with another keypoint
+      in the same image. That sets a floor this module cannot read below.
+
+      A FLOOR IS NOT A FIXED VALUE, AND HOW FAR ABOVE IT YOU SIT IS OFTEN
+      REACHABLE FROM THE MATCHER. Tightening the matcher's acceptance moved this
+      metric by nearly an order of magnitude on some captures and by almost
+      nothing on others, over comparable changes to the view graph, and nothing
+      upstream predicts which case you are in. So try the matcher dial first --
+      it is one cheap re-run and it is reversible -- and conclude the detector is
+      the binding constraint only after the dial has failed to move it. An
+      earlier version of this text called the floor unreachable from here; that
+      was true of the captures it was measured on and false of others, and read
+      literally it sends you to an expensive detector backtrack instead.
 
       THE CEILING IS 0.2 RATHER THAN 0.1 FOR THAT REASON. The old 0.1 was breached
       routinely with nothing wrong (median 0.065, p90 0.137 over those runs) and

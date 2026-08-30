@@ -1,5 +1,5 @@
 name: FeatureTrackTapir
-version: 1.3.0
+version: 1.4.0
 kind: tracking
 summary: >
   Point tracking with BootsTAPIR. Keypoints from selected query frames are followed
@@ -33,7 +33,7 @@ description: |
   Deduplication and query-frame selection work exactly as in `FeatureTrackVGGSfM`,
   and for the same reasons — see `duplicate_track_rate` below.
 
-image: sfmstack/track-tapir:1.3.0
+image: sfmstack/track-tapir:1.4.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -226,8 +226,15 @@ metrics:
 
   long_track_fraction:
     direction: higher_better
-    healthy: [0.3, null]
-    meaning: Fraction of tracks seen in 3+ views.
+    healthy: [0.5, null]
+    meaning: >
+      Fraction of tracks seen in 3+ views. THE FLOOR IS HIGHER THAN A CHAINING
+      TRACKER'S, and deliberately: nothing truncates these tracks, because there
+      is no view graph to have a hole in. A low reading is therefore not a hard
+      capture -- it is this module predicting badly, and on captures where it read
+      below this floor it went on to lose the precision comparison by several
+      fold. It is the cheapest available warning that this module is the wrong
+      choice, and it is available before paying for trifocal_transfer_px.
 
   min_frame_observations:
     direction: higher_better
