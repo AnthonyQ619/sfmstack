@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchNN
-module_version: 1.0.0
+module_version: 1.6.0
 curated_at: 2026-08-07
 ---
 

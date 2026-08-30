@@ -398,9 +398,9 @@ diagnostics:
     suggested_actions:
       - Check the matcher's `planarity` -- a planar or rotation-only capture cannot seed.
       - Lower init_min_angle_deg only after confirming the capture has baseline.
-      - "Widen the matcher's PAIRING so more pairs are candidates -- `window` only\
-        does this under `pairing: sequential`; under `exhaustive` every pair is\
-        already proposed and the knob is inert. There, the dial is the matcher's\
+      - "Widen the matcher's PAIRING so more pairs are candidates -- `window` only
+        does this under `pairing: sequential`; under `exhaustive` every pair is
+        already proposed and the knob is inert. There, the dial is the matcher's
         acceptance threshold or its min_matches floor."
     see_also: limitations.md#degenerate-captures
 
@@ -409,8 +409,8 @@ diagnostics:
     message: Some images could not be registered and carry valid=False.
     suggested_actions:
       - "Read min_frame_long_tracks, NOT the tracker's min_frame_observations: PnP needs points a third view already triangulated, so a frame can sit far above the observation floor and still be unregisterable. The tracks artifact's observations.long_tracks_per_frame array says which frame is short."
-      - "Link those frames to more neighbours at the matcher -- under `pairing:\
-        sequential` that is `window`; under `exhaustive` the pairs already exist\
+      - "Link those frames to more neighbours at the matcher -- under `pairing:
+        sequential` that is `window`; under `exhaustive` the pairs already exist
         and were dropped, so the dial is min_matches or the acceptance threshold."
       - Lower min_pnp_inliers only if you accept weaker poses.
     see_also: tuning.md#registered_fraction-below-10

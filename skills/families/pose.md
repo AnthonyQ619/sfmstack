@@ -132,6 +132,20 @@ change on that basis. This is the same rule `families/tracking.md` gives for
 `trifocal_transfer_px`; there is no pose-specific span published, so measure it on
 the capture in front of you.
 
+**AND WHERE A PARAMETER HAS A TURNING POINT, BRACKET IT.** A monotone improvement
+under a robust loss is weak evidence, because the loss is reshaping the very
+residuals it downweights — the metric can improve while the model does not. An
+interior minimum cannot be explained that way, so finding the turn is what makes
+the result credible. It costs one run past the apparent optimum.
+
+This applies to exactly one knob at this stage, `local_ba_loss_scale`, and it is
+worth the run. Across a capture sweep, eight captures swept it far enough to see:
+**four found a turn and four stopped while still improving.** On the four that
+turned, a reader who had kept going past the optimum would have given back between
+7% and 28% of the median error they had just won. On the four that did not, three
+readers recorded in as many words that they had no stopping rule and settled on
+judgement. Both halves of that are the cost of not bracketing.
+
 **What neither rule can do:** establish that a configuration is *right*. There is no
 ground truth here — see below. These rules tell you when a difference is too small
 to mean anything, which is a different and more modest claim.

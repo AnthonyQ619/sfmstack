@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchNN
-module_version: 1.0.0
+module_version: 1.6.0
 upstream: OpenCV 5.x BFMatcher + USAC_MAGSAC
 curated_at: 2026-08-07
 sources: 5

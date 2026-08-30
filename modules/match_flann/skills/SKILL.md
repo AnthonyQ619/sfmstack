@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchFLANN
-module_version: 1.0.0
+module_version: 1.6.0
 upstream: OpenCV FlannBasedMatcher (KD-tree / LSH)
 curated_at: 2026-08-07
 sources: 3

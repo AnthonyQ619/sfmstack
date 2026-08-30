@@ -763,6 +763,8 @@ def run(ctx: Ctx):
                     f", but the window is already consistent (gain "
                     f"{mean_gain:+.4f}px against {mean_err:.3f}px of residual), so "
                     f"this is expected and costs nothing."
+                    if mean_gain is not None and errors else
+                    ", and the window gain could not be measured."
                 )
             ),
             suggested_actions=(

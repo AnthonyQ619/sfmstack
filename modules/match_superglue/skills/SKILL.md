@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchSuperGlue
-module_version: 1.0.0
+module_version: 1.6.0
 upstream: magicleap/SuperGluePretrainedNetwork @ ddcf11f
 curated_at: 2026-08-10
 sources: 3

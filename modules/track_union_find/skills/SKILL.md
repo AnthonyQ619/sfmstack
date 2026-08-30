@@ -1,6 +1,6 @@
 ---
 module: FeatureTrackUnionFind
-module_version: 1.0.0
+module_version: 1.4.0
 upstream: classical disjoint-set track merging
 curated_at: 2026-08-07
 sources: 4

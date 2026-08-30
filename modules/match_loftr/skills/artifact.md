@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchLoFTR
-module_version: 1.0.0
+module_version: 1.7.0
 produces: pairwise_matches/v1
 curated_at: 2026-08-08
 ---

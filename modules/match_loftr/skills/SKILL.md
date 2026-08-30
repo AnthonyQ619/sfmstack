@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchLoFTR
-module_version: 1.0.0
+module_version: 1.7.0
 upstream: kornia 0.8.3 (kornia.feature.LoFTR)
 curated_at: 2026-08-08
 sources: 3

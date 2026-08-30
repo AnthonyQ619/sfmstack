@@ -1,6 +1,6 @@
 ---
 module: FeatureTrackTapir
-module_version: 1.0.0
+module_version: 1.5.0
 upstream: BootsTAPIR v2 (torch), google-deepmind/tapnet @ c2cbab8
 curated_at: 2026-08-11
 sources: 3

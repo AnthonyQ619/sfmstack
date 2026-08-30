@@ -1,6 +1,6 @@
 ---
 module: SceneLoader
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: none (in-house)
 curated_at: 2026-08-08
 sources: 2

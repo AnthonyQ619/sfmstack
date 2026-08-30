@@ -1,6 +1,6 @@
 ---
 module: FeatureDetectionSuperPoint
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: lightglue package (cvg/LightGlue), SuperPoint weights
 curated_at: 2026-08-07
 sources: 3

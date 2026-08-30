@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchRoMa
-module_version: 1.0.0
+module_version: 1.6.0
 upstream: romatch 0.1.2 (RoMa, CVPR 2024)
 curated_at: 2026-08-10
 sources: 3

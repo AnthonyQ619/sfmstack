@@ -114,6 +114,38 @@ def test_the_manifest_and_the_adapter_agree_about_healthy_bands(registry):
             )
 
 
+def test_skill_frontmatter_records_the_module_version_it_was_curated_against(registry):
+    """A skill file stamped with an old version is a silent staleness signal.
+
+    The stamp is the only thing telling a reader whether the prose beside a
+    parameter was written against the module they are running. Fifteen of
+    twenty-eight modules had drifted -- several by five minor versions, one across
+    a change that inverted the advice in the file -- and nothing compared them,
+    because the stamp is read by humans and never by code. It is now.
+
+    This does NOT assert the prose is current; it asserts that whoever last
+    changed the module said so. Bumping a version without touching its skills is
+    the case this catches, and the fix is to read them and re-stamp.
+    """
+    import re
+
+    stale = []
+    for name in registry.names():
+        spec = registry.get(name)
+        for doc in sorted((spec.root / "skills").glob("*.md")):
+            stamp = re.search(
+                r"^module_version: ([\d.]+)$", doc.read_text(encoding="utf-8"), re.M
+            )
+            if stamp and stamp.group(1) != spec.version:
+                stale.append(
+                    f"{name}/skills/{doc.name} says {stamp.group(1)}, "
+                    f"module is {spec.version}"
+                )
+    assert not stale, (
+        "skill frontmatter is behind its module:\n  " + "\n  ".join(stale)
+    )
+
+
 def test_every_diagnostic_points_into_the_skills(registry):
     for name in registry.names():
         spec = registry.get(name)

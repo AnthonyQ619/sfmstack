@@ -1,6 +1,6 @@
 ---
 module: FeatureTrackVGGSfM
-module_version: 1.0.0
+module_version: 1.5.0
 curated_at: 2026-08-11
 ---
 
