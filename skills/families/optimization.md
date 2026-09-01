@@ -75,6 +75,33 @@ had simply never been run.
 adjuster's own interesting numbers are its deltas, and why the type's required
 metrics describe the artifact rather than the process.
 
+**What the deltas cannot tell you, and what now can.** A bundle adjuster's output
+is normally the LAST `sparse_model/v1` in a pipeline — the artifact a dense stage
+actually builds on — so it is the only place some questions can still be asked.
+Both adjusters therefore publish the same artifact readings every producer of the
+type does, measured on the model they SHIP rather than the one they were handed:
+
+- **`p05_triangulation_angle`** — the weak end of the parallax distribution. A
+  point on near-parallel rays sits at an ill-determined depth while reprojecting
+  beautifully into the very views that made it, so no reprojection metric can see
+  it and neither can a median. Refinement moves structure, so the input model's
+  reading is stale the moment the solve finishes; read it on the output.
+- **`two_view_fraction`** — on a two-view-dominated cloud a large share of the
+  mean is residuals that are near zero *by construction*, because a two-view point
+  has four residuals against three unknowns and is exactly determined. The
+  headline then reads better than the model is.
+- **`min_frame_points`** — a camera can be registered and carry almost no
+  structure. `registered_images` counts it the same as any other.
+- **`p95_reprojection_error`** — separates a uniformly mediocre model from a good
+  one with a few bad points. Those want opposite responses and the mean cannot
+  tell them apart.
+
+The two-view reading is also the one that decides between the adjusters, because
+`min_track_length` deletes rather than holds out: the local module defaults to 3
+and the global one to 2, so on a two-view-heavy cloud the local module ships half
+the points — measured at 49.4% on one capture. Both now announce that with
+`points_dropped_by_min_track_length` rather than leaving it to be noticed.
+
 ---
 
 ## Which end to reach for

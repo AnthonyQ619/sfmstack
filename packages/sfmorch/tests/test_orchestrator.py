@@ -349,3 +349,79 @@ def test_a_failed_save_leaves_the_previous_record_intact(orch, scene, monkeypatc
 
     assert record.read_text(encoding="utf-8") == before
     assert not list(record.parent.glob(".run.md.*.tmp"))
+
+
+# --------------------------------------------------------------------------- #
+# Staleness: a cache entry made by different software
+# --------------------------------------------------------------------------- #
+
+
+def _pin_digest(orch, digest):
+    """Make the runner claim `digest` is what would run now."""
+    orch.runner.image_digest = lambda spec: digest
+
+
+def _stamp(store, art, digest):
+    """Write a digest into the artifact's provenance ON DISK.
+
+    The store re-reads `artifact.md` on every open, so mutating the object a run
+    handed back changes nothing the cache will ever see -- which is exactly what
+    a containerized run does record and an in-process one does not.
+    """
+    md = store.path_for(art.id) / "artifact.md"
+    text = md.read_text()
+    old = "  image: sfm-fixture:1.0.0\n"
+    assert old in text, text[:400]
+    md.write_text(text.replace(old, old + f"  image_digest: {digest}\n", 1))
+
+
+def test_a_cache_entry_built_by_a_different_image_is_not_served(orch, scene, store):
+    """The failure this prevents: a module's code is fixed, the image rebuilt, and
+    the version left alone because it was never released -- and the store then
+    serves the OLD answer under the same recipe. Both times it happened here the
+    stale value was a metric the new code always populates coming back null, which
+    is indistinguishable from a code defect until you go looking."""
+    first = orch.run("FakeDetector", run_id="run_test", inputs={"scene": scene.id})
+    _stamp(store, first.primary, "sha256:old")
+
+    _pin_digest(orch, "sha256:old")
+    assert orch.run(
+        "FakeDetector", run_id="run_test", inputs={"scene": scene.id}
+    ).cached is True
+
+    _pin_digest(orch, "sha256:new")
+    again = orch.run("FakeDetector", run_id="run_test", inputs={"scene": scene.id})
+    assert again.cached is False, "a rebuilt image must not serve the old result"
+
+
+def test_check_agrees_with_run_about_staleness(orch, scene, store):
+    """A plan that promises a hit the run then rejects is worse than no plan."""
+    first = orch.run("FakeDetector", run_id="run_test", inputs={"scene": scene.id})
+    _stamp(store, first.primary, "sha256:old")
+
+    _pin_digest(orch, "sha256:new")
+    assert orch.check("FakeDetector", inputs={"scene": scene.id})["cached"] == {
+        "features": False
+    }
+
+    _pin_digest(orch, "sha256:old")
+    assert orch.check("FakeDetector", inputs={"scene": scene.id})["cached"] == {
+        "features": True
+    }
+
+
+def test_an_unknown_digest_on_either_side_still_serves_the_cache(orch, scene, store):
+    """Conservative in both directions. An in-process run has no image at all, and
+    an artifact predating the digest field carries none -- neither is EVIDENCE of
+    staleness, and treating it as such would silently disable the cache."""
+    orch.run("FakeDetector", run_id="run_test", inputs={"scene": scene.id})
+
+    _pin_digest(orch, "")  # the runner cannot say
+    assert orch.run(
+        "FakeDetector", run_id="run_test", inputs={"scene": scene.id}
+    ).cached is True
+
+    _pin_digest(orch, "sha256:new")  # the artifact cannot say
+    assert orch.run(
+        "FakeDetector", run_id="run_test", inputs={"scene": scene.id}
+    ).cached is True

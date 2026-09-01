@@ -823,3 +823,57 @@ VGGT's three, MapAnything, VGGSfM, Tapir — has one, and each needs a metric
 comparing its estimate against something independently known. Where a module
 estimates intrinsics and the scene has calibration, that comparison is free and
 should always be reported.
+
+---
+
+## 2026-08-31 — The cache served pre-fix results, and a convention became a mechanism
+
+Artifact ids are derived from the recipe — module, `module_version`, slot,
+resolved params, input ids. None of those changes when a module's *code* does.
+The rule covering that gap was written down and asked of humans: bump
+`module_version` whenever a metric set or a published band changes, or the cache
+serves the old values.
+
+It failed twice in one afternoon, both times the same way. A module at an
+**uncommitted** `1.1.0` had already produced artifacts; its code was then fixed
+again at the same version, the image rebuilt, and the store handed back the
+earlier answer.
+
+### Why it cost more than a stale number
+
+Both times the stale value was a metric the new code populates unconditionally
+coming back `null`. That does not read as a cache hit. It reads as a code defect
+— the emit must be inside a branch, or the helper must be returning early — and
+the only way to tell the difference is to go and check, which is a debugging
+session spent on a question the framework should never have asked.
+
+The second occurrence is the instructive one: it happened while *verifying the fix
+for the first*. A verification run that silently reports pre-fix behaviour is
+worse than no verification, because it produces a confident wrong conclusion.
+
+### The mechanism
+
+`Provenance.image_digest` already recorded which image actually answered — and
+its own docstring had described this exact hazard since the field was introduced.
+Nothing had ever read it. The orchestrator now compares it against the digest of
+the image that would run now, and treats a mismatch as a cache miss. `check()`
+applies the same test, because a plan that promises a hit the run then rejects is
+worse than no plan.
+
+Conservative in both directions: a missing digest on either side is not evidence
+of staleness, so in-process runs — which have no image to fingerprint — and
+artifacts predating the field keep the old semantics.
+
+### The general lesson
+
+**A rule that must be followed by hand to keep a cache correct is a bug with a
+waiting period.** The version bump is still the right thing to do, for the
+reasons it always was — it makes the two results coexist and keeps lineage
+honest. It is no longer what stands between a fixed module and a stale answer.
+
+The same shape appeared in the same session on the local module servers:
+`DockerBackend` grew orphan sweeping after leaked containers cost 347 GB of GPU
+memory, while `SubprocessBackend` kept its children in a dict on the object and
+leaked them at every interrupted run — three were found still holding ports
+after 15 and 24 days. Cheap failures do not get fixed by being noticed, because
+they are not noticed. Both paths now reap.

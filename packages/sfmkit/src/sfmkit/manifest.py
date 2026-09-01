@@ -66,6 +66,13 @@ class Provenance:
     `image_digest` nothing in the record distinguishes a result produced before a
     rebuild from one produced after. Empty when the module ran in-process, which
     is honest -- there was no image.
+
+    That paragraph described a hazard for as long as this field existed, and
+    nothing read the field. The orchestrator now does: before serving a cache
+    entry it compares this digest against the digest of the image that would run
+    now, and a mismatch is a miss. So this is load-bearing rather than
+    provenance detail -- a producer that stops recording it does not lose a nice
+    -to-have, it silently restores the stale-cache bug.
     """
 
     module: str

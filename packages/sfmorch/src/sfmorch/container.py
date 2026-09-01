@@ -70,6 +70,11 @@ class ContainerRunner:
         self._slots: dict[str, _Slot] = {}
         self._lock = threading.RLock()
 
+    def image_digest(self, spec):
+        """Delegate to the backend: it is the thing that knows what would run."""
+        return self.backend.image_digest(spec)
+
+
         # Pooling is per-process: a new process starts with no slots and spawns
         # its own servers on its own ports, so nothing is ever reused ACROSS
         # processes and there is nothing to preserve by outliving one. Without

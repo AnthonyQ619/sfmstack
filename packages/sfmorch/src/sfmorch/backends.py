@@ -13,8 +13,10 @@ the same protocol, and the same lifecycle code, so what it proves transfers.
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
+import signal
 import shutil
 import socket
 import subprocess
@@ -180,6 +182,18 @@ class Backend(Protocol):
     def stop(self, endpoint: Endpoint) -> None: ...
     def is_alive(self, endpoint: Endpoint) -> bool: ...
 
+    def image_digest(self, spec: ModuleSpec) -> str:
+        """The digest of the image this backend WOULD run for `spec`, right now.
+
+        Distinct from `Provenance.image_digest`, which records what an artifact
+        was actually made with. The cache compares the two: equal means the
+        stored result came from this software, different means it did not.
+
+        Returns "" when the question does not apply -- a backend with no image
+        cannot go stale behind one -- and "" never invalidates a cache entry.
+        """
+        return ""
+
 
 # --------------------------------------------------------------------------- #
 # Subprocess
@@ -197,6 +211,38 @@ class SubprocessBackend:
     def __init__(self, python: str | None = None):
         self.python = python or sys.executable
         self._procs: dict[str, subprocess.Popen] = {}
+        # `_procs` lives on this object, so when the owning process exits the dict
+        # dies and the children do not -- they are reparented to init and keep a
+        # port bound forever, serving a store that pytest has since deleted. This
+        # host accumulated three of them across a month, from runs that were
+        # interrupted between `start` and `shutdown`.
+        #
+        # DockerBackend already solved this for containers, by asking liveness of
+        # the OWNING PID rather than of a clock. The local path never got the
+        # equivalent, only because a leaked subprocess is cheaper than a leaked GPU
+        # and so nobody noticed. atexit is the process-exit half; `start` puts each
+        # child in its own process group so the kill below cannot reach anything
+        # the caller owns.
+        atexit.register(self.shutdown)
+
+    def shutdown(self) -> None:
+        """Stop every server this backend started. Idempotent, never raises.
+
+        Registered with atexit, so it also runs for the common case the pool does
+        not cover: a script that runs one module and exits without `with`.
+        """
+        for endpoint_handle in list(self._procs):
+            proc = self._procs.pop(endpoint_handle, None)
+            if proc is None or proc.poll() is not None:
+                continue
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError, OSError):
+                proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
 
     def start(self, spec: ModuleSpec, *, store: Path, device: int | None) -> Endpoint:
         if spec.root is None:
@@ -218,6 +264,9 @@ class SubprocessBackend:
             stderr=subprocess.PIPE,
             text=True,
             env=env,
+            # Its own process group, so shutdown can signal the server and
+            # anything it spawned without ever reaching the caller's own tree.
+            start_new_session=True,
         )
 
         # The server announces its bound port, so we never race a pre-bound socket.
@@ -258,6 +307,13 @@ class SubprocessBackend:
     def is_alive(self, endpoint: Endpoint) -> bool:
         proc = self._procs.get(endpoint.handle)
         return proc is not None and proc.poll() is None
+
+    def image_digest(self, spec: ModuleSpec) -> str:
+        """No image here -- the module runs against this interpreter's own
+        environment, which the cache cannot fingerprint. Returns "", which
+        never invalidates: a local run gets the old cache semantics.
+        """
+        return ""
 
 
 # --------------------------------------------------------------------------- #
@@ -302,6 +358,7 @@ class DockerBackend:
         self._gpu_supported: bool | None = None
         self._warned_no_gpu = False
         self._swept = False
+        self._digests: dict[str, str] = {}
 
     def available(self) -> bool:
         return shutil.which(self.docker) is not None
@@ -425,6 +482,30 @@ class DockerBackend:
             image_digest=self._image_digest(container_id),
             device=device,
         )
+
+    def image_digest(self, spec: ModuleSpec) -> str:
+        """The digest of `spec.image` as it exists on this host right now.
+
+        Asked BEFORE a run, so the cache can tell a stored result produced by the
+        current software from one produced by an earlier build of the same tag.
+        A tag is mutable and `module_version` is written by hand, so neither can
+        answer that on its own.
+
+        Cached per tag for the life of this backend: a rebuild mid-process would
+        be answered staleley, which is the lesser problem -- the alternative is a
+        `docker inspect` on every cache lookup in a sweep.
+        """
+        if not spec.image:
+            return ""
+        if spec.image in self._digests:
+            return self._digests[spec.image]
+        result = subprocess.run(
+            [self.docker, "image", "inspect", "-f", "{{.Id}}", spec.image],
+            capture_output=True, text=True,
+        )
+        digest = result.stdout.strip() if result.returncode == 0 else ""
+        self._digests[spec.image] = digest
+        return digest
 
     def _image_digest(self, container_id: str) -> str:
         """The image id the container was created from, or "" if docker will not say.

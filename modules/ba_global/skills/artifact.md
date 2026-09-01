@@ -2,7 +2,7 @@
 module: BundleAdjustmentGlobal
 module_version: 1.1.0
 produces: sparse_model/v1
-curated_at: 2026-08-07
+curated_at: 2026-08-31
 ---
 
 # Reading a BundleAdjustmentGlobal artifact
@@ -66,6 +66,43 @@ Because `sparse_model/v1` observations are undistorted pixels. If you export thi
 model and feed it to a COLMAP tool that expects raw images, the images and the
 model will disagree — the model matches the *undistorted, resized* images the scene
 artifact carries.
+
+## The four readings that see what the means hide
+
+Every producer of `sparse_model/v1` publishes these, so they are comparable across
+modules in a way a module's own metrics are not. Each exists because a scalar the
+type already published was concealing something:
+
+- **`min_frame_points`** — the emptiest registered camera. `registered_images`
+  counts a camera holding almost no structure exactly like a well-covered one, and
+  a whole-model `point_count` cannot be moved by one starved view. This is the
+  reading that predicts a view failing downstream while every headline looks fine.
+- **`two_view_fraction`** — the share of points seen in exactly two views. Those
+  are exactly determined, four residuals against three unknowns, so their residual
+  is near zero *by construction* rather than because they are good. On a
+  two-view-dominated cloud they drag the mean down and the model reads better than
+  it is.
+- **`p95_reprojection_error`** — separates a uniformly mediocre model from a good
+  model carrying a few bad points. The two want opposite responses, and the mean
+  cannot tell them apart.
+- **`p05_triangulation_angle`** — the weak end of the parallax distribution. A
+  point on near-parallel rays sits at an ill-determined depth while reprojecting
+  beautifully into the views that placed it, so it is invisible to every
+  reprojection metric, and a median cannot see a tail. Where this reading is low,
+  the cloud's SHAPE is uncertain in a way its error does not report.
+
+`mean_reprojection_error` here is the **per-point** mean. It is worth knowing why
+that is stated: producers of this type once published three different populations
+under the one name — points, observations, and a frame that was not published at
+all — and the spread was wide enough to invert a head-to-head comparison. An
+observation mean weights long tracks, and long tracks are the higher-error points.
+
+**Measured on the model this module ships, not the one it was handed.** A solve
+moves structure, so the input's conditioning is stale as soon as it finishes. This
+matters more here than anywhere else in the type: a refined model is normally the
+LAST `sparse_model/v1` in a pipeline, so it is what a dense stage reads, and if the
+refiners omitted these the questions would have no answer at the point where
+something is about to be built on them.
 
 ## What is NOT here
 

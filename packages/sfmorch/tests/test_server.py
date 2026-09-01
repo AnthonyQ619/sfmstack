@@ -5,6 +5,10 @@ lifecycle that DockerBackend drives -- without needing Docker in the test
 environment.
 """
 
+import subprocess
+import sys
+import time
+
 import numpy as np
 import pytest
 from sfmkit import ArtifactStore
@@ -12,13 +16,21 @@ from sfmkit import ArtifactStore
 from sfmorch import Orchestrator, SubprocessBackend
 from sfmorch.backends import BackendError, http_get, http_post
 from sfmorch.container import ContainerRunner
+from sfmorch.backends import _pid_alive
 from sfmorch.gpu import GpuBroker
+
+from conftest import FIXTURE_MODULES
 
 
 @pytest.fixture
 def backend():
     b = SubprocessBackend()
     yield b
+    # Teardown the fixture used not to have. A test that starts a server through
+    # this backend and then fails, or is interrupted, otherwise strands it: the
+    # `_procs` dict dies with the process and the child is reparented to init,
+    # holding a port on a store pytest has already deleted.
+    b.shutdown()
 
 
 @pytest.fixture
@@ -326,3 +338,63 @@ def test_a_dead_server_is_replaced_rather_than_erroring(store, registry, backend
     result = orch.run("MakeScene", run_id="r", params={"n_images": 5})
     assert result.primary.metric("n_images") == 5
     assert runner.endpoints()["MakeScene@1.0.0"].url != stale.url
+
+
+def test_a_stranded_server_does_not_outlive_its_backend(registry, store):
+    """The leak this closes: three servers were found on this host, aged 15 and 24
+    days, from runs interrupted between `start` and `shutdown`. Nothing reaped
+    them, because `_procs` is state on an object and the object died with the
+    process that made it. DockerBackend grew `sweep_orphans` after the same defect
+    cost 347 GB of GPU memory; the local path never got the equivalent, only
+    because a leaked subprocess is cheap enough not to be noticed."""
+    b = SubprocessBackend()
+    ep = b.start(registry.get("MakeScene"), store=store.root, device=None)
+    pid = int(ep.handle)
+    assert _pid_alive(pid)
+
+    b.shutdown()  # what atexit calls when the owning process goes away
+
+    deadline = time.time() + 10
+    while _pid_alive(pid) and time.time() < deadline:
+        time.sleep(0.05)
+    assert not _pid_alive(pid), f"server {pid} outlived the backend that started it"
+
+
+def test_shutdown_is_idempotent_because_atexit_may_double_call(registry, store):
+    """`shutdown` is registered with atexit AND called explicitly by the fixture
+    and by ContainerRunner. Raising on the second call would turn a clean exit
+    into a traceback."""
+    b = SubprocessBackend()
+    b.start(registry.get("MakeScene"), store=store.root, device=None)
+    b.shutdown()
+    b.shutdown()
+
+
+def test_the_backend_reaps_at_interpreter_exit(registry, store):
+    """The half a fixture cannot cover: a script that starts a server and exits
+    without ever calling shutdown. That is the common case -- one module, then
+    exit -- and it is how every one of the stranded servers was made."""
+    script = (
+        "import sys, pathlib; sys.path[:0] = %r\n"
+        "from sfmorch.backends import SubprocessBackend\n"
+        "from sfmorch.registry import ModuleRegistry\n"
+        "reg = ModuleRegistry()\n"
+        "reg.load_dir(pathlib.Path(%r))\n"
+        "b = SubprocessBackend()\n"
+        "ep = b.start(reg.get('MakeScene'), store=pathlib.Path(%r), device=None)\n"
+        "print(ep.handle, flush=True)\n"
+    ) % (sys.path, str(FIXTURE_MODULES), str(store.root))
+
+    proc = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, timeout=120
+    )
+    assert proc.returncode == 0, proc.stderr
+    pid = int(proc.stdout.strip().splitlines()[-1])
+
+    deadline = time.time() + 10
+    while _pid_alive(pid) and time.time() < deadline:
+        time.sleep(0.05)
+    assert not _pid_alive(pid), (
+        f"server {pid} survived its owner exiting -- this is the exact leak that "
+        f"left three servers running for weeks"
+    )

@@ -37,6 +37,22 @@ work runs, which is what makes cache lookup possible. Consequences worth knowing
   Nothing is ever overwritten; comparing attempts is the point.
 - A `module_version` bump invalidates the cache, which is correct.
 - Genuinely non-deterministic modules pass a `salt` to opt out of dedup.
+- **A rebuilt image invalidates the cache too, and this is enforced rather than
+  asked for.** The recipe covers module, version, slot, params and inputs — and
+  none of those changes when a module's *code* does. The rule used to be that a
+  human bumps `module_version` whenever a metric set or a published band changes;
+  a rule is not a mechanism, and an uncommitted version that has already produced
+  artifacts will hand them back after the code behind it is fixed. So before
+  serving a cache entry the orchestrator compares the artifact's
+  `produced_by.image_digest` against the digest of the image that would run now,
+  and treats a mismatch as a miss.
+
+  The failure mode this closes is nastier than a stale number: both times it
+  happened here, the served value was a metric the new code *always* populates
+  coming back null. That is indistinguishable from a code defect, and it costs a
+  debugging session to rule out. It is conservative in both directions — a missing
+  digest on either side is not evidence of staleness, so in-process runs and
+  artifacts older than the field are served as before.
 
 ## `artifact.md`
 

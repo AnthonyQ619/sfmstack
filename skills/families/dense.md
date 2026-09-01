@@ -64,6 +64,24 @@ range and its choice of source views from *which images see which points*, so a
 thin or partial sparse model produces empty depth maps and looks like an MVS
 failure.
 
+**That condition is readable before spending an hour on it, and not from the
+headline metrics.** The input here is normally a refined model, and every producer
+of the type — refiners included — publishes the readings that see it:
+
+- **`min_frame_points`** is the direct one. MVS chooses source views per image; an
+  image holding almost no structure has nothing to choose from, and that is the
+  view whose depth map comes back empty. `registered_images` counts it as
+  registered, and `point_count` is a whole-model total that a single starved view
+  cannot move.
+- **`p05_triangulation_angle`** says whether the depth search range is being
+  derived from points whose depth was well determined in the first place. Points
+  on near-parallel rays reproject perfectly at badly wrong distances, so a clean
+  `mean_reprojection_error` is not evidence against this.
+
+Neither is a threshold — what a densifier needs from them has not been measured
+here, and is one of the open questions below. They are the readings to take before
+the run so that an empty depth map can be attributed rather than guessed at.
+
 A learned densifier needs only poses, and optionally tracks for the scale.
 
 ---

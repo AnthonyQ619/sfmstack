@@ -108,8 +108,17 @@ class Orchestrator:
             "params": resolved_params,
             "inputs": {slot: art.id for slot, art in resolved_inputs.items()},
             "outputs": planned,
+            # Same test `run` applies, so the preview cannot promise a hit that
+            # the run then rejects as stale. A plan that disagrees with the run it
+            # previews is worse than no plan.
             "cached": {
-                slot: self.store.exists(aid) for slot, aid in planned.items()
+                slot: (
+                    self.store.exists(aid)
+                    and self._built_by_current_image(
+                        spec, {slot: self.store.open(aid)}
+                    )
+                )
+                for slot, aid in planned.items()
             },
         }
 
@@ -173,6 +182,40 @@ class Orchestrator:
             for slot, payload_type in spec.output_types.items()
         }
 
+    def _built_by_current_image(
+        self, spec: ModuleSpec, outputs: dict[str, Artifact]
+    ) -> bool:
+        """Is this cache entry the CURRENT software's answer, or an older one?
+
+        An artifact id is derived from the recipe -- module, version, slot, params,
+        inputs -- and none of those changes when a module's code does. The
+        convention was that a human bumps `module_version` whenever a metric set or
+        a published band changes, and a convention is not a mechanism: an
+        uncommitted version that has already produced artifacts will serve them
+        back after the code behind it is fixed. That is not hypothetical, it
+        happened twice while fixing this stage, and both times the stale value was
+        a metric reading `None` that the new code always populates -- which reads
+        as a code defect and costs a debugging session to rule out.
+
+        The digest is what makes this answerable: a tag is mutable, so
+        `sfmstack/foo:1.1.0` is a different image before and after a rebuild while
+        being the same string. `Provenance.image_digest` has recorded the artifact's
+        side of that comparison since it was introduced; nothing had ever read it.
+
+        Conservative in both directions. A missing digest on either side is not
+        evidence of staleness -- in-process runs have no image at all -- so the
+        entry is served. Only two digests that both exist AND differ are a miss.
+        """
+        live = self.runner.image_digest(spec)
+        if not live:
+            return True
+        for art in outputs.values():
+            made = art.manifest.produced_by
+            built_with = made.image_digest if made else ""
+            if built_with and built_with != live:
+                return False
+        return True
+
     # -------------------------------------------------------------- execution
 
     def run(
@@ -197,11 +240,12 @@ class Orchestrator:
 
         if not force and all(self.store.exists(a) for a in planned.values()):
             outputs = {slot: self.store.open(a) for slot, a in planned.items()}
-            self._bind_scene(run, outputs)
-            step = run.add(
-                self._step(spec, resolved_inputs, resolved_params, outputs, cached=True)
-            )
-            return RunResult(step=step, outputs=outputs, cached=True)
+            if self._built_by_current_image(spec, outputs):
+                self._bind_scene(run, outputs)
+                step = run.add(
+                    self._step(spec, resolved_inputs, resolved_params, outputs, cached=True)
+                )
+                return RunResult(step=step, outputs=outputs, cached=True)
 
         job = Job(
             spec=spec,

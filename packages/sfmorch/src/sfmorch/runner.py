@@ -46,6 +46,15 @@ class Job:
 class Runner(Protocol):
     def run(self, job: Job, store: ArtifactStore) -> dict[str, Artifact]: ...
 
+    def image_digest(self, spec: ModuleSpec) -> str:
+        """The digest of the image this runner would use for `spec`, right now.
+
+        The cache asks this before serving a stored artifact. "" means the
+        question does not apply -- an in-process run has no image -- and never
+        invalidates anything.
+        """
+        return ""
+
 
 class InProcessRunner:
     """Import the module's adapter and call it in this process.
@@ -58,6 +67,10 @@ class InProcessRunner:
 
     def __init__(self) -> None:
         self._cache: dict[str, Any] = {}
+
+    def image_digest(self, spec: ModuleSpec) -> str:
+        """No image, so nothing to go stale behind. Never invalidates a cache entry."""
+        return ""
 
     def run(self, job: Job, store: ArtifactStore) -> dict[str, Artifact]:
         fn = self._load(job.spec)
