@@ -76,3 +76,45 @@ Worth doing after a pipeline has run and disagreed with the description. The
 disagreement is the lesson: a report that said `material_hazards: none` on a scene
 whose structure landed behind a window is a correction worth having on the record
 beside the original, which is why the original is not overwritten.
+
+## Coherent reflection
+
+The `coherent_reflection` diagnostic points here. This module cannot do anything
+about the hazard — it only reports it — so what follows is what to do about it
+*downstream*, which is the question a reader arriving from the diagnostic actually
+has.
+
+**What is true.** A legible reflected image produces correspondences to a virtual
+point behind the reflecting surface. Those features are self-consistent, so they
+pass RANSAC, and a healthy `inlier_ratio` is not evidence against them. Bundle
+adjustment does not remove them: measured on a capture where the flagged surface
+could be isolated in the finished cloud, the error ratio between reflection points
+and the rest was unchanged to two decimal places either side of a global solve.
+
+**What is NOT true, and this section exists because the diagnostic used to say it
+was.** Reprojection error is not blind to the hazard. Point by point a virtual
+point does reproject well — that part is right. As a *population* it does not. On
+the same capture, points on the reflecting surface carried **3.1× the mean
+reprojection error** of the rest of the model (0.524 px against 0.170 px, medians
+0.350 against 0.129). The distribution separates cleanly even though no individual
+point looks wrong. Several readers were told the metric could not see this and
+stopped looking.
+
+**The probe, in order of cost.**
+
+1. **Read `p95_reprojection_error` beside `mean_reprojection_error`** on the
+   finished `sparse_model/v1`. A p95 far above the mean is a localised population
+   of bad points, which is the shape this hazard makes. This costs nothing and is
+   the reason that metric is published.
+2. If the flagged surface is separable — by colour, or by which frames see it —
+   isolate those points and compare error *distributions*, not individual points.
+   That is the measurement above, and it has to be built from the raw arrays.
+3. `hazard_position` says where the phantom lands. Between camera and subject is
+   the worst case; a reflection in a background window is often ignorable.
+
+**What still has no answer.** Nothing localises a *named surface* in a finished
+cloud, so step 2 needs a segmentation you invent yourself, and a null result from it
+is weak. No module in the sparse or optimization families has a parameter, filter or
+metric that separates a virtual point from a real one. The honest position on a
+capture with this hazard is that the model is internally consistent and that
+internal consistency and correctness are further apart here than usual.

@@ -1,6 +1,6 @@
 ---
 module: SparseVGGT
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: facebookresearch/vggt @ a288dd0, depth head
 curated_at: 2026-08-11
 sources: 3
@@ -15,8 +15,8 @@ not intersected, so a track seen in one view still gets a point — the capabili
 no geometric triangulator has.
 
 **Prefer SparseTriangulation when** tracks are long and the scene is well
-textured. Measured on 12 DTU frames with identical SIFT tracks and classical
-poses: this module 5358 points at 0.967 px, `SparseTriangulation` 6900 at
+textured. Measured on twelve frames of a small, well-textured object on a plain
+backdrop, with identical classical tracks and classical poses: this module 5358 points at 0.967 px, `SparseTriangulation` 6900 at
 0.365 px. Ray intersection wins where rays are available.
 
 **It uses the DEPTH head, not the point maps.** VGGT's point maps live in VGGT's

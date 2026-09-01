@@ -26,7 +26,7 @@ helps for scale and costs detection time.
 (SuperPoint, ALIKED) if a GPU is available.
 
 ```
-sfm_find_modules(produces="features/v1", excluding="FeatureDetectionORB")
+sfm_find_alternatives(produces="features/v1", excluding="FeatureDetectionORB")
 ```
 
 ## Low texture
@@ -42,7 +42,7 @@ confidently and wrongly.
 *Switch to:* a detector-free matcher, which skips interest points entirely.
 
 ```
-sfm_find_modules(produces="pairwise_matches/v1", not_consuming="features/v1")
+sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1")
 ```
 
 ## Repeated structure

@@ -1,5 +1,5 @@
 name: SparseTriangulationGTSAM
-version: 1.0.0
+version: 1.1.0
 kind: sparse
 summary: >
   Triangulates tracks against known poses using GTSAM's LOST estimator with
@@ -29,7 +29,7 @@ description: |
   that created it; an angle threshold catches most of those and a distance bound
   catches the rest.
 
-image: sfmstack/sparse-gtsam:1.0.0
+image: sfmstack/sparse-gtsam:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -101,8 +101,28 @@ params:
     tuning: >
       The filter with no counterpart in the OpenCV path. Scale is arbitrary -- the
       seed pair's baseline is 1.0 -- so this is a multiple of that baseline, not a
-      distance in metres. On a turntable capture 50-200 is a reasonable bound;
-      leave it at 0 until `median_distance` in the note says points are escaping.
+      distance in metres. NOTE that a bundle adjustment does not preserve the
+      gauge: it has been measured rescaling a whole model by 0.81 on one capture
+      and 1.45 on another, so a bound chosen against a pre-BA cloud is in a
+      different unit afterwards.
+
+      THE READING THAT DECIDES IT is p05_triangulation_angle against
+      median_triangulation_angle. Escaping points are the near-parallel-ray
+      population, so a p05 far below the median is the signature; a p05 close to it
+      means nothing is escaping and this filter has nothing to catch. Confirm with
+      the artifact's radial percentiles before spending a run.
+
+      Correction: this note used to say "leave it at 0 until `median_distance` in
+      the note says points are escaping." There is no `median_distance` -- not in
+      the note, not in the metrics, not anywhere fetchable -- so the one filter this
+      module has that its sibling lacks was gated on a reading nobody could take,
+      and every reader who wanted it computed camera distances by hand. It also
+      quoted "on a turntable capture 50-200"; that is one rig's scale and is
+      meaningless on any other, so it is gone rather than restated.
+
+      Where it earns its place: a localised escaping tail, which it removes 25x
+      more cheaply in points than raising min_triangulation_angle_deg does on the
+      same capture -- 23 points against 565 for the same cleanup.
 
   rank_tolerance:
     type: number
@@ -127,6 +147,47 @@ params:
       two-view set gets nothing from being triangulated here.
 
 metrics:
+  min_frame_points:
+    meaning: >
+      The fewest observations any REGISTERED camera contributes to this model.
+      registered_images says a camera has a pose; this says whether it has any
+      structure. They are not the same reading, and the gap between them has been
+      measured: a model reported 12/12 registered while one of those cameras was
+      held by TWO shared observations, with every other metric healthy. Read this
+      one before believing a registration count.
+    direction: higher_better
+    healthy: [50, null]
+  two_view_fraction:
+    meaning: >
+      The share of points seen in exactly two views. Two-view points are exactly
+      determined, so their reprojection residual is near zero BY CONSTRUCTION --
+      measured at roughly a third of the residual of five-view points on the same
+      model. On a cloud that is half two-view, therefore, half of
+      mean_reprojection_error is made of numbers that cannot carry error, and the
+      headline reads better than the model is. mean_track_length is a mean over a
+      bimodal distribution and hides this completely.
+    direction: lower_better
+    healthy: [null, 0.6]
+  p95_reprojection_error:
+    meaning: >
+      The tail of the per-point error distribution. The published mean runs about
+      1.5x the median on a typical model here, because a small tail owns it -- so
+      every judgement made on the mean alone is a judgement about the outliers a
+      robust loss exists to discount. Read this beside the mean: a mean close to
+      the p95 is a uniformly mediocre model, a mean far below it is a good model
+      with a few bad points.
+    direction: lower_better
+    healthy: [null, 2.0]
+  p05_triangulation_angle:
+    meaning: >
+      The weak end of the parallax distribution, where median_triangulation_angle
+      is the middle of it. The escape failure this module describes -- a point on
+      near-parallel rays fleeing to a huge distance while reprojecting perfectly
+      into the views that made it -- is a TAIL phenomenon, and a median cannot see
+      it. A model with 9% of its points inside 2-4 degrees has been measured
+      reading a perfectly healthy median with no diagnostic firing.
+    direction: higher_better
+    healthy: [1.0, null]
   point_count:
     direction: higher_better
     healthy: [100, null]

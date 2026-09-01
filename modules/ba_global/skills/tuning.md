@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentGlobal
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-07
 ---
 
@@ -12,8 +12,10 @@ intrinsics.
 
 ## Reference run
 
-DTU scan1, 12 contiguous images, `max_edge: 1024`, SIFT → NN (exhaustive) →
-UnionFind → PoseEssentialToPnP → SparseTriangulation, all defaults:
+One capture: a short contiguous arc of twelve calibrated frames around a small,
+well-textured object on a plain backdrop, at about 1 MP, through a classical
+detector → ratio-test matcher (exhaustive) → union-find tracker → incremental
+poses → pairwise triangulation, all defaults.
 
 | metric | value |
 |---|---|
@@ -79,6 +81,15 @@ for the wrong reason.
 2 (default) includes two-view points. Such a point has exactly as many constraints
 as unknowns, so **BA cannot improve it** — it can only slide it along its ray. It
 adds residual blocks without adding information.
+
+**Correction, measured.** "BA cannot improve it" is too strong, and the constraint
+count behind it is wrong: a two-view point has FOUR residuals against THREE
+unknowns. What is true is that it carries no redundancy of its own, so it gains
+least. What is false is that it gains nothing — the cameras move during the solve
+and the point moves with them. Measured through a bundle adjustment on two separate
+captures, two-view points improved by 12.9% and 2.5%. That matters because this
+claim is the whole justification for `min_track_length: 3`, which on a
+two-view-dominated cloud deletes half the model.
 
 3 is a defensible tightening, and on a cloud with a low `mean_track_length` it will
 remove a lot. Check `points_optimized` afterwards: if it collapses, the input cloud

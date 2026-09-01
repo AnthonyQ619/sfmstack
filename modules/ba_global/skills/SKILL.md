@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentGlobal
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: pycolmap 4.1.1 / Ceres
 curated_at: 2026-08-07
 sources: 3
@@ -42,8 +42,9 @@ produced plausible numbers rather than errors):
   convergence read off it are invented. This module builds the adjuster explicitly
   and reports `converged=0` when it cannot tell, rather than defaulting to true.
 
-**Cheapest thing that usually works:** defaults. Reference run — DTU scan1, 12
-images, 6941 points, 22743 observations: **0.376px → 0.253px** (a 32.8% reduction)
+**Cheapest thing that usually works:** defaults. Reference run — one short
+contiguous arc of twelve calibrated frames around a small, well-textured object on
+a plain backdrop, 6941 points, 22743 observations: **0.376px → 0.253px** (a 32.8% reduction)
 in 154 iterations, converged, 5.3s.
 
 **Reading the output:** [artifact.md](artifact.md). Also writes a `colmap`

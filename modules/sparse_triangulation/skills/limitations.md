@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulation
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-07
 ---
 
@@ -75,8 +75,17 @@ known:
   loop at the orchestrator level (triangulate → BA → triangulate again), which the
   driving agent can already express without any new module.
 
+**That last route does not exist, and this file is the wrong place to have claimed
+it.** A bundle adjuster produces `sparse_model/v1`; every triangulator consumes
+`poses/v1`; nothing converts between them, so `triangulate → BA → triangulate again`
+raises a `WiringError` rather than running. Confirmed by trying it. If you want the
+effect, the expressible version is to re-run the TRIANGULATOR with tighter filters
+against the original poses and bundle-adjust that instead — which discards the
+refinement rather than building on it, and is a materially weaker move. A file whose
+job is to say what cannot be done should not be the one inventing a capability.
+
 Any of these keeps the type, so a replacement is discoverable through:
 
 ```
-sfm_find_modules(produces="sparse_model/v1", consumes="poses/v1")
+sfm_find_alternatives(produces="sparse_model/v1", consumes="poses/v1")
 ```

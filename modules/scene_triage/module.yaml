@@ -308,7 +308,7 @@ diagnostics:
     message: A large share of the frame carries no detectable texture.
     suggested_actions:
       - Detection coverage, not count, is the metric to watch downstream (spatial_coverage on features/v1) - but read empty_regions first and subtract. That metric's denominator is the whole frame, so cells holding destroyed detail rather than merely flat texture can never be occupied by any detector, and one reporting that it occupied them is detecting on nothing.
-      - Consequence: on this capture the raw coverage ratio does not compare two detectors. The one that spreads detections evenly regardless of content scores higher and is not better. Check where the winner's keypoints landed before believing the gap.
+      - "Consequence: on this capture the raw coverage ratio does not compare two detectors. The one that spreads detections evenly regardless of content scores higher and is not better. Check where the winner's keypoints landed before believing the gap."
       - Consider a detector-free matcher, which does not need a keypoint to exist to produce a correspondence.
     metric: textureless_fraction
     see_also: limitations.md#textureless-scenes
@@ -319,7 +319,7 @@ diagnostics:
     suggested_actions:
       - This metric reports CONTENT, not focus. On every capture where it has fired, the frames it named were aimed at a flat surface and were sharply in focus. Separate the two causes before acting.
       - The separation is already in this artifact - read density_per_image and textureless_per_image for the same frames. Low sharpness with low density and high textureless is flat content; low sharpness with density in line with the set is genuine softness.
-      - Detection settles it for free if you are unsure: a frame returning keypoints in line with the set was never soft.
+      - "Detection settles it for free if you are unsure: a frame returning keypoints in line with the set was never soft."
       - Only if genuinely soft, re-run SceneLoader without them; a soft frame usually fails to register rather than corrupting the model, so this is a coverage cost.
       - If flat rather than blurred, the fix is exposure normalisation at detection or a larger working resolution upstream - not exclusion.
     metric: sharpness_ratio

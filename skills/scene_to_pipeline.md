@@ -561,9 +561,21 @@ points is not better and the usual metrics cannot referee.** Treat the global
 solver as insurance with a known premium and an unmeasured payout, and say so in
 the plan rather than implying the choice is settled either way.
 
+**The "third" is a defaults artefact, not a property of the solver.** Measured
+twice on different captures: the global solver defaults to `min_track_len: 3` and
+the triangulators default to `2`, so their raw point counts are not the same
+quantity. At a MATCHED track-length floor the ranking inverts — the global solver
+returned 7.5% and 8% MORE points than the incremental chain on the two captures
+where both were compared that way. So the premium is not "a third less structure";
+it is "no two-view structure", which is a different trade and one some downstream
+consumers would take. Compare at matched `min_track_len` or do not compare counts
+at all. (This is trap 10 of this same file — a module run at its defaults is not
+the module the plan specified — applied to the comparison the paragraph above
+invites.)
+
 **A caution worth carrying:** a subject that *looks* planar need not read as
-planar. A carved stone relief photographed head-on scored 0.0, and the
-full-resolution view showed why — the figures project far enough to cast their
+planar. A shallow-relief surface shot square-on scored 0.0, and the
+full-resolution view showed why — the modelling projects far enough to cast its
 own shadows. The metric was right and the intuition was wrong.
 
 ### The asserted group — what no measurement reaches
@@ -996,14 +1008,17 @@ that would otherwise act on it.
 - **Every stage gets a line, even when the answer is the default.** "SIFT, because
   nothing here is hard" is a real answer and a cheap one; `matching.md` says so
   explicitly.
-- **Name the number.** "texture_density 475, seven times below the next lowest
-  scene" beats "low texture".
+- **Name the number.** "texture_density seven times below the next lowest capture
+  in this set" beats "low texture" — and name it as a RELATION, not as a value.
+  A bare figure quoted against a published range is a lookup key: a reader whose
+  capture sits on a range endpoint can identify it, which is the same leak as
+  naming the scene. State where a reading sits relative to the others, not what
+  it was.
 - **`WATCH` is the most valuable line.** It is where a scene's real risk goes when
-  no module choice addresses it. A tight-arc capture of a wall relief had an
-  entirely ordinary plan whose watch line was
-  *judge on `median_triangulation_angle`, not `inlier_ratio`*,
-  because a tight baseline against a shallow subject makes every other number
-  look excellent.
+  no module choice addresses it. Where a capture orbits through a narrow arc
+  against a shallow subject, an entirely ordinary plan can still need the watch
+  line *judge on `median_triangulation_angle`, not `inlier_ratio`* — a tight
+  baseline against little depth makes every other number look excellent.
 - **`UNSUPPORTED` is where the honesty goes, and it is not optional.** Two of the
   first five plans written to this shape needed a second `WATCH` for a hazard no
   metric reaches -- a person walking through a background frame, crushed shadow

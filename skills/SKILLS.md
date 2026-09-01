@@ -12,7 +12,18 @@ Design: [../docs/design/knowledge-system.md](../docs/design/knowledge-system.md)
 | [workflow/](workflow/) | "Which stage is my problem in? How do I approach this?" | by topic |
 | [families/](families/) | "I know I need a tracker — which one, for this scene?" | [families/README.md](families/README.md) |
 | [modules/](modules/) | "What does this tool do, and how do I move its numbers?" | `sfm_describe_module`, `sfm_module_skill` |
-| [runs/](runs/) | "Has a scene like this been solved before?" | [runs/INDEX.md](runs/INDEX.md) filtered by trait |
+| [runs/](runs/) | "Has a scene like this been solved before?" | `sfm_workflow_skill("runs/INDEX")` |
+| `docs/` | "Where are the numbers behind a claim, and what was actually run?" | `sfm_workflow_skill("import_lessons")`, `sfm_workflow_skill("design/DECISIONS")` |
+
+**Every path in this table is reachable by a call**, and that has not always been
+true. The family files and module skills cite `docs/import_lessons.md` and
+`docs/design/DECISIONS.md` repeatedly as where the per-capture magnitudes and the
+full experiments live, and until recently neither could be fetched by any means a
+reader had — so every quoted range arrived with no way to check its scope. A reader
+who cannot follow a citation is being shown evidence they cannot examine, which is
+worse than a claim with no citation at all. If a link in any skill file resolves to
+a path you cannot reach with `sfm_workflow_skill`, that is a defect worth
+reporting.
 
 ## Judgment digest
 

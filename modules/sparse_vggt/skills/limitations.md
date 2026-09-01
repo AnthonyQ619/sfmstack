@@ -1,6 +1,6 @@
 ---
 module: SparseVGGT
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-11
 ---
 
@@ -33,7 +33,8 @@ misleading place to start debugging. Check the pose estimator's own metrics firs
 
 ## Accuracy is bounded by the depth prior
 
-Measured on DTU with identical tracks: 0.967 px against `SparseTriangulation`'s
+Measured on the small-object arc with identical tracks: 0.967 px against
+`SparseTriangulation`'s
 0.365 px. Ray intersection is more accurate where rays are available. This module
 is for where they are not.
 

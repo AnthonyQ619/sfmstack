@@ -82,6 +82,18 @@ captures where the incremental route did not visibly fail — but read that as a
 premium, not as evidence, because the failure it insures against is a confident
 wrong model that every metric here would score as healthy.
 
+**The "third" is a defaults artefact, not a property of the solver.** Measured
+twice on different captures: the global solver defaults to `min_track_len: 3` and
+the triangulators default to `2`, so their raw point counts are not the same
+quantity. At a MATCHED track-length floor the ranking inverts — the global solver
+returned 7.5% and 8% MORE points than the incremental chain on the two captures
+where both were compared that way. So the premium is not "a third less structure";
+it is "no two-view structure", which is a different trade and one some downstream
+consumers would take. Compare at matched `min_track_len` or do not compare counts
+at all. (This is trap 10 of this same file — a module run at its defaults is not
+the module the plan specified — applied to the comparison the paragraph above
+invites.)
+
 ---
 
 ## Pure rotation is terminal

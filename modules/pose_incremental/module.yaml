@@ -179,12 +179,30 @@ params:
       a set at or below the window size there is no such distinction: the window
       is the whole model, every camera is in it, and the drift this parameter
       exists to bound cannot accumulate because there is no chain to accumulate
-      along. On such a set WIDENING IT TO THE IMAGE COUNT IS THE BEST SETTING,
-      measured -- reprojection error fell monotonically as the window grew to the
-      image count and then stopped changing, because past that there is nothing
-      left to add. Narrowing it there is strictly harmful, and narrowing is what
-      the rest of this note and the not-converging diagnostic would otherwise
-      tell you to do.
+      along. On such a set WIDEN IT TO THE IMAGE COUNT. Narrowing it there is
+      harmful, and narrowing is what the rest of this note and the
+      not-converging diagnostic would otherwise tell you to do.
+
+      WIDENING DOES TWO THINGS AT ONCE and you have to read both, because on
+      some captures they push the headline metric in opposite directions. It
+      solves better, and it also RETAINS MORE STRUCTURE -- a point the narrow
+      window could not constrain becomes constrained once every camera that sees
+      it is inside the window. So read track_utilization BEFORE widening. Where
+      it already sits near its ceiling there is little structure left to
+      recover, the model barely changes size, and reprojection error falls
+      cleanly. Where it sits well below its ceiling the point count rises
+      materially, and then error and point count move TOGETHER and neither ranks
+      the two runs on its own -- a bigger model is a harder model, and error
+      rising while a quarter more structure survives is not a regression. An
+      earlier version of this note said the error falls monotonically to the
+      image count; that was fitted on captures whose utilization happened to be
+      high, and it is wrong as a law.
+
+      WIDENING ALSO REMOVES A CAUSE OF DIVERGENCE rather than merely improving
+      an average. An under-constrained point inside a narrow window is what makes
+      the local BA gain blow up; admitting the cameras that see it is the fix. A
+      run that diverges at the default is worth widening before it is worth
+      anything else.
 
       ON A SEQUENCE LONGER THAN THE WINDOW, the cost/benefit dial. Cost grows
       faster than linearly, benefit does not. Below 5 there is almost no freedom
@@ -323,6 +341,18 @@ metrics:
       138 observations against a floor of 50 and 9 long tracks, while the metric
       its own remedy section named read three times healthy.
 
+      WHAT IT DOES NOT CATCH, and this cost a reader four runs to establish. It is
+      a MINIMUM OVER FRAMES, so it answers "can every frame be registered" and
+      nothing else. It is silent on whether a frame's tracks are CORRECT. Measured:
+      on a capture whose two blank-wall frames carried tracks that could not be
+      triangulated at any threshold, this metric named a THIRD frame -- one that
+      went on to survive triangulation at 96% -- while the two that collapsed
+      carried three times its value and survived at 6% and 17%. A minimum is the
+      wrong statistic when the failure is quality rather than quantity, and it
+      registered all twelve frames exactly as it promised. For the quality
+      question, read min_frame_points on the sparse model, one stage down; there is
+      no reading for it here.
+
       THE BAND IS min_pnp_inliers, stated here at that parameter's default of 20.
       Below it, the weakest frame cannot in principle reach the inlier count
       registration demands, and it will drop. If you have changed
@@ -408,7 +438,8 @@ diagnostics:
     severity: warn
     message: Some images could not be registered and carry valid=False.
     suggested_actions:
-      - "Read min_frame_long_tracks, NOT the tracker's min_frame_observations: PnP needs points a third view already triangulated, so a frame can sit far above the observation floor and still be unregisterable. The tracks artifact's observations.long_tracks_per_frame array says which frame is short."
+      - "Read min_frame_long_tracks on THIS artifact, NOT the tracker's min_frame_observations: PnP needs points a third view already triangulated, so a frame can sit far above the observation floor and still be unregisterable."
+      - "WHICH frame is short: the tracks artifact carries observations.long_tracks_per_frame only if its tracker emitted it, which older track artifacts do not. If the file is absent the count is still derivable from the observations array by hand, and this module computed its own metric that way. Do not treat the array as guaranteed."
       - "Link those frames to more neighbours at the matcher -- under `pairing:
         sequential` that is `window`; under `exhaustive` the pairs already exist
         and were dropped, so the dial is min_matches or the acceptance threshold."

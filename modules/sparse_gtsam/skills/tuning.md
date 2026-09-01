@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulationGTSAM
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-10
 ---
 
@@ -25,7 +25,11 @@ identical at 2, ~5% better at 3–4, 12–21% better at 5+.
 
 And compare the same points. The two keep different sets, so pair on `track_id`;
 an unpaired comparison after bundle adjustment reports this module as *worse*,
-because it retained 4–25% more points and the extra ones are the hard ones.
+because it retained more points and the extra ones are the hard ones — measured at
+roughly five times the model's mean error on the points only this module keeps. How
+MANY extra points is bounded by what the pairwise path was discarding; see SKILL.md.
+On one capture those extras were the model's worst 2%, so more is not automatically
+better here.
 
 **`optimize: false` is worth trying and usually free.** On every scene measured it
 matched `optimize: true` to four decimals at half the runtime (1.38 s against
@@ -34,7 +38,8 @@ means the linear solve had already arrived and the refinement is pure cost.
 
 ## Reference run
 
-DTU scan1, 12 contiguous images, `max_edge: 1024`, SIFT + FeatureMatchNN
+One capture: a short contiguous arc of twelve calibrated frames around a small,
+well-textured object on a plain backdrop, at about 1 MP, classical detector + ratio-test matcher
 `pairing: exhaustive`, poses from `PoseEssentialToPnP`, everything here default:
 
 | metric | value |
@@ -56,7 +61,8 @@ data it does.
 It is genuinely measuring something. On a synthetic four-view configuration with
 1.5 px of measurement noise, refinement moves the LOST answer by 0.0013 scene
 units and the plain-DLT answer by 0.00004 — the two start in different places and
-converge to nearly the same one. On DTU the median relative shift is below 1e-6 of
+converge to nearly the same one. On a well-conditioned small-object capture the
+median relative shift is below 1e-6 of
 the scene extent, which rounds to zero at the reported precision.
 
 Act on it when it is **large** (above ~0.05 of the scene extent): the linear

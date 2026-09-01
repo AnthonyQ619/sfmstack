@@ -271,10 +271,12 @@ diagnostics:
     message: A reflective surface carrying a legible reflected image was reported.
     metric: material_hazards
     suggested_actions:
-      - A coherent reflection is a correspondence to a virtual point BEHIND the surface. It triangulates confidently and reprojects beautifully, so neither reprojection error nor bundle adjustment will find it.
+      - A coherent reflection is a correspondence to a virtual point BEHIND the surface. Bundle adjustment will not remove it - measured, the flagged region's error ratio was unchanged to two decimals either side of a global solve.
+      - BUT REPROJECTION ERROR IS NOT BLIND TO IT, and an earlier version of this action said it was. Point by point a virtual point does reproject well. As a POPULATION it does not - on a capture where the flagged surface was isolated in the finished cloud, those points carried 3.1x the mean reprojection error of the rest of the model (0.524px against 0.170px, medians 0.350 against 0.129). The distribution separates even though no single point looks wrong. Several readers stopped looking because this action told them not to.
+      - So the probe is cheap and worth taking - segment the finished cloud and compare the error distributions, do not compare individual points. `p95_reprojection_error` beside `mean_reprojection_error` on sparse_model/v1 is the published version of that reading; a p95 far above the mean is a localised population of bad points, which is the shape this hazard makes.
       - Read `hazard_position` for where the phantom lands - between camera and subject is the worst, background is often ignorable.
-      - Those features are self-consistent, so they can be RANSAC inliers. A healthy inlier_ratio is not evidence against this.
-    see_also: limitations.md#the-report-can-be-wrong
+      - Those features are self-consistent, so they can be RANSAC inliers. A healthy inlier_ratio is not evidence against this, and neither is a healthy MEAN.
+    see_also: tuning.md#coherent-reflection
 
   - code: diffuse_reflection
     severity: info

@@ -1,5 +1,5 @@
 name: BundleAdjustmentGlobal
-version: 1.0.0
+version: 1.1.0
 kind: optimization
 summary: >
   Ceres bundle adjustment over the whole reconstruction, refining every pose and
@@ -27,7 +27,7 @@ description: |
   authoritative; the sidecar is a convenience, and a consumer without pycolmap
   loses nothing but the convenience.
 
-image: sfmstack/ba-global:1.0.0
+image: sfmstack/ba-global:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -52,7 +52,7 @@ params:
     maximum: 1000
     description: Ceres iteration cap.
     tuning: >
-      More binding than it looks. On the DTU reference scene the solve needs 154
+      More binding than it looks. On the small-object reference capture the solve needs 154
       iterations to converge; the original default of 100 stopped it early, and
       because the reprojection error was identical either way (0.2531) nothing but
       the `converged` flag revealed it. Check `converged` before assuming a solve
@@ -105,13 +105,72 @@ params:
     default: 2
     minimum: 2
     maximum: 50
-    description: Points seen in fewer views are excluded from the solve.
+    description: >
+      Points seen in fewer views are REMOVED FROM THE OUTPUT MODEL, not merely
+      held out of the solve. Read point_count, never points_optimized: the two
+      are equal by construction, so points_optimized cannot show you what this
+      cost.
     tuning: >
       3 is a defensible tightening: a two-view point has exactly as many
       constraints as unknowns and BA can only slide it along its ray, so it adds
       cost without adding information. Check `points_optimized` afterwards.
 
 metrics:
+  min_frame_points:
+    meaning: >
+      The fewest observations any REGISTERED camera contributes to the refined
+      model. registered_images says a camera has a pose; this says whether it has
+      any structure. On the final artifact of the pipeline that distinction is the
+      one most worth having.
+    direction: higher_better
+    healthy: [50, null]
+  two_view_fraction:
+    meaning: >
+      Share of points seen in exactly two views. A two-view point is exactly
+      determined, so its residual is near zero by construction -- which means
+      mean_reprojection_error on a half-two-view cloud is half made of numbers that
+      cannot carry error. Read this before comparing an error against anything.
+    direction: lower_better
+    healthy: [null, 0.6]
+  p95_reprojection_error:
+    meaning: >
+      The tail of the per-point error distribution, suppressed if the solve
+      diverged. The mean runs about 1.5x the median here; a mean close to p95 is a
+      uniformly mediocre model, a mean far below it is a good model with a few bad
+      points. Those two want different responses and the mean alone cannot separate
+      them.
+    direction: lower_better
+    healthy: [null, 2.0]
+  p05_triangulation_angle:
+    meaning: >
+      The weak end of the parallax distribution on the model this module SHIPS, not
+      the one it was given. Bundle adjustment moves structure, so the input's
+      conditioning is stale the moment the solve finishes -- and this artifact is
+      usually the last one in the sparse pipeline, so a consumer that needs to know
+      how well-conditioned the geometry is has nowhere else to read it. Points near
+      the bottom of this distribution reproject well while sitting at an
+      ill-determined depth, which is invisible in any reprojection metric.
+    direction: higher_better
+    healthy: [1.5, null]
+  estimated_focal_ratio:
+    meaning: >
+      The refined focal length over the one that was supplied, averaged across
+      registered cameras. Present only when intrinsics were refined. This module
+      WRITES intrinsics that every downstream consumer prefers over the scene's,
+      and published nothing about them until now -- so a refinement that gave a
+      one-lens rig twelve focal lengths was invisible unless a reader dumped two
+      artifacts and divided. A consistent same-sign pull is a calibration
+      disagreement worth investigating; read focal_spread to tell that from noise.
+    direction: neutral
+    healthy: [0.95, 1.05]
+  focal_spread:
+    meaning: >
+      Largest refined focal ratio minus smallest, across registered cameras.
+      On a rig with one physical lens this should be ~0. Anything material means
+      the solve is modelling one camera as many and absorbing pose error into the
+      extra freedom.
+    direction: lower_better
+    healthy: [null, 0.01]
   reprojection_error_before:
     direction: lower_better
     healthy: [null, 2.0]
@@ -187,13 +246,40 @@ metrics:
       different camera counts, and this is what says whether they are.
 
 diagnostics:
+  - code: bundle_adjustment_diverged
+    severity: error
+    message: The solve left its trust region; every error metric is suppressed.
+    suggested_actions:
+      - "Do NOT raise max_iterations -- a diverging solve diverges further."
+      - "The cause is under-constrained structure: two-view points, near-parallel rays, or points placed by a depth prior and never verified."
+      - "Read the input model's two_view_fraction and p05_triangulation_angle."
+      - "If the input came from a learned prior, triangulate the same tracks geometrically and refine that instead."
+    see_also: limitations.md#it-cannot-escape-a-bad-local-minimum
+  - code: points_dropped_by_min_track_length
+    severity: warn
+    message: min_track_length removed points from the output model, not just from the solve.
+    suggested_actions:
+      - "Read point_count, not points_optimized -- the two are equal here by construction."
+      - "The deletion is correct: a point held out of the solve would keep the input's gauge while everything else moved."
+      - "min_track_length: 2 keeps everything, and two-view points do measurably improve through the solve."
+    see_also: tuning.md#min_track_length
+  - code: refined_focal_disagrees_across_cameras
+    severity: warn
+    message: Intrinsic refinement gave a one-calibration scene a different focal length per camera.
+    suggested_actions:
+      - "A fixed lens cannot have one focal length per frame; this is pose error absorbed into intrinsics."
+      - "Turn refine_focal_length off. The refined K is written into this artifact and every consumer prefers it."
+      - "Judge on estimated_focal_ratio and focal_spread, never on the reprojection error, which improves either way."
+    see_also: tuning.md#refining-intrinsics
   - code: did_not_converge
     severity: warn
-    message: The solver stopped without converging.
+    message: The solver stopped without converging -- which on this stack is usually bookkeeping, not a bad model.
     suggested_actions:
-      - Check reprojection_error_before -- BA cannot rescue a badly wrong input.
-      - Raise max_iterations if it stopped at the cap.
-      - Turn refine_focal_length off if it was on; free intrinsics destabilise short sequences.
+      - "Raise max_iterations only if `iterations` is AT OR NEAR the cap. It reports cap+1 on a capped run, so it never equals the cap and 'stopped at the cap' is not a test that passes."
+      - "If it stalled well BELOW the cap, more iterations will not help. The robust loss is the usual cause: a Cauchy loss can keep the trust-region step from meeting Ceres' tolerance on a model already at its optimum."
+      - "A converged flag has been measured worth nothing here: capped and converged solves of one problem agreed to four decimal places every time. Read reprojection_error_after and treat this as bookkeeping unless the error is also bad."
+      - "Check reprojection_error_before -- BA cannot rescue a badly wrong input."
+      - "Turn refine_focal_length off if it was on; free intrinsics destabilise short sequences."
     see_also: tuning.md#converged-is-0
 
   - code: no_improvement

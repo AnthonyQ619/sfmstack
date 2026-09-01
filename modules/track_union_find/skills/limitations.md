@@ -97,7 +97,7 @@ compounding cost.
 consuming `pairwise_matches/v1` at all:
 
 ```
-sfm_find_modules(produces="tracks/v1", not_consuming="pairwise_matches/v1")
+sfm_find_alternatives(produces="tracks/v1", not_consuming="pairwise_matches/v1")
 ```
 
 **That query returns two modules: `FeatureTrackVGGSfM` and `FeatureTrackTapir`.**
@@ -130,9 +130,14 @@ None of these change the artifact type, so such a module would be a drop-in
 alternative discoverable through:
 
 ```
-sfm_find_modules(produces="tracks/v1", excluding="FeatureTrackUnionFind")
+sfm_find_alternatives(produces="tracks/v1", excluding="FeatureTrackUnionFind")
 ```
 
 Recorded here because the measured `inconsistent_rate` values on clean data
 (0.0000-0.0018) say this is not yet the binding constraint. Revisit when a
 matcher shows up whose conflicts cannot be tuned away.
+
+
+## `unmergeable_input` is not a diagnostic, and used to be listed as one
+
+The manifest declared it and the module never emitted it, because when detector-free matches arrive with merge_eps_px at 0 -- the module RAISES, because endpoints cannot be merged by proximity with a zero tolerance. A raise is the right behaviour — there is no artifact to hang a diagnostic on — but a diagnostic listed in the contract and unreachable in practice is worse than none: a reader planning against `sfm_describe_module` sees a failure mode they can catch and read, and will instead get an exception. The declaration is gone; the raise and its message are unchanged, and the message says more than the diagnostic did.

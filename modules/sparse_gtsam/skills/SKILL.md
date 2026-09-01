@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulationGTSAM
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: GTSAM 4.2.2 triangulatePoint3 (LOST estimator)
 curated_at: 2026-08-10
 sources: 3
@@ -32,10 +32,29 @@ near-coincident views.
   comparison is a coin flip (41–51% win rate, medians agreeing to three decimals).
   Without a BA stage the accuracy is yours to keep.
 
-**With bundle adjustment, read the gain as YIELD.** The better initial estimate
-passes the same reprojection filter more often, so more structure reaches the final
-model: **+4% to +25% points** after BA, the large end with a predictive tracker's
-long tracks. That is what this module buys in a full pipeline.
+**With bundle adjustment, read the gain as YIELD** — and read the CEILING on that
+gain before you bank on it. The better initial estimate passes the same reprojection
+filter more often, so more structure reaches the final model. But that mechanism can
+only recover points the pairwise path was *losing*, so the gain is bounded above by
+what the pairwise path throws away:
+
+> **The most this module can win is `1 - yield(SparseTriangulation)`.**
+
+Run the cheap module first and read its `yield`. At 0.99 the ceiling is one percent
+and no setting of anything reaches the range this file used to quote; at 0.8 there is
+real headroom. Across a seventeen-capture sweep the measured gain tracked
+`(1 - pairwise yield)` closely and ranged from a fraction of a percent to single
+digits — it did not once reach the double digits an earlier version of this section
+promised, including on the predictive-tracker captures that version named as its
+large end.
+
+**Correction, because this paragraph said something stronger.** It quoted "+4% to
++25% points after BA" as a property of the module. It is a property of the INPUT —
+specifically of how much structure the pairwise estimator was already keeping — and
+stating it without that precondition over-promised the swap on exactly the
+well-conditioned captures where it has least to offer. `track_survival_5` predicts
+whether the two estimators differ in ACCURACY, which it does well; it does not
+predict yield, and it did not order the captures correctly when tried.
 
 **Prefer SparseTriangulation when** `mean_track_length` is near 2.0. On a
 two-view track the two are the same computation and this one costs more; the
@@ -55,7 +74,9 @@ Full experiment: [`docs/import_lessons.md`](../../../docs/import_lessons.md).
 those reproject perfectly into every view that created them and sit nowhere near
 the scene. Off by default because the scale is arbitrary.
 
-**Measured on DTU scan1** (12 images, SIFT + exhaustive NN, incremental poses):
+**Measured on one capture** — a short contiguous arc of twelve calibrated frames
+around a small, well-textured object on a plain backdrop, classical detector +
+exhaustive ratio-test matcher, incremental poses:
 
 | | SparseTriangulation | SparseTriangulationGTSAM |
 |---|---:|---:|

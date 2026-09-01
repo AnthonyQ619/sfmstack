@@ -109,9 +109,18 @@ nothing else in the pipeline performs it.
 
 ## Whether a difference is real
 
-Two rules, in this order. Both were transferred here from other family files by
+Three rules, in this order. They were transferred here from other family files by
 readers who needed them and found nothing at this stage; they are written down now
 so the next reader does not have to.
+
+**They answer different questions, and rules two and three will appear to
+contradict each other if you forget which.** Rule two is for comparing two
+configurations you happened to try. Rule three is for a parameter you have SWEPT
+and bracketed. Applied to a sweep, rule two is self-defeating — the span it asks
+you to price against *is* the sweep, so no configuration inside it could ever be
+preferred, including the bracketed minimum rule three sends you to find. Readers
+have hit exactly that and resolved it correctly by following rule three; the
+resolution is written into rule two below rather than left to be rediscovered.
 
 **FIRST, REGISTRATION IS A PRECONDITION, NOT A TIEBREAK.** `registered_fraction` is
 the one unambiguous axis this stage has. **Never compare reprojection error between
@@ -122,15 +131,32 @@ deleting a third of the structure, and each looked like an improvement until the
 count was read beside it. If `registered_images` differs, the comparison is void;
 say so and stop.
 
-**THEN, PRICE THE MARGIN AGAINST THE MODULE'S OWN SPAN.** Sweep one cheap parameter
-with everything else held, and record the range the metric covers across that
-sweep. A gap between two configurations narrower than that span is not
+**THEN, PRICE AN UNBRACKETED MARGIN AGAINST THE MODULE'S OWN SPAN.** Sweep one
+cheap parameter with everything else held, and record the range the metric covers
+across that sweep. A gap between two configurations narrower than that span is not
 interpretable — it is inside the noise the module generates by itself. Measured on
 one capture, fifteen configurations spanned 0.207 to 0.246 px of mean error, so a
 6% difference between two of them settles nothing, and a reader correctly refused a
 change on that basis. This is the same rule `families/tracking.md` gives for
 `trifocal_transfer_px`; there is no pose-specific span published, so measure it on
 the capture in front of you.
+
+**Its scope, which an earlier version left implicit and which cost several readers
+a paragraph of confusion each.** This rule governs a comparison between two
+configurations you have no other reason to separate. It does NOT void a bracketed
+interior minimum: a turn is structural evidence — the metric rose on both sides of
+it — and a span test cannot see structure, only width. Where rule three applies,
+it wins, and the honest report is "the margin is inside the span, and the minimum
+is bracketed, so I take it and I am not claiming it is large."
+
+**And when the module has no cheap knob to measure a span with, say so rather than
+inventing one.** Some modules expose only substantive parameters — every knob
+changes the answer, or changes the model size and voids the comparison outright, so
+there is no no-op sweep to take a noise floor from. On such a module this rule
+cannot be applied at all. That is not a licence to treat every small difference as
+real; it means falling back to rule three and reporting the weaker warrant
+explicitly, which is what a reader driving the global bundle adjuster correctly
+did.
 
 **AND WHERE A PARAMETER HAS A TURNING POINT, BRACKET IT.** A monotone improvement
 under a robust loss is weak evidence, because the loss is reshaping the very

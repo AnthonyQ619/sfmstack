@@ -122,6 +122,68 @@ def unproject(depth: float, xy: np.ndarray, K: np.ndarray, pose: np.ndarray) -> 
     return R.T @ (in_camera - t)
 
 
+
+def structure_readings(xyz, obs, error, cam_from_world, valid, K_all, n_images):
+    """Per-frame and tail readings that a single mean cannot carry.
+
+    Every one of these was computed by hand, from raw arrays, by readers driving
+    this stage -- which is the definition of a metric that should have been
+    published. They describe the ARTIFACT, so they belong to sparse_model/v1 and
+    are emitted by every producer of it.
+    """
+    n_points = len(xyz)
+    if n_points == 0 or len(obs) == 0:
+        return {"min_frame_points": 0, "two_view_fraction": 0.0,
+                "p95_reprojection_error": 0.0, "p05_triangulation_angle": 0.0,
+                "median_triangulation_angle": 0.0}
+    # sparse_model/v1 observations are [frame_idx, point_index, x, y]. tracks/v1
+    # uses [track_id, frame_idx, x, y] -- the same shape with the first two columns
+    # swapped -- so passing the wrong one indexes track ids as frames. Caught once;
+    # assert rather than let it produce a plausible wrong number.
+    fr = obs[:, 0].astype(np.int64)
+    pt = obs[:, 1].astype(np.int64)
+    if fr.max(initial=-1) >= n_images or pt.max(initial=-1) >= n_points:
+        raise ValueError(
+            f"observations do not match this artifact: frame index up to "
+            f"{fr.max(initial=-1)} for {n_images} images, point index up to "
+            f"{pt.max(initial=-1)} for {n_points} points. sparse_model/v1 obs "
+            f"columns are [frame_idx, point_index, x, y]."
+        )
+    per_point = np.bincount(pt, minlength=n_points)[:n_points]
+    per_frame = np.bincount(fr, minlength=n_images)[:n_images]
+    seen = per_frame[per_frame > 0]
+
+    # widest angle subtended at each point by any pair of cameras that saw it,
+    # computed from the centres so it needs nothing the artifact does not carry.
+    centres = np.full((n_images, 3), np.nan)
+    for f in range(min(n_images, len(cam_from_world))):
+        if bool(valid[f]):
+            R, t = cam_from_world[f][:, :3], cam_from_world[f][:, 3]
+            centres[f] = -R.T @ t
+    widest = np.zeros(n_points)
+    order = np.argsort(pt, kind="stable")
+    pts, frs = pt[order], fr[order]
+    starts = np.flatnonzero(np.r_[True, pts[1:] != pts[:-1]])
+    for a, b in zip(starts, np.r_[starts[1:], len(pts)]):
+        cs = centres[frs[a:b]]
+        cs = cs[~np.isnan(cs).any(axis=1)]
+        if len(cs) < 2:
+            continue
+        v = cs - xyz[pts[a]]
+        n = np.linalg.norm(v, axis=1, keepdims=True)
+        v = v / np.maximum(n, 1e-12)
+        cosines = np.clip(v @ v.T, -1.0, 1.0)
+        widest[pts[a]] = np.degrees(np.arccos(cosines.min()))
+    ang = widest[widest > 0]
+    return {
+        "min_frame_points": int(seen.min()) if len(seen) else 0,
+        "two_view_fraction": round(float((per_point == 2).sum() / n_points), 4),
+        "p95_reprojection_error": round(float(np.percentile(error, 95)), 4) if len(error) else 0.0,
+        "p05_triangulation_angle": round(float(np.percentile(ang, 5)), 2) if len(ang) else 0.0,
+        "median_triangulation_angle": round(float(np.median(ang)), 2) if len(ang) else 0.0,
+    }
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -389,10 +451,24 @@ def run(ctx: Ctx):
     )
     out.save("intrinsics", K=K_all, camera_index=np.arange(n_images, dtype=np.int32))
 
-    mean_error = float(residuals.mean())
+    # The PER-POINT mean. `residuals` is one row per observation, so averaging it
+    # directly weights long tracks by their length and inflates the published
+    # figure against every other producer of this type. Same defect as the one
+    # found in SparseTriangulationGTSAM; these two were never cross-checked
+    # against a bundle adjuster, which is what exposed it there.
+    mean_error = float(point_error.mean())
     mean_length = float(np.mean(lengths))
     yield_rate = len(xyz) / max(n_tracks_in, 1)
 
+    _s = structure_readings(xyz, obs_array, point_error, cam_from_world, valid, None, n_images)
+    out.metric("min_frame_points", _s["min_frame_points"],
+               direction="higher_better", healthy=(50, None))
+    out.metric("two_view_fraction", _s["two_view_fraction"],
+               direction="lower_better", healthy=(None, 0.6))
+    out.metric("p95_reprojection_error", _s["p95_reprojection_error"],
+               direction="lower_better", healthy=(None, 2.0))
+    out.metric("p05_triangulation_angle", _s["p05_triangulation_angle"],
+               direction="higher_better", healthy=(1.0, None))
     out.metric("point_count", len(xyz), direction="higher_better", healthy=(100, None))
     out.metric("observation_count", len(obs_array),
                direction="higher_better", healthy=(300, None))

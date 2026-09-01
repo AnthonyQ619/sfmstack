@@ -300,6 +300,34 @@ cleared the band cost pairs and a degree with `graph_components` still reading 1
 — the completeness metrics do not see it. Settling one notch OUTSIDE the band,
 with the reason written down, is a legitimate answer.
 
+## The blind spot on a predictive chain, which is structural
+
+`inconsistent_rate` is the only reading in this stack aimed at a self-contradictory
+track table — and it is **structurally zero on every predictive tracker**, which
+those modules' own manifests state. So on a detector → predictive-tracker → pose
+chain, a chain `families/pose.md` explicitly blesses, nothing published can see one.
+
+That is not hypothetical. One capture shipped **493 tracks that cannot be
+triangulated at any setting** — 7.2% of the table, 173 of them reaching five views —
+every one of them passing through the same two near-identical frames and none
+through any other. Every published band upstream read healthy. `trifocal_transfer_px`
+missed it too, and for a reason worth knowing: it is a **median** over held-out
+samples, and 7% contamination does not move a median.
+
+**What to do instead, in order of cost.** The triangulator removed all 493 at its
+default reprojection threshold at no cost, so the pipeline is safe and this is an
+instrumentation gap rather than a quality one — do not backtrack on it by reflex.
+To actually look: `min_frame_points` on the finished `sparse_model/v1` is the cheap
+published proxy, because contradictory tracks concentrated on a frame show up as
+that frame arriving with almost no surviving structure. Beyond that the reading has
+to be built by hand from the observation array, and if you build it, say so.
+
+**And beware the shape of the failure**, which is what made it hard: the frames that
+collapsed were not the frames with the fewest observations. They carried three times
+the reported minimum and survived at 6% and 17%, while the frame the minimum named
+survived at 96%. A minimum over frames is the wrong statistic when the failure is
+QUALITY rather than QUANTITY.
+
 ## What has NOT been measured
 
 **Nothing here is quantified, deliberately.** The trade above is structural — it

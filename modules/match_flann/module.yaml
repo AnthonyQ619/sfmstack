@@ -315,11 +315,3 @@ diagnostics:
       - Check match_agreement first; this may be search error, not matching error.
       - Lower ratio_test toward 0.7 if the scene has repeated structure.
     see_also: tuning.md#inlier_ratio-below-03
-
-  - code: no_pairs
-    severity: error
-    message: No image pair produced enough verified matches to keep.
-    suggested_actions:
-      - Raise `checks` substantially and retry.
-      - Run FeatureMatchNN to separate search failure from matching failure.
-    see_also: limitations.md#when-the-approximation-is-the-problem

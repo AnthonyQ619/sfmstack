@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulation
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-07
 ---
 
@@ -12,8 +12,10 @@ result or merely look at it.
 
 ## Reference run
 
-DTU scan1, 12 contiguous images, `max_edge: 1024`, SIFT → NN (exhaustive) →
-UnionFind → PoseEssentialToPnP, all at defaults:
+One capture: a short contiguous arc of twelve calibrated frames around a small,
+well-textured object on a plain backdrop, at about 1 MP, through a classical
+detector → ratio-test matcher (exhaustive) → union-find tracker → incremental
+poses, all at defaults.
 
 | metric | value |
 |---|---|

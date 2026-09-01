@@ -63,6 +63,17 @@ files:
         shape: [null]
         dtype: [int32, int64]
 
+  # Every producer of this type emits, in addition to its own metrics:
+  #   min_frame_points, two_view_fraction, p95_reprojection_error
+  # and every producer that places points by ray intersection also emits
+  #   p05_triangulation_angle, median_triangulation_angle
+  # They are properties of the ARTIFACT rather than of the process that made it,
+  # which is why they belong here and not to one module. Each exists because a
+  # scalar that the type already published was concealing something a reader
+  # needed: registered_images cannot see a posed camera with no structure,
+  # mean_track_length cannot see a bimodal track-length distribution, and a mean
+  # reprojection error cannot see the tail that produced it.
+
   intrinsics:
     required: false
     description: |

@@ -1,6 +1,6 @@
 ---
 module: SparseMapAnything
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-11
 ---
 
@@ -35,7 +35,8 @@ MapAnything returns a mask combining an ambiguity mask (sky and similar) and an
 edge mask at depth discontinuities. `rejected_masked` counts tracks it removed
 entirely.
 
-On DTU it removed **nothing** — the pixels it rejects are the ambiguous ones,
+On a small object against a plain backdrop it removed **nothing** — the pixels it
+rejects are the ambiguous ones,
 which are also the low-confidence ones, and this module picks the
 highest-confidence observation per track. Expect it to matter on a scene with sky,
 or one where tracks sit on object silhouettes.

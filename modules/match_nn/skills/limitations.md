@@ -22,7 +22,7 @@ The escape is expressed as a capability query, not a module name, so it keeps
 working as modules are added:
 
 ```
-sfm_find_modules(produces="pairwise_matches/v1", excluding="FeatureMatchNN")
+sfm_find_alternatives(produces="pairwise_matches/v1", excluding="FeatureMatchNN")
 ```
 
 For the detector-free case specifically — where the answer is to stop detecting
@@ -30,7 +30,7 @@ keypoints at all — the query is for something that produces matches without
 consuming features:
 
 ```
-sfm_find_modules(produces="pairwise_matches/v1", not_consuming="features/v1")
+sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1")
 ```
 
 That returns nothing today. When it does, the module it returns will need no
@@ -148,3 +148,8 @@ order of likelihood:
    in the features artifact and switches automatically, but a detector that
    writes uint8 descriptors *without* setting that flag will match under L2 and
    produce garbage.
+
+
+## `no_pairs` is not a diagnostic, and used to be listed as one
+
+The manifest declared it and the module never emitted it, because when no image pair survives matching -- the module RAISES, with a message naming the attempted pair count, the best raw match count and min_matches. A raise is the right behaviour — there is no artifact to hang a diagnostic on — but a diagnostic listed in the contract and unreachable in practice is worse than none: a reader planning against `sfm_describe_module` sees a failure mode they can catch and read, and will instead get an exception. The declaration is gone; the raise and its message are unchanged, and the message says more than the diagnostic did.

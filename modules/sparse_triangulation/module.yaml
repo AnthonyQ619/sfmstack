@@ -1,5 +1,5 @@
 name: SparseTriangulation
-version: 1.0.0
+version: 1.1.0
 kind: sparse
 summary: >
   Triangulates tracks against known poses into a sparse model, filtering on ray
@@ -21,7 +21,7 @@ description: |
   view is discarded rather than kept with a large residual, because a single bad
   observation is enough to drag a bundle adjustment.
 
-image: sfmstack/sparse-triangulation:1.0.0
+image: sfmstack/sparse-triangulation:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -46,9 +46,30 @@ params:
     description: Minimum ray angle for a point to be kept, in degrees.
     tuning: >
       The accuracy/completeness dial. Points below ~1 degree have depth
-      uncertainty measured in scene diameters and are worse than absent. Raise to
-      3-5 before a bundle adjustment you intend to trust; lower only to get a
-      denser cloud you do not intend to measure with.
+      uncertainty measured in scene diameters and are worse than absent.
+
+      CHECK WHETHER IT BINDS BEFORE YOU MOVE IT, and the check is free: read
+      p05_triangulation_angle on a run at the default. That is the weak end of the
+      distribution, so if it already sits above the value you were going to raise
+      to, the filter has nothing to reject and the run you were about to spend
+      would return a byte-identical artifact. Measured across a seventeen-capture
+      sweep, raising this to 3-5 was a NO-OP on most captures -- rejected_angle
+      stayed at zero -- and on the captures where it did bite it removed 10-24% of
+      the model and made the POST-BA error WORSE, not better.
+
+      Why the earlier advice ("raise to 3-5 before a bundle adjustment you intend
+      to trust") failed: this filter is GLOBAL and the defect it targets is a
+      TAIL. On a model whose weak structure is a small localised population, it
+      charges the whole cloud for one region's problem, and the points it removes
+      are disproportionately the far ones -- which on a capture whose subject has
+      real depth range means deleting the scene rather than cleaning it.
+
+      So: raise it when p05_triangulation_angle is genuinely low and the weak
+      points are spread through the model. Leave it alone when p05 already clears
+      your threshold, and reach for max_landmark_distance instead when the weak
+      points are a localised escaping tail -- that is 25x cheaper in points on the
+      capture where both were measured. Lower it only for a denser cloud you do
+      not intend to measure with.
 
   max_reprojection_error:
     type: number
@@ -70,7 +91,19 @@ params:
     tuning: >
       2 is the geometric minimum and admits points supported by a single pair. 3
       is the honest floor for anything you intend to bundle-adjust -- a two-view
-      point contributes no redundancy and BA cannot improve it, only move it.
+      point contributes no redundancy of its own, so it gains least from a bundle
+      adjustment -- but it does gain, measured at 2-13% on two captures, because the
+      cameras move and it moves with them. It is not free to discard: raising this
+      has been measured deleting half a cloud.
+
+      NAME MISMATCH, worth knowing before you transfer a parameter set:
+      SparseTriangulationGTSAM calls this same filter `min_track_len`. The family
+      file describes the two modules as taking the same filters, and on this one
+      the NAMES differ. They also publish different healthy floors for
+      `mean_track_length` -- 3.0 here, 2.5 there -- so one cloud can read out of
+      band on this module and comfortably in band on the other. Neither floor is
+      wrong; they were set against different expectations, and a reader comparing
+      the modules should compare the numbers, not the verdicts.
 
   colour_points:
     type: boolean
@@ -81,6 +114,47 @@ params:
       intermediate; the colours are what make a sanity check by eye possible.
 
 metrics:
+  min_frame_points:
+    meaning: >
+      The fewest observations any REGISTERED camera contributes to this model.
+      registered_images says a camera has a pose; this says whether it has any
+      structure. They are not the same reading, and the gap between them has been
+      measured: a model reported 12/12 registered while one of those cameras was
+      held by TWO shared observations, with every other metric healthy. Read this
+      one before believing a registration count.
+    direction: higher_better
+    healthy: [50, null]
+  two_view_fraction:
+    meaning: >
+      The share of points seen in exactly two views. Two-view points are exactly
+      determined, so their reprojection residual is near zero BY CONSTRUCTION --
+      measured at roughly a third of the residual of five-view points on the same
+      model. On a cloud that is half two-view, therefore, half of
+      mean_reprojection_error is made of numbers that cannot carry error, and the
+      headline reads better than the model is. mean_track_length is a mean over a
+      bimodal distribution and hides this completely.
+    direction: lower_better
+    healthy: [null, 0.6]
+  p95_reprojection_error:
+    meaning: >
+      The tail of the per-point error distribution. The published mean runs about
+      1.5x the median on a typical model here, because a small tail owns it -- so
+      every judgement made on the mean alone is a judgement about the outliers a
+      robust loss exists to discount. Read this beside the mean: a mean close to
+      the p95 is a uniformly mediocre model, a mean far below it is a good model
+      with a few bad points.
+    direction: lower_better
+    healthy: [null, 2.0]
+  p05_triangulation_angle:
+    meaning: >
+      The weak end of the parallax distribution, where median_triangulation_angle
+      is the middle of it. The escape failure this module describes -- a point on
+      near-parallel rays fleeing to a huge distance while reprojecting perfectly
+      into the views that made it -- is a TAIL phenomenon, and a median cannot see
+      it. A model with 9% of its points inside 2-4 degrees has been measured
+      reading a perfectly healthy median with no diagnostic firing.
+    direction: higher_better
+    healthy: [1.0, null]
   point_count:
     direction: higher_better
     healthy: [100, null]

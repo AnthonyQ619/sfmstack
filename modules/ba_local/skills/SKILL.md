@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentLocal
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: pycolmap 4.1.1 / Ceres
 curated_at: 2026-08-08
 sources: 2
@@ -20,7 +20,8 @@ registration, global BA once at the end.
 
 **Judge it on `window_error_after`, not `reprojection_error_after`.** The global
 figure is diluted by the cameras that were deliberately not touched. Measured on
-DTU scan1 (12 images, window 5, `anchor: last`):
+one short contiguous arc of twelve calibrated frames around a small, well-textured
+object on a plain backdrop (window 5, `anchor: last`):
 
 | metric | before | after |
 |---|---:|---:|

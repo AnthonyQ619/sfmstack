@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-10
 ---
 
@@ -17,8 +17,9 @@ that damage it lets through.
 
 ## Reference run
 
-DTU scan1, 12 contiguous images (`sampling: head`), `max_edge: 1024`, SIFT at
-defaults, FeatureMatchNN `pairing: exhaustive`, everything here at defaults:
+One capture: a short contiguous arc of twelve calibrated frames around a small,
+well-textured object on a plain backdrop, at about 1 MP, classical detector at
+defaults, ratio-test matcher at `pairing: exhaustive`, everything here at defaults.
 
 | metric | value |
 |---|---|

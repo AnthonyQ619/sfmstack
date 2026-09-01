@@ -1,6 +1,6 @@
 ---
 module: SparseVGGT
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-11
 ---
 
@@ -13,8 +13,9 @@ curated_at: 2026-08-11
 
 ## Reference run
 
-DTU scan1, 12 contiguous images, `max_edge: 1024`, SIFT + exhaustive NN,
-7014 tracks, defaults, GPU, in a container:
+One capture: a short contiguous arc of twelve calibrated frames around a small,
+well-textured object on a plain backdrop, at about 1 MP, classical detector +
+exhaustive ratio-test matcher, 7014 tracks, defaults, GPU, in a container.
 
 | poses from | `depth_scale` | `spread` | `samples` | points | error | `mean_track_length` | `yield` |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -44,7 +45,7 @@ distorted — the failure that looks fine in a viewer and is wrong when measured
    is 1 by construction.
 3. **Or use `SparseTriangulation`,** which needs no depth prior at all.
 
-At 0.004 on both DTU runs above, this is comfortably inside the band; a spread
+At 0.004 on both runs above, this is comfortably inside the band; a spread
 that size means the depth prior and the geometry genuinely agree.
 
 ## Nothing survives

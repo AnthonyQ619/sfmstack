@@ -20,7 +20,7 @@ design.
 limiting you.
 
 ```
-sfm_find_modules(produces="features/v1", excluding="FeatureDetectionALIKED")
+sfm_find_alternatives(produces="features/v1", excluding="FeatureDetectionALIKED")
 ```
 
 ## Textureless regions
@@ -32,7 +32,7 @@ enough produces detections whose descriptors are not repeatable.
 *Switch to:* a detector-free matcher.
 
 ```
-sfm_find_modules(produces="pairwise_matches/v1", not_consuming="features/v1")
+sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1")
 ```
 
 ## When ALIKED finds nothing

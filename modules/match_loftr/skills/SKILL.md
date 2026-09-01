@@ -16,7 +16,7 @@ detector tuning fixes, and it is what this module is for.
 **It is the answer to the query** every detector's limitations file names:
 
 ```
-sfm_find_modules(produces="pairwise_matches/v1", not_consuming="features/v1")
+sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1")
 ```
 
 **It carries no `feature_index`,** because there is no keypoint table to cite. That

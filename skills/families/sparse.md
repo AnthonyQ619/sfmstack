@@ -67,6 +67,25 @@ of them**.
   optimal under a Gaussian noise model on the measurements), and carries a
   far-landmark bound the pairwise path has no equivalent of.
 
+**Read the model's per-frame and tail metrics, not only its means.** Every producer
+of this type now publishes `min_frame_points`, `two_view_fraction` and
+`p95_reprojection_error`, and the ray-intersection ones add `p05_triangulation_angle`
+beside the median. Each exists because a scalar the type already published was
+concealing something: `registered_images` cannot see a posed camera holding almost
+no structure, `mean_track_length` cannot see a bimodal track-length distribution,
+and a mean reprojection error cannot see the tail that produced it. On a
+two-view-dominated cloud roughly half of `mean_reprojection_error` is made of
+residuals that are near zero *by construction*, so the headline reads better than
+the model is — `two_view_fraction` is how you know that is happening.
+
+**A comparison this family asks for that the tool surface does not perform.** The
+module notes tell you to pair two models on `track_id` and split by observation
+count before comparing, which is correct and is the only method that gave readers
+an interpretable answer. There is no call that does it: it means fetching both
+models' `points` and `observations` groups and joining them yourself. Budget for
+that, and note that the unpaired comparison — the one the artifact metrics invite —
+has been measured giving the *wrong ranking*.
+
 **The gain is a function of track length and nothing else.** At two observations
 the two are the same computation and produce the same point. The advantage appears
 at three or four, and is substantial at five or more. Read `long_track_fraction`
@@ -75,9 +94,21 @@ before choosing — those are the numbers that predict whether the choice matter
 
 **Bundle adjustment erases the accuracy half of the difference.** Refinement finds
 the same optimum from either starting point, so on the points both estimators keep,
-a post-BA comparison is a coin flip. What survives refinement is **yield**: the
-better initial estimate passes the same reprojection filter more often, so more
-structure reaches the final model. The rule that follows:
+a post-BA comparison is a coin flip — reproduced on thirteen captures, win rates
+42-51% against a predicted 41-51%. What survives refinement is **yield**: the better
+initial estimate passes the same reprojection filter more often, so more structure
+reaches the final model.
+
+**And yield has a ceiling you can read before choosing.** That mechanism can only
+recover points the pairwise path was losing, so the gain is bounded by
+`1 - yield(SparseTriangulation)`. Run the cheap module first and read its `yield`:
+at 0.99 the ceiling is one percent and the swap is nearly free of consequence; well
+below that there is real headroom. Measured across a seventeen-capture sweep the
+gain tracked that bound closely and never reached double digits. `track_survival_5`
+predicts whether the two differ in ACCURACY, which it does well; it does not
+predict yield and did not order the captures correctly when tried.
+
+The rule that follows:
 
 > **Pick the all-view estimator for reach, not for precision** — unless the
 > pipeline has no bundle adjustment stage, in which case the precision is yours to
@@ -98,6 +129,16 @@ an error you can trust.
 tracks means a geometric triangulator will discard most of them, and a learned one
 will place them. Read `single_view_points` afterwards: that is how much of the
 cloud rests on nothing but the prior.
+
+> **Check two things before you plan around that, because the capability can be
+> structurally unreachable.** `single_view_points` exists only on the learned
+> reconstructors, not on the geometric ones, so it is not a reading you can take at
+> this stage in general. And a one-view track has to *exist* for a prior to place
+> it: every chaining tracker in this repository has a `min_track_len` whose schema
+> minimum is 2, so behind one of those there are no one-view tracks at all and the
+> metric comes back 0 no matter how good the prior is. Measured that way on every
+> capture where it was probed. The prior's unique capability is therefore
+> conditional on a parameter two stages upstream — plan for it there or not at all.
 
 **Global reconstruction** when the poses are the problem and the view graph is not:
 `registered_fraction` low with `graph_components` at 1.

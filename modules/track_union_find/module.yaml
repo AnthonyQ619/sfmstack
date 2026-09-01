@@ -321,10 +321,3 @@ diagnostics:
       - Check the detector's keypoints_min for that frame.
       - "Link the frame to more neighbours: raise the matcher's window under `pairing: sequential`; under exhaustive the pairs already exist and the frame is thin because it shares little with the rest."
     see_also: tuning.md#min_frame_observations-below-50
-
-  - code: unmergeable_input
-    severity: error
-    message: Detector-free matches with merge_eps_px 0 cannot be merged across pairs.
-    suggested_actions:
-      - Raise merge_eps_px to 1-2px for a 1600px working resolution.
-    see_also: artifact.md#how-nodes-are-formed

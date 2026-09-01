@@ -141,7 +141,7 @@ diagnostics:
       - Confirm before acting - run a detector and read keypoints_min against keypoints_per_image. A low ratio with counts near the floor is a resolution problem; healthy counts mean this is only a note.
       - To fix it, build a NEW scene at a larger size. This one cannot be adjusted in place, and every artifact downstream of it gets a new id.
       - "The parameter depends on the resize mode - max_edge when resize is `auto`, target_resolution when it is `fixed` or `square`. They are two parameters for two modes, not two names for one knob."
-      - Detector-side resizing is not a substitute: on the sparse detectors, upsampling was measured to LOWER the keypoint count, because their suppression radius is denominated at inference resolution.
+      - "Detector-side resizing is not a substitute: on the sparse detectors, upsampling was measured to LOWER the keypoint count, because their suppression radius is denominated at inference resolution."
     metric: megapixels
     see_also: tuning.md#downscale_factor-below-04
 

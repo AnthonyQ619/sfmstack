@@ -141,6 +141,24 @@ def choose_window(rec, image_id_of, anchor: str, size: int) -> list[int]:
     return frames[-size:]  # "last"
 
 
+def diverged(before: float, after: float) -> bool:
+    """Did the solve blow up rather than refine?
+
+    A Ceres solve that loses its trust region does not return a large-but-real
+    number; it returns something with no physical meaning at all -- 1e151 px was
+    observed on a model built from a learned depth prior. That value was then
+    published as `mean_reprojection_error` with `direction: lower_better` and a
+    `still_high_error` warning suggesting more iterations, which is advice that
+    cannot help and a metric a downstream reader would try to compare.
+
+    The pose estimator grew the same guard for its in-loop solve; this is the
+    same check on the module that does the whole model at once. Bounded well above
+    any real reprojection error at any working resolution, so a genuinely bad
+    model still reports its bad number.
+    """
+    return not np.isfinite(after) or after > 1e4 or after > 1e3 * max(before, 1e-6)
+
+
 def window_error(rec, image_ids: set[int]) -> float:
     """Mean reprojection error over the given cameras only.
 
@@ -195,6 +213,67 @@ def _termination_name(termination) -> str:
     return str(termination).rsplit(".", 1)[-1].upper()
 
 
+def structure_readings(xyz, obs, error, cam_from_world, valid, K_all, n_images):
+    """Per-frame and tail readings that a single mean cannot carry.
+
+    Every one of these was computed by hand, from raw arrays, by readers driving
+    this stage -- which is the definition of a metric that should have been
+    published. They describe the ARTIFACT, so they belong to sparse_model/v1 and
+    are emitted by every producer of it.
+    """
+    n_points = len(xyz)
+    if n_points == 0 or len(obs) == 0:
+        return {"min_frame_points": 0, "two_view_fraction": 0.0,
+                "p95_reprojection_error": 0.0, "p05_triangulation_angle": 0.0,
+                "median_triangulation_angle": 0.0}
+    # sparse_model/v1 observations are [frame_idx, point_index, x, y]. tracks/v1
+    # uses [track_id, frame_idx, x, y] -- the same shape with the first two columns
+    # swapped -- so passing the wrong one indexes track ids as frames. Caught once;
+    # assert rather than let it produce a plausible wrong number.
+    fr = obs[:, 0].astype(np.int64)
+    pt = obs[:, 1].astype(np.int64)
+    if fr.max(initial=-1) >= n_images or pt.max(initial=-1) >= n_points:
+        raise ValueError(
+            f"observations do not match this artifact: frame index up to "
+            f"{fr.max(initial=-1)} for {n_images} images, point index up to "
+            f"{pt.max(initial=-1)} for {n_points} points. sparse_model/v1 obs "
+            f"columns are [frame_idx, point_index, x, y]."
+        )
+    per_point = np.bincount(pt, minlength=n_points)[:n_points]
+    per_frame = np.bincount(fr, minlength=n_images)[:n_images]
+    seen = per_frame[per_frame > 0]
+
+    # widest angle subtended at each point by any pair of cameras that saw it,
+    # computed from the centres so it needs nothing the artifact does not carry.
+    centres = np.full((n_images, 3), np.nan)
+    for f in range(min(n_images, len(cam_from_world))):
+        if bool(valid[f]):
+            R, t = cam_from_world[f][:, :3], cam_from_world[f][:, 3]
+            centres[f] = -R.T @ t
+    widest = np.zeros(n_points)
+    order = np.argsort(pt, kind="stable")
+    pts, frs = pt[order], fr[order]
+    starts = np.flatnonzero(np.r_[True, pts[1:] != pts[:-1]])
+    for a, b in zip(starts, np.r_[starts[1:], len(pts)]):
+        cs = centres[frs[a:b]]
+        cs = cs[~np.isnan(cs).any(axis=1)]
+        if len(cs) < 2:
+            continue
+        v = cs - xyz[pts[a]]
+        n = np.linalg.norm(v, axis=1, keepdims=True)
+        v = v / np.maximum(n, 1e-12)
+        cosines = np.clip(v @ v.T, -1.0, 1.0)
+        widest[pts[a]] = np.degrees(np.arccos(cosines.min()))
+    ang = widest[widest > 0]
+    return {
+        "min_frame_points": int(seen.min()) if len(seen) else 0,
+        "two_view_fraction": round(float((per_point == 2).sum() / n_points), 4),
+        "p95_reprojection_error": round(float(np.percentile(error, 95)), 4) if len(error) else 0.0,
+        "p05_triangulation_angle": round(float(np.percentile(ang, 5)), 2) if len(ang) else 0.0,
+        "median_triangulation_angle": round(float(np.median(ang)), 2) if len(ang) else 0.0,
+    }
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -202,6 +281,7 @@ def run(ctx: Ctx):
     p = ctx.params
 
     n_images = len(scene.load("images", "names"))
+    points_in = len(np.asarray(sparse.load("points", "xyz")))
 
     ctx.progress(0.1, "building the reconstruction")
     rec, image_id_of, kept, cam_from_world, valid, image_index = build_reconstruction(
@@ -292,11 +372,17 @@ def run(ctx: Ctx):
                 [id_to_frame[element.image_id], inverse[pid], float(xy[0]), float(xy[1])]
             )
 
+    # Named rather than inlined, because the artifact metrics below have to be
+    # computed over the arrays this actually SHIPS. The input `xyz` from the top of
+    # run() indexes differently -- min_track_length may have dropped points -- so
+    # measuring against it would silently mismatch.
+    out_xyz = np.array([rec.point3D(pid).xyz for pid in point_ids], dtype=np.float64)
+    out_error = np.array([rec.point3D(pid).error for pid in point_ids], dtype=np.float64)
     out.save(
         "points",
-        xyz=np.array([rec.point3D(pid).xyz for pid in point_ids], dtype=np.float64),
+        xyz=out_xyz,
         rgb=np.array([rec.point3D(pid).color for pid in point_ids], dtype=np.uint8),
-        error=np.array([rec.point3D(pid).error for pid in point_ids], dtype=np.float64),
+        error=out_error,
         track_id=np.array(
             [
                 int(source_track[original[pid]]) if source_track is not None else -1
@@ -314,13 +400,17 @@ def run(ctx: Ctx):
     )
     rec.write_binary(str(out.sidecar_dir("colmap")))
 
+    blew_up = diverged(error_before, error_after) or diverged(win_before, win_after)
+
     out.metric("reprojection_error_before", round(error_before, 4),
                direction="lower_better", healthy=(None, 2.0))
-    out.metric("reprojection_error_after", round(error_after, 4),
+    out.metric("reprojection_error_after",
+               None if blew_up else round(error_after, 4),
                direction="lower_better", healthy=(None, 1.0))
     out.metric("window_error_before", round(win_before, 4),
                direction="lower_better", healthy=(None, 2.0))
-    out.metric("window_error_after", round(win_after, 4),
+    out.metric("window_error_after",
+               None if blew_up else round(win_after, 4),
                direction="lower_better", healthy=(None, 1.0))
     out.metric("cameras_refined", len(window_ids), direction="neutral")
     out.metric("cameras_fixed", len(fixed_ids), direction="neutral")
@@ -332,6 +422,17 @@ def run(ctx: Ctx):
     # can compare this model against one from a triangulator or a feed-forward
     # reconstructor. The before/after pair above describes the PROCESS and is
     # comparable only against another bundle adjustment.
+    _obs = np.array(obs_rows, dtype=np.float64)
+    _s = structure_readings(out_xyz, _obs, out_error, refined, valid, None, n_images)
+    out.metric("min_frame_points", _s["min_frame_points"],
+               direction="higher_better", healthy=(50, None))
+    out.metric("two_view_fraction", _s["two_view_fraction"],
+               direction="lower_better", healthy=(None, 0.6))
+    out.metric("p95_reprojection_error",
+               None if blew_up else _s["p95_reprojection_error"],
+               direction="lower_better", healthy=(None, 2.0))
+    out.metric("p05_triangulation_angle", _s["p05_triangulation_angle"],
+               direction="higher_better", healthy=(1.5, None))
     out.metric("point_count", len(point_ids),
                direction="higher_better", healthy=(50, None))
     out.metric("observation_count", len(obs_rows),
@@ -339,7 +440,8 @@ def run(ctx: Ctx):
     out.metric("mean_track_length",
                round(len(obs_rows) / len(point_ids), 3) if point_ids else 0.0,
                direction="higher_better", healthy=(2.5, None))
-    out.metric("mean_reprojection_error", round(error_after, 4),
+    out.metric("mean_reprojection_error",
+               None if blew_up else round(error_after, 4),
                direction="lower_better", healthy=(None, 1.0))
     out.metric("registered_images", int(np.asarray(valid, dtype=bool).sum()),
                direction="higher_better", healthy=(3, None))
@@ -363,12 +465,44 @@ def run(ctx: Ctx):
         out.diagnostic(
             "did_not_converge",
             severity="warn",
-            message=f"Ceres stopped after {iterations} iterations without converging.",
-            suggested_actions=[f"Raise max_iterations above {p.max_iterations}."],
+            message=(
+                f"Ceres stopped after {iterations} iterations without "
+                f"converging (cap {p.max_iterations})."
+            ),
+            suggested_actions=[
+                f"Raise max_iterations above {p.max_iterations} if `iterations` is "
+                f"AT OR NEAR the cap -- it reports cap+1 on a capped run, so it "
+                f"never equals the cap.",
+                "If it stalled well below the cap, the robust loss is the usual "
+                "cause and more iterations will not help.",
+                "A converged flag has been measured worth nothing here: capped and "
+                "converged solves of one problem agreed to four decimals.",
+            ],
             see_also="tuning.md#converged-is-0",
         )
 
-    if win_before > 0 and abs(win_before - win_after) / win_before < 0.01:
+    if blew_up:
+        out.diagnostic(
+            "bundle_adjustment_diverged",
+            severity="error",
+            message=(
+                f"The solve diverged: window error went {win_before:.3f}px -> "
+                f"{win_after:.3g}px. Every error metric on this artifact is "
+                f"suppressed; the model it contains is not usable."
+            ),
+            suggested_actions=[
+                "Do NOT raise max_iterations. More iterations of a diverging solve "
+                "diverge further; the input is the problem, not the budget.",
+                "A narrow window is a cause rather than a symptom: a point the "
+                "window cannot constrain is what makes the solve blow up. Widen "
+                "window_size, or use BundleAdjustmentGlobal, which holds nothing out.",
+                "Check the input model's median_triangulation_angle. Structure on "
+                "near-parallel rays is where this starts.",
+            ],
+            see_also="limitations.md#thin-windows",
+        )
+
+    if not blew_up and win_before > 0 and abs(win_before - win_after) / win_before < 0.01:
         out.diagnostic(
             "no_improvement",
             severity="info",
@@ -378,6 +512,33 @@ def run(ctx: Ctx):
                 "Try anchor: largest_error to refine somewhere that needs it.",
             ],
             see_also="tuning.md#window_error-does-not-move",
+        )
+
+    dropped = points_in - len(point_ids)
+    if dropped > 0:
+        share = dropped / points_in if points_in else 0.0
+        out.diagnostic(
+            "points_dropped_by_min_track_length",
+            severity="warn" if share >= 0.10 else "info",
+            message=(
+                f"min_track_length={p.min_track_length} removed {dropped} of "
+                f"{points_in} points ({share:.1%}). They are ABSENT FROM THIS "
+                f"ARTIFACT, not merely excluded from the solve."
+            ),
+            suggested_actions=[
+                "Read point_count, not points_optimized. points_optimized counts "
+                "the window, so it cannot separate a point dropped by this filter "
+                "from one that simply lies outside the window.",
+                "This is not optional bookkeeping: a point held out of the solve "
+                "would keep the INPUT's coordinate frame while every optimised "
+                "point and camera moves, and bundle adjustment does not preserve "
+                "the gauge. Dropping is the only consistent choice.",
+                "This module defaults to 3 where the global one defaults to 2, so "
+                "it discards more of the same cloud by default. On a two-view "
+                "dominated model that is most of it -- read two_view_fraction on "
+                "the input before choosing between the two adjusters.",
+            ],
+            see_also="tuning.md#min_track_length-defaults-to-3-here-not-2",
         )
 
     if len(point_ids) < 50:
@@ -392,11 +553,17 @@ def run(ctx: Ctx):
             see_also="limitations.md#thin-windows",
         )
 
+    if blew_up:
+        outcome = (f"Window error {win_before:.3f}px -> DIVERGED ({win_after:.3g}px) "
+                   f"in {iterations} iterations. Error metrics are suppressed; this "
+                   f"model is not usable.")
+    else:
+        outcome = (f"Window error {win_before:.3f} -> {win_after:.3f}px; whole model "
+                   f"{error_before:.3f} -> {error_after:.3f}px in {iterations} "
+                   f"iterations, {'converged' if converged else 'DID NOT converge'}. "
+                   f"The global figure is diluted by the cameras that were held "
+                   f"fixed -- judge this on the window.")
     out.note(
         f"Local bundle adjustment, anchor '{p.anchor}': {len(window_ids)} cameras "
-        f"refined, {len(fixed_ids)} held fixed, {len(point_ids)} points. "
-        f"Window error {win_before:.3f} -> {win_after:.3f}px; whole model "
-        f"{error_before:.3f} -> {error_after:.3f}px in {iterations} iterations, "
-        f"{'converged' if converged else 'DID NOT converge'}. The global figure is "
-        f"diluted by the cameras that were held fixed -- judge this on the window."
+        f"refined, {len(fixed_ids)} held fixed, {len(point_ids)} points. " + outcome
     )

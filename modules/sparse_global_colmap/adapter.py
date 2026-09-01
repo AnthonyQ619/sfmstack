@@ -78,6 +78,55 @@ def keypoint_table(xy, pair_index, image_pair, feature_index, n_images):
     return coords, rows
 
 
+def undistort_to_pixels(xy, K, dist, iters=10):
+    """Distorted pixels -> undistorted pixels under the same K.
+
+    The OpenCV radial-tangential model written out rather than called: this image
+    carries pycolmap and numpy and no cv2, and undistorting the observations is
+    the one thing standing between this module's output and its own type contract.
+    Fixed-point inversion, which is what cv2.undistortPoints does; ten passes is
+    far past convergence for the coefficient magnitudes a calibrated capture
+    carries.
+    """
+    k1, k2, p1, p2 = (float(dist[i]) for i in range(4))
+    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+
+    xd = (np.asarray(xy, dtype=np.float64)[:, 0] - cx) / fx
+    yd = (np.asarray(xy, dtype=np.float64)[:, 1] - cy) / fy
+    x, y = xd.copy(), yd.copy()
+    for _ in range(iters):
+        r2 = x * x + y * y
+        radial = 1.0 + k1 * r2 + k2 * r2 * r2
+        dx = 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x)
+        dy = p1 * (r2 + 2.0 * y * y) + 2.0 * p2 * x * y
+        x = (xd - dx) / radial
+        y = (yd - dy) / radial
+    return np.column_stack([x * fx + cx, y * fy + cy])
+
+
+def per_point_error(xyz, obs, cam_from_world, valid, K_all, n_points):
+    """Mean reprojection error per point, pinhole, in the artifact's own frame."""
+    total = np.zeros(n_points, dtype=np.float64)
+    count = np.zeros(n_points, dtype=np.int64)
+    frame = obs[:, 0].astype(int)
+    point = obs[:, 1].astype(int)
+    for f in np.unique(frame):
+        if not valid[f]:
+            continue
+        rows = frame == f
+        R, t = cam_from_world[f][:, :3], cam_from_world[f][:, 3]
+        cam = xyz[point[rows]] @ R.T + t
+        depth = cam[:, 2]
+        safe = np.where(np.abs(depth) < 1e-12, 1e-12, depth)
+        u = K_all[f][0, 0] * cam[:, 0] / safe + K_all[f][0, 2]
+        v = K_all[f][1, 1] * cam[:, 1] / safe + K_all[f][1, 2]
+        d = np.hypot(u - obs[rows, 2], v - obs[rows, 3])
+        d[depth <= 0] = 0.0  # behind the camera: COLMAP would not have kept it
+        np.add.at(total, point[rows], d)
+        np.add.at(count, point[rows], 1)
+    return total / np.maximum(count, 1)
+
+
 def two_view_geometry(points_i, points_j, camera_i, camera_j, matches, p):
     """Verify one pair the way COLMAP will trust it.
 
@@ -100,6 +149,68 @@ def two_view_geometry(points_i, points_j, camera_i, camera_j, matches, p):
     return pycolmap.estimate_calibrated_two_view_geometry(
         camera_i, points_i, camera_j, points_j, matches, options
     )
+
+
+
+def structure_readings(xyz, obs, error, cam_from_world, valid, K_all, n_images):
+    """Per-frame and tail readings that a single mean cannot carry.
+
+    Every one of these was computed by hand, from raw arrays, by readers driving
+    this stage -- which is the definition of a metric that should have been
+    published. They describe the ARTIFACT, so they belong to sparse_model/v1 and
+    are emitted by every producer of it.
+    """
+    n_points = len(xyz)
+    if n_points == 0 or len(obs) == 0:
+        return {"min_frame_points": 0, "two_view_fraction": 0.0,
+                "p95_reprojection_error": 0.0, "p05_triangulation_angle": 0.0,
+                "median_triangulation_angle": 0.0}
+    # sparse_model/v1 observations are [frame_idx, point_index, x, y]. tracks/v1
+    # uses [track_id, frame_idx, x, y] -- the same shape with the first two columns
+    # swapped -- so passing the wrong one indexes track ids as frames. Caught once;
+    # assert rather than let it produce a plausible wrong number.
+    fr = obs[:, 0].astype(np.int64)
+    pt = obs[:, 1].astype(np.int64)
+    if fr.max(initial=-1) >= n_images or pt.max(initial=-1) >= n_points:
+        raise ValueError(
+            f"observations do not match this artifact: frame index up to "
+            f"{fr.max(initial=-1)} for {n_images} images, point index up to "
+            f"{pt.max(initial=-1)} for {n_points} points. sparse_model/v1 obs "
+            f"columns are [frame_idx, point_index, x, y]."
+        )
+    per_point = np.bincount(pt, minlength=n_points)[:n_points]
+    per_frame = np.bincount(fr, minlength=n_images)[:n_images]
+    seen = per_frame[per_frame > 0]
+
+    # widest angle subtended at each point by any pair of cameras that saw it,
+    # computed from the centres so it needs nothing the artifact does not carry.
+    centres = np.full((n_images, 3), np.nan)
+    for f in range(min(n_images, len(cam_from_world))):
+        if bool(valid[f]):
+            R, t = cam_from_world[f][:, :3], cam_from_world[f][:, 3]
+            centres[f] = -R.T @ t
+    widest = np.zeros(n_points)
+    order = np.argsort(pt, kind="stable")
+    pts, frs = pt[order], fr[order]
+    starts = np.flatnonzero(np.r_[True, pts[1:] != pts[:-1]])
+    for a, b in zip(starts, np.r_[starts[1:], len(pts)]):
+        cs = centres[frs[a:b]]
+        cs = cs[~np.isnan(cs).any(axis=1)]
+        if len(cs) < 2:
+            continue
+        v = cs - xyz[pts[a]]
+        n = np.linalg.norm(v, axis=1, keepdims=True)
+        v = v / np.maximum(n, 1e-12)
+        cosines = np.clip(v @ v.T, -1.0, 1.0)
+        widest[pts[a]] = np.degrees(np.arccos(cosines.min()))
+    ang = widest[widest > 0]
+    return {
+        "min_frame_points": int(seen.min()) if len(seen) else 0,
+        "two_view_fraction": round(float((per_point == 2).sum() / n_points), 4),
+        "p95_reprojection_error": round(float(np.percentile(error, 95)), 4) if len(error) else 0.0,
+        "p05_triangulation_angle": round(float(np.percentile(ang, 5)), 2) if len(ang) else 0.0,
+        "median_triangulation_angle": round(float(np.median(ang)), 2) if len(ang) else 0.0,
+    }
 
 
 @module
@@ -321,11 +432,34 @@ def run(ctx: Ctx):
     refined_K = np.zeros((n_images, 3, 3), dtype=np.float64)
     for frame in range(n_images):
         refined_K[frame] = K_all[frame]
+    refined_dist = np.zeros((n_images, 5), dtype=np.float64)
     for image_id, frame in frame_of_image_id.items():
         params = rec.camera(rec.image(image_id).camera_id).params
         refined_K[frame] = np.array(
             [[params[0], 0.0, params[2]], [0.0, params[1], params[3]], [0, 0, 1.0]]
         )
+        if len(params) >= 8:  # OPENCV: fx fy cx cy k1 k2 p1 p2
+            refined_dist[frame, :4] = params[4:8]
+
+    # sparse_model/v1 says observations are in UNDISTORTED pixels, and the K this
+    # module publishes is a plain pinhole. The solve, however, runs against an
+    # OPENCV camera whenever the scene carries distortion, so the point2D
+    # coordinates COLMAP hands back are DISTORTED. Writing those beside a pinhole
+    # K produced an artifact that did not reproject to its own published error --
+    # a downstream consumer rebuilding the model measured roughly three times the
+    # error this module reported, which is exactly the distortion it dropped.
+    # Undistort here, and recompute the residuals in the frame the artifact
+    # actually claims, so `error`, `mean_reprojection_error` and the arrays all
+    # describe one geometry.
+    if np.any(refined_dist):
+        for frame in np.unique(obs[:, 0].astype(int)):
+            rows = obs[:, 0].astype(int) == frame
+            if not rows.any():
+                continue
+            obs[rows, 2:4] = undistort_to_pixels(
+                obs[rows, 2:4], refined_K[frame], refined_dist[frame]
+            )
+        error = per_point_error(xyz, obs, cam_from_world, valid, refined_K, len(xyz))
 
     out = ctx.output("sparse")
     out.save("points", xyz=xyz, rgb=rgb, error=error)
@@ -342,7 +476,11 @@ def run(ctx: Ctx):
     rec.write_binary(str(out.sidecar_dir("colmap")))
 
     registered = int(valid.sum())
-    mean_error = float(rec.compute_mean_reprojection_error())
+    # From the `error` array this artifact actually ships, so the headline and
+    # the payload cannot disagree. Identical to COLMAP's own figure on an
+    # undistorted scene; on a distorted one COLMAP's is measured in a frame
+    # this artifact does not publish.
+    mean_error = float(error.mean()) if len(error) else 0.0
     track_length = len(obs) / len(point_ids) if len(point_ids) else 0.0
 
     parent = list(range(n_images))
@@ -360,6 +498,17 @@ def run(ctx: Ctx):
     roots = [find(i) for i in range(n_images)]
     biggest = max(roots.count(r) for r in set(roots))
 
+    _s = structure_readings(xyz, obs, error, cam_from_world, valid, None, n_images)
+    out.metric("min_frame_points", _s["min_frame_points"],
+               direction="higher_better", healthy=(50, None))
+    out.metric("two_view_fraction", _s["two_view_fraction"],
+               direction="lower_better", healthy=(None, 0.6))
+    out.metric("p95_reprojection_error", _s["p95_reprojection_error"],
+               direction="lower_better", healthy=(None, 2.0))
+    out.metric("p05_triangulation_angle", _s["p05_triangulation_angle"],
+               direction="higher_better", healthy=(1.0, None))
+    out.metric("median_triangulation_angle", _s["median_triangulation_angle"],
+               direction="higher_better", healthy=(3.0, None))
     out.metric("point_count", len(point_ids),
                direction="higher_better", healthy=(100, None))
     out.metric("observation_count", len(obs),

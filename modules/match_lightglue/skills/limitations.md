@@ -85,7 +85,7 @@ detection.
 no interest points at all.
 
 ```
-sfm_find_modules(produces="pairwise_matches/v1", not_consuming="features/v1")
+sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1")
 ```
 
 ## Planar and rotation-only captures

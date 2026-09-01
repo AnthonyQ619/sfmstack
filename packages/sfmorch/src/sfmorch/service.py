@@ -738,8 +738,10 @@ class SfmService:
                 # sentence eight times, which buries the one line that matters
                 # -- the inherited detector sitting a version back.
                 line = (f"{prov.module} {prov.module_version} (module is now "
-                        f"{live}; re-running at the same params will not "
-                        f"reproduce those artifacts)")
+                        f"{live}; a re-run is a DIFFERENT recipe and lands on a "
+                        f"new artifact id, but whether the NUMBERS move depends on "
+                        f"what changed -- a bump that only moved bands or prose "
+                        f"reproduces them exactly, which has been measured twice)")
                 if line not in stale:
                     stale.append(line)
         built.sort(key=lambda a: (a["type"], a["module"], a["artifact"]))
@@ -943,6 +945,17 @@ class SfmService:
 
         candidates = [root / topic, root / f"{topic}.md"]
         candidates += [root / d / f"{topic}.md" for d in ("workflow", "judgment")]
+        # docs/ sits beside skills/, not inside it, and the family files and module
+        # skills cite `docs/import_lessons.md` and `docs/design/DECISIONS.md`
+        # repeatedly as where the per-capture numbers and the full experiments live.
+        # Until now neither was reachable through any call, so every magnitude in
+        # the stack arrived with no way to check its scope -- and readers said so.
+        # A citation a reader cannot follow is worse than no citation: it implies
+        # evidence that cannot be examined.
+        parent = root.parent
+        candidates += [parent / topic, parent / f"{topic}.md",
+                       parent / "docs" / f"{topic}.md",
+                       parent / "docs" / "design" / f"{topic}.md"]
         for path in candidates:
             if path.is_file():
                 return {"topic": topic, "path": str(path),

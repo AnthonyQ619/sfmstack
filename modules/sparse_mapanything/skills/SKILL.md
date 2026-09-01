@@ -1,6 +1,6 @@
 ---
 module: SparseMapAnything
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: facebookresearch/map-anything @ 3d10cf7, depth head
 curated_at: 2026-08-11
 sources: 2
@@ -18,7 +18,8 @@ evidence rather than something the network must infer.
 
 ## What conditioning buys, measured
 
-8 DTU views, SIFT tracks, poses from `PoseEssentialToPnP`, everything else equal:
+Eight views of a small, well-textured object on a plain backdrop, classical
+tracks, poses from `PoseEssentialToPnP`, everything else equal:
 
 | | points | `yield` | `depth_scale_spread` | `mean_depth_confidence` |
 |---|---:|---:|---:|---:|
@@ -50,7 +51,8 @@ Same 8 views, same tracks, same poses:
 On a calibrated, well-textured scene the geometric triangulator wins on every
 axis, and that is expected — this is the case ray intersection is best at. The
 learned modules exist for the case where the correspondences are too few or the
-scene too weakly textured for intersection to work, which DTU is not.
+scene too weakly textured for intersection to work, which a well-textured
+small-object capture is not.
 
 **The errors here are comparable in a way they are not after bundle adjustment**,
 because all three placed points against the same poses under the same

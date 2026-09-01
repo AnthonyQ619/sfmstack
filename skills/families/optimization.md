@@ -45,7 +45,8 @@ not consistent with an older K. Mixing them is a silent error.
 
 ## Reading the output — the trap that defines this family
 
-**Error is never comparable across differing camera or point counts.**
+**Error is never comparable across differing camera or point counts** — and, until
+recently, was not comparable at *equal* counts either.
 
 A bundle adjustment that improves `mean_reprojection_error` while
 `registered_images` or `point_count` falls has usually got *worse*: a smaller model
@@ -56,6 +57,19 @@ optional extra.
 The same trap appears whenever anything upstream changes what a "point" is. Two
 models with different point counts cannot be ranked by their error, whatever
 produced the difference.
+
+**The harder version, now fixed at the source but worth knowing you can check.**
+Producers of `sparse_model/v1` were computing `mean_reprojection_error` over
+different populations under one documented meaning — some over points, one over
+observations, which weights long tracks and so inflates the figure, and one over a
+frame it did not publish. The gap ran to 3.5x and it *inverted the head-to-head
+comparison* the family files invite. All producers now publish the per-point mean.
+The cross-check that catches a recurrence costs nothing and is worth running when a
+comparison surprises you: **a bundle adjuster's `reprojection_error_before` should
+equal the producing module's `mean_reprojection_error` on the same artifact.** Two
+independent implementations of one quantity; if they disagree, one of them has a
+convention bug. That check was already written in `ba_global`'s tuning notes and
+had simply never been run.
 
 **What is comparable**: the before/after pair on *one* model. That is why a bundle
 adjuster's own interesting numbers are its deltas, and why the type's required
@@ -69,9 +83,25 @@ metrics describe the artifact rather than the process.
 can actually fix the problem.
 
 **Local** when global does not fit — in time or memory — and the error is known to
-be local. Read `iterations` and whether it converged: a global solve that hit its
-iteration cap has not finished, and its output is a partial refinement being
-reported as a result.
+be local.
+
+**On `converged`, and this paragraph used to say something stronger and wrong.** It
+claimed a solve at its iteration cap "has not finished, and its output is a partial
+refinement being reported as a result." Measured across a seventeen-capture sweep,
+that is false often enough to be dangerous: capped and converged solves of the same
+problem agreed on `reprojection_error_after` **to four decimal places**, every time
+it was checked. Three separate readers spent a run each confirming it. On one
+capture the only configurations that *did* converge were measurably worse models,
+so a reader who trusted the old sentence would have shipped the worse one to clear
+a flag.
+
+What actually drives the flag is usually the robust loss: a Cauchy loss can keep
+the trust-region step from meeting Ceres' tolerance on a model already sitting at
+its optimum. So read `converged` as bookkeeping unless `reprojection_error_after`
+is *also* bad. If you want to clear it, the cheap test is a raised cap — if the
+error is identical to four decimals, the solve was finished and only the flag was
+not. Note also that `iterations` reports cap+1 on a capped run, so it never equals
+the cap and "did it stop at the cap" is not a test that passes.
 
 **Neither** is a real option. A triangulated model that will be consumed by MVS
 does not strictly need refining first, but the poses it carries are what MVS builds
@@ -79,11 +109,35 @@ on, so imprecision there propagates into every depth map.
 
 ---
 
+## Two things the output does that nothing else tells you
+
+**Bundle adjustment moves the gauge, and it is not a small move.** The solve fixes
+seven degrees of freedom somewhere, and where it lands is not the input's frame:
+measured, one capture's whole model came back scaled by 0.81 and another by 1.45,
+in opposite directions, with the shape unchanged. Two consequences. Any threshold
+expressed as a multiple of the reconstruction's arbitrary scale unit — most
+obviously a triangulator's `max_landmark_distance`, documented as a multiple of the
+seed baseline — is in a *different unit* after a bundle adjustment, so a bound
+chosen before one does not mean the same thing after. And a near-uniform
+displacement of every point is a rigid motion rather than per-point correction, so
+`error_reduction` alone cannot tell "the structure was already right" from "the
+structure improved". No metric currently separates them.
+
+**The points array is reordered.** Both the input and output models carry
+`track_id`, and the rows are not in the same order. Differencing `xyz` positionally
+across a bundle adjustment gives an answer that is wrong by roughly an order of
+magnitude and looks plausible — measured at a median motion of 0.119 scene units
+positionally against 0.0153 when joined on `track_id` first, and one reader reported
+2.06 against 0.02 before catching it. **Join on `track_id` before comparing
+anything, including a model against its own refinement.** The instruction to pair on
+`track_id` exists in the triangulators' tuning notes but is scoped there to
+comparing two different modules, which is why this case kept catching people.
+
 ## What has NOT been measured
 
 | Question | Needs |
 | --- | --- |
 | **Where local stops reaching** | Sequence length against uncorrected drift. Nothing here establishes the point at which a window is no longer enough. |
-| **Whether refining intrinsics helps or hurts** | Scenes with trustworthy calibration. Refining K on a well-calibrated scene can fit noise; on a poorly calibrated one it is the point. The boundary is untested. |
+| **Whether refining intrinsics helps or hurts** | Still open on the boundary, but one side is now measured: on a well-calibrated rig, refinement improved reprojection error by up to 21% *by giving a single physical lens a different focal length per frame*. That is the fitting-noise case, and it is now detectable rather than inferred — `estimated_focal_ratio` and `focal_spread` on `BundleAdjustmentGlobal` publish it, and a diagnostic fires when a one-calibration scene comes back with many. What is untested is the other side: a genuinely bad calibration, where refinement should be the point. |
 | **The cost curve** | Runtime against camera and point count, on models spanning orders of magnitude. "Global does not fit" is currently a judgement with no numbers behind it. |
-| **What a converged solve is worth** | Whether a model that hit its iteration cap is materially worse downstream, or merely unfinished on paper. |
+| ~~**What a converged solve is worth**~~ | **ANSWERED, and see "Which end to reach for" above.** On these captures it is worth the flag and nothing else: capped and converged solves of one problem agreed to four decimals every time. What remains open is whether that holds on a model large enough for the cap to bind for real reasons. |

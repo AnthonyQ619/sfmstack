@@ -1,5 +1,5 @@
 name: SparseMapAnything
-version: 1.0.0
+version: 1.1.0
 kind: sparse
 summary: >
   Sparse structure from MapAnything's learned depth, unprojected with the SUPPLIED
@@ -14,7 +14,8 @@ description: |
   **What it does that VGGT cannot: take the poses and intrinsics as INPUT.**
   MapAnything is trained to accept whatever geometry is already known and predict
   the rest, so the calibration and the camera positions become evidence rather
-  than something the network has to infer. Measured on 8 DTU views, conditioning
+  than something the network has to infer. Measured on eight views of a small,
+  well-textured object on a plain backdrop, conditioning
   raised the model's own mean confidence from 6.20 to 10.09 and tightened the
   depth/pose scale spread from 0.0071 to 0.0059 — better depth, from information
   the pipeline already had.
@@ -36,7 +37,7 @@ description: |
   geometric triangulator, because depth was predicted rather than intersected.
   `single_view_points` says how much of the cloud rests on that.
 
-image: sfmstack/sparse-mapanything:1.0.0
+image: sfmstack/sparse-mapanything:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -85,8 +86,8 @@ params:
       Drop observations MapAnything's own mask rejects — ambiguous regions such as
       sky, and depth discontinuities at object edges.
     tuning: >
-      On, but expect it to do little on a scene with no sky. Measured on 8 DTU
-      views it changed nothing at all — same 3047 points, same error, same
+      On, but expect it to do little on a scene with no sky. Measured on eight views
+      of a small object on a plain backdrop it changed nothing at all — same 3047 points, same error, same
       confidence — because the pixels it rejects are the ambiguous ones, which are
       also the low-confidence ones, and the observation this module picks per track
       is the highest-confidence one. Where it earns its place is a scene with sky or
@@ -173,6 +174,41 @@ params:
       memory_efficient_inference first.
 
 metrics:
+  min_frame_points:
+    meaning: >
+      The fewest observations any REGISTERED camera contributes to this model.
+      registered_images says a camera has a pose; this says whether it has any
+      structure. They are not the same reading, and the gap has been measured: a
+      model reported 12/12 registered while one of those cameras was held by TWO
+      shared observations, with every other metric healthy.
+    direction: higher_better
+    healthy: [50, null]
+  two_view_fraction:
+    meaning: >
+      The share of points seen in exactly two views. A two-view point is exactly
+      determined, so its residual is near zero BY CONSTRUCTION -- about a third of
+      a five-view point's on the same model. On a half-two-view cloud, half of
+      mean_reprojection_error is therefore made of numbers that cannot carry error.
+      mean_track_length is a mean over a bimodal distribution and hides this.
+    direction: lower_better
+    healthy: [null, 0.6]
+  p95_reprojection_error:
+    meaning: >
+      The tail of the per-point error distribution. The published mean runs about
+      1.5x the median here, because a small tail owns it -- so a judgement made on
+      the mean alone is a judgement about the outliers a robust loss exists to
+      discount. A mean close to p95 is a uniformly mediocre model; a mean far below
+      it is a good model with a few bad points.
+    direction: lower_better
+    healthy: [null, 2.0]
+  p05_triangulation_angle:
+    meaning: >
+      The weak end of the parallax distribution, where the median is the middle of
+      it. Structure that escapes along near-parallel rays is a TAIL phenomenon and
+      a median cannot see it: a model with 9% of its points inside 2-4 degrees was
+      measured reading a healthy median with no diagnostic firing.
+    direction: higher_better
+    healthy: [1.0, null]
   point_count:
     direction: higher_better
     healthy: [100, null]

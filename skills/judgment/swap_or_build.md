@@ -162,6 +162,10 @@ no swap performed. **`[unmeasured]`** is argument only.
   nothing measurable, on captures where the incremental route did not visibly
   fail.
 
+  *(Measured again since: the gap is the two modules' different
+  `min_track_len` defaults. At a matched floor the global solver returns MORE
+  points, not fewer. Compare at matched settings.)*
+
   **The general lesson, worth more than the specific one:** *a branch comparison
   can only settle a question whose failure mode is visible in the metrics you
   collect.* Connectivity failures are visible — a frame either registered or it

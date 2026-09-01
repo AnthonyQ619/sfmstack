@@ -328,12 +328,3 @@ diagnostics:
       - Expect triangulation to be ill-conditioned on the affected pairs.
       - If the target really is planar, this is not an SfM problem.
     see_also: limitations.md#planar-and-rotation-only-captures
-
-  - code: no_pairs
-    severity: error
-    message: No image pair produced enough verified matches to keep.
-    suggested_actions:
-      - Check the detector's keypoints_min; a starved frame breaks every pair it is in.
-      - Run with geometric_model=none to see whether verification is what is rejecting.
-      - "Check the scene ordering: `pairing: sequential` assumes the images are ordered."
-    see_also: limitations.md#when-nn-matching-simply-fails

@@ -16,7 +16,7 @@ matrix is only an essential matrix with respect to a known K.
 *Switch to:* a pose estimator that estimates intrinsics jointly.
 
 ```
-sfm_find_modules(produces="poses/v1", excluding="PoseEssentialToPnP")
+sfm_find_alternatives(produces="poses/v1", excluding="PoseEssentialToPnP")
 ```
 
 VGGT and MapAnything are the candidates, and they do not merely tolerate an
@@ -93,5 +93,5 @@ global method that solves all poses at once is both faster and more robust.
 skipping the separate pose stage:
 
 ```
-sfm_find_modules(produces="sparse_model/v1", not_consuming="poses/v1")
+sfm_find_alternatives(produces="sparse_model/v1", not_consuming="poses/v1")
 ```

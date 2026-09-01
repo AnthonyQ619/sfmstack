@@ -14,6 +14,24 @@ import pycolmap
 from sfmkit import Ctx, module
 
 
+def diverged(before: float, after: float) -> bool:
+    """Did the solve blow up rather than refine?
+
+    A Ceres solve that loses its trust region does not return a large-but-real
+    number; it returns something with no physical meaning at all -- 1e151 px was
+    observed on a model built from a learned depth prior. That value was then
+    published as `mean_reprojection_error` with `direction: lower_better` and a
+    `still_high_error` warning suggesting more iterations, which is advice that
+    cannot help and a metric a downstream reader would try to compare.
+
+    The pose estimator grew the same guard for its in-loop solve; this is the
+    same check on the module that does the whole model at once. Bounded well above
+    any real reprojection error at any working resolution, so a genuinely bad
+    model still reports its bad number.
+    """
+    return not np.isfinite(after) or after > 1e4 or after > 1e3 * max(before, 1e-6)
+
+
 def build_reconstruction(scene, sparse, n_images, min_track_length, ctx):
     """Arrays -> pycolmap.Reconstruction.
 
@@ -134,6 +152,67 @@ def intrinsics_for(scene, sparse, n_images):
     return K[np.asarray(cam_index, dtype=int)]
 
 
+def structure_readings(xyz, obs, error, cam_from_world, valid, K_all, n_images):
+    """Per-frame and tail readings that a single mean cannot carry.
+
+    Every one of these was computed by hand, from raw arrays, by readers driving
+    this stage -- which is the definition of a metric that should have been
+    published. They describe the ARTIFACT, so they belong to sparse_model/v1 and
+    are emitted by every producer of it.
+    """
+    n_points = len(xyz)
+    if n_points == 0 or len(obs) == 0:
+        return {"min_frame_points": 0, "two_view_fraction": 0.0,
+                "p95_reprojection_error": 0.0, "p05_triangulation_angle": 0.0,
+                "median_triangulation_angle": 0.0}
+    # sparse_model/v1 observations are [frame_idx, point_index, x, y]. tracks/v1
+    # uses [track_id, frame_idx, x, y] -- the same shape with the first two columns
+    # swapped -- so passing the wrong one indexes track ids as frames. Caught once;
+    # assert rather than let it produce a plausible wrong number.
+    fr = obs[:, 0].astype(np.int64)
+    pt = obs[:, 1].astype(np.int64)
+    if fr.max(initial=-1) >= n_images or pt.max(initial=-1) >= n_points:
+        raise ValueError(
+            f"observations do not match this artifact: frame index up to "
+            f"{fr.max(initial=-1)} for {n_images} images, point index up to "
+            f"{pt.max(initial=-1)} for {n_points} points. sparse_model/v1 obs "
+            f"columns are [frame_idx, point_index, x, y]."
+        )
+    per_point = np.bincount(pt, minlength=n_points)[:n_points]
+    per_frame = np.bincount(fr, minlength=n_images)[:n_images]
+    seen = per_frame[per_frame > 0]
+
+    # widest angle subtended at each point by any pair of cameras that saw it,
+    # computed from the centres so it needs nothing the artifact does not carry.
+    centres = np.full((n_images, 3), np.nan)
+    for f in range(min(n_images, len(cam_from_world))):
+        if bool(valid[f]):
+            R, t = cam_from_world[f][:, :3], cam_from_world[f][:, 3]
+            centres[f] = -R.T @ t
+    widest = np.zeros(n_points)
+    order = np.argsort(pt, kind="stable")
+    pts, frs = pt[order], fr[order]
+    starts = np.flatnonzero(np.r_[True, pts[1:] != pts[:-1]])
+    for a, b in zip(starts, np.r_[starts[1:], len(pts)]):
+        cs = centres[frs[a:b]]
+        cs = cs[~np.isnan(cs).any(axis=1)]
+        if len(cs) < 2:
+            continue
+        v = cs - xyz[pts[a]]
+        n = np.linalg.norm(v, axis=1, keepdims=True)
+        v = v / np.maximum(n, 1e-12)
+        cosines = np.clip(v @ v.T, -1.0, 1.0)
+        widest[pts[a]] = np.degrees(np.arccos(cosines.min()))
+    ang = widest[widest > 0]
+    return {
+        "min_frame_points": int(seen.min()) if len(seen) else 0,
+        "two_view_fraction": round(float((per_point == 2).sum() / n_points), 4),
+        "p95_reprojection_error": round(float(np.percentile(error, 95)), 4) if len(error) else 0.0,
+        "p05_triangulation_angle": round(float(np.percentile(ang, 5)), 2) if len(ang) else 0.0,
+        "median_triangulation_angle": round(float(np.median(ang)), 2) if len(ang) else 0.0,
+    }
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -141,6 +220,8 @@ def run(ctx: Ctx):
     p = ctx.params
 
     n_images = len(scene.load("images", "names"))
+
+    points_in = len(np.asarray(sparse.load("points", "xyz")))
 
     ctx.progress(0.1, "building the reconstruction")
     rec, image_id_of, kept_point_ids, cam_from_world, valid, image_index = (
@@ -252,24 +333,32 @@ def run(ctx: Ctx):
         image_index=image_index.astype(np.int32),
     )
 
+    refined_K = None
     if p.refine_focal_length or p.refine_principal_point:
-        K = np.tile(np.eye(3), (n_images, 1, 1))
+        refined_K = np.tile(np.eye(3), (n_images, 1, 1))
         for frame, image_id in image_id_of.items():
-            camera = rec.camera(image_id)
+            camera = rec.camera(image_id)  # camera_id == image_id by construction
             fx, fy, cx, cy = camera.params
-            K[frame] = [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
-        out.save("intrinsics", K=K)
+            refined_K[frame] = [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
+        out.save("intrinsics", K=refined_K)
 
     # Native rendering beside the authoritative npz.
     rec.write_binary(str(out.sidecar_dir("colmap")))
 
+    blew_up = diverged(error_before, error_after)
     reduction = (error_before - error_after) / error_before if error_before > 0 else 0.0
+    if blew_up:
+        # Suppress rather than publish. A diverged solve has no reprojection error
+        # to report, and a number with no meaning is worse than a null because a
+        # reader will compare it.
+        reduction = None
 
     out.metric("reprojection_error_before", round(error_before, 4),
                direction="lower_better", healthy=(None, 2.0))
-    out.metric("reprojection_error_after", round(error_after, 4),
+    out.metric("reprojection_error_after",
+               None if blew_up else round(error_after, 4),
                direction="lower_better", healthy=(None, 1.0))
-    out.metric("error_reduction", round(reduction, 4),
+    out.metric("error_reduction", None if blew_up else round(reduction, 4),
                direction="higher_better", healthy=(0.0, None))
     out.metric("points_optimized", len(point_ids),
                direction="higher_better", healthy=(100, None))
@@ -282,6 +371,17 @@ def run(ctx: Ctx):
     # can compare this model against one from a triangulator or a feed-forward
     # reconstructor. The before/after pair above describes the PROCESS and is
     # comparable only against another bundle adjustment.
+    _obs = np.array(obs_rows, dtype=np.float64)
+    _s = structure_readings(xyz, _obs, error, refined_poses, valid, None, n_images)
+    out.metric("min_frame_points", _s["min_frame_points"],
+               direction="higher_better", healthy=(50, None))
+    out.metric("two_view_fraction", _s["two_view_fraction"],
+               direction="lower_better", healthy=(None, 0.6))
+    out.metric("p95_reprojection_error",
+               None if blew_up else _s["p95_reprojection_error"],
+               direction="lower_better", healthy=(None, 2.0))
+    out.metric("p05_triangulation_angle", _s["p05_triangulation_angle"],
+               direction="higher_better", healthy=(1.5, None))
     out.metric("point_count", len(point_ids),
                direction="higher_better", healthy=(50, None))
     out.metric("observation_count", len(obs_rows),
@@ -289,24 +389,138 @@ def run(ctx: Ctx):
     out.metric("mean_track_length",
                round(len(obs_rows) / len(point_ids), 3) if point_ids else 0.0,
                direction="higher_better", healthy=(2.5, None))
-    out.metric("mean_reprojection_error", round(error_after, 4),
+    out.metric("mean_reprojection_error",
+               None if blew_up else round(error_after, 4),
                direction="lower_better", healthy=(None, 1.0))
     out.metric("registered_images", int(np.asarray(valid, dtype=bool).sum()),
                direction="higher_better", healthy=(3, None))
 
-    if not converged:
+    # This module WRITES intrinsics that every downstream consumer prefers over the
+    # scene's, and until now it published nothing about them -- so a refinement that
+    # gave a one-lens rig twelve different focal lengths, and improved reprojection
+    # error by 21% doing it, was invisible unless a reader dumped two artifacts and
+    # divided. families/pose.md names estimated_focal_ratio as the warning that
+    # matters when a module estimates K; this is that reading, plus the spread that
+    # says whether one physical camera is being modelled as many.
+    if refined_K is not None:
+        supplied = intrinsics_for(scene, sparse, n_images)
+        reg = np.flatnonzero(np.asarray(valid, dtype=bool))
+        ratios = np.array(
+            [refined_K[f][0, 0] / supplied[f][0, 0] for f in reg
+             if supplied[f][0, 0] > 0], dtype=np.float64
+        )
+        if len(ratios):
+            out.metric("estimated_focal_ratio", round(float(ratios.mean()), 4),
+                       direction="neutral", healthy=(0.95, 1.05))
+            spread = float(ratios.max() - ratios.min())
+            out.metric("focal_spread", round(spread, 4),
+                       direction="lower_better", healthy=(None, 0.01))
+            if spread > 0.01 and len(np.unique(supplied[reg, 0, 0])) == 1:
+                out.diagnostic(
+                    "refined_focal_disagrees_across_cameras",
+                    severity="warn",
+                    message=(
+                        f"The scene supplies ONE focal length and the refinement "
+                        f"produced {len(ratios)} that span {spread:.1%}."
+                    ),
+                    suggested_actions=[
+                        "A fixed lens cannot have a different focal length per "
+                        "frame. A spread this size is pose error being absorbed "
+                        "into intrinsics, which is what a lower reprojection error "
+                        "here is buying.",
+                        "Turn refine_focal_length off. A supplied calibration beats "
+                        "what BA recovers from a short sequence, and the refined K "
+                        "is written into this artifact where every consumer will "
+                        "prefer it.",
+                        "If the calibration is genuinely suspect, estimated_focal_"
+                        "ratio is the number to act on -- a consistent same-sign "
+                        "pull across all cameras is a calibration error; a scatter "
+                        "is over-fitting.",
+                    ],
+                    see_also="tuning.md#refine_focal_length",
+                )
+
+    dropped = points_in - len(point_ids)
+    if dropped > 0:
+        share = dropped / points_in if points_in else 0.0
+        out.diagnostic(
+            "points_dropped_by_min_track_length",
+            severity="warn" if share >= 0.10 else "info",
+            message=(
+                f"min_track_length={p.min_track_length} removed {dropped} of "
+                f"{points_in} points ({share:.1%}). They are ABSENT FROM THIS "
+                f"ARTIFACT, not merely excluded from the solve."
+            ),
+            suggested_actions=[
+                "Read point_count, not points_optimized. The two are equal by "
+                "construction here, so points_optimized cannot reveal this.",
+                "This is not optional bookkeeping: a point held out of the solve "
+                "would keep the INPUT's coordinate frame while every optimised "
+                "point and camera moves, and bundle adjustment does not preserve "
+                "the gauge. Dropping is the only consistent choice.",
+                "min_track_length: 2 keeps everything. On a two-view-dominated "
+                "cloud that is usually right -- two-view points are measurably "
+                "improved by the solve, because the cameras move and they move "
+                "with them.",
+            ],
+            see_also="tuning.md#min_track_length",
+        )
+
+    if blew_up:
+        out.diagnostic(
+            "bundle_adjustment_diverged",
+            severity="error",
+            message=(
+                f"The solve diverged: reprojection error went {error_before:.3f}px "
+                f"-> {error_after:.3g}px. Every error metric on this artifact is "
+                f"suppressed; the model it contains is not usable."
+            ),
+            suggested_actions=[
+                "Do NOT raise max_iterations. More iterations of a diverging solve "
+                "diverge further; the input is the problem, not the budget.",
+                "Check the input model's own mean_reprojection_error and "
+                "median_triangulation_angle. Divergence here has been traced to "
+                "structure that is under-constrained rather than merely inaccurate "
+                "-- points on near-parallel rays, or placed by a depth prior and "
+                "never verified against a second view.",
+                "min_track_length: 3 drops points carried by two views, which is "
+                "where under-constrained structure concentrates. Read point_count "
+                "afterwards: it will fall, and that is the trade.",
+                "If the input came from a learned prior, triangulate the same tracks "
+                "geometrically and bundle-adjust that instead.",
+            ],
+            see_also="limitations.md#what-bundle-adjustment-cannot-fix",
+        )
+
+    if not converged and not blew_up:
         out.diagnostic(
             "did_not_converge",
             severity="warn",
-            message=f"Ceres stopped after {iterations} iterations without converging.",
+            message=(
+                f"Ceres stopped after {iterations} iterations without "
+                f"converging (cap {p.max_iterations})."
+            ),
             suggested_actions=[
+                f"Raise max_iterations above {p.max_iterations} if `iterations` is "
+                f"AT OR NEAR the cap. It reports cap+1 on a capped run, so it never "
+                f"equals the cap and 'stopped at the cap' is not a test that passes.",
+                "If it stalled well BELOW the cap, more iterations will not help and "
+                "the robust loss is the usual cause: a Cauchy loss can keep the "
+                "trust-region step from meeting Ceres' tolerance on a model that is "
+                "already at its optimum. Confirm by re-running at a higher cap -- if "
+                "the error is identical to four decimals, the solve was finished and "
+                "the flag is the only thing that was not.",
+                "Before spending a run on either: a converged flag has been measured "
+                "worth NOTHING on this stack. Capped and converged solves of the same "
+                "problem agreed to four decimal places every time. Read "
+                "reprojection_error_after, and treat `converged` as bookkeeping "
+                "unless the error is also bad.",
                 "Check reprojection_error_before; BA cannot rescue a badly wrong input.",
-                f"Raise max_iterations above {p.max_iterations} if it stopped at the cap.",
             ],
             see_also="tuning.md#converged-is-0",
         )
 
-    if abs(reduction) < 0.01:
+    if not blew_up and abs(reduction) < 0.01:
         out.diagnostic(
             "no_improvement",
             severity="info",
@@ -318,7 +532,7 @@ def run(ctx: Ctx):
             see_also="tuning.md#error_reduction-near-zero",
         )
 
-    if error_after > 1.5:
+    if not blew_up and error_after > 1.5:
         out.diagnostic(
             "still_high_error",
             severity="warn",
@@ -330,12 +544,18 @@ def run(ctx: Ctx):
             see_also="limitations.md#what-bundle-adjustment-cannot-fix",
         )
 
+    if blew_up:
+        outcome = (f"Reprojection error {error_before:.3f}px -> DIVERGED "
+                   f"({error_after:.3g}px) in {iterations} iterations. "
+                   f"Error metrics are suppressed; this model is not usable. ")
+    else:
+        outcome = (f"Reprojection error {error_before:.3f}px -> {error_after:.3f}px "
+                   f"({reduction:+.1%}) in {iterations} iterations, "
+                   f"{'converged' if converged else 'DID NOT converge'}. ")
     out.note(
         f"Global bundle adjustment over {len(image_id_of)} cameras, "
         f"{len(point_ids)} points and {len(obs_rows)} observations. "
-        f"Reprojection error {error_before:.3f}px -> {error_after:.3f}px "
-        f"({reduction:+.1%}) in {iterations} iterations, "
-        f"{'converged' if converged else 'DID NOT converge'}. "
+        + outcome +
         f"Intrinsics {'refined' if p.refine_focal_length else 'held fixed'}. "
         f"A COLMAP model is written as the `colmap` sidecar."
     )

@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: pycolmap 4.1.1 global mapping (GLOMAP)
 curated_at: 2026-08-10
 sources: 3
@@ -17,7 +17,7 @@ is already built; global positioning has no such notion.
 
 **Prefer incremental when** you need per-image evidence for a debugging pass, or
 the capture is a short ordered sequence where incremental is both fast and easy
-to reason about. On 12 contiguous DTU frames the two land in the same place and
+to reason about. On one twelve-frame contiguous arc the two land in the same place and
 incremental tells you more about how it got there.
 
 **It consumes `pairwise_matches/v1`, not tracks.** Rotation averaging operates on
@@ -34,8 +34,10 @@ it is not a path.
 3. `mean_reprojection_error` — and never compare it against a model with a
    different `registered_images`.
 
-**Cheapest thing that usually works:** defaults. On DTU scan1 (12 contiguous
-images at 1024px, SIFT + exhaustive NN) that is 63 of 64 pairs verified, 12/12
+**Cheapest thing that usually works:** defaults. On one short contiguous arc of
+twelve calibrated frames around a small, well-textured object on a plain backdrop,
+at about 1 MP with a classical detector + exhaustive ratio-test matcher, that is
+63 of 64 pairs verified, 12/12
 cameras, 3608 points, **0.316 px** in 4.5 s — better than the incremental chain's
 0.36 px before bundle adjustment, and reached in one module.
 

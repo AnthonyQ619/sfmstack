@@ -156,11 +156,41 @@ parameter exists to bound cannot accumulate because there is no registration cha
 to accumulate along. Three consequences, all measured across a seventeen-capture
 sweep of twelve-image sets:
 
-1. **Widen the window; do not narrow it.** Reprojection error fell monotonically as
-   the window grew toward the image count and then stopped changing past it —
-   because past the image count there is nothing left to add. Narrowing it, which
-   is what the not-converging section below would otherwise tell you to do, was
-   strictly harmful on every capture that tried it.
+1. **Widen the window to the image count; do not narrow it.** Narrowing, which is
+   what the not-converging section below would otherwise tell you to do, was
+   harmful on every capture that tried it. But widening does **two** things at
+   once, and on some captures they push the headline metric in opposite
+   directions:
+
+   - it **solves better**, and
+   - it **retains more structure** — a point the narrow window could not
+     constrain becomes constrained once every camera that observes it is inside
+     the window.
+
+   **Read `track_utilization` before you widen, because it tells you which of the
+   two you are about to get.** Where utilization already sits near its ceiling
+   there is little structure left to recover: the point count barely moves, and
+   reprojection error falls cleanly and substantially. Where utilization sits
+   well below its ceiling the point count rises materially — a quarter more, on
+   the captures where this was largest — and then error and point count move
+   *together*, and neither ranks the two runs on its own. A bigger model is a
+   harder model. Error rising while a quarter more structure survives is not a
+   regression, and reading it as one is the same mistake
+   [`families/optimization.md`](../../../skills/families/optimization.md) names
+   for bundle adjustment, arriving one stage earlier than that file expects it.
+
+   **Correction, because this item said something stronger.** It claimed the error
+   fell monotonically to the image count. That was fitted on captures whose
+   utilization happened to be high, where the model does not change size and the
+   comparison is legitimate. Across a wider sweep the direction of the *error*
+   reverses exactly where the *point count* moves, and the rule that survives is
+   the pair, not the error alone.
+
+   **Widening also removes a cause of divergence**, which is a different kind of
+   win from a better average: an under-constrained point inside a narrow window is
+   what makes the gain blow up, and admitting the cameras that see it is the fix.
+   A run that reports `local_ba_diverged` at the default is worth widening before
+   it is worth anything else.
 2. **The ablation can run the other way.** On one exhaustively-matched short set,
    `local_ba: false` gave a *better* raw mean and a worse median. That is the
    robust-loss signature, not a reason to switch it off — the median is the

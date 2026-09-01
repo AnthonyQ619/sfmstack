@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulation
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: OpenCV DLT triangulation
 curated_at: 2026-08-07
 sources: 3
@@ -33,18 +33,23 @@ worse at three or four, and **12–21% worse at five or more**. Read
 
 **That difference does not survive bundle adjustment**, which finds the same
 optimum from either starting point — after refinement the two agree to three
-decimals on shared points. What the all-view module keeps is 4–25% more points,
-because its better initial estimate passes this same reprojection filter more
-often. So: no BA stage, or yield matters → switch. Two-view-dominated tracks, or
-you would rather not carry GTSAM → stay here and give up nothing.
+decimals on shared points. What the all-view module keeps is more points, because
+its better initial estimate passes this same reprojection filter more often — but
+bounded by what THIS module was losing in the first place. **Read this module's own
+`yield` to price the swap: the most the all-view estimator can win is `1 - yield`.**
+At 0.99 that is one percent and the swap is nearly free of consequence; well below
+that, there is something to win. So: no BA stage, or yield matters and there is
+headroom → switch. Two-view-dominated tracks, a yield already near 1.0, or you would
+rather not carry GTSAM → stay here and give up almost nothing.
 See [`docs/import_lessons.md`](../../../docs/import_lessons.md).
 
 **The metric that reads upstream:** `rejected_cheirality`. Points landing behind a
 camera is a *pose* problem, not a threshold problem — no setting here fixes it.
 Above ~5% go and look at the pose artifact.
 
-**Cheapest thing that usually works:** defaults. On DTU scan1 (12 contiguous
-images, poses from `PoseEssentialToPnP`) that gives 6941 points from 7014 tracks
+**Cheapest thing that usually works:** defaults. On one short contiguous arc of
+twelve calibrated frames around a small, well-textured object on a plain backdrop,
+with poses from `PoseEssentialToPnP`, that gives 6941 points from 7014 tracks
 (99% yield), 22743 observations, 0.376px mean reprojection error, 15.7° median
 angle, zero cheirality rejections, in 1.3s.
 

@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulationGTSAM
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-08-10
 ---
 
@@ -30,7 +30,8 @@ downstream COLMAP consumer use a PINHOLE camera model, and it is what
 
 ## Why lower error is not the goal
 
-On DTU this module reports **0.391 px** where the pairwise triangulator reports
+On the small-object arc above this module reports **0.391 px** where the pairwise
+triangulator reports
 **0.365 px**, with 49 more points. Reading that as "worse" is the trap.
 
 The pairwise module triangulates from the widest-baseline pair and then measures
@@ -61,9 +62,13 @@ poor.
 
 ## What is NOT here
 
-**Per-point provenance.** `track_id` is not written, so a point cannot be traced
-back to its `tracks/v1` row. `SparseTriangulation` does write it; if you need that
-link, use that module.
+**Correction: `track_id` IS written.** This section used to say it was not, and
+that a reader needing per-point provenance should use `SparseTriangulation`
+instead. The `points` group carries `track_id` and has for some time — check the
+artifact's own `files` block. The claim was wrong in the worst possible direction,
+because pairing on `track_id` is exactly what this module's `tuning.md` instructs a
+reader to do before comparing the two triangulators, and believing this paragraph
+would have sent them away from the module to get a field it already ships.
 
 **A covariance per point.** GTSAM can produce one and this module does not expose
 it. `error` (mean reprojection residual) is the only uncertainty proxy here, and

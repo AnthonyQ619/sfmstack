@@ -175,6 +175,18 @@ matrix yields a full, plausible, well-reprojecting cloud. On a degeneracy
 question more points is not better and the usual metrics cannot referee. Treat it
 as insurance with a known premium and an unmeasured payout.
 
+**The "third" is a defaults artefact, not a property of the solver.** Measured
+twice on different captures: the global solver defaults to `min_track_len: 3` and
+the triangulators default to `2`, so their raw point counts are not the same
+quantity. At a MATCHED track-length floor the ranking inverts — the global solver
+returned 7.5% and 8% MORE points than the incremental chain on the two captures
+where both were compared that way. So the premium is not "a third less structure";
+it is "no two-view structure", which is a different trade and one some downstream
+consumers would take. Compare at matched `min_track_len` or do not compare counts
+at all. (This is trap 10 of this same file — a module run at its defaults is not
+the module the plan specified — applied to the comparison the paragraph above
+invites.)
+
 One caution from the same set: a subject that *looks* planar need not read as
 planar. A carved relief panel photographed head-on scores zero, because the
 figures project far enough to cast their own shadows. The metric was right and the
