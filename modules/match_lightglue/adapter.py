@@ -22,6 +22,34 @@ from sfmkit.cycles import cycle_rates
 MIN_FOR_FUNDAMENTAL = 8
 MIN_FOR_HOMOGRAPHY = 4
 
+
+def robust_model(fn, xy_a, xy_b, thresh, conf):
+    """Run a MAGSAC estimator and treat a degenerate pair as "no model".
+
+    Two failure shapes have to collapse to the same answer. MAGSAC RETURNS None
+    when it cannot fit anything, which is already a legitimate "these do not
+    agree". But on a degenerate configuration -- collinear or coincident
+    correspondences -- OpenCV RAISES `!model.empty()` from inside the call
+    instead, and an exception is not something the caller can guard with an
+    `is None` check.
+
+    Left unhandled that assertion kills the whole matching run on the one pair it
+    cannot solve, which is how two modules here became unusable at exhaustive
+    pairing on a real capture, and how the classical-versus-learned comparison
+    the family files prescribe became impossible to perform like-for-like.
+
+    A pair that cannot support a model is evidence about the pair, not a reason
+    to lose the other several hundred.
+    """
+    try:
+        _, mask = fn(
+            xy_a, xy_b, cv2.USAC_MAGSAC,
+            ransacReprojThreshold=thresh, maxIters=10000, confidence=conf,
+        )
+    except cv2.error:
+        return None
+    return mask
+
 # Which LightGlue weight set goes with which detector. LightGlue is trained
 # per-descriptor, so this is not a hint -- superpoint weights on aliked
 # descriptors produce confident nonsense rather than an error.
@@ -144,15 +172,9 @@ def verify(xy_a, xy_b, model, thresh, conf):
     if len(xy_a) < floor:
         return np.zeros(len(xy_a), dtype=bool)
     if model == "homography":
-        _, mask = cv2.findHomography(
-            xy_a, xy_b, cv2.USAC_MAGSAC,
-            ransacReprojThreshold=thresh, maxIters=10000, confidence=conf,
-        )
+        mask = robust_model(cv2.findHomography, xy_a, xy_b, thresh, conf)
     else:
-        _, mask = cv2.findFundamentalMat(
-            xy_a, xy_b, cv2.USAC_MAGSAC,
-            ransacReprojThreshold=thresh, maxIters=10000, confidence=conf,
-        )
+        mask = robust_model(cv2.findFundamentalMat, xy_a, xy_b, thresh, conf)
     if mask is None:
         return np.zeros(len(xy_a), dtype=bool)
     return mask.ravel().astype(bool)
@@ -161,10 +183,7 @@ def verify(xy_a, xy_b, model, thresh, conf):
 def homography_share(xy_a, xy_b, thresh, conf, n_inliers):
     if n_inliers <= 0 or len(xy_a) < MIN_FOR_HOMOGRAPHY:
         return None
-    _, mask = cv2.findHomography(
-        xy_a, xy_b, cv2.USAC_MAGSAC,
-        ransacReprojThreshold=thresh, maxIters=10000, confidence=conf,
-    )
+    mask = robust_model(cv2.findHomography, xy_a, xy_b, thresh, conf)
     if mask is None:
         return 0.0
     return min(1.0, float(mask.sum()) / float(n_inliers))

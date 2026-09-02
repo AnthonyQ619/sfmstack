@@ -182,6 +182,33 @@ Two things follow that are worth doing rather than reading:
   here but ordinary there is being rejected by a threshold, which is a parameter
   problem rather than a capture problem.
 
+#### What to DO with this, which the section above did not say
+
+Seven readers reached this analysis, agreed with it, and could not act on it —
+because it establishes that the reported number is wrong without saying what to
+do instead, and no module consumes a mask. So, plainly:
+
+1. **Never rank two detectors by `spatial_coverage` on a capture with a dead
+   region.** That is the comparison it inverts. If the frame is mostly subject,
+   the number is fine; if a large part of it is blown backdrop, clipped sky or
+   bare wall, the number is measuring how willing a detector is to place
+   keypoints on nothing.
+2. **Treat a coverage figure that will not move as a CEILING, not a failure.**
+   If two or three parameter moves each change it by a rounding error, the
+   detector is already occupying every cell with content in it, and further
+   tuning toward coverage is spending runs on a number that cannot rise. That
+   pattern — a metric flat across a real sweep — is the cheap signal, and it
+   costs nothing beyond the sweep you were already running.
+3. **Read `min_frame_points` on the finished model instead**, when what you
+   actually want to know is whether coverage was adequate. It answers the
+   downstream question — is any camera starved of structure — with no denominator
+   problem, because it counts points that survived rather than cells that were
+   occupied.
+4. **Do not hand-build the masked figure unless you are settling a specific
+   dispute.** It is a genuine measurement and it is expensive to construct, and
+   two readers who built it confirmed a ceiling they could have inferred from
+   step 2 in one line.
+
 ### 4. CPU or GPU
 
 Classical detectors are CPU. Learned ones need a GPU and a multi-gigabyte image.
@@ -254,6 +281,13 @@ readers tried and reported it as unperformable. Identical metrics across a doubl
 cap is the observable form of the same fact, and it is enough.
 
 ---
+
+> **Before choosing on texture: check the capture does not change camera
+> orientation part-way through.** A block of portrait frames among landscape ones
+> is invisible to every analysis metric and inverts the advice below, because
+> upright-trained learned detectors fail across the break where a
+> rotation-invariant classical one does not. `families/matching.md` has the
+> signature to look for and what to do.
 
 ## Which end to reach for
 

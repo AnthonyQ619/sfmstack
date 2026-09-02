@@ -246,24 +246,59 @@ It is raised when the mean window gain comes back non-finite or absurdly large, 
 `local_ba_gain_px` is suppressed to null on that run so the number cannot be read
 as a measurement.
 
-**The cause is under-constrained points entering the window solve**, and two
-independent captures established it from opposite directions: on one, raising
-`min_triangulation_angle_deg` until near-parallel points were excluded was the only
-setting of eleven that produced a finite gain; on another, raising `min_track_len`
-to 3 was the only setting of eleven that did. A two-view track and a two-degree
-parallax point are the same defect — a point the window can move almost freely —
-and either exclusion fixes it.
+**The point-exclusion account above was the whole explanation and it is not
+sufficient.** It was fitted on two captures where an exclusion happened to work.
+Across a seventeen-capture sweep the diagnostic fired on seven, and on those the
+exclusion ladder failed outright: one reader ran both exclusions alone, both
+combined, a widened window and a residual-matched loss scale — seven
+configurations — and every one still diverged. Where an exclusion did clear it,
+it was not always the one the account predicts: on one capture `min_track_len: 3`
+worked while raising the triangulation angle, offered as equivalent, did not.
+
+**What actually cleared it, repeatedly, was WIDENING THE WINDOW.** On three
+captures a substantially wider `local_ba_window` removed the divergence and
+improved every other metric at once — one measured +40% `track_utilization`,
+another −42% mean reprojection error with more structure at equal registration.
+The old ceiling ("above ~20 you are paying global-BA prices") was too low and was
+discouraging the move that works.
+
+**It does not follow that the window should be the capture.** This is a sliding
+window re-solved every window-size registrations, and setting it to the image
+count discards the drift control that is the whole reason for refining in the
+loop — at which point a global adjuster at the end is cheaper and more honest.
+Sweep upward through window sizes; if nothing short of the full capture helps,
+that is evidence the drift is not local, and the answer is
+`BundleAdjustmentGlobal`, not a degenerate window.
+
+The honest current account is that this is a CONDITIONING failure of the window
+solve, and the window itself is the first-order variable — a window too small to
+constrain the cameras in it is under-determined however you filter the points.
+Point exclusion helps where it happens to make the remaining problem
+well-conditioned, which is why it worked twice and then stopped working.
 
 **So, in order:**
 
-1. **Raise `min_triangulation_angle_deg`** until the divergence stops. Check the
-   value binds at all first: on several captures the entire 3–5 range recommended
-   elsewhere is inert because no surviving point sits in it (see below).
-2. **Or raise `min_track_len` to 3**, which excludes two-view tracks. Note this
-   costs a large fraction of the model and usually *raises* reprojection error, so
-   prefer the angle filter if it works.
-3. **If neither works, set `local_ba: false`** to get a usable model, and record
-   the configuration — none of the iteration or window knobs touches this.
+1. **Widen `local_ba_window`** — a real sweep upward through window sizes, not a
+   jump to the image count. This is the move with the most evidence behind it and
+   it repeatedly improved the model beyond just clearing the flag. If only a
+   window spanning the whole capture helps, stop and use a global adjuster.
+2. **Then try `min_triangulation_angle_deg`**, checking it binds at all first: on
+   several captures the entire 3–5 range recommended elsewhere is inert because
+   no surviving point sits in it (see below).
+3. **Or `min_track_len` to 3**, which excludes two-view tracks. It costs a large
+   fraction of the model and has been measured *raising* reprojection error, so
+   prefer the other two.
+4. **If none works, set `local_ba: false`** and record the configuration. On more
+   than one capture this produced not merely a usable model but the BEST model on
+   every axis — so treat it as a legitimate configuration rather than a defeat,
+   and read the note below about what that implies.
+
+**What it implies that the escape hatch keeps winning.** In-loop local BA is
+presented across this stack as the default worth having. On the captures where it
+diverged, disabling it was sometimes strictly better. Either the default is wrong
+for this class of capture, or in-loop refinement is buying less than the drift
+argument for it claims. That is not settled here, and it is recorded as an open
+question rather than resolved by a sentence.
 
 **It was previously reported as `info` with a first action of "nothing".** Six
 captures reached it through five unrelated parameters — a loosened reprojection

@@ -59,6 +59,26 @@ params:
     type: integer
     minimum: 2
     description: Cap on image count. Omit to use all.
+    tuning: >
+      OMIT IT. The default is every image and that is the right default for a
+      reconstruction: a frame that is never loaded cannot be registered, frames
+      the pipeline genuinely cannot use are dropped downstream by the modules
+      that can tell, and the frames a cap omits are disproportionately the ones
+      that close a loop.
+
+      Measured: the same capture loaded whole rather than at a twelve-frame cap
+      returned more than twice the structure and four times the cameras, and a
+      capture that dropped a quarter of its frames on a classical branch at
+      twelve frames registered thirty of thirty-one on the SAME branch once every
+      frame was loaded. Graph density is quadratic in frame count, so loading the
+      capture is itself a remedy for the fragmentation that motivates most branch
+      swaps.
+
+      Set it only to make something deliberately cheap -- a smoke test, or a
+      sweep whose conclusion you will re-check at full size. A capped set is a
+      different scene from the capture it is drawn from: readings taken on one
+      have been measured crossing published bands that the full capture sits
+      comfortably inside.
 
   sampling:
     type: string
@@ -66,10 +86,17 @@ params:
     enum: [uniform, head]
     description: How max_images selects from the set.
     tuning: >
-      `uniform` spans the whole trajectory and is almost always what you want for
-      a quick look. `head` keeps the first N, which preserves a contiguous
-      baseline -- use it when the capture is a video and you want real overlap
-      rather than a sparse sample of the whole sequence.
+      Only takes effect when max_images caps the set, and the default is not to
+      cap. `uniform` spans the whole trajectory and is what you want for a quick
+      look. `head` keeps the first N, preserving a contiguous baseline -- use it
+      when a capped set must still connect, because a uniform sample of an
+      ordered capture can leave gaps no matcher bridges: measured, six frames
+      taken every eighth from a fifty-frame capture produced three view-graph
+      components and nothing registered, while six contiguous frames connected
+      completely.
+
+      Neither mode is a substitute for loading the capture. If a sampling choice
+      is what makes a reconstruction connect, the cap is the problem.
 
   resize:
     type: string

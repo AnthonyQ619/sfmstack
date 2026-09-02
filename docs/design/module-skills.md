@@ -22,7 +22,7 @@ files.
 Today the equivalent knowledge is a single hand-written corpus shared by all
 modules: `agent_details/optimize_context/metric_context.txt` plus the long English
 strings in `run_from_state`. It is global, unversioned, uncited, and — as
-documented in [../overview/agent-layer.md](../overview/agent-layer.md#-documentation-drift-the-big-one)
+documented in the agent-layer overview (not written)
 — substantially wrong. Moving it into per-module files makes it versionable with
 the module, auditable against sources, and impossible to leave behind when a
 module is added.
@@ -92,7 +92,7 @@ correspondences — typically LightGlue or SuperGlue on a textured scene.
 
 **Do not use when** the scene is low-texture or repetitive. This module cannot
 create tracks the matcher never produced; it only merges what it is given.
-See [limitations](limitations.md).
+See a module's `limitations.md`.
 
 **Cheapest thing that usually works:** `min_track_len: 3` on turntable sequences,
 `2` on wide-baseline sets.

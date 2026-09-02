@@ -89,13 +89,33 @@ no swap performed. **`[unmeasured]`** is argument only.
 ### Matching
 
 - **Repeated OBJECTS between images, on a capture whose graph is not at risk** →
-  swap the MATCHER to one that reasons jointly over all correspondences, and
-  **keep the detector**. A better or more invariant descriptor makes this worse,
-  because two castings of one mould are identical at every scale and invariance is
-  precisely what makes them match. **`[measured: 14]`** — holding a classical
-  detector's keypoints fixed and moving a ratio-test matcher to a jointly-reasoning
-  one gained sparse points on every well-connected capture whose subject repeats,
-  by a few percent up to a third. `FeatureMatchLightGlue` takes a `sift` weight
+  the joint matcher is **worth an A/B and is not worth assuming.** The reasoning
+  is still sound — two castings of one mould are identical at every scale, so
+  invariance is precisely what makes them mis-match, and a matcher that reasons
+  jointly over all correspondences can use global consistency the ratio test
+  cannot. What was overstated is the outcome.
+
+  **`[measured: 14]` — WITHDRAWN.** The claim was that the swap "gained sparse
+  points on every well-connected capture whose subject repeats, by a few percent
+  up to a third". A seventeen-capture sweep found **six counter-examples**, in
+  four different currencies: one lost 49% of the points and 16% on error at equal
+  registration *after* the two-view composition confound was removed; one lost
+  through an identical global solve at 2.3x the reprojection error; one looked
+  better at the matcher on inlier ratio and was 33x worse one stage later on
+  track conflict; one simply returned the smaller model on a capture whose
+  description graded repetition severe. At least two were captures the original
+  fourteen included.
+
+  There is also a methodological objection to the study itself. On one capture the
+  original prediction reproduced EXACTLY at the joint matcher's **default**
+  `filter_threshold`, and inverted once that threshold was settled. The dial that
+  decides the comparison appears to have been left at its default throughout — the
+  same trap this stack documents elsewhere, applied to the experiment that
+  produced this rule. So the fourteen captures measured untuned joint matching
+  against tuned classical matching, and reported it as a property of the modules.
+
+  Treat repetition as a reason to RUN the comparison, not as a prediction of its
+  result, and settle the matcher's threshold on both branches before comparing. `FeatureMatchLightGlue` takes a `sift` weight
   set and `auto` reads the producing module off the features artifact, so this
   costs **no re-detection** — the same `features/v1` feeds both.
   **Ask this question second, after connectivity.** On a fast capture the graph
@@ -237,7 +257,7 @@ to do about it.
 **Stopping.** When a result is good enough is [stopping.md](stopping.md), which is
 not written yet.
 
-**Which families to trust.** [priors.md](priors.md), also not written.
+**Which families to trust.** Not written, and not linked — there is no `priors.md`.
 
 ---
 

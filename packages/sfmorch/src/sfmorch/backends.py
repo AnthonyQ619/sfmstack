@@ -116,8 +116,23 @@ class Endpoint:
 
 
 def http_get(url: str, timeout: float = 30.0) -> dict[str, Any]:
-    with urllib.request.urlopen(url, timeout=timeout) as r:  # noqa: S310
-        return json.loads(r.read() or b"{}")
+    """GET and decode JSON. A timeout always surfaces as TimeoutError.
+
+    urllib reports the two halves differently -- a connect timeout arrives
+    wrapped in URLError, a read timeout arrives bare -- and a caller that wants
+    to RETRY a slow answer rather than give up on it has to be able to tell a
+    timeout from a refused connection. Normalising here means that test lives in
+    one place instead of at every call site.
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:  # noqa: S310
+            return json.loads(r.read() or b"{}")
+    except urllib.error.URLError as e:
+        if isinstance(e.reason, (TimeoutError, socket.timeout)):
+            raise TimeoutError(f"GET {url} timed out after {timeout}s") from e
+        raise
+    except socket.timeout as e:  # bare read timeout on some versions
+        raise TimeoutError(f"GET {url} timed out after {timeout}s") from e
 
 
 def http_post(url: str, payload: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:

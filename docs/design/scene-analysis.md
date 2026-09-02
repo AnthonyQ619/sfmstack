@@ -129,7 +129,7 @@ EXIF and file structure, essentially free, currently unused:
 - **file naming and count** — `000001.jpg…000040.jpg` vs `DSC_0287.JPG` is a real
   signal about capture discipline
 - **resolution and aspect consistency** — mixed resolutions break the loader's
-  scale computation ([../overview/datasets.md](../overview/datasets.md#image-loading--cameradatamanager))
+  scale computation (the dataset overview (not written))
 
 ### Degeneracy detection — the two classic SfM killers
 

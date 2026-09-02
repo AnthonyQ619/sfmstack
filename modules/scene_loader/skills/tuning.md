@@ -31,6 +31,58 @@ constraint. A detector starved at 1600 is usually better fixed with
 
 ---
 
+## The working resolution is a POLICY, not a tuning knob
+
+Set it once, here, and leave it. Everything downstream is denominated in the
+pixels this module produces — every reprojection error, every `_px` threshold,
+every trifocal transfer — so changing it re-denominates the entire pipeline.
+
+**Why this is a policy rather than a preference.** Two models built at different
+working resolutions cannot be compared: every pixel-denominated metric moves at
+once, in the same direction, for a reason that has nothing to do with model
+quality. There is no rule anywhere in this stack for normalising across that,
+because the honest normalisation is not to create the situation.
+
+`max_edge: 1600` is the default and is a reasonable fixed choice for calibrated
+DSLR-class captures. Intrinsics are scaled to the working resolution when the
+scene is loaded, so a fixed size costs nothing in correctness.
+
+**"Raise the working resolution" is not a general remedy, and it has been
+measured going both ways.** On one capture rebuilding larger returned 2.4x the
+structure at lower scene-relative error. On another, 4x the pixels *lowered* a
+learned detector's keypoint count, while exposure normalisation at the same
+resolution took a classical detector from a few hundred keypoints per image to
+several thousand, and its worst frame from 66 to 913. Nothing currently
+distinguishes which regime a capture is in.
+
+So: if a detector is starved, reach for the detector's own controls and for
+exposure normalisation FIRST — they are cheap, they are reversible, and they do
+not invalidate every comparison you have already made. Change the working
+resolution only deliberately, once, and rebuild everything below it.
+
+## When a module works at its own resolution
+
+Some modules cannot use the scene's working resolution. A fixed-input model has
+one it was trained at and nothing about it is tunable; a dense matcher may run
+its correlation at a lower one for memory.
+
+That is legitimate and is not the same as changing the pipeline's working
+resolution. The contract is:
+
+- A module that rescales **for its own computation** and returns results in the
+  scene's pixel frame changes nothing for anyone downstream.
+- A module that rescales and whose output **carries geometry** — keypoints,
+  observations, points, poses — must return that geometry in the scene's frame,
+  and must write the `intrinsics` its output actually corresponds to.
+- Any consumer that finds `intrinsics` on an artifact should prefer them over the
+  scene's, because a pose or a point estimated against a different K is not
+  consistent with the scene's K and mixing them is a silent error.
+
+The fixed-input reconstructors in this repository already do this — they pad to a
+square, keep one scale factor, and write the corrected `intrinsics` back — so the
+policy is describing existing behaviour rather than requesting new behaviour.
+
+
 ## Downstream reports too few images or poor baseline coverage
 
 **Read it as:** `max_images` is capping, or `sampling` picked the wrong subset.

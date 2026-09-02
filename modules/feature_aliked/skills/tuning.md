@@ -1,7 +1,7 @@
 ---
 module: FeatureDetectionALIKED
-module_version: 1.1.0
-curated_at: 2026-08-08
+module_version: 1.2.0
+curated_at: 2026-09-02
 ---
 
 # Tuning FeatureDetectionALIKED
@@ -36,6 +36,13 @@ The parameter with real range, and worth trying before touching thresholds.
 `aliked-n16rot` is the reason to reach for ALIKED over SuperPoint on a capture
 with roll: SuperPoint has no rotation handling at all, and this variant has it
 trained in.
+
+**Until 1.2.0 only `aliked-n16` was actually usable.** The image baked one
+checkpoint and the other three sent the container to the network at run time,
+where it has none — so selecting any of them failed, and `aliked-n16rot` failed
+on precisely the captures it exists for. All four are baked now. If you are
+reading a run older than 1.2.0 that reports an ALIKED failure on a non-default
+variant, that is this defect and not the capture.
 
 ## `nms_radius`
 

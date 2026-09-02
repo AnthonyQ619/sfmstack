@@ -33,6 +33,21 @@ scenes measured so far", which is a reason to look, not a verdict. Where a band
 has been wrong, that is recorded here too, because a threshold that has already
 failed once is the most useful kind.
 
+> **A corpus maximum is an ORDER STATISTIC, not a bound**, and this is worth
+> stating plainly because it has misled readers who understood everything else
+> correctly. The highest value seen in seventeen captures is the largest of
+> seventeen draws; the eighteenth exceeding it is the expected outcome, not an
+> anomaly. Measured: a capture read outside a published maximum on a metric
+> described as "reliably quiet" while running at the exact protocol the corpus
+> was fitted on — nothing about that run was unusual and nothing was wrong.
+>
+> The failure mode this creates is worse than a false alarm: a reader who trips a
+> band that had no business bounding them learns to distrust a metric that was
+> working. So when a reading sits just outside a band, the first question is
+> whether the band could have contained it at all, and the second is whether any
+> DIAGNOSTIC fired — a band with no diagnostic behind it is describing a corpus,
+> not judging your capture.
+
 ---
 
 ## 1. What the numbers actually range over
@@ -44,6 +59,42 @@ interiors, and open outdoor sites. Deliberately not enumerated: an earlier
 version listed the kinds one by one, which made each a countable label, and a
 reader recognised its own capture from a kind that had exactly one member.
 Working resolution around 1024px on the long edge throughout.
+
+> **The 12-image subset is how these numbers were FITTED. It is not how to run a
+> reconstruction.** Load every frame the capture has. Frame selection is a
+> decision for `SceneTriage` and for the modules that can drop what they cannot
+> use — a reconstruction that never sees a frame cannot register it, and the
+> frames a subset omits are disproportionately the ones that close a loop.
+> Measured: rebuilding the same capture from a 12-frame head sample to its full
+> set has returned more than twice the structure and four times the cameras, and
+> a head sample has been shown to be a materially DIFFERENT scene from the
+> capture it is drawn from — crossing a published band on a motion metric that
+> the full capture reads comfortably inside.
+>
+> This matters for reading everything below, because it means your reading and
+> the band may not be describing the same thing.
+
+### Which bands survive a bigger capture, and which do not
+
+Three groups, and the difference is mechanical rather than statistical:
+
+- **Per-frame appearance metrics transfer directly.** `texture_density`,
+  `textureless_fraction`, `sharpness_ratio`, `repetitiveness`, `empty_regions`
+  and the clipping fractions are computed per image and averaged. More frames is
+  a better estimate of the same quantity, not a different quantity.
+- **Adjacent-motion metrics are SAMPLING-DEPENDENT and do not transfer.**
+  `overall_magnitude`, `combined_change`, `rotation_median_deg` and `variability`
+  all measure what happens between neighbouring frames, and "neighbouring" means
+  something different at 12 frames than at 50. The same capture reads LOWER on
+  all of them when more frames are loaded, because consecutive frames are then
+  closer together. See §3b.2 for how to normalise this rather than abandon it.
+- **Whole-graph fractions do not transfer at all.** Anything denominated in
+  *pairs* — most importantly the "roughly half the possible pairs" rule in §3b —
+  is quadratic in frame count. Half of 66 pairs on a twelve-frame capture and
+  half of 1176 pairs on a forty-nine-frame one are not the same statement, and
+  that rule has since been measured failing in BOTH directions on full captures.
+  Read per-image degree instead, which is linear and comparable: `min_image_degree`
+  is the margin, and `graph_components` is only a terminal condition.
 
 **The ranges below are what has been seen, not what is possible**, and their
 extremes are named by the KIND of capture that produced them rather than by scene
@@ -279,10 +330,24 @@ So on a capture where §3b's connectivity question sends you to a learned detect
 collide and the photometric one has nowhere to run. Several readers have hit this
 and had no resolution to reach for.
 
-There is no parameter that resolves it. What is available, in order of preference:
-raise the working resolution instead, which addresses the same shortfall a stage
-earlier and is what the flat-not-burnt row already names first; or accept the
-detector's reading on those regions and carry the risk into the plan's watch line.
+There is no parameter that resolves it, and **the order of preference stated here
+was measured backwards.** It used to say to raise the working resolution instead,
+"which addresses the same shortfall a stage earlier". Measured on a flat-not-burnt
+capture: four times the pixels *lowered* the learned detector's keypoint count
+(1496 to 1396 per image), while exposure normalisation at the ORIGINAL resolution
+took a classical detector from 696 to 4180 per image and its worst frame from 66
+to 913. The two remedies are not interchangeable and the photometric one was
+worth roughly two orders of magnitude more on the frame that mattered.
+
+Raising the working resolution is also not a free move — it re-denominates every
+pixel metric in the pipeline and invalidates comparison with everything already
+built, which is why `SceneLoader`'s tuning notes now treat it as a fixed policy
+rather than a knob.
+
+So, in order: **take the classical detector for its exposure normalisation and
+re-ask the connectivity question**, since §3b.1's fragmentation risk is itself
+reduced by loading every frame; or accept the detector's reading on those regions
+and carry the risk into the plan's watch line.
 What is *not* available is taking the classical detector for its CLAHE when the
 graph is at risk — that trades a connectivity failure for a contrast one, and only
 the first costs you frames.
@@ -334,10 +399,18 @@ recurring signature is not blur at all:
 | near-nadir views of a smooth roof plane, from an orbit that passes over the subject | the frame is filled by one flat surface, sharply imaged |
 | the frames of an interior aimed at blank painted wall | there is nothing in them to have contrast |
 | looking up into shade at smooth timber | low illumination and a low-frequency surface together |
+| the frames of a studio-rig capture holding the most empty backdrop | not flat CONTENT but backdrop SHARE — the subject is sharp and simply occupies less of the frame |
 
 Laplacian variance per frame cannot separate *this frame is blurred* from *this
 frame is aimed at something flat and sharply in focus*. **Before dropping a frame
-on this signal, open it.** The diagnostic's own suggested action leads with
+on this signal, open it.**
+
+The fourth row is the one that generalises least obviously and is worth stating
+directly: on a capture with a dead backdrop, this metric effectively **ranks
+frames by how much backdrop is in them**. The lowest frame is then the one that
+frames the subject most tightly, which is frequently the best frame in the set.
+`textureless_per_image` on the same frames separates it — a low sharpness reading
+that tracks a high textureless fraction is composition, not focus. The diagnostic's own suggested action leads with
 exclusion; on this evidence that action is wrong more often than it is right.
 
 **Read the per-frame array, not the ratio**, from `series.texture.sharpness`
@@ -564,9 +637,13 @@ the plan rather than implying the choice is settled either way.
 **The "third" is a defaults artefact, not a property of the solver.** Measured
 twice on different captures: the global solver defaults to `min_track_len: 3` and
 the triangulators default to `2`, so their raw point counts are not the same
-quantity. At a MATCHED track-length floor the ranking inverts — the global solver
-returned 7.5% and 8% MORE points than the incremental chain on the two captures
-where both were compared that way. So the premium is not "a third less structure";
+quantity. At a MATCHED track-length floor the ranking inverted on the two captures where
+both were compared that way — the global solver returning 7.5% and 8% more
+points. **That direction does not replicate.** A later capture compared the same
+way at matched `min_track_len` measured the global solver returning 35% FEWER
+points. So the matched comparison is the right comparison and its OUTCOME is
+capture-dependent: what the defaults artefact establishes is that the raw counts
+are not the same quantity, not which solver wins once they are. So the premium is not "a third less structure";
 it is "no two-view structure", which is a different trade and one some downstream
 consumers would take. Compare at matched `min_track_len` or do not compare counts
 at all. (This is trap 10 of this same file — a module run at its defaults is not
@@ -729,10 +806,34 @@ and spread well; what failed was that **too few image PAIRS survived verificatio
 to hold the graph together.** Below roughly half the possible pairs, registration
 starts dropping frames; above it, every capture measured completed.
 
+> **That pair-fraction rule has since failed in both directions and should not be
+> used as stated.** It is a fraction of ALL pairs, which is quadratic in frame
+> count, so it does not mean the same thing on a capture larger than the twelve
+> it was fitted on. Measured on full captures: one completed every frame at 42.7%
+> and another at 49.6%, both below the line; one dropped a third of its frames at
+> 56.1%, above it. Read `min_image_degree` instead — it is per-image, so it is
+> comparable across capture sizes, and it is what separates a graph that is
+> connected from one that is robustly connected.
+
 **A learned detector and matcher recovers exactly this**, and it does so while
 finding *fewer* keypoints — it recovers the marginal pairs rather than adding
 points to the pairs that already worked. On all four fragmenting captures it
 restored full or near-full registration.
+
+> **But read what the mechanism actually says: the problem is GRAPH DENSITY, and
+> the learned branch is not the only lever on it.** Frame count is the other one,
+> and it is free. Every capture in this comparison was a twelve-frame head
+> sample; pairs grow quadratically with frames, so the same capture loaded in
+> full presents a far denser graph before any module is changed.
+>
+> Measured once, and only once so far: a capture that dropped a quarter of its
+> frames on the classical branch at twelve frames registered **30 of 31 on the
+> same classical branch** when every frame was loaded. One observation is not a
+> law, and it is enough to change the order of operations — **load all the frames
+> first, then ask whether the graph still fragments.** A branch swap made to fix
+> a fragmentation that a full capture would not have had is a swap made for
+> nothing, and this file has been recommending it since before anyone ran a full
+> capture.
 
 **So the question a detector choice should answer is not "is there enough
 texture" but "will enough pairs survive".** Those come apart, and the first is
@@ -744,6 +845,54 @@ Sorted across the fourteen, the captures that fragmented are **the four highest
 readings, with a clear gap below them**. Nothing overlaps. Texture density,
 textureless fraction, rotation and large-rotation risk all fail to separate the
 two groups; this one separates them completely.
+
+#### Where the gap is, as a ratio you can compute
+
+This section used to stop at "a clear gap" and decline to say where, so that a
+number could not become a lookup key. That withholding made the file's own
+headline rule uncallable: five separate readings landed between the published
+median and the published maximum — exactly where the answer would be — and one
+spent six runs building a control branch to settle empirically what this
+paragraph could have stated. The rule was worth more than the withholding.
+
+So it is stated here as a **ratio to the corpus median**, which carries no scene
+identity, survives a rescaling of the metric, and needs only numbers already in
+the §1 table:
+
+> **`overall_magnitude` ÷ the corpus median for this metric.**
+> At or below **1.2** every capture measured completed on the cheap branch
+> (the highest completing reading sits at 1.18).
+> At or above **1.35** every capture measured lost frames (the lowest such
+> reading sits at 1.39).
+> Between 1.2 and 1.35 **nothing has been measured**, and that is the honest
+> width of the gap rather than a rounding of it.
+
+The ratio is what transfers; the raw level is not, because a ratio is unchanged
+if the metric is redefined or the corpus is refitted, and a printed threshold is
+stale the moment either happens.
+
+#### It only means anything at comparable frame spacing
+
+`overall_magnitude` is motion between *adjacent* frames, so it falls as more
+frames are loaded of the same capture — the neighbours simply get closer. The
+ratio above was fitted at twelve frames, and comparing a full capture's reading
+against it understates the risk, in the direction that makes a fragmenting
+capture look safe.
+
+**Normalise instead of abandoning it.** `SceneMotion`'s `stride` chooses which
+pairs are measured, so re-read the metric at the spacing the corpus was fitted
+at:
+
+> `stride ≈ n_images / 12`, rounded to at least 1, then take the ratio.
+
+That reading is comparable by construction, and you were going to sweep `stride`
+anyway — this file already tells you to check it first, and the sweep is the same
+three runs. A capture with fewer than about twelve frames needs no correction.
+
+**Read the sweep as well as the point.** If motion keeps climbing with stride and
+then collapses, flow has lost correspondence rather than found more of it, and
+the collapse point is itself the answer: it is the separation beyond which pairs
+share nothing, which is the quantity fragmentation actually depends on.
 
 **The mechanism is straightforward, which is why it is worth trusting more than
 the correlation alone.** `overall_magnitude` is median apparent motion between

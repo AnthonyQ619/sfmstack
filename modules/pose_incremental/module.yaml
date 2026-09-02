@@ -204,15 +204,40 @@ params:
       run that diverges at the default is worth widening before it is worth
       anything else.
 
-      ON A SEQUENCE LONGER THAN THE WINDOW, the cost/benefit dial. Cost grows
-      faster than linearly, benefit does not. Below 5 there is almost no freedom
-      left after the two fixed cameras. Above ~20 you are paying global-BA prices
-      per registration to correct drift that global BA at the end will correct
-      anyway -- widen this only when local_ba_gain_px stays high late in the
-      sequence, which means drift is outrunning the window. Note that the
-      artifact publishes only the MEAN gain over all solves, so "late in the
-      sequence" is not something this module lets you read; treat that trigger as
-      unavailable and sweep the window instead.
+      ON A SEQUENCE LONGER THAN THE WINDOW, a cost/benefit dial -- but the cost
+      half of that sentence was doing damage and has been corrected. Cost does
+      grow faster than linearly and below 5 there is almost no freedom left after
+      the two fixed cameras. What was WRONG was the implication that a wide window
+      is an extravagance: "above ~20 you are paying global-BA prices ... widen
+      only when local_ba_gain_px stays high".
+
+      Measured across a seventeen-capture sweep, setting this to the FULL IMAGE
+      COUNT was the single largest improvement on three captures -- one gained
+      about 40% in track_utilization, another 42% lower mean reprojection error
+      with more structure at equal registration -- and it cleared a
+      local_ba_diverged error that no point-exclusion setting could. On one of
+      those captures local_ba_gain_px was FALLING while every other metric
+      improved, so the trigger this field used to name moves opposite to the
+      benefit and must not be gated on.
+
+      BUT DO NOT READ THAT AS "SET IT TO THE IMAGE COUNT". This is LOCAL bundle
+      adjustment: a sliding window over recently registered cameras, re-solved
+      every window-size registrations. A window equal to the capture is not a
+      wide local BA, it is a global BA run once per window with the drift-control
+      property that motivates in-loop refinement thrown away -- and if that is
+      what the capture needs, the honest move is BundleAdjustmentGlobal at the
+      end, which is cheaper and says what it is.
+
+      What the evidence actually supports is that the OLD CEILING WAS TOO LOW,
+      not that there is no ceiling. Stay in window territory -- powers of two from
+      8 upward are a reasonable sweep -- and widen while the model improves. Where
+      widening only stops helping at the full image count, treat that as a signal
+      about the capture (its drift is not local) rather than as the setting to
+      ship: reach for the global adjuster instead.
+
+      The artifact publishes only the MEAN gain over all solves, so "late in the
+      sequence" was never readable here anyway, and local_ba_gain_px must not be
+      used as the widening trigger in either direction.
 
   local_ba_interval:
     type: integer
@@ -459,9 +484,10 @@ diagnostics:
     severity: error
     message: A local bundle-adjustment solve diverged; the poses are not trustworthy.
     suggested_actions:
-      - "Exclude under-constrained points from the window: raise min_triangulation_angle_deg, or min_track_len to 3. A two-view track and a near-parallel point are the same defect here and both were measured causing this."
+      - "FIRST widen local_ba_window -- sweep upward through window sizes, do NOT jump to the image count. Across a seventeen-capture sweep widening cleared the divergence where point exclusion did not, and improved every other metric at once. If only a full-capture window helps, the drift is not local: use BundleAdjustmentGlobal instead."
+      - "Then exclude under-constrained points: raise min_triangulation_angle_deg, or min_track_len to 3. These worked on the two captures the original account was fitted on and have since failed on several others, so they are no longer the first move."
       - "Do NOT read local_ba_gain_px on this run; it is suppressed."
-      - "If it persists, set local_ba: false to get a usable model and report the configuration."
+      - "If it persists, set local_ba: false. On more than one capture that produced the BEST model on every axis, not merely a usable one, so it is a legitimate configuration rather than a defeat."
     see_also: tuning.md#local-ba-diverged
 
   - code: local_ba_not_converging

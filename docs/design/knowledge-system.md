@@ -17,31 +17,74 @@ per-item skills, a large corpus of worked examples indexed by tags, atomic lesso
 cards cross-referenced from those examples, reasoning-based retrieval with no
 embeddings, and a loop that ends in *distil lessons back into files*.
 
+## STATUS — what is built, measured 2026-09-02
+
+**This document is the DESIGN. Most of the tier structure below was never built,
+and a seventeen-capture sweep measured what that costs.** Read the table before
+the design, because readers have followed this document's descriptions to files
+that do not exist and concluded the evidence behind the stack was missing.
+
+| Tier | Designed | Actually built | Measured use across 17 full pipelines |
+| --- | --- | --- | --- |
+| `SKILLS.md` | master index | **built** | 22 fetches, all 17 captures |
+| `scene_to_pipeline.md` | not in this design | **built**, 81 KB | 36 fetches, all 17 — the workhorse |
+| `families/` | one per stage | **built**, 8 files | 2–6 fetches each, at most 6 of 17 captures |
+| `judgment/` | triage, stopping, priors, swap_or_build | `swap_or_build` + `stopping` (written 2026-09-02) | `stopping` was requested 8 times before it existed |
+| `workflow/` | six guides | **empty directory** | 13 requests, every one an error |
+| `runs/` | RUN.md corpus + tagged INDEX | INDEX header only, no rows; **no RUN.md corpus exists** | 4 fetches, nothing to retrieve |
+| lesson cards (`L-00NN`) | atomic, cross-referenced | **never built** | — |
+| distillation loop | end-of-session, reviewed diff | `distill/SKILL.md` describes it; not run | 1 fetch |
+
+**Three retrieval tiers this document describes as live are unpopulated**, and
+until 2026-09-02 `SKILLS.md` linked all of them. The links are now removed rather
+than left dead. Two consequences worth carrying into any redesign:
+
+- **Demand is measurable and it did not match the design.** The single most
+  requested missing document was `judgment/stopping.md` — asked for 8 times
+  across 5 captures, by readers who could not decide whether a finished model was
+  good enough. It has now been written. Nothing ever asked for a lesson card.
+- **The tier that carries the traffic is not in this design at all.**
+  `scene_to_pipeline.md` was written after it and absorbs the role `workflow/`
+  was meant to play. Any redesign should start from that file's existence rather
+  than from the six guides that were never written.
+
+**Also corrected here:** this document's worked walkthrough previously called
+`sfm_open_scene` and `judgment/triage.md`. Neither exists — the scene is loaded
+by running `SceneLoader` like any other module, and triage guidance lives in
+`scene_to_pipeline.md`.
+
 ## Layout
+
+**This listing is the DESIGN. `[built]` / `[EMPTY]` markers show what exists —
+see the status table above.**
 
 ```
 skills/
-  SKILLS.md                        # master index + judgment digest — always in context
+  SKILLS.md                        # [built] master index — always in context
+  scene_to_pipeline.md             # [built] NOT IN THIS DESIGN. 81 KB, the most-read
+                                   #   file in the tier; absorbed workflow/'s role
   judgment/                        # YOUR tacit knowledge. Human-authored, subjective.
-    triage.md                      #   what to read off the images before running anything
-    stopping.md                    #   when a result is good enough; when to stop tuning
-    tradeoffs.md                   #   runtime vs quality; when GPU hours are worth spending
-    smells.md                      #   results that look fine numerically and are wrong
-    priors.md                      #   which module families you actually trust, and where
-  workflow/                        # cross-cutting, module-independent, mechanical
-    pipeline_principles.md         #   how to compose a pipeline; what each stage is for
-    diagnosing_failures.md         #   symptom → which stage is actually at fault
-    parameter_discipline.md        #   how to sweep; interacts with judgment/stopping.md
-    artifact_guide.md              #   how to read artifact.md and each payload type
-    gotchas.md                     #   surprises that bit us, not attributable to one module
-    when_to_build_a_module.md      #   signals that nothing existing fits
+    swap_or_build.md               # [built] NOT IN THIS DESIGN, and the one that gets read
+    stopping.md                    # [built 2026-09-02] requested 8x before it existed
+    triage.md                      # [NEVER BUILT] superseded by scene_to_pipeline.md
+    tradeoffs.md                   # [NEVER BUILT]
+    smells.md                      # [NEVER BUILT]
+    priors.md                      # [NEVER BUILT] requested 3x; link removed from SKILLS.md
+  workflow/                        # [EMPTY DIRECTORY] all six below never written;
+                                   #   13 requests, every one an error
+    pipeline_principles.md         #   [EMPTY]
+    diagnosing_failures.md         #   [EMPTY]
+    parameter_discipline.md        #   [EMPTY]
+    artifact_guide.md              #   [EMPTY]
+    gotchas.md                     #   [EMPTY]
+    when_to_build_a_module.md      #   [EMPTY]
   modules/<ModuleName>/            # per-module — see module-skills.md
     SKILL.md · tuning.md · limitations.md · artifact.md · sources.md
   runs/                            # worked examples, the long-form references
-    INDEX.md                       #   tag table — how a run is found
-    2026-08-07-dtu-scan1-sparse/
-      RUN.md                       #   the narrative
-      trace.json                   #   the machine record
+    INDEX.md                       # [header only] the tag table has NO ROWS
+    2026-08-07-dtu-scan1-sparse/   # [NEVER BUILT] no RUN.md corpus exists
+      RUN.md                       #   [EMPTY]
+      trace.json                   #   [EMPTY]
   distill/
     SKILL.md                       # the compaction procedure
 ```
@@ -199,7 +242,7 @@ The atomic unit. One observation, one takeaway, routed to exactly one file.
 
 ```markdown
 > **L-0061 · Union-find tracking plateaus on repetitive facades**
-> **Run:** [2026-08-11-eth-facade](../../runs/2026-08-11-eth-facade-sparse/RUN.md)
+> **Run:** the per-run record (superseded by `skills/runs/INDEX.md`)
 > **Seen in:** 2 runs · **Confidence:** medium
 > **Context:** ETH3D facade + courtyard, outdoor, repetitive texture, 70-90 images, calibrated.
 > **Observed:** survival_ge_3 stuck at 0.22-0.26 across max_keypoints
@@ -303,9 +346,9 @@ required fields, it is `noise`.
 ```
 read SKILLS.md (index + judgment digest)
       │
-      ├─ sfm_open_scene → scene/v1 (+ SceneTriage auto-run)
+      ├─ sfm_run(SceneLoader) → scene/v1   (there is no sfm_open_scene)
       ├─ sfm_run(SceneMotion) → scene_analysis/v1 → TRAITS   see scene-analysis.md
-      ├─ judgment/triage.md → your read on what those traits imply
+      ├─ scene_to_pipeline.md → what those traits imply (no judgment/triage.md)
       ├─ runs/INDEX.md filtered by trait overlap           "has this been solved?"
       ├─ workflow/pipeline_principles.md                    "what shape of pipeline?"
       ├─ sfm_list_modules(produces=...) + describe_module    "which tools?"

@@ -35,6 +35,11 @@ from .runner import Job
 DEFAULT_IDLE_TTL = 600.0  # ten minutes
 POLL_INTERVAL = 0.25
 POLL_BACKOFF_MAX = 2.0
+# A busy solve can hold the server off its own status endpoint. Generous
+# enough that an ordinary stall is absorbed, bounded so a genuinely dead
+# server is still noticed within a couple of minutes.
+POLL_HTTP_TIMEOUT = 30.0
+POLL_MISS_LIMIT = 5
 
 
 @dataclass
@@ -273,9 +278,45 @@ class ContainerRunner:
         deadline = time.monotonic() + timeout if timeout else None
         interval = POLL_INTERVAL
 
+        # A poll that times out is NOT evidence the server is gone. A module
+        # server answers its own status endpoint from the process running the
+        # solve, so a long CPU-bound stretch -- a global bundle adjustment on a
+        # large model, which is exactly when the caller most wants the result --
+        # can leave it unable to reply inside the HTTP timeout while the job is
+        # progressing perfectly well.
+        #
+        # Failing on the first timeout killed healthy runs at DEFAULT parameters
+        # on five captures in one corpus sweep, and reported it as "lost contact",
+        # which reads as a crash. Three readers concluded a documented action
+        # (raising the iteration cap) was impossible; one spent five runs on it.
+        #
+        # So a timeout is retried, and only a run of consecutive failures -- or an
+        # error that is not a timeout, which IS evidence -- ends the wait. The job
+        # record on the server is the authority; one slow answer is not a death.
+        misses = 0
         while True:
             try:
-                record = http_get(f"{endpoint.url}/jobs/{job_id}", timeout=30.0)
+                record = http_get(f"{endpoint.url}/jobs/{job_id}", timeout=POLL_HTTP_TIMEOUT)
+                misses = 0
+            except TimeoutError as e:
+                misses += 1
+                if misses >= POLL_MISS_LIMIT:
+                    raise ExecutionError(
+                        spec.name,
+                        RuntimeError(
+                            f"the module server stopped answering its status "
+                            f"endpoint: {POLL_MISS_LIMIT} consecutive polls timed "
+                            f"out over ~{int(POLL_MISS_LIMIT * POLL_HTTP_TIMEOUT)}s. "
+                            f"The job may still be running inside the container."
+                        ),
+                    ) from e
+                if not self.backend.is_alive(endpoint):
+                    raise ExecutionError(
+                        spec.name,
+                        RuntimeError("the module server exited while the job ran."),
+                    ) from e
+                time.sleep(interval)
+                continue
             except Exception as e:  # noqa: BLE001
                 raise ExecutionError(
                     spec.name,

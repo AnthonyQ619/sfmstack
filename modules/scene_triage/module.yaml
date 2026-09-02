@@ -166,6 +166,19 @@ metrics:
       white-balance displacement. Matters more for detectors that consume colour
       than for those that convert to grayscale first.
 
+      NO DIAGNOSTIC FIRES ON THIS METRIC, and three separate readings just
+      outside the band left three readers with nowhere to go. So, stated here:
+      the ceiling is the highest value OBSERVED across a small corpus, not a
+      limit on the quantity. A reading a few percent above it means "unlike the
+      captures measured so far" -- a reason to look, not a defect.
+
+      What to do with a mild exceedance: check whether the branch you plan to run
+      consumes colour at all. The classical detectors here convert to grayscale
+      first and are indifferent to this reading, so on that branch a mild
+      exceedance changes nothing. The learned ones take RGB, and there the
+      variation this measures shows up as descriptor drift between frames -- the
+      response is exposure normalisation at detection, not anything here.
+
   exposure_shift:
     direction: lower_better
     healthy: [null, 0.12]

@@ -1,5 +1,5 @@
 name: FeatureDetectionALIKED
-version: 1.1.0
+version: 1.2.0
 kind: detection
 summary: >
   ALIKED learned keypoints and 128-dimensional descriptors, using deformable
@@ -21,7 +21,7 @@ description: |
   either everything or nothing, and is the single most likely mistake when
   swapping them.
 
-image: sfmstack/feature-aliked:1.1.0
+image: sfmstack/feature-aliked:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: true

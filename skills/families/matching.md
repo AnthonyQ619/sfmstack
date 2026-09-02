@@ -246,6 +246,109 @@ being wrong does.
 
 ---
 
+## A capture can change camera ORIENTATION, and nothing upstream will tell you
+
+A block of frames shot in portrait where the rest are landscape — a roughly 90
+degree in-plane roll — is invisible to every analysis metric in this stack, and
+it destroys matching between the two blocks.
+
+**Why nothing sees it.** `mixed_resolution` reads 0, because the pixel dimensions
+are the same and merely transposed. `rotation_median_deg` reads a small number,
+because dense flow could not fit anything across the orientation break and so
+reports only the frames it COULD match — the metric is computed on the evidence
+the defect removed. No scene-description field asks about framing. The reading
+that finally exposes it is `min_image_degree` collapsing toward 1 on a block of
+frames, which is a matcher-stage symptom, one stage after the damage.
+
+**Why it matters at this stage rather than at detection.** Descriptor invariance
+is the whole question. A rotation-invariant classical descriptor matches across
+the break; several learned detectors are trained upright and do not, which
+inverts the usual advice — the learned branch is the fragile one here.
+
+**What to do.**
+
+1. **Suspect it whenever `min_image_degree` is healthy for most frames and
+   collapses for a contiguous block.** A run of frames that match each other and
+   nothing else is the signature; a genuinely hard region degrades gradually.
+2. **Look at the frames.** This is one of the few defects where the contact sheet
+   answers in seconds what no metric answers at all.
+3. **Prefer a rotation-invariant detector**, or a learned detector's
+   rotation-augmented weights where it offers them. Measured on one capture:
+   swapping to a rotation-invariant classical detector took the affected block
+   from a single 17-match bridge edge to 30 edges of up to 615 matches, and
+   `min_image_degree` from 3 to 9.
+
+**This used to live in exactly one file** — one learned detector's limitations
+page — where a reader choosing a branch would reach it only after already having
+chosen. It is stated here because the decision it informs is made here.
+
+## Choosing between two matchers: carry the A/B to a MODEL
+
+**The stage-local metrics do not predict which branch produces the better
+reconstruction, and on these captures they were actively misleading.** This is
+the most replicated procedural finding in the corpus and it overrides the
+temptation to settle the question cheaply.
+
+Measured across a seventeen-capture sweep:
+
+- A branch swept **five of five** upstream quality readings — best inlier ratio,
+  best track conflict, best trifocal transfer, best reprojection error — and
+  registered **8 of 26 images**.
+- A branch that looked better at the matcher on inlier ratio (0.983 against
+  0.926) was **33x worse one stage later** on the tracker's `inconsistent_rate`,
+  with nine fewer pairs and image degree cut from 10 to 6.
+- On another, *every* matching-stage metric preferred the joint matcher and the
+  classical branch won after bundle adjustment, by 49% more points and 16% lower
+  error at equal registration.
+
+Every reader who chose from matcher metrics chose wrong. Every reader who carried
+both branches through to a reconstruction chose right. So:
+
+> **Run both branches to a sparse model before choosing.** Compare at equal
+> registration, join on `track_id`, and split the error by observation count so
+> that a difference in two-view composition is not read as a difference in
+> quality.
+
+**Why the stage-local readings mislead here specifically.** They measure the
+agreement of correspondences that survived, and a matcher can raise every one of
+them by keeping fewer, safer correspondences — which is exactly what starves the
+view graph. The readings are not wrong; they answer "are these matches good"
+when the question is "is there enough here to reconstruct". Those come apart
+precisely on the captures where the choice matters.
+
+**The one cheap check that IS predictive** is not a quality metric at all:
+`min_image_degree`, because it measures the graph's margin rather than the
+matches' agreement. A branch that drops it toward 1 is starving a frame no
+matter how clean its inlier ratio looks.
+
+## What the comparison costs, so you can budget it
+
+The corpus previously called this A/B "nearly free". That is true of
+**re-detection** — a joint matcher can take a classical detector's `features/v1`
+directly, so the swap costs no detection — and it is false of the matching
+itself, which is the expensive half. The sentence has caused readers to plan an
+A/B they could not afford and to skip one they could.
+
+What has been measured, as orders of magnitude rather than promises:
+
+- Exhaustive classical matching on a capture of a few dozen frames, at some tens
+  of thousands of keypoints per image, runs in the **tens of minutes** for the
+  full pair set. Pairs grow quadratically with frames, so doubling the capture
+  roughly quadruples this.
+- A joint learned matcher's cost grows with the number of keypoints per pair as
+  well as with pairs, and it runs on the GPU rather than the CPU, so the two do
+  not trade off the same way. Raising a detector's cap raises its cost faster
+  than it raises the classical matcher's.
+- **The cheapest honest A/B is not the full pair set.** Both branches on a
+  restricted pairing, compared on `min_image_degree` and on the decay of match
+  count with frame separation, answers the branch question at a fraction of the
+  cost — and if the two branches disagree there, that is when the full comparison
+  is worth buying.
+
+None of this is a model of runtime, and it should not be read as one. It is
+enough to tell a reader that the exhaustive A/B on a large capture is an hour's
+decision rather than a free one.
+
 ## Reading the per-pair counts
 
 `pairwise_matches/v1` publishes `pairs/match_count` beside `pairs/image_pair`. The
@@ -340,6 +443,19 @@ self-contradictory, because all of its signal was in the split term. Over 54 pai
 runs the sum moved monotonically with the tracker's `inconsistent_rate` within
 every capture, and the constant relating them varies about fourfold between
 captures — so **sweep with it, do not threshold on it.**
+
+> **"Monotonically within every capture" has since failed twice, and in a way
+> that matters for how you sweep.** On one capture the sum fell 7.7x across a
+> sweep while `inconsistent_rate` fell 1.17x; on another `inconsistent_rate`
+> moved 0.005 across a sweep whose registration went from 5 frames to 30, and was
+> non-monotonic besides. In both, the cycle terms tracked the change cleanly and
+> `inconsistent_rate` did not.
+>
+> The practical consequence is the reverse of what the sentence above implies:
+> where the two disagree, **the cycle terms are the more sensitive instrument and
+> `inconsistent_rate` is the one that can sit flat through the range that decides
+> the run.** Sweep on the cycle terms; use `inconsistent_rate` to confirm, not to
+> price.
 
 Which term carries the signal tells you where the repair is:
 

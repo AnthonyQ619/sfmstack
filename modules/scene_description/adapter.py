@@ -530,7 +530,7 @@ def run(ctx: Ctx):
                 "Prefer a subset of frames without them; re-run SceneLoader over it.",
                 "A healthy inlier_ratio is weak evidence here - moving points are locally consistent.",
             ],
-            see_also="limitations.md#the-report-can-be-wrong",
+            see_also="tuning.md#coherent-reflection",
         )
 
     # Two codes rather than one severity that changes, because a diagnostic's
@@ -562,11 +562,22 @@ def run(ctx: Ctx):
             ),
             suggested_actions=[
                 "A coherent reflection is a correspondence to a virtual point BEHIND "
-                "the surface. It triangulates confidently and reprojects beautifully, "
-                "so neither reprojection error nor bundle adjustment will find it.",
+                "the surface. Bundle adjustment will not remove it: measured, the "
+                "flagged region's error ratio was unchanged either side of a global "
+                "solve.",
+                "BUT REPROJECTION ERROR IS NOT BLIND TO IT, and an earlier version "
+                "of this action said it was. Point by point a virtual point does "
+                "reproject well. As a POPULATION it does not -- measured at 3.1x the "
+                "mean error of the rest of the model. Several readers stopped "
+                "looking because this action told them not to.",
+                "So the cheap probe is worth taking: read p95_reprojection_error "
+                "beside mean_reprojection_error on the finished model, and compare "
+                "error DISTRIBUTIONS over the flagged region, never individual "
+                "points.",
                 lands,
                 "Those features are self-consistent, so they can be RANSAC inliers. "
-                "A healthy inlier_ratio is not evidence against this.",
+                "A healthy inlier_ratio is not evidence against this, and neither "
+                "is a healthy MEAN.",
             ],
             see_also="limitations.md#the-report-can-be-wrong",
         )

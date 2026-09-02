@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 from sfmkit import ArtifactStore
 
-from sfmorch import Orchestrator, SubprocessBackend
+from sfmorch import ExecutionError, Orchestrator, SubprocessBackend
 from sfmorch.backends import BackendError, http_get, http_post
 from sfmorch.container import ContainerRunner
 from sfmorch.backends import _pid_alive
@@ -398,3 +398,63 @@ def test_the_backend_reaps_at_interpreter_exit(registry, store):
         f"server {pid} survived its owner exiting -- this is the exact leak that "
         f"left three servers running for weeks"
     )
+
+
+# --------------------------------------------------------------------------- #
+# A slow poll is not a dead server
+# --------------------------------------------------------------------------- #
+
+
+def test_a_status_poll_that_times_out_is_retried_not_fatal(store, registry, backend):
+    """The bug this closes killed healthy runs at DEFAULT parameters on five
+    captures. A module server answers its own status endpoint from the process
+    running the solve, so a long CPU-bound bundle adjustment can miss the HTTP
+    deadline while the job is progressing fine. Failing on the first miss reported
+    it as 'lost contact with the module server', which reads as a crash -- three
+    readers concluded a documented action was impossible."""
+    import sfmorch.container as C
+
+    r = ContainerRunner(backend, gpus=GpuBroker(devices=[]), idle_ttl=3600)
+    real = C.http_get
+    calls = {"n": 0}
+
+    def flaky(url, timeout=30.0):
+        if "/jobs/" in url:
+            calls["n"] += 1
+            if calls["n"] <= 3:                      # three misses in a row
+                raise TimeoutError("simulated busy solve")
+        return real(url, timeout=timeout)
+
+    C.http_get = flaky
+    try:
+        orch = Orchestrator(store=store, registry=registry, runner=r)
+        result = orch.run("MakeScene", run_id="r", params={"n_images": 3})
+        assert result.primary.metric("n_images") == 3
+        assert calls["n"] > 3, "the test never exercised the retry path"
+    finally:
+        C.http_get = real
+        r.shutdown()
+
+
+def test_polls_that_never_recover_do_eventually_fail(store, registry, backend):
+    """The retry must not become a hang. Past the miss limit it still gives up --
+    and says the job may still be running, rather than claiming a crash it has no
+    evidence for."""
+    import sfmorch.container as C
+
+    r = ContainerRunner(backend, gpus=GpuBroker(devices=[]), idle_ttl=3600)
+    real = C.http_get
+
+    def always_slow(url, timeout=30.0):
+        if "/jobs/" in url:
+            raise TimeoutError("simulated wedged server")
+        return real(url, timeout=timeout)
+
+    C.http_get = always_slow
+    try:
+        orch = Orchestrator(store=store, registry=registry, runner=r)
+        with pytest.raises(ExecutionError, match="stopped answering"):
+            orch.run("MakeScene", run_id="r", params={"n_images": 3})
+    finally:
+        C.http_get = real
+        r.shutdown()

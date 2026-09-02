@@ -49,7 +49,13 @@ frame) leaves gaps SIFT cannot bridge even with exhaustive matching — 3 view-g
 components and zero tracks reaching a third view, so nothing can register. Six
 *contiguous* frames connect completely.
 
-*What helps:* `sampling: head` in SceneLoader, or more images. Not a parameter here.
+*What helps:* **more images — load all of them.** This failure is a consequence
+of subsampling, not a property of the capture: the same 49-frame capture connects
+completely when it is loaded whole. `sampling: head` was previously named here as
+the fix, and it is only the fix for an artificially capped set, where it buys a
+contiguous baseline instead of a sparse one. If you find yourself choosing a
+sampling mode to make a reconstruction connect, the actual answer is that the cap
+should not be there. Not a parameter here.
 
 ## Drift on long sequences
 

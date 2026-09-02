@@ -10,7 +10,7 @@ Status: **draft for discussion.** Nothing here is built. Decisions still open ar
 collected in [Open questions](#open-questions).
 
 Current state is documented in [../overview/](../overview/). Read
-[../overview/refactor-targets.md](../overview/refactor-targets.md) first for what
+the refactor targets (not written) first for what
 is in the way.
 
 ## The three pieces
@@ -136,7 +136,7 @@ framework:
 Notice `PointsMatched` splits into two types. It is three things today
 (pairwise container, track container, observation registry) and every consumer
 branches on which half is populated — see
-[../overview/datatypes.md](../overview/datatypes.md#pointsmatched--featmatchdtpy).
+the datatype overview (not written; `packages/sfmkit/src/sfmkit/types/` is authoritative).
 
 **Openness rule:** a module may declare `type: custom/<name>/v1` with an inline
 schema in its manifest. It flows through the system, is stored, and is routable
@@ -226,7 +226,7 @@ modules/feature-tracking-unionfind/
 **`module.yaml`** is the single source of truth. It feeds the MCP tool schema,
 the agent's tool documentation, type-based plan validation, and metric
 interpretation — all four things that are hand-maintained and drifting today
-(see [../overview/agent-layer.md](../overview/agent-layer.md#-documentation-drift-the-big-one)).
+(see the agent-layer overview (not written)).
 
 ```yaml
 name: FeatureTrackFromPairsUnionFind
@@ -342,7 +342,7 @@ Rules that keep this maintainable:
   main reason `sfmkit` is capped at stdlib + numpy.
 
 Which backends each module needs today:
-[../overview/module-inventory.md](../overview/module-inventory.md#file--heavy-dependency-map).
+the module inventory (not written).
 
 ### Server lifecycle
 

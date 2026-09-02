@@ -961,10 +961,29 @@ class SfmService:
                 return {"topic": topic, "path": str(path),
                         "text": path.read_text(encoding="utf-8")}
 
-        available = sorted(
-            str(p.relative_to(root)) for p in root.rglob("*.md")
+        # Enumerate from the SAME places the lookup above searches. Listing only
+        # `skills/` was a half-fix: `docs/import_lessons.md` and
+        # `docs/design/DECISIONS.md` became fetchable and stayed invisible, so a
+        # reader who hit any miss saw an authoritative-looking list without the
+        # two documents the family files cite most, and concluded they did not
+        # exist. One said so in writing.
+        #
+        # Topics are reported as they must be TYPED, not as filesystem paths --
+        # `judgment/swap_or_build`, not `judgment/swap_or_build.md` -- because the
+        # previous list invited a reader to paste back a string the getter does
+        # accept only by accident of the `.md` candidate.
+        seen, available = set(), []
+        for base, prefix in ((root, ""), (parent / "docs", "")):
+            if not base.is_dir():
+                continue
+            for f in sorted(base.rglob("*.md")):
+                name = str(f.relative_to(base).with_suffix(""))
+                if name not in seen:
+                    seen.add(name)
+                    available.append(prefix + name)
+        raise OrchestratorError(
+            f"no skill '{topic}'. Available: {sorted(available)}"
         )
-        raise OrchestratorError(f"no skill '{topic}'. Available: {available}")
 
     # ===================================================================== #
     # Authoring

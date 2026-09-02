@@ -34,9 +34,16 @@ reporting.
   module is the problem; when nothing in the registry fits at all. Organised by
   family. *Written, and honest that most of it is structural rather than measured.*
 - **[stopping](judgment/stopping.md)** — when a result is good enough; when to
-  stop tuning. *Empty.*
-- **[priors](judgment/priors.md)** — which module families to trust, and where.
-  *Empty.*
+  stop turning a dial. *Written.* The objective is as much structure as possible
+  from a model you have reason to trust, and it carries the constraint ladder and
+  the model-comparison procedure that go with that.
+- **priors** — which module families to trust, and where. *Not written, and the
+  link has been removed rather than left dead.* What exists of this is inside
+  [`families/`](families/) per stage and in
+  [`judgment/swap_or_build.md`](judgment/swap_or_build.md); note that the family
+  files' predictive claims about which branch wins are the part of this corpus
+  that has failed most often, so a `priors` file written today would mostly be
+  recording that the question is open.
 
 Three files were planned here and cut. `triage.md` was to hold what to read off a
 scene before running anything — that is now
@@ -76,14 +83,25 @@ numbers on it.
 
 ## Workflow guides
 
-*Empty — to be written.*
+**Not written. Nothing here is fetchable, and the six titles this section used to
+list have been removed rather than left as links.** They were requested 24 times
+across a seventeen-capture sweep, each request raising rather than returning a
+miss, and the `Available:` list that came back with the error did not name the
+documents that *do* exist — so a reader who followed one pointer concluded the
+whole tier was gone.
 
-- [pipeline_principles.md](workflow/pipeline_principles.md) — how to compose a pipeline
-- [diagnosing_failures.md](workflow/diagnosing_failures.md) — symptom → which stage is at fault
-- [parameter_discipline.md](workflow/parameter_discipline.md) — sweep mechanics
-- [artifact_guide.md](workflow/artifact_guide.md) — reading `artifact.md` and each payload type
-- [gotchas.md](workflow/gotchas.md) — surprises not attributable to one module
-- [when_to_build_a_module.md](workflow/when_to_build_a_module.md) — signals nothing existing fits
+Where their content currently lives, until this tier is written:
+
+- composing a pipeline, and which stage a symptom belongs to →
+  [`scene_to_pipeline.md`](scene_to_pipeline.md) and
+  [`families/README.md`](families/README.md)
+- sweep mechanics and when to stop turning a dial →
+  [`judgment/stopping.md`](judgment/stopping.md)
+- reading an artifact and each payload type → each module's `artifact` skill
+- surprises not attributable to one module → `scene_to_pipeline.md` §3, "the
+  traps, in the order they have bitten"
+- signals that nothing existing fits →
+  [`judgment/swap_or_build.md`](judgment/swap_or_build.md)
 
 ## Loop
 
@@ -107,8 +125,8 @@ SKILLS.md (this file)
   └─ run → metrics + diagnostics(see_also)
         ├─ tuning.md          principled gradient + observed episodes
         ├─ sfm_replay(...)    suspect upstream? branch the DAG
-        ├─ judgment/stopping  good enough?                        [EMPTY]
-        ├─ limitations.md     stuck? + workflow/diagnosing_failures.md
+        ├─ judgment/stopping  good enough? when to stop a sweep
+        ├─ limitations.md     stuck? what this module cannot do
         └─ sfm_find_alternatives(...) or scaffold a new module
   │
   └─ session ends → distill → reviewed diff (judgment/ proposed, not applied)
