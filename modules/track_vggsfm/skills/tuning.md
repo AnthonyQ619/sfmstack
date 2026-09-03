@@ -95,7 +95,6 @@ broke a 16-image `courtyard` reconstruction outright. Both ends fail.
 
 See [`docs/import_lessons.md`](../../../docs/import_lessons.md).
 
-
 ## `visibility_threshold` is a real probability
 
 Unlike the confidences elsewhere in this repository — VGGT's, MapAnything's, both
@@ -153,3 +152,19 @@ than matching costs.
 **It is the number that should move when the working resolution does.** Where a
 resolution parameter exists it is the one to reach for; where it does not, this
 metric is a property of the model rather than a knob.
+
+## Metrics that mislead
+
+**`track_count` is lower than a union-find tracker's and that is expected.** 4033
+against 4702 on the same scene, with tracks that are 35% longer and three times as
+likely to reach five views. Read `track_survival_5`.
+
+**`track_count` also moves with `dedupe_eps_px` for reasons unrelated to quality.**
+7329 without deduplication, 4033 with. Two runs are not comparable across it.
+
+**`avg_track_length` rises when deduplication merges**, because merging
+concatenates: 3.46 without, 3.85 with. That is not the tracker getting better.
+
+**Nothing here measures positional accuracy.** Visibility is a confidence about
+*whether* a point is seen, not *where*. The first number that measures where is the
+triangulator's reprojection error.

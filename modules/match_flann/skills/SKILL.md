@@ -6,6 +6,26 @@ curated_at: 2026-08-07
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 9 parameters documented, starting with `pairing` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It is slower than brute force at ordinary scales" |
+| you are reading what it wrote | **`artifact`** — the layout of `pairwise_matches/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `pairs_proposed`, `pairs_matched`, `matches_per_pair`.
+
+**Diagnostics it can raise:** `approximation_costly`, `broken_chain`, `low_inlier_ratio`.
+
+## What this module is for
+
+
 `FeatureMatchNN` with the exhaustive search replaced by an approximate index.
 Everything after the search — ratio test, mutual check, MAGSAC verification, view
 graph, planarity — is deliberately identical, so the two are directly comparable

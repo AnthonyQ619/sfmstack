@@ -69,18 +69,24 @@ modules/<m>/skills/artifact.md     <- sfm_module_skill(m, "artifact")
 modules/<m>/skills/sources.md      <- sfm_module_skill(m, "sources")
 
 skills/SKILLS.md                   <- sfm_workflow_skill("SKILLS.md")
+skills/scene_to_pipeline.md        <- sfm_workflow_skill("scene_to_pipeline")
 skills/families/*.md               <- sfm_workflow_skill("families/tracking.md")
-skills/judgment/*.md               <- sfm_workflow_skill("triage")      [EMPTY]
-skills/workflow/*.md               <- sfm_workflow_skill("<topic>")     [EMPTY]
-skills/runs/INDEX.md               <- sfm_workflow_skill("runs/INDEX.md") [EMPTY]
+skills/judgment/*.md               <- sfm_workflow_skill("stopping")
+skills/runs/INDEX.md               <- sfm_workflow_skill("runs/INDEX.md")   [NO ROWS]
+skills/runs/EVIDENCE.md            <- sfm_workflow_skill("runs/EVIDENCE.md")
+skills/distill/SKILL.md            <- sfm_workflow_skill("distill/SKILL.md")
+docs/*.md, docs/design/*.md        <- sfm_workflow_skill("import_lessons")
 ```
 
-`sfm_workflow_skill` resolves a topic against four candidates in order —
-`skills/<topic>`, `skills/<topic>.md`, `skills/workflow/<topic>.md`,
-`skills/judgment/<topic>.md` — so a bare topic reaches the judgment and workflow
-tiers by name, and anything else in the tree is reachable by relative path. A
-miss returns the full list of every `.md` under `skills/`, which makes wrong
-guesses self-correcting.
+`sfm_workflow_skill` resolves a topic against `skills/<topic>`,
+`skills/<topic>.md`, `skills/judgment/<topic>.md`, and then the same two forms
+beside `skills/` — `docs/<topic>.md` and `docs/design/<topic>.md`. So a bare topic
+reaches the judgment tier by name, the design and lessons documents the skill files
+cite are fetchable, and anything else in the tree is reachable by relative path. A
+miss returns every topic under both roots, printed as it must be *typed*, which
+makes wrong guesses self-correcting.
+
+**There is no `skills/workflow/` candidate and that is deliberate** — see §4.
 
 ### D. The artifact and run store — `<store>/`
 
@@ -305,76 +311,96 @@ be wrong can be corrected in one file rather than re-derived every session.
 
 ---
 
-## 4. The empty tiers — which tools read them, and what does not work
+## 4. The tiers that were empty — what filled them, and what did not
 
-`skills/judgment/`, `skills/workflow/` and `skills/runs/INDEX.md` are empty by
-decision; they are to be filled from the agent-driven runs. This section records
-what is wired and waiting, so the gap is a known state rather than a surprise.
+`skills/judgment/`, `skills/workflow/` and `skills/runs/INDEX.md` were all empty by
+decision, to be filled from the agent-driven runs. Two of the three are resolved,
+and the resolutions went in opposite directions. This section records which, so the
+remaining gap is a known state rather than a surprise.
 
-### `skills/judgment/` — thresholds and practitioner calls
-
-| Reached by | How |
-| --- | --- |
-| `sfm_workflow_skill(topic)` | resolves `skills/judgment/<topic>.md` on a bare topic name — `swap_or_build` (written), `stopping` and `priors` (empty) |
-
-Indexed in `skills/SKILLS.md` and unwritten. Five files are named there.
-
-**What does not work without it:**
-
-- **Trait derivation.** `scene_analysis/v1` declares a `traits` group and
-  **neither analysis module fills it**, deliberately: traits are derived by the
-  orchestrator from thresholds held here, so that revising what counts as
-  "narrow baseline" does not cost a re-run. With `judgment/` empty there are no
-  thresholds, so there is no trait vector — and traits are the retrieval key.
-- **Stopping.** The agent will decide when a reconstruction is good enough with
-  no authored answer. `healthy` bands in manifests are advisory and
-  module-local; they are not a stopping criterion.
-- **Reading the analysis numbers.** Both new modules emit cues whose *cut points*
-  are explicitly not theirs to set. Until `judgment/` says what counts as
-  repetitive, the agent has a number and a provisional band.
-
-### `skills/workflow/` — cross-cutting stage guides
+### `skills/judgment/` — thresholds and practitioner calls — **FILLED**
 
 | Reached by | How |
 | --- | --- |
-| `sfm_workflow_skill(topic)` | resolves `skills/workflow/<topic>.md` on a bare topic name |
+| `sfm_workflow_skill(topic)` | resolves `skills/judgment/<topic>.md` on a bare topic name |
 
-Empty, with no filenames committed to yet. This is the tier that would answer
-"which stage is my problem in" — the question that sits above any single module's
-`tuning.md` and below `judgment/`.
+Five files, all written: `swap_or_build`, `stopping`, `smells`, `priors`,
+`tradeoffs`. A sixth, `triage`, was cut rather than written — what to read off a
+capture before running anything is `skills/scene_to_pipeline.md`, reached through
+`sfm_plan_brief`, and `SKILLS.md` says so by name instead of leaving a link that
+resolves to nothing.
 
-**What does not work without it:** nothing refuses, but a failure whose cause is
-two stages upstream has no authored path back. `sfm_compare`'s divergence report
-is the mechanical half of that answer; the interpretive half is here.
+**One capability this tier was to unblock is still blocked.** `scene_analysis/v1`
+declares a `traits` group and neither analysis module fills it, deliberately:
+traits were to be derived by the orchestrator from thresholds held here, so that
+revising what counts as "narrow baseline" does not cost a re-run. Those thresholds
+are not here — they are in `scene_to_pipeline.md`, as *observed ranges over a named
+corpus* rather than as cut points, which is a deliberate refusal to invent a
+boundary the evidence does not have. So there is still no derived trait vector, and
+traits are the retrieval key `runs/INDEX.md` wants. The blockage is now a stated
+disagreement about whether cut points should exist, not an unwritten file.
 
-### `skills/runs/INDEX.md` — the worked-run corpus
+### `skills/workflow/` — cross-cutting stage guides — **RETIRED**
 
-| Reached by | How |
-| --- | --- |
-| `sfm_workflow_skill("runs/INDEX.md")` | by relative path — it is not under `workflow/` or `judgment/`, so the bare-topic form does not find it |
+The directory is gone, and the resolver no longer searches it.
 
-The file exists with its table header and no rows.
+Six guides were designed for it and none was written. Across a seventeen-capture
+sweep it was requested 24 times and **every request raised rather than returned**.
+The cost of that is not the missing content: the error's `Available:` list did not
+name the documents that do exist, so readers who followed a pointer into it
+concluded the whole knowledge base was gone, and one said so in writing. A search
+path for a directory that does not exist manufactures misses.
 
-**What does not work without it:** *"has a scene like this been solved before?"*
-returns nothing. The retrieval it is meant to support is a set intersection
-between a scene's derived traits and a run's `scene_traits` frontmatter — which
-is doubly blocked, since trait derivation needs `judgment/` too.
+The diagnosis is that the original `workflow/`-versus-`judgment/` split sorts by
+**who authored a claim**, not by **what question a reader is holding**. A reader
+with a broken reconstruction does not know which half their answer is in. So the
+mechanical half settled where readers were already standing — `scene_to_pipeline.md`
+for routing a symptom to a stage, `families/` for choosing inside one,
+`judgment/stopping.md` for sweep mechanics, each module's `artifact` skill plus the
+type contract for reading a payload. `SKILLS.md` carries the full redirect table.
 
-**The machinery underneath it is live**, which is the part worth knowing: the
-orchestrator already binds each run to its scene on the first step that touches
-one (`_scene_of`, `orchestrator.py`), precisely so `INDEX.md` has a stable key to
-be built from later. Nothing needs re-plumbing when the rows arrive.
+**Do not restore the search path without the files.** That combination is what
+produced the 24 misses.
+
+### `skills/runs/` — the worked-run corpus — **SPLIT; half still empty**
+
+| File | Reached by | State |
+| --- | --- | --- |
+| `runs/INDEX.md` | `sfm_workflow_skill("runs/INDEX.md")` — a relative path; the bare-topic form does not find it | header only, no rows |
+| `runs/EVIDENCE.md` | `sfm_workflow_skill("runs/EVIDENCE.md")` | two campaigns, per-capture |
+| `runs/CORPUS.txt` | not a `.md`; read as a file | the 17 captures every range is fitted on |
+
+These were one file and are now two, because they answer incompatible questions.
+`INDEX.md` answers *"has a scene like this been solved before?"* and wants a row
+you can match your own capture against. `EVIDENCE.md` answers *"where does this
+claim come from?"* and exists to be cited and **not** matched — matching your
+readings against it is how a reader leaks their own answer back to themselves.
+Sharing a file meant anyone fetching the second got the first's promise.
+
+**`INDEX.md` is still empty, and it is blocked upstream**, not by transcription:
+the retrieval it supports is a set intersection between a capture's derived traits
+and a run's `scene_traits` frontmatter, and trait derivation is the capability
+`judgment/` did not unblock above.
+
+**The machinery underneath it is live.** The orchestrator already binds each run to
+its scene on the first step that touches one (`_scene_of`, `orchestrator.py`),
+precisely so `INDEX.md` has a stable key to be built from later. Nothing needs
+re-plumbing when the rows arrive.
 
 ### Summary
 
-| Tier | Files | Tool that reads it | Blocked capability |
+| Tier | Files | Tool that reads it | State |
 | --- | --- | --- | --- |
-| `judgment/` | 1 of 3 named | `sfm_workflow_skill` | stopping criteria; which families to trust. Trait derivation moved to `scene_to_pipeline.md` |
-| `workflow/` | 0 | `sfm_workflow_skill` | stage-level diagnosis above a single module |
-| `runs/INDEX.md` | header only | `sfm_workflow_skill` | "scenes like this were solved how" |
-| `families/` | 8 | `sfm_workflow_skill` | — populated |
-| `modules/*/skills/` | 141 across 28 modules | `sfm_describe_module`, `sfm_module_skill` | — populated |
+| `judgment/` | 5, plus 1 cut | `sfm_workflow_skill` | populated; trait derivation still unblocked |
+| `workflow/` | — | — | **retired**; content redistributed, search path removed |
+| `runs/INDEX.md` | header only | `sfm_workflow_skill` | blocked on trait derivation |
+| `runs/EVIDENCE.md` | 2 campaigns | `sfm_workflow_skill` | populated; the 17-capture sweep not yet transcribed |
+| `families/` | 8 | `sfm_workflow_skill` | populated |
+| `scene_to_pipeline.md` | 1 | `sfm_workflow_skill`, `sfm_plan_brief` | populated; the largest single file in the tier |
+| `distill/SKILL.md` | 1 | `sfm_workflow_skill` | written; the loop it describes has never run |
+| `modules/*/skills/` | 141: five per module across 28, plus `SceneDescription/rubric.md` | `sfm_describe_module`, `sfm_module_skill` | populated |
 
-Only one tool reads all three empty tiers, and it is the same tool that reads the
-populated ones. **No new tool is needed when they are filled** — which is the
-point of routing every knowledge tier through one resolver.
+One tool reads every tier above except the module skills, and no new tool was
+needed as they filled — which is the point of routing every knowledge tier through
+one resolver. What the resolver could not fix is a tier that never got files: that
+took deleting it.

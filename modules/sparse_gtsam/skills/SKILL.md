@@ -6,6 +6,26 @@ curated_at: 2026-08-10
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 7 parameters documented, starting with `use_lost` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It cannot fix poses" |
+| you are reading what it wrote | **`artifact`** — the layout of `sparse_model/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `min_frame_points`, `two_view_fraction`, `p95_reprojection_error`.
+
+**Diagnostics it can raise:** `uncalibrated_scene`, `no_points`, `mostly_two_view`, `bad_poses_suspected`, `weak_structure`.
+
+## What this module is for
+
+
 Multi-view triangulation against known poses, using GTSAM's LOST estimator over
 **every** observing view rather than the widest pair. CPU-only, no weights.
 

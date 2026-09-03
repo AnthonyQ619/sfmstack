@@ -99,3 +99,26 @@ well-seen, `filter_min_num_consistent` or
 If the holes matter more than the verification does, `DenseVGGT` will fill them —
 with a prediction rather than a measurement, which
 [SKILL.md](SKILL.md#measured-against-densevggt-same-scene-same-poses) quantifies.
+
+## Metrics that mislead
+
+**`point_count` is mostly `max_image_size`.** Quadratic in it. Two runs' point
+counts are not comparable unless the resolutions match — 46 562 at 600 px and
+128 327 at 1200 px are the same reconstruction.
+
+**A larger cloud is not a better one, across methods.** On the reference scene
+`DenseVGGT` produced 47% more points than `DenseMVS` and covered the triangulated
+structure half as tightly, in a bounding box 70% larger. Point count measures
+willingness to guess as much as it measures coverage.
+
+**`views_contributing` equal to `input_registered_images` is the healthy case,**
+and a gap is a different failure from a low `registered_images` — those views were
+posed and then photometrically rejected.
+
+**`fusion_ratio` is about overlap, not quality.** ~32 on the reference run means
+about 32 depth-map pixels fused into each point. Near 1 means fusion merged
+nothing.
+
+**Nothing here measures accuracy against ground truth.** Every number is internal
+consistency. A reconstruction can be complete, well-fused, and in the wrong place
+if the poses were.

@@ -55,7 +55,7 @@ results.
 ## The measured DTU result
 
 Not from a paper. Measured in this repo and recorded in
-[limitations.md](limitations.md#easy-scenes) and `docs/design/DECISIONS.md`.
+[limitations.md](limitations.md#captures-inside-the-classical-detectors-design-envelope) and `docs/design/DECISIONS.md`.
 
 The finding — that the classical stack beat the learned stack by 2.6x on final
 reprojection error while losing on every intermediate metric — is consistent with
@@ -66,6 +66,34 @@ viewpoint difficulty. DTU scan1 is none of those things.
 Recorded because the practical failure mode is reaching for the learned matcher by
 reputation on a capture where it does not help, and then trusting the higher match
 count.
+
+## The criterion for `filter_threshold`, and why it changed
+
+Not from a paper. Measured in this repo across a seventeen-capture sweep.
+
+The documented criterion for this module's quality dial was the tracker's
+`inconsistent_rate`, on the correct reasoning that two-view verification cannot see
+a match displaced onto a repeated structure. That reasoning still holds. What
+failed is the choice of instrument.
+
+`inconsistent_rate` was measured insensitive across the range that decides the run,
+twice: on one capture the matcher's own `cycle_merge_rate + cycle_split_rate` fell
+7.7x across a sweep while `inconsistent_rate` fell 1.17x; on another,
+`inconsistent_rate` moved 0.005 across a sweep whose registration went from 5
+frames to 30, non-monotonically. The cycle terms tracked both cleanly. They also
+sit on this artifact, so keying on them removes a tracker run from every point of a
+sweep.
+
+Two limits on the replacement, both measured:
+
+- **The merge term alone is not the forecast**, and it used to be annotated as one.
+  A capture read 0.0016 on it — clean — and produced a track table 17%
+  self-contradictory, with all of the signal in the split term.
+- **The sum is not a level.** The constant relating it to `inconsistent_rate`
+  varies about fourfold between captures, so it prices a difference within one
+  capture and cannot be thresholded across them.
+
+The family-level statement is in [`skills/families/matching.md`](../../../skills/families/matching.md).
 
 ## Predecessor code
 
@@ -85,3 +113,19 @@ Differences:
   value, noted in the predecessor's own inventory as something that "will silently
   mask a missing argument".
 - **Sequential-only pairing**, as with every predecessor matcher.
+
+## What is asserted without a source
+
+Audited 2026-09-02 against this module's own manifest.
+
+- **Healthy bands with nothing behind them.** `pairs_matched`, `matches_per_pair`, `largest_component_fraction`, `min_image_degree`, `planarity`, `mean_match_score` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
+- **Numeric tuning advice with no citation in this file.** `window`, `filter_threshold`, `n_layers`, `depth_confidence`, `width_confidence` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
+- **Scope of the measurements.** What is written here was exercised across 75 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.6.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.
+
+## Review triggers
+
+Re-read and re-check this file when any of these happens:
+
+- **This module's version changes from 1.6.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
+- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
+- **A reading crosses one of `pairs_matched`, `matches_per_pair`, `largest_component_fraction`, and 3 more and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.

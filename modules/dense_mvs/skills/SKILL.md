@@ -6,6 +6,26 @@ curated_at: 2026-08-11
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 14 parameters documented, starting with `max_image_size` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It cannot see what it cannot correlate" |
+| you are reading what it wrote | **`artifact`** — the layout of `dense_model/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `point_count`, `views_contributing`, `mean_depth_confidence`.
+
+**Diagnostics it can raise:** `sparse_too_thin`, `low_completeness`, `views_dropped`, `no_points`.
+
+## What this module is for
+
+
 Dense point cloud by **photometric multi-view stereo**: PatchMatch depth/normal
 search per pixel, multi-view filtering, then depth-map fusion. CUDA required —
 `patch_match_stereo` has no CPU path at all.

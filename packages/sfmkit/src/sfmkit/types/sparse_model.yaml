@@ -14,6 +14,38 @@ description: |
 
   A consumer without pycolmap reads the npz and loses nothing but convenience.
 
+  EVERY producer of this type emits, in addition to its own metrics:
+    min_frame_points, two_view_fraction, p95_reprojection_error,
+    p05_triangulation_angle
+  Ray-intersection producers add median_triangulation_angle beside the p05.
+
+  They are properties of the ARTIFACT rather than of the process that made it,
+  which is why they belong here and not to one module. Each exists because a
+  scalar that the type already published was concealing something a reader
+  needed: registered_images cannot see a posed camera with no structure,
+  mean_track_length cannot see a bimodal track-length distribution, and a mean
+  reprojection error cannot see the tail that produced it.
+
+  `p05_triangulation_angle` is required of REFINERS too -- the modules that
+  take this type and return it -- and not only of the modules that place points
+  in the first place. Two reasons, and both are about the consumer rather than
+  the producer. A bundle adjustment moves structure, so the conditioning of the
+  model it was handed is stale the moment it finishes. And a refined model is
+  normally the LAST artifact of this type in a pipeline, so it is the one a
+  dense stage reads: if the refiners omit the reading, the question "how
+  well-determined is this geometry" has no answer at the only point where
+  anything is about to be built on it.
+
+  `mean_reprojection_error` is the PER-POINT mean on every producer. Three
+  different populations were once published under that one name -- points,
+  observations, and a frame that was not published at all -- and the spread ran
+  to 3.5x, which is enough to invert a head-to-head comparison between two
+  producers. An observation mean weights long tracks, and long tracks are the
+  higher-error points, so it reads worse than the model is. The cross-check
+  that catches a recurrence is free: a bundle adjuster's
+  `reprojection_error_before` must equal the producing module's
+  `mean_reprojection_error` on the same artifact.
+
 files:
   points:
     required: true
@@ -62,38 +94,6 @@ files:
         required: true
         shape: [null]
         dtype: [int32, int64]
-
-  # EVERY producer of this type emits, in addition to its own metrics:
-  #   min_frame_points, two_view_fraction, p95_reprojection_error,
-  #   p05_triangulation_angle
-  # Ray-intersection producers add median_triangulation_angle beside the p05.
-  #
-  # They are properties of the ARTIFACT rather than of the process that made it,
-  # which is why they belong here and not to one module. Each exists because a
-  # scalar that the type already published was concealing something a reader
-  # needed: registered_images cannot see a posed camera with no structure,
-  # mean_track_length cannot see a bimodal track-length distribution, and a mean
-  # reprojection error cannot see the tail that produced it.
-  #
-  # `p05_triangulation_angle` is required of REFINERS too -- the modules that
-  # take this type and return it -- and not only of the modules that place points
-  # in the first place. Two reasons, and both are about the consumer rather than
-  # the producer. A bundle adjustment moves structure, so the conditioning of the
-  # model it was handed is stale the moment it finishes. And a refined model is
-  # normally the LAST artifact of this type in a pipeline, so it is the one a
-  # dense stage reads: if the refiners omit the reading, the question "how
-  # well-determined is this geometry" has no answer at the only point where
-  # anything is about to be built on it.
-  #
-  # `mean_reprojection_error` is the PER-POINT mean on every producer. Three
-  # different populations were once published under that one name -- points,
-  # observations, and a frame that was not published at all -- and the spread ran
-  # to 3.5x, which is enough to invert a head-to-head comparison between two
-  # producers. An observation mean weights long tracks, and long tracks are the
-  # higher-error points, so it reads worse than the model is. The cross-check
-  # that catches a recurrence is free: a bundle adjuster's
-  # `reprojection_error_before` must equal the producing module's
-  # `mean_reprojection_error` on the same artifact.
 
   intrinsics:
     required: false

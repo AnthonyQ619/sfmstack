@@ -88,3 +88,16 @@ mis-signed pose is far more obvious in a coloured cloud than in any metric.
 
 Colours are sampled from the **resized** images the scene carries, so a scene
 built with `resize: none` needs the dataset reachable from this container too.
+
+## Metrics that mislead
+
+`yield` near 1.0 (0.99 on the reference run) means the filters are barely biting.
+Good on clean input; on hard input a high yield means the thresholds are too loose.
+
+`point_count` alone says nothing. 6941 points at 0.376px is a good model; the same
+count at 3px with a 1° median angle is a bad one. Read it beside
+`median_triangulation_angle`.
+
+`mean_reprojection_error` is measured against the poses that were given, so it
+cannot detect a globally wrong-but-self-consistent model. A reconstruction can be
+internally consistent and still be the wrong shape.

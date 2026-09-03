@@ -67,43 +67,6 @@ model and feed it to a COLMAP tool that expects raw images, the images and the
 model will disagree — the model matches the *undistorted, resized* images the scene
 artifact carries.
 
-## The four readings that see what the means hide
-
-Every producer of `sparse_model/v1` publishes these, so they are comparable across
-modules in a way a module's own metrics are not. Each exists because a scalar the
-type already published was concealing something:
-
-- **`min_frame_points`** — the emptiest registered camera. `registered_images`
-  counts a camera holding almost no structure exactly like a well-covered one, and
-  a whole-model `point_count` cannot be moved by one starved view. This is the
-  reading that predicts a view failing downstream while every headline looks fine.
-- **`two_view_fraction`** — the share of points seen in exactly two views. Those
-  are exactly determined, four residuals against three unknowns, so their residual
-  is near zero *by construction* rather than because they are good. On a
-  two-view-dominated cloud they drag the mean down and the model reads better than
-  it is.
-- **`p95_reprojection_error`** — separates a uniformly mediocre model from a good
-  model carrying a few bad points. The two want opposite responses, and the mean
-  cannot tell them apart.
-- **`p05_triangulation_angle`** — the weak end of the parallax distribution. A
-  point on near-parallel rays sits at an ill-determined depth while reprojecting
-  beautifully into the views that placed it, so it is invisible to every
-  reprojection metric, and a median cannot see a tail. Where this reading is low,
-  the cloud's SHAPE is uncertain in a way its error does not report.
-
-`mean_reprojection_error` here is the **per-point** mean. It is worth knowing why
-that is stated: producers of this type once published three different populations
-under the one name — points, observations, and a frame that was not published at
-all — and the spread was wide enough to invert a head-to-head comparison. An
-observation mean weights long tracks, and long tracks are the higher-error points.
-
-**Measured on the model this module ships, not the one it was handed.** A solve
-moves structure, so the input's conditioning is stale as soon as it finishes. This
-matters more here than anywhere else in the type: a refined model is normally the
-LAST `sparse_model/v1` in a pipeline, so it is what a dense stage reads, and if the
-refiners omitted these the questions would have no answer at the point where
-something is about to be built on them.
-
 ## What is NOT here
 
 **Removed outliers.** This module optimises and writes back; it does not delete
@@ -117,17 +80,3 @@ to the container's stdout and is visible in the job's `log_tail`.
 does not. Recorded as a gap: per-pose uncertainty would be genuinely useful for
 deciding which frames to trust, and would be an additive `poses/uncertainty` array
 if added.
-
-## Metrics that mislead
-
-`error_reduction` near zero is good news when the error is low and bad news when it
-is high. It can also be **negative** without anything being wrong: with the robust
-loss on, the solver is not minimising the mean.
-
-`converged: 1` says the solver reached a minimum, not that the minimum is correct.
-A model folded on itself converges perfectly well.
-
-`reprojection_error_after` is measured against the poses BA itself produced, so it
-cannot detect a globally wrong-but-self-consistent reconstruction. It is a
-consistency measure, not an accuracy measure — there is no ground truth anywhere in
-this pipeline.

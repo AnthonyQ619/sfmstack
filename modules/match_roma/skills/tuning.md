@@ -121,3 +121,18 @@ and has not been done.
 19.8 s for 13 pairs at 1024 px on an A6000, with the pure-torch correlation.
 Roughly 1.5 s per pair, independent of `max_matches`. Several times LoFTR's cost
 for the same pairs. CPU is not a working configuration.
+
+## Metrics that mislead
+
+**`matches_per_pair` is bounded by `max_matches`.** 4951 out of 5000 sampled means
+the field was almost entirely usable; the same number out of 50000 would mean the
+opposite. Always read the parameter beside it.
+
+**`inlier_ratio` near 0.99 is normal here** on an easy scene and stops being
+informative in that regime. On a hard scene it is one of the two metrics that
+still discriminate, along with `planarity`.
+
+**`mean_certainty` near 1.0 is normal** and is informative mainly at its low end.
+
+**`certainty_floor_effect` is null when `min_certainty` is 0**, which is the
+default — a null means the filter did not run, not that nothing was low-certainty.

@@ -6,6 +6,26 @@ curated_at: 2026-08-10
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 7 parameters documented, starting with `weights` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It cannot find what the detector missed" |
+| you are reading what it wrote | **`artifact`** — the layout of `pairwise_matches/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `pairs_proposed`, `pairs_matched`, `matches_per_pair`.
+
+**Diagnostics it can raise:** `wrong_descriptor_width`, `no_pairs_matched`, `broken_chain`, `low_inlier_ratio`, `keypoints_truncated`.
+
+## What this module is for
+
+
 Attentional GNN over both keypoint sets, then a Sinkhorn optimal-transport
 assignment. **SuperPoint descriptors only.** GPU strongly recommended.
 

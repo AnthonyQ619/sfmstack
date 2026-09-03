@@ -6,6 +6,26 @@ curated_at: 2026-08-16
 sources: 1
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 4 parameters documented, starting with `n_images` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "The report can be wrong" |
+| you are reading what it wrote | **`artifact`** — the layout of `scene_analysis/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `described`, `browse_images`, `dynamic_content`.
+
+**Diagnostics it can raise:** `awaiting_description`, `dynamic_content`, `coherent_reflection`, `diffuse_reflection`, `incomplete_subject`.
+
+## What this module is for
+
+
 Renders a contact sheet from the scene, then records what a viewer reports after
 looking at it. **The third scene-analysis module, and the only one whose output
 comes from outside the container.**

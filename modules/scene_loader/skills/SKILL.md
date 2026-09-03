@@ -6,6 +6,26 @@ curated_at: 2026-08-08
 sources: 2
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 4 parameters documented, starting with `image_dir` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "Mixed source resolutions" |
+| you are reading what it wrote | **`artifact`** — the layout of `scene/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `n_images`, `mixed_resolution`, `downscale_factor`.
+
+**Diagnostics it can raise:** `too_few_images`, `mixed_resolution`, `uncalibrated`, `low_working_resolution`, `heavy_downscale`.
+
+## What this module is for
+
+
 Reads a directory of images plus an optional calibration `.npz` into a
 `scene/v1`. The root of every pipeline.
 

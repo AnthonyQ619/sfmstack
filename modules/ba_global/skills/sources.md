@@ -72,3 +72,19 @@ Same backend, same defaults for `refine_*` (all False) and `max_num_iterations`
   model round-trips through arrays, and the COLMAP form is an optional sidecar.
 - It could not report before/after error, because it had no independent measure of
   the input — the reconstruction it was handed was the same object it mutated.
+
+## What is asserted without a source
+
+Audited 2026-09-02 against this module's own manifest.
+
+- **Healthy bands with nothing behind them.** `min_frame_points`, `p95_reprojection_error`, `observations_optimized`, `observation_count`, `mean_track_length`, `mean_reprojection_error`, and 1 more declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
+- **Numeric tuning advice with no citation in this file.** `max_iterations`, `loss_scale`, `min_track_length` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
+- **Scope of the measurements.** What is written here was exercised across 88 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.1.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.
+
+## Review triggers
+
+Re-read and re-check this file when any of these happens:
+
+- **This module's version changes from 1.1.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
+- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
+- **A reading crosses one of `min_frame_points`, `p95_reprojection_error`, `observations_optimized`, and 4 more and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.

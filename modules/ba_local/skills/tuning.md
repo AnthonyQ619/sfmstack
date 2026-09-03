@@ -108,3 +108,16 @@ module or the global one suits the cloud at all.
 - You need drift between distant parts corrected. Local BA structurally cannot do
   this.
 - `window_covers_model` fired.
+
+## Metrics that mislead
+
+`reprojection_error_after` is the **whole model**, most of which was deliberately
+not optimised. It understates what the module did. `window_error_after` is the one
+to judge on: 0.3536 against 0.3842 on the reference run.
+
+`converged` at the default `max_iterations: 50` is frequently 0 with no practical
+consequence — the reference solve reached an identical answer converged or not.
+Read it together with whether `window_error_after` is where you want it.
+
+`cameras_refined` can be less than `window_size` when the model is small, because
+two cameras must stay fixed to pin the gauge.

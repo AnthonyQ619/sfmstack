@@ -37,7 +37,10 @@ this document covers only what ships with a module.
 
 The split matters because a lot of real SfM knowledge is **not** module-local
 ("low inlier yield at the matcher means don't bother tuning the tracker"). That
-kind of reasoning lives in `workflow/`, not in any one module's files.
+kind of reasoning lives above the module — in `skills/scene_to_pipeline.md` §3 and
+the `skills/families/` files — not in any one module's files. (A `skills/workflow/`
+tier was designed to hold it, never written, and retired; see
+[knowledge-system.md](knowledge-system.md#status--what-is-built-measured-2026-09-02).)
 
 ## Layout
 
@@ -111,7 +114,7 @@ under-constrained and sparse reconstruction will likely fail outright.
 
 **Related upstream signal (advisory):** matcher `inlier_yield`. If it is also
 below ~0.15 the deficit may originate in matching rather than here — see
-[workflow/diagnosing_failures.md](knowledge-system.md#workflow-guides). This is a
+[`skills/scene_to_pipeline.md`](../../skills/scene_to_pipeline.md) §3. This is a
 pointer, not a gate: tune locally first if you prefer, and come back to it.
 
 **Gradient, in order of expected effect:**
@@ -157,7 +160,7 @@ Four properties that make this work:
   right section (`see_also: tuning.md#survival_ge_3-below-040`).
 - **Cross-module signals are advisory pointers**, never mandatory ordering. The
   agent decides when to go upstream; the skill only tells it where to look. The
-  reasoning behind those pointers lives in `workflow/diagnosing_failures.md`.
+  reasoning behind those pointers lives in `skills/scene_to_pipeline.md` §3.
 - **States expected magnitude and cost**, so the agent can decide whether a
   change is worth a run at all.
 - **Principled guidance and observed episodes are visually separate.** The first
@@ -194,7 +197,7 @@ tracks through texture-poor regions [S3, §5.1].
 > **Result:** `survival_ge_3` 0.71, runtime 40s → 11min.
 > **In hindsight:** the flat repetitive brick facade was visible in the input
 > mosaic from the start. Four runs of tuning were avoidable — check
-> `workflow/diagnosing_failures.md#repetitive-texture` before sweeping.
+> `skills/scene_to_pipeline.md` §3 for repetitive texture before sweeping.
 ```
 
 **Escapes name a capability, never a module.** "Switch to LoFTR" goes stale the
@@ -321,8 +324,8 @@ running the system.
   confidence level. A number without the scene it came from is not transferable.
 - Every `tuning.md` heading names a metric the module actually emits (enforced).
 - Every `limitations.md` escape is a capability query, not a module name (enforced).
-- Cross-module claims are **advisory pointers into `workflow/`**, never ordering
-  rules. A module's skills never dictate what the agent must do first.
+- Cross-module claims are **advisory pointers into the cross-cutting files**
+  (`scene_to_pipeline.md`, `families/`, `judgment/`), never ordering rules. A module's skills never dictate what the agent must do first.
 - Skills are versioned with `module_version`; bumping the upstream pin flags the
   principled sections for review. Observed cards survive version bumps but their
   confidence is downgraded.

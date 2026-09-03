@@ -153,3 +153,13 @@ differ.
 Everything about the *metrics* is unaffected — the model is deterministic in
 `inference_mode` and produces identical output on either device. Only the timing
 and the `expected_duration_s` calibration differ.
+
+## Metrics that mislead
+
+`keypoints_per_image` is usually exactly `max_keypoints`, and comparing it to
+SIFT's is comparing different things: 2048 SuperPoint keypoints are roughly as much
+signal as 4096 SIFT ones.
+
+`spatial_coverage` is the metric worth reading, and SuperPoint scores well on it
+(0.932 on the reference run) largely because of the heatmap NMS. Do not treat that
+high number as headroom — it is the normal operating point, not a margin.

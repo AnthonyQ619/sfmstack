@@ -531,7 +531,7 @@ Not the agent's job, not the module's job:
 | 6 | **Artifact = directory + `artifact.md`** (YAML frontmatter manifest + narrative body). Envelope free-form, payload typed via an open type registry. |
 | 7 | **Every module ships curated skills** — metric interpretation, an improvement gradient, and limitations. See [module-skills.md](module-skills.md). |
 | 8 | **No backwards compatibility** with the current `sfmcore` / `AutoSFM` stack. |
-| 9 | **Four-tier knowledge system** — a human-authored `judgment/` tier, cross-cutting `workflow/` guides, per-module skills, and a corpus of worked runs, fed by a distillation loop that runs after every session. See [knowledge-system.md](knowledge-system.md). |
+| 9 | **A layered knowledge system** — a human-authored `judgment/` tier, a capture-to-pipeline guide, per-stage family comparisons, per-module skills, and a corpus of worked runs. Designed as four tiers with cross-cutting `workflow/` guides; that tier was never written and has been retired, and a distillation loop was designed to feed the rest and has never run. See [knowledge-system.md](knowledge-system.md) — read its STATUS section first. |
 | 10 | **Local filesystem** for artifact store and image builds. Re-run from the last completed artifact rather than resuming in-flight jobs. |
 | 11 | **`sfm_replay` adopted.** Going back upstream branches the DAG; nothing is marked stale; `sfm_compare` surfaces lineage divergence instead. |
 | 12 | **Type safety via four guards** — pre-spawn type check, write-time schema validation in `sfmkit`, additive extension (required + optional arrays) instead of new type names, orphan-type warnings at registration. |

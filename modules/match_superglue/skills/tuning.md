@@ -87,3 +87,23 @@ moved by less than a percent before keeping it.
 5.9 s for 11 pairs at 2020 keypoints on an A6000, most of it model load. Per-pair
 cost is quadratic in `max_keypoints` and linear in pair count. On CPU this is
 roughly 20x slower and not a working configuration for anything real.
+
+## Metrics that mislead
+
+**`matches_per_pair` is bounded by `max_keypoints`.** A pair cannot produce more
+matches than the smaller image has keypoints fed to the matcher. 1100 matches at
+`max_keypoints: 2048` is a very high yield; the same number at 8192 is not.
+
+**`mean_match_score` high with `inlier_ratio` low** is the signature of a weight
+set mismatched to the scene: confident matches that fail geometry. It is the one
+pair of metrics here worth reading together every time.
+
+**`keypoints_used` below the detector's `keypoints_per_image`** means the
+detector's own metrics describe a larger set than was matched. Its
+`spatial_coverage` in particular no longer applies — truncation keeps the
+highest-scoring keypoints, which are not the best-spread ones.
+
+**`inlier_ratio` near 1.0 is normal here**, unlike for a classical matcher. It
+means verification found almost nothing to reject, which is what a good learned
+matcher on an easy scene should produce. It stops being informative in that
+regime; `planarity` and `graph_components` still are.

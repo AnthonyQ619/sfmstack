@@ -6,6 +6,26 @@ curated_at: 2026-08-11
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 9 parameters documented, starting with `query_selection` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It cannot beat the detector" |
+| you are reading what it wrote | **`artifact`** — the layout of `tracks/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `track_count`, `avg_track_length`, `long_track_fraction`.
+
+**Diagnostics it can raise:** `no_tracks`, `poor_query_selection`, `thin_frame`, `heavy_duplication`.
+
+## What this module is for
+
+
 Learned multi-view tracking. Keypoints from a few selected query frames are
 propagated to every other frame in one forward pass. GPU required.
 

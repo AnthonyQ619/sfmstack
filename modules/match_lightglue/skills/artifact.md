@@ -71,14 +71,3 @@ per-pair array.
 **Per-pair confidence spread.** `mean_match_score` is a mean over verified matches
 across the whole run. A capture with a few easy pairs and many hard ones reads the
 same as a uniformly mediocre one.
-
-## Metrics that mislead
-
-`matches_per_pair` and the tracker's `long_track_fraction` both look better for
-LightGlue than for the classical matchers on such a capture, and the final reconstruction is
-worse. Read the tracker's `inconsistent_rate` and the bundle adjuster's
-`reprojection_error_after` before concluding anything from match counts.
-
-`inlier_ratio` has a higher healthy floor here (0.7) than for classical matchers
-(0.5), because the raw matches are already learned-filtered. The same number means
-something worse.

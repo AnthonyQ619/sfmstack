@@ -6,6 +6,26 @@ curated_at: 2026-08-11
 sources: 2
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 5 parameters documented, starting with `stride` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "The scale it cannot measure alone" |
+| you are reading what it wrote | **`artifact`** — the layout of `dense_model/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `point_count`, `views_contributing`, `mean_depth_confidence`.
+
+**Diagnostics it can raise:** `no_points`, `scale_unverified`, `depth_scale_inconsistent`.
+
+## What this module is for
+
+
 Dense point cloud from VGGT's per-pixel depth, unprojected with the **supplied**
 poses. GPU required.
 

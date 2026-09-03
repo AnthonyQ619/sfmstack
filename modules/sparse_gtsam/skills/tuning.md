@@ -122,3 +122,19 @@ ids differ by that one parameter, so the comparison is exact.
 1.3x here, and it grows with `mean_track_length` because LOST solves over every
 observing view. On a long sequence with deep tracks expect 3–5x. That is still
 small next to matching, and the module is not where a slow pipeline is slow.
+
+## Metrics that mislead
+
+**`mean_reprojection_error` is not comparable between models with different
+`point_count`.** Same trap as above, and the same one that makes a stalled
+reconstruction look accurate.
+
+**`refinement_shift` reads ~0 on healthy data** and that is success, not a broken
+metric. It is relative to the scene extent; act on it only when it is large.
+
+**`rejected_distance` is 0 by default** because `max_landmark_distance` is off. A
+zero there means the filter did not run, not that nothing escaped.
+
+**`yield` near 1.0** means the filters are barely biting — good on clean data, and
+a sign the thresholds are loose if `mean_reprojection_error` is simultaneously
+poor.

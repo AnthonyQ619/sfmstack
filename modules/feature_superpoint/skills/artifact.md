@@ -59,13 +59,3 @@ NMS is gone, with only `saturation` recording that the cap bound.
 **Which device it ran on.** In the narrative body, not as a metric. The output is
 identical on CPU and GPU — only timing differs — so it is not something a consumer
 should branch on.
-
-## Metrics that mislead
-
-`keypoints_per_image` is usually exactly `max_keypoints`, and comparing it to
-SIFT's is comparing different things: 2048 SuperPoint keypoints are roughly as much
-signal as 4096 SIFT ones.
-
-`spatial_coverage` is the metric worth reading, and SuperPoint scores well on it
-(0.932 on the reference run) largely because of the heatmap NMS. Do not treat that
-high number as headroom — it is the normal operating point, not a margin.

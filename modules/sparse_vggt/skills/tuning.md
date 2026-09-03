@@ -86,3 +86,24 @@ module working badly; it is a more honest quantity.
 25 s for 12 images on an A6000, most of it the aggregator; a second run against a
 warm server is 3 s, since the depth maps are the only per-job work. Cost grows
 with image count, not with track count.
+
+## Metrics that mislead
+
+**`mean_reprojection_error` is not comparable to a geometric triangulator's.**
+That one placed each point to minimise this error; this one placed the point where
+the depth said and then measured. Higher here is expected and is a more honest
+number.
+
+**`mean_track_length` below 2.0 is legal here** and impossible in a geometric
+triangulator. Read `single_view_points` beside it.
+
+**`depth_scale` is not quality.** It is what makes the two inputs comparable at
+all. `depth_scale_spread` is the quality signal.
+
+**`mean_depth_confidence` is unbounded above** and near 1 on data VGGT handles
+well. It is not a probability and not comparable to any other module's confidence.
+
+**`rejected_cheirality` here means something different** than in a geometric
+triangulator. There it means the poses disagree with each other; here it means the
+depth prior and the poses disagree about which side of the camera the scene is on,
+which is usually a scale problem wearing a different hat.

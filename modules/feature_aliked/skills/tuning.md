@@ -91,3 +91,15 @@ about a host, and a skill file is the wrong place to keep one.
 **The metrics are unaffected either way** -- inference is deterministic and
 device-independent; only the timing and the `expected_duration_s` calibration
 differ.
+
+## Metrics that mislead
+
+`keypoints_per_image` compared against SuperPoint's or SIFT's is comparing
+different things. Learned detectors apply their own suppression and are sparser by
+design.
+
+`mean_score` compared against SuperPoint's is meaningless — different scale.
+
+The metric that actually decides whether ALIKED was the right choice is not in this
+artifact at all. It is `reprojection_error_after` from bundle adjustment, because
+localisation is what this detector trades for.

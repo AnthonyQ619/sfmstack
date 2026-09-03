@@ -24,7 +24,7 @@ follows is the bridge, and it is empirical.
 listed at the top of each. A reference to another file always names it —
 `matching.md §5`, `swap_or_build.md`, `modules/scene_triage/skills/limitations.md`.
 Raw per-capture measurements are not kept here; they live in
-[`skills/runs/INDEX.md`](runs/INDEX.md), and this file carries only what
+[`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md), and this file carries only what
 generalises from them.
 
 **Read this as evidence, not as rules.** Every band below is *the range observed
@@ -100,7 +100,7 @@ Three groups, and the difference is mechanical rather than statistical:
 extremes are named by the KIND of capture that produced them rather than by scene
 id — a plan for a new capture can use "a controlled rig against a lit backdrop"
 and cannot use a name. Per-capture numbers and their scene ids are in
-[`skills/runs/INDEX.md`](runs/INDEX.md) for traceability.
+[`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md) for traceability.
 
 | metric | low end is | median | high end is | spread |
 | --- | --- | --- | --- | --- |
@@ -133,7 +133,7 @@ carrying an identifier.
 **So locate yourself by kind, not by value.** "Is this a fast outdoor traverse or a
 tight-arc rig?" is answerable from the description and transfers to a capture from
 outside this corpus; "is 0.31 high?" is answerable only by lookup and does not. The
-per-capture numbers remain in [`skills/runs/INDEX.md`](runs/INDEX.md) for
+per-capture numbers remain in [`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md) for
 traceability — and following that link is how a reader leaks their own answer, so
 go there to re-run a claim, not to place a reading.
 
@@ -734,7 +734,10 @@ Two corollaries worth stating, because both have cost runs:
 6. **A detector-free matcher costs a tuning job two stages later.** No
    `feature_index` means the tracker merges by proximity, and `merge_eps_px` is
    specific to the matcher *and* the working resolution. Read `inconsistent_rate`
-   and `split_rate` together.
+   and `split_rate` together. Before spending runs on the eps, read the matcher's
+   own `cycle_split_rate`: it counts points already detected twice, which is a
+   detector result no tracker tolerance reaches, so it is the floor the eps cannot
+   get under.
 7. **`heavy_downscale` bites hardest where texture is already thin.** On a capture
    whose wanted surfaces carry only faint, fine-grained signal — a built interior
    of plain painted walls is the type case — an aggressive downscale destroys the
@@ -794,7 +797,7 @@ captures run through three detector+matcher branches to a sparse model, everythi
 downstream held identical and all matchers at `pairing: exhaustive`. It is the
 first swap in this repository carried through and compared —
 `judgment/swap_or_build.md` was written admitting none existed. The per-capture
-numbers are in [`skills/runs/INDEX.md`](runs/INDEX.md); what follows is what
+numbers are in [`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md); what follows is what
 generalises.
 
 ### 1. The failure that actually costs you frames is view-graph fragmentation
@@ -1290,7 +1293,7 @@ locate their own reading in it. Where a number genuinely is load-bearing, name i
 once and say what corpus produced it.
 
 **Raw per-capture numbers belong in
-[`skills/runs/INDEX.md`](runs/INDEX.md), not here.** Provenance matters and it
+[`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md), not here.** Provenance matters and it
 should be traceable — but it should be traceable from a place a planner is not
 reading, so the reasoning in this file cannot quietly become a lookup table.
 

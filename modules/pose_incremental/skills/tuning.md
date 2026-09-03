@@ -427,3 +427,30 @@ shared tracks) and the triangulation sweep after each registration, which is re-
 from scratch every round. Past ~100 images that sweep dominates; the fix would be
 incremental rather than full re-triangulation, which is a code change, not a
 parameter.
+
+## Metrics that mislead
+
+`mean_reprojection_error` can look excellent on a reconstruction that is
+geometrically wrong. A point triangulated from near-parallel rays reprojects
+perfectly into the two views that created it while sitting in the wrong place.
+Always read `median_triangulation_angle` beside it.
+
+`registered_fraction` of 1.0 is necessary, not sufficient — lowering
+`min_pnp_inliers` raises it by admitting badly-posed images.
+
+`track_utilization` near 1.0 (0.983 on the reference run) means the filters are
+barely biting. Good on clean data; a sign the thresholds are too loose if
+`mean_reprojection_error` is simultaneously poor.
+
+`local_ba_gain_px` **falling toward zero over a run is success, not failure**, and
+the artifact reports only the mean over all solves, so you cannot see that from
+here. A large mean means either healthy early correction or sustained late drift,
+and only `registered_images` and `mean_reprojection_error` distinguish them.
+
+Worse: **a low `mean_reprojection_error` can be the signature of a model that
+stopped early.** On DTU with `local_ba: false`, the 34-camera model reported 0.945px
+and the 48-camera model 0.888px — but the smaller number came from the run that
+failed to register 14 images. Compare error only between models with the same
+`registered_images`; across different counts it is not a comparison at all. This
+is the single easiest way to misread this artifact, and it is the mistake made once
+already in this repository's own reporting.

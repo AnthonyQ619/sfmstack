@@ -6,6 +6,26 @@ curated_at: 2026-08-08
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 7 parameters documented, starting with `setting` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It is not a general-purpose upgrade" |
+| you are reading what it wrote | **`artifact`** — the layout of `pairwise_matches/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `pairs_proposed`, `pairs_matched`, `matches_per_pair`.
+
+**Diagnostics it can raise:** `broken_chain`, `low_inlier_ratio`, `degenerate_geometry`, `detector_free_output`.
+
+## What this module is for
+
+
 Detector-free semi-dense matching, straight from images. No keypoint detection
 stage exists in this path at all.
 

@@ -37,7 +37,7 @@ one detection artifact, so the A/B costs no re-detection; run it, and if you mus
 choose before the outcome exists, say which reading you chose on.
 
 *Traceability:* the run behind the numbers above is in
-[`skills/runs/INDEX.md`](../../../skills/runs/INDEX.md). Do not locate your capture
+[`skills/runs/EVIDENCE.md`](../../../skills/runs/EVIDENCE.md). Do not locate your capture
 by matching its readings against that table — check it against the capture
 properties in the second paragraph instead. A number that matches a recorded run to
 several digits usually means you are reading your own capture back.
@@ -46,8 +46,12 @@ several digits usually means you are reading your own capture back.
 defect; it is the model being applied outside the regime it was trained for.
 
 **The general lesson**, which is the reason this is recorded so prominently: match
-count and track length are not quality. A change that raises both while raising the
-tracker's `inconsistent_rate` has made the reconstruction worse. The tracker's
+count and track length are not quality. A change that raises both while raising
+this module's `cycle_merge_rate + cycle_split_rate` — or the tracker's
+`inconsistent_rate` one stage later — has made the reconstruction worse. Prefer the
+cycle terms when you are still turning the dial: they are on this artifact, and
+`inconsistent_rate` has twice been measured sitting flat across the range that
+decided the run. The tracker's
 tuning file documents the same trap arriving from a completely different cause (a
 `ratio_test` sweep). Two independent routes to the same failure signature is worth
 internalising.
@@ -92,9 +96,11 @@ sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1
 
 *Symptom:* `planarity` above 0.9.
 
-Identical to the classical matchers' limitation and not fixable by any matcher:
-LightGlue will match a planar scene beautifully and the triangulation will still be
-degenerate. The correspondence is not what is failing.
+**Not a matcher problem, and not fixable by swapping matchers.** The explanation
+and what to do instead are owned by `families/matching.md` section 5, "`planarity`
+is the one metric here whose answer is not a matcher" -- read it there rather than
+here, because three matcher files used to restate it and drifted apart in wording
+while agreeing in substance.
 
 ## No GPU
 

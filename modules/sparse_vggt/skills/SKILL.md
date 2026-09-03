@@ -6,6 +6,26 @@ curated_at: 2026-08-11
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 5 parameters documented, starting with `min_track_len` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It cannot fix poses" |
+| you are reading what it wrote | **`artifact`** — the layout of `sparse_model/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `min_frame_points`, `two_view_fraction`, `p95_reprojection_error`.
+
+**Diagnostics it can raise:** `no_points`, `depth_scale_inconsistent`, `mostly_single_view`.
+
+## What this module is for
+
+
 Sparse structure from VGGT's learned depth, unprojected with the **supplied**
 poses. Same three inputs as `SparseTriangulation`, same output, so it drops into
 the classical chain. GPU required.

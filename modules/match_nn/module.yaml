@@ -238,17 +238,32 @@ metrics:
     nullable: true
     meaning: >
       Three-view chains that land on a different keypoint than the direct match,
-      far enough to be different scene structure. The only reading here that sees
-      a wrong-but-epipolar-consistent match; arrives later as the tracker's
-      inconsistent_rate. Null when undefined rather than zero.
+      far enough to be different scene structure. The only reading on this module
+      that sees a wrong-but-epipolar-consistent match -- two-view verification
+      structurally cannot, because such a match satisfies the epipolar constraint
+      by construction. Arrives one stage later as the tracker's inconsistent_rate.
+
+      IT IS NOT THE FORECAST ON ITS OWN, and it used to be annotated as one. A
+      capture read 0.0016 here -- clean -- and produced a track table 17%
+      self-contradictory, because all of its signal sat in cycle_split_rate. Read
+      the SUM of the two when asking what the tracker will report; read each
+      separately when asking what to fix. High here means the matcher is admitting
+      wrong correspondences: tighten it. Null when undefined rather than zero.
 
   cycle_split_rate:
     direction: lower_better
     nullable: true
     meaning: >
       The same test at a couple of pixels: one point detected twice. Shortens
-      tracks rather than corrupting geometry, and dominates by volume -- judge on
-      cycle_merge_rate and read this as the cost in track length.
+      tracks rather than corrupting geometry, and dominates by volume.
+
+      Its previous note said to judge on cycle_merge_rate and read this only as the
+      cost in track length. That was measured wrong: on the capture whose track
+      table came back 17% self-contradictory, this term carried all of the signal
+      and the merge term read clean. High here with merge clean is a DETECTOR
+      result -- several keypoints on one physical point, which no matcher parameter
+      reaches, and which arrives at the tracker as an unreachable floor on its
+      split_rate. Null when undefined rather than zero.
 
   planarity:
     direction: lower_better

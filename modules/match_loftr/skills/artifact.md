@@ -66,17 +66,3 @@ records which stage a correspondence came from or how far refinement moved it.
 
 **Which correspondences the confidence filter dropped.** Only the survivors are
 recorded.
-
-## Metrics that mislead
-
-`matches_per_pair` has a much higher healthy floor here (200) than for sparse
-matchers (100), because semi-dense output is denser by construction. A few hundred
-is thin for LoFTR and healthy for SIFT.
-
-`inlier_ratio` runs lower than a sparse matcher's typical value and that is normal —
-semi-dense output includes ambiguous regions by design, and geometric verification
-is what removes them.
-
-`long_track_fraction` measured downstream will look terrible until the tracker's
-`merge_eps_px` is set correctly, and that is a *tracker* configuration problem, not
-a matching one. Check it before concluding this module matched badly.

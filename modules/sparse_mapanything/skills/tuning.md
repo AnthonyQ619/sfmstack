@@ -90,3 +90,25 @@ two comparable.
 `memory_efficient_inference: true` before `max_images_per_pass`. The first trades
 speed for peak memory and changes nothing about the result; the second changes
 what the model can attend to and therefore the depth it predicts.
+
+## Metrics that mislead
+
+**`mean_depth_confidence` is not comparable to `SparseVGGT`'s.** Same name,
+different scale — 13.97 against 60.60 on the same scene. Both unbounded
+self-reports.
+
+**`depth_scale` is not quality.** It is the unit conversion, and it changes with
+the pose source, not with how good the reconstruction is.
+
+**`depth_scale_spread` can be small for the wrong reason.** It measures agreement
+between the depth and the poses, and conditioning makes the depth agree with the
+poses by construction. See
+[limitations](limitations.md#conditioning-can-make-the-poses-look-right-when-they-are-wrong).
+
+**`mean_reprojection_error` is not comparable to a geometric triangulator's.**
+That one minimised this quantity when placing each point; this one predicted a
+depth and then measured it. Comparing them compares the objective, not the result.
+
+**`point_count` is not comparable across `max_reprojection_error`** — and this
+module is far more sensitive to that threshold than a geometric triangulator, for
+the same reason.

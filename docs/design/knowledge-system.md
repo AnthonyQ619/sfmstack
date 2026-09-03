@@ -1,7 +1,7 @@
 ---
 name: knowledge-system
-description: PROPOSAL (under discussion) — the knowledge architecture the driving agent reasons over: a human-authored judgment tier, cross-cutting workflow guides, per-module skills, a corpus of worked runs, and the distillation loop that compacts a long human-led SfM session into atomic lessons routed across those files.
-status: proposal / under discussion — not implemented
+description: The knowledge architecture the driving agent reasons over — a human-authored judgment tier, per-module skills, a corpus of worked runs, and the distillation loop. Read the STATUS section first: the cross-cutting workflow tier this document designs was measured, found to be pure cost, and has been retired.
+status: partly built, partly retired — see STATUS, measured 2026-09-02
 ---
 
 # Knowledge System
@@ -9,6 +9,12 @@ status: proposal / under discussion — not implemented
 Part of [target-architecture.md](target-architecture.md). Per-module files are
 specified in [module-skills.md](module-skills.md); this document covers the tier
 above them, the worked-run corpus, and the distillation loop.
+
+**For what is actually on disk today, read
+[`docs/context-structure-design.md`](../context-structure-design.md) instead.** It
+describes the current layout, what causes each file to be read, and what is
+measured about whether that works. This document is the original design plus a
+STATUS section recording where it diverged.
 
 Modelled on the structure in
 [KunalMGupta/interioragent](https://github.com/KunalMGupta/interioragent):
@@ -29,9 +35,9 @@ that do not exist and concluded the evidence behind the stack was missing.
 | `SKILLS.md` | master index | **built** | 22 fetches, all 17 captures |
 | `scene_to_pipeline.md` | not in this design | **built**, 81 KB | 36 fetches, all 17 — the workhorse |
 | `families/` | one per stage | **built**, 8 files | 2–6 fetches each, at most 6 of 17 captures |
-| `judgment/` | triage, stopping, priors, swap_or_build | `swap_or_build` + `stopping` (written 2026-09-02) | `stopping` was requested 8 times before it existed |
-| `workflow/` | six guides | **empty directory** | 13 requests, every one an error |
-| `runs/` | RUN.md corpus + tagged INDEX | INDEX header only, no rows; **no RUN.md corpus exists** | 4 fetches, nothing to retrieve |
+| `judgment/` | triage, stopping, priors, tradeoffs, smells | **5 of 5 present** as of 2026-09-02 (`swap_or_build`, `stopping`, `smells`, `priors`, `tradeoffs`); `triage` deliberately not written | `stopping` was requested 8 times before it existed |
+| `workflow/` | six guides | **RETIRED 2026-09-02** — directory deleted, resolver search path removed | 24 requests across the sweep, every one an error |
+| `runs/` | RUN.md corpus + tagged INDEX | **SPLIT 2026-09-02** into `INDEX.md` (trait table, still no rows) and `EVIDENCE.md` (two campaigns, per-capture); **no RUN.md corpus exists** | 4 fetches, nothing to retrieve |
 | lesson cards (`L-00NN`) | atomic, cross-referenced | **never built** | — |
 | distillation loop | end-of-session, reviewed diff | `distill/SKILL.md` describes it; not run | 1 fetch |
 
@@ -53,6 +59,63 @@ than left dead. Two consequences worth carrying into any redesign:
 by running `SceneLoader` like any other module, and triage guidance lives in
 `scene_to_pipeline.md`.
 
+## The layout this tier should have
+
+The design below was written before `scene_to_pipeline.md` existed and before any
+of it was exercised. What a seventeen-capture sweep measured suggests a different
+organising principle, recorded here so the next reorganisation starts from
+evidence rather than from the original sketch.
+
+**Organise by the QUESTION a reader is holding, not by the kind of knowledge.**
+The original split — mechanical `workflow/` versus subjective `judgment/` — is a
+distinction about how a file was *authored*. A reader mid-run does not know or
+care which they need; they know what has gone wrong. That is why `workflow/` was
+never written and `scene_to_pipeline.md` was: the latter is keyed on a question
+someone actually has.
+
+The four questions the sweep showed readers actually asking, with what answers
+them:
+
+| The question, as readers phrased it | Answered by | Measured demand |
+| --- | --- | --- |
+| "What do these scene numbers mean for my plan?" | `scene_to_pipeline.md` | 36 fetches, all 17 captures |
+| "Which member of this stage, for this scene?" | `families/<stage>.md` | 2-6 each, at most 6 captures |
+| "Is this good enough, and is it actually right?" | `judgment/stopping.md`, `judgment/smells.md` | 8 requests before either existed |
+| "How do I move this number?" | the module's `tuning`, reached from a diagnostic | 64 diagnostics route there |
+
+**Two structural findings that should shape any reorganisation:**
+
+- **The manifest is the surface, not the skill files.** `sfm_describe_module` was
+  called 204 times against 70 for every per-module skill fetch combined, and it
+  already inlines each module's `SKILL.md` and now each type's contract. Content
+  that must reach every reader belongs there; content behind a separate fetch
+  reaches whoever is already stuck.
+- **Files are read when something compels them, not when something points at
+  them.** 62 skill files are named by a diagnostic `see_also`; about seven were
+  ever opened. The one file read on every single capture is the one a module
+  refuses to complete without. Pointers are necessary and are not sufficient.
+
+**What to do with the tiers that were never populated:**
+
+- `workflow/` — **DONE, retired 2026-09-02.** The six guides were not written and
+  will not be. Their content is already distributed across `scene_to_pipeline.md`
+  (composition, traps), `judgment/stopping.md` (sweep mechanics), `families/`
+  (choosing within a stage), and per-module `artifact` files plus the type contract
+  (payload reading). The directory was deleted *and* the resolver's search path
+  removed with it, because a path pointing at nothing is what manufactured the 24
+  misses. `SKILLS.md` carries the redirect table so the retirement is discoverable
+  rather than silent.
+- `runs/` — **DONE, split 2026-09-02.** The trait table and the branch-comparison
+  evidence table were sharing a file and answer incompatible questions: one wants a
+  row you match your capture against, the other exists to be cited and explicitly
+  must not be matched. They are now `runs/INDEX.md` and `runs/EVIDENCE.md`.
+  `INDEX.md` is still empty, and it is blocked on trait derivation rather than on
+  transcription.
+- lesson cards and the distillation loop — never built, never requested, **held**.
+  `distill/SKILL.md` describes a process that has never executed. The open proposal
+  is to seed `runs/` from the seventeen-capture sweep, which is the first body of
+  evidence large enough to be worth a loop rather than a hand transcription.
+
 ## Layout
 
 **This listing is the DESIGN. `[built]` / `[EMPTY]` markers show what exists —
@@ -67,21 +130,21 @@ skills/
     swap_or_build.md               # [built] NOT IN THIS DESIGN, and the one that gets read
     stopping.md                    # [built 2026-09-02] requested 8x before it existed
     triage.md                      # [NEVER BUILT] superseded by scene_to_pipeline.md
-    tradeoffs.md                   # [NEVER BUILT]
-    smells.md                      # [NEVER BUILT]
-    priors.md                      # [NEVER BUILT] requested 3x; link removed from SKILLS.md
-  workflow/                        # [EMPTY DIRECTORY] all six below never written;
-                                   #   13 requests, every one an error
-    pipeline_principles.md         #   [EMPTY]
-    diagnosing_failures.md         #   [EMPTY]
-    parameter_discipline.md        #   [EMPTY]
-    artifact_guide.md              #   [EMPTY]
-    gotchas.md                     #   [EMPTY]
-    when_to_build_a_module.md      #   [EMPTY]
+    tradeoffs.md                   # [built 2026-09-02] incl. the cost of a run that dies
+    smells.md                      # [built 2026-09-02] right metrics, wrong conclusion
+    priors.md                      # [built 2026-09-02] requested 3x before it existed
+                                   # workflow/ WAS HERE and is [RETIRED]. Six guides
+                                   #   were designed, none written, 24 requests and
+                                   #   24 errors. Directory deleted and the resolver
+                                   #   path removed. Do not restore either alone.
   modules/<ModuleName>/            # per-module — see module-skills.md
     SKILL.md · tuning.md · limitations.md · artifact.md · sources.md
   runs/                            # worked examples, the long-form references
-    INDEX.md                       # [header only] the tag table has NO ROWS
+    INDEX.md                       # [header only] the tag table has NO ROWS; blocked
+                                   #   on trait derivation, not on transcription
+    EVIDENCE.md                    # [built 2026-09-02] per-capture citation record,
+                                   #   split out of INDEX.md. Cite it; never plan from it
+    CORPUS.txt                     # [built] the captures every range is fitted on
     2026-08-07-dtu-scan1-sparse/   # [NEVER BUILT] no RUN.md corpus exists
       RUN.md                       #   [EMPTY]
       trace.json                   #   [EMPTY]
@@ -94,7 +157,7 @@ Four tiers, and the ordering is deliberate:
 | Tier | Answers | Authored by | Loaded |
 | --- | --- | --- | --- |
 | `judgment/` | "What would a practitioner do here? Is this good enough?" | **you**, by hand | digest always; full text on demand |
-| `workflow/` | "Which stage is my problem in? How do I approach this at all?" | curated + promoted lessons | on demand, by topic |
+| ~~`workflow/`~~ **[RETIRED]** | "Which stage is my problem in? How do I approach this at all?" — a real question; this was not the answer. It is `scene_to_pipeline.md`. | curated + promoted lessons | — |
 | `modules/<name>/` | "What does this tool do, and how do I move its numbers?" | curated + distilled lessons | `SKILL.md` with `describe_module`, rest on demand |
 | `runs/` | "Has anyone solved a scene like this before? What did they do?" | run record + your narrative | on demand, via `INDEX.md` |
 
@@ -273,15 +336,23 @@ Each card lands in exactly one file:
 | moving one module's metrics with its own params | `modules/<name>/tuning.md` → Observed episodes |
 | giving up on a module and switching | `modules/<name>/limitations.md` → Observed switches |
 | interpreting or inspecting a module's output | `modules/<name>/artifact.md` |
-| which stage is at fault given a symptom | `workflow/diagnosing_failures.md` |
-| a surprise, caveat, or footgun spanning modules | `workflow/gotchas.md` |
-| sweep mechanics (how to vary, what to hold fixed) | `workflow/parameter_discipline.md` |
-| no module fits; one should be built | `workflow/when_to_build_a_module.md` |
-| a matter of taste — "good enough", worth the cost, smells wrong | **proposed** to `judgment/`, never written |
+| which stage is at fault given a symptom | ~~`workflow/diagnosing_failures.md`~~ → `scene_to_pipeline.md` §3 |
+| a surprise, caveat, or footgun spanning modules | ~~`workflow/gotchas.md`~~ → `scene_to_pipeline.md` §3, "the traps, in the order they have bitten" |
+| sweep mechanics (how to vary, what to hold fixed) | ~~`workflow/parameter_discipline.md`~~ → `judgment/stopping.md` |
+| no module fits; one should be built | ~~`workflow/when_to_build_a_module.md`~~ → `judgment/swap_or_build.md` |
+| a result that looks fine numerically and is not | `judgment/smells.md` |
+| the raw per-capture numbers behind any of the above | `runs/EVIDENCE.md`, with scene names |
+| a matter of taste — "good enough", worth the cost | **proposed** to `judgment/`, never written by the loop |
+
+**The four struck rows are the retirement of `workflow/` reaching this table.**
+The destinations changed; the routing question each row asks did not, which is
+the evidence that those questions were real and the tier that was to answer them
+was not. `skills/distill/SKILL.md` §8 carries the live version of this table.
 
 **Promotion.** When the same lesson appears in three or more runs across
-different modules or datasets, it graduates from a module's Observed section to a
-`workflow/` guide and is rewritten as principle. Cards are never silently
+different modules or datasets, it graduates from a module's Observed section to
+the cross-cutting file for that question — in practice `scene_to_pipeline.md` or
+a `families/` file — and is rewritten as principle. Cards are never silently
 deleted; the module file keeps a one-line pointer to where it went.
 
 ## The distillation skill
@@ -293,7 +364,8 @@ session.
 
 ```
 Input:  a run's trace.json (facts) + RUN.md draft or session transcript (intent)
-Output: a reviewed diff across workflow/, modules/*/, runs/, SKILLS.md
+Output: a reviewed diff across scene_to_pipeline.md, families/, modules/*/,
+        runs/EVIDENCE.md, SKILLS.md
 ```
 
 **Procedure**
@@ -318,7 +390,10 @@ Output: a reviewed diff across workflow/, modules/*/, runs/, SKILLS.md
    what keeps the corpus from bloating into unusable length.
 6. **Route** per the table above.
 7. **Check promotion** — any card now at `Seen in: 3+` gets flagged for
-   graduation to `workflow/`.
+   graduation out of the module file into the cross-cutting file for the question
+   it answers: `scene_to_pipeline.md` for a symptom-to-stage claim, a `families/`
+   file for a within-stage trade, `judgment/` for a call about taste (proposed,
+   never written).
 8. **Validate** — every metric named exists in the module's manifest, every
    escape resolves to a capability query with at least one live module, every
    link resolves, `SKILLS.md` and `runs/INDEX.md` updated.
@@ -331,10 +406,10 @@ Output: a reviewed diff across workflow/, modules/*/, runs/, SKILLS.md
 | --- | --- | --- |
 | what tools worked | `confirmation` / `tuning` | module `tuning.md` |
 | what didn't | `switch` | module `limitations.md` |
-| what to create, why | `gap` | `workflow/when_to_build_a_module.md` |
+| what to create, why | `gap` | `judgment/swap_or_build.md` |
 | how to optimize parameters | `tuning` | module `tuning.md` |
 | limitations of specific tools | `switch` | module `limitations.md` |
-| surprises, gotchas, caveats | `gotcha` | `workflow/gotchas.md` |
+| surprises, gotchas, caveats | `gotcha` | `scene_to_pipeline.md` §3 |
 
 **Anti-goals.** No summarising for its own sake — a card that says "SIFT worked
 well" with no numbers, context, or takeaway is worse than nothing, because it
@@ -350,7 +425,9 @@ read SKILLS.md (index + judgment digest)
       ├─ sfm_run(SceneMotion) → scene_analysis/v1 → TRAITS   see scene-analysis.md
       ├─ scene_to_pipeline.md → what those traits imply (no judgment/triage.md)
       ├─ runs/INDEX.md filtered by trait overlap           "has this been solved?"
-      ├─ workflow/pipeline_principles.md                    "what shape of pipeline?"
+      │                                                     [NO ROWS — trait derivation]
+      ├─ families/<stage>.md + scene_to_pipeline.md         "what shape of pipeline?"
+      │                                (workflow/pipeline_principles.md was retired)
       ├─ sfm_list_modules(produces=...) + describe_module    "which tools?"
       │
       └─ run → metrics + diagnostics(see_also) ─┐
@@ -359,9 +436,9 @@ read SKILLS.md (index + judgment digest)
             ├─ tuning.md: principled gradient + observed episodes → adjust, re-run
             ├─ upstream suspect? sfm_replay(from_artifact, overrides) → new branch
             ├─ good enough? judgment/stopping.md · judgment/smells.md
-            ├─ stuck? limitations.md + workflow/diagnosing_failures.md
+            ├─ stuck? limitations.md + scene_to_pipeline.md §3
             ├─ still stuck? sfm_find_alternatives(...) → different module
-            └─ nothing fits? when_to_build_a_module.md → scaffold + build
+            └─ nothing fits? judgment/swap_or_build.md → scaffold + build
       │
       └─ session ends ─► distill ─► reviewed diff into the corpus
                                     (judgment/ edits proposed, not applied)

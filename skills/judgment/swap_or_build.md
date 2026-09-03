@@ -1,7 +1,7 @@
 ---
 name: swap_or_build
 description: When to stop tuning a module and change it, and when nothing in the registry fits and a new one is warranted. Organised by family.
-status: mostly structural — one branch comparison has been run over fourteen captures; those rows are tagged [measured]. Claims are stated as scene properties, never scene names; raw per-capture numbers are in skills/runs/INDEX.md.
+status: mostly structural — one branch comparison has been run over fourteen captures; those rows are tagged [measured]. Claims are stated as scene properties, never scene names; raw per-capture numbers are in skills/runs/EVIDENCE.md.
 ---
 
 # Tune, swap, or build
@@ -151,6 +151,12 @@ no swap performed. **`[unmeasured]`** is argument only.
   **`[structural]`**
 - **Both bad at every tolerance** → the endpoints are not separable at this
   resolution. Swap the matcher, not the tracker. **`[unmeasured]`**
+- **Which half of the matcher to change** is readable one stage earlier, without a
+  tracker run: the matcher's `cycle_merge_rate` high means it is admitting wrong
+  correspondences and tightening its own dial reaches the problem; its
+  `cycle_split_rate` high with the merge term clean means the DETECTOR is emitting
+  several keypoints at one physical point, which no matcher setting reaches. Those
+  two point at different modules. **`[measured]`**
 
 ### Pose
 

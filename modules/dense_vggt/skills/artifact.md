@@ -23,18 +23,3 @@ supplied and the parameter was used.
 VGGT's own, carried through so a consumer can filter harder without re-running
 inference. It is not a probability — means around 46 are normal — and it is not
 comparable to any other module's confidence.
-
-## Metrics that mislead
-
-**`point_count` is mostly a function of `stride`.** Quadratic in it. Comparing two
-runs' point counts without comparing their strides compares the parameter.
-
-**`mean_depth_confidence` says nothing about accuracy across methods.** It is
-self-reported and unbounded. Use it within this module, across settings.
-
-**`depth_scale_spread` of null is a warning, not an absence.** It means the scale
-was never checked.
-
-**Nothing here measures agreement between views.** There is no fusion, so a
-consistent-looking cloud may be four slightly different surfaces overlaid. The
-metrics cannot see that and neither can a viewer at low zoom.

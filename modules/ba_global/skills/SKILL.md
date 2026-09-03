@@ -6,6 +6,26 @@ curated_at: 2026-08-07
 sources: 3
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 6 parameters documented, starting with `max_iterations` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It cannot escape a bad local minimum" |
+| you are reading what it wrote | **`artifact`** — the layout of `sparse_model/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `min_frame_points`, `two_view_fraction`, `p95_reprojection_error`.
+
+**Diagnostics it can raise:** `bundle_adjustment_diverged`, `points_dropped_by_min_track_length`, `refined_focal_disagrees_across_cameras`, `did_not_converge`, `no_improvement`, `still_high_error`.
+
+## What this module is for
+
+
 Ceres bundle adjustment over every pose and every point at once. CPU-only, no
 weights.
 

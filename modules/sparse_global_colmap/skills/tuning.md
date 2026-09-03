@@ -111,3 +111,20 @@ not with the image count, so the matcher's `pairing` dominates: exhaustive on 10
 images is 4950 pairs and a different order of magnitude. This is still the cheap
 option — the same set through incremental registration pays a bundle adjustment
 per handful of images.
+
+## Metrics that mislead
+
+**`mean_reprojection_error` is not comparable across models with different
+`registered_images`.** A smaller model is an easier one. Compare it only against a
+model with the same camera count.
+
+**`point_count` is not comparable against `SparseTriangulation`'s** without
+reading `min_track_len` beside it. This module defaults to 3 and the triangulator
+to 2, so the incremental path routinely produces twice the points, most of them
+two-view. `mean_track_length` is what tells the two clouds apart.
+
+**`verified_pairs` alone says nothing.** Its meaning is entirely in the gap
+between it and the matcher's `pairs_matched`.
+
+**`models_found` of 1 is necessary, not sufficient** — one model containing half
+the images is still a split scene, and `registered_fraction` is what reports that.

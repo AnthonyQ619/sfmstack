@@ -6,6 +6,26 @@ curated_at: 2026-08-14
 sources: 4
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 6 parameters documented, starting with `pairing` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "EXIF does not survive the scene artifact" |
+| you are reading what it wrote | **`artifact`** — the layout of `scene_analysis/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `illumination_change`, `color_shift`, `exposure_shift`.
+
+**Diagnostics it can raise:** `illumination_unstable`, `repetitive_texture`, `textureless`, `blurred_frames`, `unordered_capture`, `exif_unavailable`.
+
+## What this module is for
+
+
 CPU scene characterisation. Run it immediately after `SceneLoader`, before
 choosing a detector.
 

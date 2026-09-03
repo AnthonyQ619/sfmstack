@@ -445,7 +445,7 @@ a scene before anything is known about it.
   thresholds in `skills/judgment/`, so that revising a cut point does not
   invalidate every analysis already computed. Until `judgment/` is written,
   trait-based retrieval does not run — see
-  [mcp-tools.md](mcp-tools.md#4-the-empty-tiers--which-tools-read-them-and-what-does-not-work).
+  [mcp-tools.md](mcp-tools.md#4-the-tiers-that-were-empty--what-filled-them-and-what-did-not).
 - This is the only family whose output no module consumes. The orphan warning
   at registry load is expected: `scene_analysis/v1` is read by the agent, not by
   a pipeline stage.

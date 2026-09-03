@@ -274,3 +274,18 @@ chaining.
 It cannot be tuned from this module. Nothing here moves an observation; the
 positions come from the detector and the merge only decides which ones belong
 together.
+
+## Metrics that mislead
+
+`avg_track_length` rises both when the pipeline improves and when the matcher gets
+much worse. It is only comparable at constant matcher `inlier_ratio`. See
+[tuning.md](tuning.md) for the measured case — this is the single most misleading
+number in the pipeline.
+
+`max_track_length` above what the view graph can support is evidence of transitive
+over-merging, not of good tracking.
+
+`inconsistent_rate` is measured over *merged groups*, before the length filter —
+so it describes the merge, not the surviving tracks. A track dropped for being
+contradictory still counts in the numerator, which is what makes the number a
+report on the matcher rather than on the output.

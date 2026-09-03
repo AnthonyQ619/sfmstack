@@ -42,24 +42,6 @@ best.
 `estimated_focal_ratio` is null only on an uncalibrated scene, where there is
 nothing to compare against.
 
-## Metrics that mislead
-
-**`registered_fraction` of 1.0 is uninformative here.** It is 1.0 whenever the
-module ran. It carries information for the classical estimator and none for this
-one.
-
-**`median_camera_separation` is not accuracy.** It is the scale unit's meaning,
-written so a downstream threshold in scene units can be derived rather than
-guessed.
-
-**`baseline_span` is the median camera separation over the largest**, so it is a
-uniformity ratio bounded by 1 and not a size. Near 1 means every pair is about as
-far apart as every other — **an orbit does not do this**, because adjacent cameras
-are close and opposite ones are a diameter apart, so a clean partial orbit reads
-around a third. Low values mean a few distant pairs dominate while the rest sit
-nearly on top of each other. Read `median_camera_separation` for the size, and
-note that neither says anything about correctness.
-
 ## What is NOT here
 
 **Point maps and depth.** The same forward pass produces both; they belong to

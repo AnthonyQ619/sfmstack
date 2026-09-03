@@ -67,3 +67,18 @@ non-VGGT poses is arbitrary.
 
 The fix is to pass tracks, not to tune `depth_scale` by eye. The estimate is exact
 and takes no extra inference — the depth maps are already computed.
+
+## Metrics that mislead
+
+**`point_count` is mostly a function of `stride`.** Quadratic in it. Comparing two
+runs' point counts without comparing their strides compares the parameter.
+
+**`mean_depth_confidence` says nothing about accuracy across methods.** It is
+self-reported and unbounded. Use it within this module, across settings.
+
+**`depth_scale_spread` of null is a warning, not an absence.** It means the scale
+was never checked.
+
+**Nothing here measures agreement between views.** There is no fusion, so a
+consistent-looking cloud may be four slightly different surfaces overlaid. The
+metrics cannot see that and neither can a viewer at low zoom.

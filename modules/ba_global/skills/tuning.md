@@ -116,3 +116,17 @@ Scales with observations, not images. 22743 observations converged in 3.7s.
 A hundred thousand takes minutes. If a solve is genuinely slow, `min_track_length: 3`
 is the cheapest real reduction, because it removes the residual blocks that carry
 the least information.
+
+## Metrics that mislead
+
+`error_reduction` near zero is good news when the error is low and bad news when it
+is high. It can also be **negative** without anything being wrong: with the robust
+loss on, the solver is not minimising the mean.
+
+`converged: 1` says the solver reached a minimum, not that the minimum is correct.
+A model folded on itself converges perfectly well.
+
+`reprojection_error_after` is measured against the poses BA itself produced, so it
+cannot detect a globally wrong-but-self-consistent reconstruction. It is a
+consistency measure, not an accuracy measure — there is no ground truth anywhere in
+this pipeline.

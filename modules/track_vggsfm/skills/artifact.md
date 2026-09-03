@@ -78,19 +78,3 @@ and the same tracker on the same scene at half the resolution reads about half.
 **This is the number to compare against a chaining tracker**, and the one that
 should move when the model's working resolution does. Null on an uncalibrated
 scene.
-
-## Metrics that mislead
-
-**`track_count` is lower than a union-find tracker's and that is expected.** 4033
-against 4702 on the same scene, with tracks that are 35% longer and three times as
-likely to reach five views. Read `track_survival_5`.
-
-**`track_count` also moves with `dedupe_eps_px` for reasons unrelated to quality.**
-7329 without deduplication, 4033 with. Two runs are not comparable across it.
-
-**`avg_track_length` rises when deduplication merges**, because merging
-concatenates: 3.46 without, 3.85 with. That is not the tracker getting better.
-
-**Nothing here measures positional accuracy.** Visibility is a confidence about
-*whether* a point is seen, not *where*. The first number that measures where is the
-triangulator's reprojection error.

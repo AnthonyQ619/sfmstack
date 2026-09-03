@@ -53,9 +53,11 @@ correspondences, not a depth map.
 
 *Symptom:* `planarity` above 0.9.
 
-Identical to every other matcher's limitation and not fixable by any of them.
-LoFTR will match a planar scene beautifully and the triangulation will still be
-degenerate.
+**Not a matcher problem, and not fixable by swapping matchers.** The explanation
+and what to do instead are owned by `families/matching.md` section 5, "`planarity`
+is the one metric here whose answer is not a matcher" -- read it there rather than
+here, because three matcher files used to restate it and drifted apart in wording
+while agreeing in substance.
 
 ## No GPU
 

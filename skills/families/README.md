@@ -9,7 +9,7 @@ The tier that was missing. The others cannot hold this:
 | `modules/` | Per module. A module's skills describe that module; none of them can say how it compares, and none of them should — a module advertising its own superiority is not evidence. |
 | `judgment/` | Human-authored and subjective. This is measured. |
 | `runs/` | One scene's episode. This is a family-level trade that generalises across scenes, or is explicit about not doing so. |
-| `workflow/` | "Which stage is my problem in", not "which member of this stage". |
+| `scene_to_pipeline.md` | "Which stage is my problem in", not "which member of this stage". It reads a capture and routes; this tier chooses inside a stage once routed. (A `workflow/` tier was designed for that role, never written, and has been retired — see `SKILLS.md`.) |
 
 Read **before running anything**, alongside `scene_to_pipeline.md` and the
 scene's own analysis, when composing a pipeline. `sfm_plan_brief` returns these

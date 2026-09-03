@@ -40,3 +40,10 @@ CO3D             <root>/<category>/calibration_new_<sequence>.npz
 - **A dataset appears with per-image intrinsics.** The median-scale
   approximation documented in [limitations.md](limitations.md#mixed-source-resolutions)
   stops being adequate and `camera_index` should carry real per-camera entries.
+
+## What is asserted without a source
+
+Audited 2026-09-02 against this module's own manifest.
+
+- **Numeric tuning advice with no citation in this file.** `image_dir` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
+- **Scope of the measurements.** What is written here was exercised across 20 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.1.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.

@@ -309,13 +309,37 @@ class SfmService:
         }
 
     def describe_module(self, name: str) -> dict[str, Any]:
-        """Machine contract plus the module's SKILL.md, in one call.
+        """Machine contract, the module's SKILL.md, and the CONTRACTS OF THE
+        TYPES it touches, in one call.
 
         Deeper curation (tuning, limitations, sources) is fetched separately --
         progressive disclosure, so context cost scales with how stuck the caller
         is rather than with the module count.
+
+        Type contracts are inlined here because nothing else serves them. They
+        are the right home for a claim that binds every producer of a type --
+        that observations are undistorted, that a published mean is per-point --
+        and a claim with one owner cannot drift. But there is no
+        `sfm_describe_type` and deliberately so, which previously left those
+        claims reachable by nobody: they were duplicated into seven per-module
+        files instead, and a seventeen-capture sweep measured all seven at zero
+        reads while this call was made 204 times. Putting them where the reader
+        already is costs one lookup and removes the reason to copy them.
         """
-        return self.registry.get(name).describe()
+        spec = self.registry.get(name)
+        doc = spec.describe()
+
+        contracts: dict[str, Any] = {}
+        for slot in list(spec.consumes.values()) + list(spec.produces.values()):
+            tname = slot.type
+            if tname in contracts or tname not in self.registry.types:
+                continue
+            t = self.registry.types.get(tname)
+            if t.summary or t.description:
+                contracts[tname] = {"summary": t.summary, "contract": t.description}
+        if contracts:
+            doc["type_contracts"] = contracts
+        return doc
 
     # ===================================================================== #
     # Execution
@@ -944,7 +968,14 @@ class SfmService:
             raise OrchestratorError("no skills directory is configured")
 
         candidates = [root / topic, root / f"{topic}.md"]
-        candidates += [root / d / f"{topic}.md" for d in ("workflow", "judgment")]
+        # `judgment/` is the only bare-topic tier. There was a `workflow/` here
+        # too and it is deliberately gone: it was requested 24 times across a
+        # seventeen-capture sweep and raised an error every time, because the six
+        # guides it was to hold were never written and their content had already
+        # settled into `scene_to_pipeline.md` and `families/`. A search path for a
+        # directory that does not exist is an invitation to a miss, so the path
+        # was removed with the directory. Do not add it back without the files.
+        candidates += [root / d / f"{topic}.md" for d in ("judgment",)]
         # docs/ sits beside skills/, not inside it, and the family files and module
         # skills cite `docs/import_lessons.md` and `docs/design/DECISIONS.md`
         # repeatedly as where the per-capture numbers and the full experiments live.

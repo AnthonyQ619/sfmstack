@@ -50,17 +50,46 @@ at 0.5, 0.5, 0.55, 0.6 and 0.7, and on two of them the inherited value was alrea
 inside the band and still producing a badly contradictory track table — a reader
 obeying the band had no next move.
 
-**Judge it by the tracker's `inconsistent_rate`**, not by `matches_per_pair` and
-not by `inlier_ratio`. The match count going down is the intended effect. And
+**Judge it by this module's own `cycle_merge_rate + cycle_split_rate`**, not by
+`matches_per_pair`, not by `inlier_ratio`, and — this changed — not primarily by
+the tracker's `inconsistent_rate`. The match count going down is the intended
+effect.
+
 `inlier_ratio` is actively misleading here: it read 0.93-0.99 on every run that
 still needed tightening, and it *rises* as you tighten, so it confirms whatever you
 just did. Two-view verification structurally cannot see this error — a match
 displaced onto a repeated structure satisfies the epipolar constraint by
-construction — which is the whole reason the criterion lives one stage downstream.
+construction. That is exactly why the cycle terms compare a **third** view, and it
+is why they are the only reading on this artifact that can price the dial.
 
-**Where to stop, which is the harder half.** `inconsistent_rate` keeps falling long
-after tightening has started buying it by deleting the graph, so it cannot be its
-own stopping rule. Stop when the graph begins to pay:
+**Why the tracker's `inconsistent_rate` was demoted from the criterion.** It was
+the documented answer and it is not sensitive enough to sweep on. Two captures
+settled it: on one, the cycle sum fell 7.7× across a sweep while
+`inconsistent_rate` fell 1.17×; on another `inconsistent_rate` moved 0.005 across a
+sweep whose registration went from 5 frames to 30, and moved non-monotonically
+while doing it. In both, the cycle terms tracked the change cleanly. It is also one
+stage away, so keying on it costs a tracker run per sweep point, and the cycle
+terms cost nothing extra because this module already publishes them.
+
+**Read the sum to price the dial; read the two terms separately to know what to
+fix.** The merge term alone is not the forecast — a capture read 0.0016 on it,
+which is clean, and produced a track table 17% self-contradictory, because all of
+its signal was in the split term. Merge high means this module is admitting wrong
+correspondences and tightening reaches it; split high with merge clean is the
+detector emitting several keypoints at one physical point, which no setting of this
+dial reaches at all.
+
+**Do not threshold on the cycle sum.** The constant relating it to the tracker's
+`inconsistent_rate` varies about fourfold between captures, so it prices a
+*difference* within one capture and says nothing about a *level* across captures.
+Sweep with it, then confirm once at the settled value by running the tracker and
+reading `inconsistent_rate` — one run, not one per sweep point.
+
+**Where to stop, which is the harder half.** Neither the cycle terms nor
+`inconsistent_rate` can be their own stopping rule: both keep falling long after
+tightening has started buying the improvement by deleting the graph, and a graph
+with fewer edges has fewer three-view chains available to contradict themselves.
+Stop when the graph begins to pay:
 
 - `pairs_matched` against `pairs_proposed`
 - `min_image_degree` — the margin, not `graph_components`, which stays at 1 while
@@ -151,3 +180,17 @@ are built once per image and reused across every pair that image appears in. Wit
 exhaustive pairing each image participates in N-1 pairs, so rebuilding them per
 pair would dominate. Cost therefore scales with pair count, not with pair count
 times keypoints.
+
+## Metrics that mislead
+
+`matches_per_pair` and the tracker's `long_track_fraction` both look better for
+LightGlue than for the classical matchers on such a capture, and the final
+reconstruction is worse. Read this module's `cycle_merge_rate` and
+`cycle_split_rate`, and the bundle adjuster's `reprojection_error_after`, before
+concluding anything from match counts. The cycle terms are on this artifact, so
+that check costs nothing; the tracker's `inconsistent_rate` says the same thing one
+stage later and one run more expensively.
+
+`inlier_ratio` has a higher healthy floor here (0.7) than for classical matchers
+(0.5), because the raw matches are already learned-filtered. The same number means
+something worse.

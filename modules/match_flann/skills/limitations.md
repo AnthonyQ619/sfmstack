@@ -71,8 +71,3 @@ Recorded because the honest current answer is "it usually is not":
 
 Until the first of those exists, treat this module as the reference
 implementation of the approximate path rather than as the fast one.
-
-
-## `no_pairs` is not a diagnostic, and used to be listed as one
-
-The manifest declared it and the module never emitted it, because when no image pair survives matching -- the module RAISES, with a message naming the attempted pair count, the best raw match count and min_matches. A raise is the right behaviour — there is no artifact to hang a diagnostic on — but a diagnostic listed in the contract and unreachable in practice is worse than none: a reader planning against `sfm_describe_module` sees a failure mode they can catch and read, and will instead get an exception. The declaration is gone; the raise and its message are unchanged, and the message says more than the diagnostic did.

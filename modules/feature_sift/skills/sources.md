@@ -30,3 +30,11 @@ comparisons are benchmark- and scene-dependent, and the useful form of that
 knowledge is a routing decision, which belongs in
 [limitations.md](limitations.md) as a capability escape rather than as a cited
 number.
+
+## What is asserted without a source
+
+Audited 2026-09-02 against this module's own manifest.
+
+- **Healthy bands with nothing behind them.** `keypoints_per_image`, `spatial_coverage` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
+- **Numeric tuning advice with no citation in this file.** `max_keypoints`, `n_octave_layers`, `contrast_threshold`, `root_sift` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
+- **Scope of the measurements.** What is written here was exercised across 35 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.1.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.

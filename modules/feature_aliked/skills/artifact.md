@@ -51,15 +51,3 @@ Always, even when `resize_long_edge` made inference run at a different resolutio
 Detections found at a reduced resolution and rescaled up are correctly *placed* but
 carry the localisation precision of the resolution they were found at — which
 matters more for this detector than most, since localisation is its whole claim.
-
-## Metrics that mislead
-
-`keypoints_per_image` compared against SuperPoint's or SIFT's is comparing
-different things. Learned detectors apply their own suppression and are sparser by
-design.
-
-`mean_score` compared against SuperPoint's is meaningless — different scale.
-
-The metric that actually decides whether ALIKED was the right choice is not in this
-artifact at all. It is `reprojection_error_after` from bundle adjustment, because
-localisation is what this detector trades for.

@@ -54,15 +54,3 @@ happened.
 artifact's provenance (`produced_by.params`), which is where the answer lives, and
 it is part of the artifact id — so an `ssc` run and a `none` run are separate,
 comparable artifacts rather than one overwriting the other.
-
-## Metrics that mislead
-
-`keypoints_per_image` is capped and will read exactly `max_keypoints` on almost any
-real scene. It tells you the cap was reached, nothing more. `spatial_coverage` is
-the metric with information in it.
-
-`saturation` at 1.0 is normal for ORB, not a warning. It means the same thing as in
-SIFT — the cap is binding — but ORB reaches it on scenes where SIFT would not.
-
-`suppression_ratio` near 1.0 means suppression did nothing, which usually means
-`detect_multiplier` is too low rather than that the image had few keypoints.

@@ -80,3 +80,20 @@ Differences:
 - **No bounds check.** The tracker extrapolates outside the image; those predicted
   positions were written as observations. Here they are dropped and counted.
 - It exposed a `score_threshold` that its own code path could not populate.
+
+## What is asserted without a source
+
+Audited 2026-09-02 against this module's own manifest.
+
+- **Healthy bands with nothing behind them.** `avg_track_length`, `min_frame_observations`, `split_rate`, `track_survival_5` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
+- **Numeric tuning advice with no citation in this file.** `query_selection`, `query_frame_num`, `max_query_points_per_frame`, `visibility_threshold`, `min_track_len`, `fine_tracking`, and 2 more name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
+- **Everything about this module's behaviour in a real pipeline.** It was run **zero times** in the seventeen-capture sweep, so every claim here is from isolated testing or carried over from the predecessor. Nothing in this file has been exercised end to end.
+
+## Review triggers
+
+Re-read and re-check this file when any of these happens:
+
+- **This module's version changes from 1.5.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
+- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
+- **A reading crosses one of `avg_track_length`, `min_frame_observations`, `split_rate`, and 1 more and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.
+- **The first time this module is run in a real pipeline.** Everything here is untested at that level; the first end-to-end run is the trigger to rewrite this file rather than to trust it.

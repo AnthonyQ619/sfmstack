@@ -378,6 +378,9 @@ def run(ctx: Ctx):
         suggested_actions=[
             "Set the tracker's merge_eps_px to 1-2px at a 1600px working resolution.",
             "Watch the tracker's inconsistent_rate for over-merging.",
+            "This artifact's cycle_split_rate is the floor merge_eps_px cannot "
+            "beat: it counts points already detected twice, which is a detector "
+            "result no tracker setting reaches. Read it before blaming the eps.",
         ],
         see_also="artifact.md#no-feature_index",
     )

@@ -95,13 +95,28 @@ params:
       THE quality dial, and the single most consequential parameter on this module.
       0.1 is permissive by design because geometric verification follows.
 
-      THE CRITERION IS THE TRACKER'S inconsistent_rate, NOT inlier_ratio. This
-      used to condition the raise on a poor inlier_ratio; measured across a
-      capture sweep, inlier_ratio was 0.93-0.99 -- excellent -- on every run that
-      still produced a badly contradictory track table, and it RISES as you tighten,
-      so it confirms whatever you just did. Two-view verification cannot see the
-      error this dial fixes: a match displaced onto a repeated structure is
-      epipolar-consistent by construction.
+      SWEEP ON THIS MODULE'S OWN cycle_merge_rate + cycle_split_rate. The criterion
+      was the tracker's inconsistent_rate and that has been demoted, for two
+      measured reasons. It is INSENSITIVE where it matters: on one capture the
+      cycle sum fell 7.7x across a sweep while inconsistent_rate fell 1.17x, and on
+      another inconsistent_rate moved 0.005 across a sweep whose registration went
+      from 5 frames to 30, non-monotonically. It is also one stage away, so every
+      point of a sweep costs a tracker run. The cycle terms are computed here, on
+      this artifact, and they are the more sensitive instrument.
+
+      DO NOT THRESHOLD ON THE CYCLE SUM. The constant relating it to the tracker's
+      inconsistent_rate varies about fourfold between captures, so it prices a
+      DIFFERENCE within one capture and does not price a level across captures.
+      Sweep with it; confirm once at the settled value by running the tracker and
+      reading inconsistent_rate.
+
+      NOT inlier_ratio, which is actively misleading here. This dial used to
+      condition the raise on a poor inlier_ratio; measured across a capture sweep,
+      inlier_ratio was 0.93-0.99 -- excellent -- on every run that still produced a
+      badly contradictory track table, and it RISES as you tighten, so it confirms
+      whatever you just did. Two-view verification cannot see the error this dial
+      fixes: a match displaced onto a repeated structure is epipolar-consistent by
+      construction, which is the same reason the cycle terms need a THIRD view.
 
       THE USEFUL RANGE REACHES MUCH FURTHER THAN 0.2-0.3. That was the old
       guidance and it is roughly half of where the dial works. Settled values
@@ -110,9 +125,11 @@ params:
       reader obeying it had no next step. Treat 0.2-0.3 as where to start and sweep
       upward.
 
-      WHERE TO STOP, which the old text did not say. inconsistent_rate keeps
-      falling long after tightening has begun buying it by deleting the graph, so
-      it cannot be its own stopping rule. Stop when the graph starts paying:
+      WHERE TO STOP, which the old text did not say. Neither the cycle terms nor
+      inconsistent_rate can be their own stopping rule -- both keep falling long
+      after tightening has begun buying the improvement by deleting the graph, and
+      a graph with fewer edges is a graph with fewer chains to contradict
+      themselves. Stop when the graph starts paying:
       pairs_matched against pairs_proposed, min_image_degree, and the tracker's
       max_track_length -- one capture kept improving on both headline metrics at
       0.8 while quietly shedding two pairs and a degree, with graph_components
@@ -124,9 +141,9 @@ params:
       Measured across such a sweep on one capture the reading rose and fell with
       no monotone trend over a range wider than most of the differences readers
       try to interpret -- so a difference inside that range is noise, and the
-      setting that minimises this metric is NOT always the one that minimises
-      inconsistent_rate. See tracks/v1 on trifocal_transfer_px, and compare only
-      at equal trifocal_triples.
+      setting that minimises this metric is NOT always the one that minimises the
+      cycle sum. See tracks/v1 on trifocal_transfer_px, and compare only at equal
+      trifocal_triples.
 
   n_layers:
     type: integer
@@ -257,17 +274,32 @@ metrics:
     nullable: true
     meaning: >
       Three-view chains that land on a different keypoint than the direct match,
-      far enough to be different scene structure. The only reading here that sees
-      a wrong-but-epipolar-consistent match; arrives later as the tracker's
-      inconsistent_rate. Null when undefined rather than zero.
+      far enough to be different scene structure. The only reading on this module
+      that sees a wrong-but-epipolar-consistent match -- two-view verification
+      structurally cannot, because such a match satisfies the epipolar constraint
+      by construction. Arrives one stage later as the tracker's inconsistent_rate.
+
+      IT IS NOT THE FORECAST ON ITS OWN, and it used to be annotated as one. A
+      capture read 0.0016 here -- clean -- and produced a track table 17%
+      self-contradictory, because all of its signal sat in cycle_split_rate. Read
+      the SUM of the two when asking what the tracker will report; read each
+      separately when asking what to fix. High here means the matcher is admitting
+      wrong correspondences: tighten it. Null when undefined rather than zero.
 
   cycle_split_rate:
     direction: lower_better
     nullable: true
     meaning: >
       The same test at a couple of pixels: one point detected twice. Shortens
-      tracks rather than corrupting geometry, and dominates by volume -- judge on
-      cycle_merge_rate and read this as the cost in track length.
+      tracks rather than corrupting geometry, and dominates by volume.
+
+      Its previous note said to judge on cycle_merge_rate and read this only as the
+      cost in track length. That was measured wrong: on the capture whose track
+      table came back 17% self-contradictory, this term carried all of the signal
+      and the merge term read clean. High here with merge clean is a DETECTOR
+      result -- several keypoints on one physical point, which no matcher parameter
+      reaches, and which arrives at the tracker as an unreachable floor on its
+      split_rate. Null when undefined rather than zero.
 
   planarity:
     direction: lower_better

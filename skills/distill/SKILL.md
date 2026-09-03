@@ -258,8 +258,8 @@ measured ones. One that states everything flatly is trusted on none of it.
 | what a metric means and what it is a function of | the module's `module.yaml` and `artifact.md` |
 | what to do the moment a diagnostic fires | the diagnostic's own `suggested_actions` — it is the only context guaranteed to be read |
 | reading a whole capture before running anything | `skills/scene_to_pipeline.md` |
-| a rule spanning two stages | `skills/workflow/`, not either module |
-| the raw numbers behind any of the above | `skills/runs/INDEX.md`, with scene names |
+| a rule spanning two stages | `skills/scene_to_pipeline.md` §3, not either module — there is no `workflow/` tier and there is not going to be one |
+| the raw numbers behind any of the above | `skills/runs/EVIDENCE.md`, with scene names — never `INDEX.md`, which is keyed on traits for retrieval |
 | taste — when a result is good enough | `skills/judgment/`, and **propose it, never write it** |
 
 **Two placement rules learned the hard way.**

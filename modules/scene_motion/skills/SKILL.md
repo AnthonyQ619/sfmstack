@@ -6,6 +6,26 @@ curated_at: 2026-08-14
 sources: 5
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 6 parameters documented, starting with `stride` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "Planar and rotational degeneracy are the same measurement" |
+| you are reading what it wrote | **`artifact`** — the layout of `scene_analysis/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `stride`, `n_pairs`, `fastest_pair`.
+
+**Diagnostics it can raise:** `low_baseline`, `planar_scene`, `pure_rotation`, `uncalibrated_scene`, `flow_fit_failed`.
+
+## What this module is for
+
+
 Dense optical flow between image pairs, summarised into camera-motion scores and
 the two degeneracy tests that decide whether a reconstruction is possible at all.
 

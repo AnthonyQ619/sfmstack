@@ -269,7 +269,19 @@ going back to change it is expected rather than a failure.** Two-view
 verification cannot see a match displaced onto a repeated structure: it is
 epipolar-consistent by construction, so `inlier_ratio` reads excellent on exactly
 the runs that produce a badly self-contradictory track table. `inconsistent_rate`
-is the first reading in the pipeline that sees it.
+is where that error becomes undeniable.
+
+**It is not, however, the first reading that sees it, and the distinction is worth
+a sweep's worth of runs.** Every detector-based matcher publishes
+`cycle_merge_rate` and `cycle_split_rate`, which compare a THIRD view and so catch
+the same class of error one stage earlier, on the matcher's own artifact. Where the
+two disagree the cycle terms are the more sensitive instrument:
+`inconsistent_rate` has been measured moving 1.17x across a sweep the cycle sum
+moved 7.7x across, and moving 0.005 across a sweep whose registration went from 5
+frames to 30. So **sweep the matcher on its cycle terms and use this stage's
+`inconsistent_rate` to confirm the settled value** — that is one tracker run
+instead of one per sweep point. Read the two cycle terms as a sum when forecasting
+what this stage will report, and separately when asking what to repair.
 
 Across a sweep of captures driven through this stage, the matcher was changed on
 the tracker's evidence on more than half of them, and on one the matcher MODULE
@@ -302,10 +314,13 @@ with the reason written down, is a legitimate answer.
 
 ## The blind spot on a predictive chain, which is structural
 
-`inconsistent_rate` is the only reading in this stack aimed at a self-contradictory
-track table — and it is **structurally zero on every predictive tracker**, which
-those modules' own manifests state. So on a detector → predictive-tracker → pose
-chain, a chain `families/pose.md` explicitly blesses, nothing published can see one.
+`inconsistent_rate` is **structurally zero on every predictive tracker**, which
+those modules' own manifests state. The matchers' `cycle_merge_rate` and
+`cycle_split_rate` would be the earlier reading — but a predictive tracker consumes
+`features/v1` directly and there is no matcher in the chain to publish them. So on
+a detector → predictive-tracker → pose chain, a chain `families/pose.md` explicitly
+blesses, **both** readings for a self-contradictory track table are absent, and
+nothing published can see one.
 
 That is not hypothetical. One capture shipped **493 tracks that cannot be
 triangulated at any setting** — 7.2% of the table, 173 of them reaching five views —

@@ -136,7 +136,6 @@ broke a 16-image `courtyard` reconstruction outright. Both ends fail.
 
 See [`docs/import_lessons.md`](../../../docs/import_lessons.md).
 
-
 ## Reading `trifocal_transfer_px`
 
 The only metric here that measures where the observations are rather than how many
@@ -147,3 +146,23 @@ than matching costs.
 **It is the number that should move when the working resolution does.** Where a
 resolution parameter exists it is the one to reach for; where it does not, this
 metric is a property of the model rather than a knob.
+
+## Metrics that mislead
+
+**Every track metric here flatters this module.** `avg_track_length` 5.98 against
+union-find's 2.85, `track_survival_5` 0.754 against 0.116 — genuinely the best in
+the repository, and the same tracks triangulate to 1548 points at 1.581 px against
+union-find's 4671 at 0.280. Length and precision are separate axes. Nothing in a
+`tracks/v1` artifact measures the second one; the triangulator's reprojection
+error is the first number that does.
+
+**`track_count` moves with `input_size` for reasons unrelated to quality**, and
+barely — 2629 at 256, 2736 at 384 — while the downstream yield goes 0.337 to
+0.566. Do not read `input_size` off the track count.
+
+**`mean_confidence` is a product of two sigmoids** and therefore sits lower than a
+single-factor confidence would. 0.71 here is healthy.
+
+**`mean_confidence` and `mean_occlusion` read the query selection**, not the
+quality of what survived — both are computed over all predictions, before
+thresholding.

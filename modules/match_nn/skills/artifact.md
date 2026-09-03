@@ -76,17 +76,3 @@ it as if it were the final estimate.
 **Pairs that were attempted and dropped.** Only their count survives, as
 `weak_pairs`. If which pairs failed matters, the pair set is deterministic from
 `pairing` and `window`, so it can be reconstructed exactly.
-
-## Metrics that mislead
-
-`matches_per_pair` is a mean over surviving pairs. Loosening any filter admits
-thin pairs that were previously dropped, which lowers the mean while improving
-the result. See the window sweep in [tuning.md](tuning.md), where it falls from
-259 to 175 across a change that fixes a disconnected graph.
-
-`inlier_ratio` is 1.0 by construction when `geometric_model: none`. That is not a
-perfect score; it means nothing was checked.
-
-`planarity` is `None` when it could not be measured — fewer than 4 inliers on
-every pair, or `geometric_model: homography` (where the comparison would be
-against itself).

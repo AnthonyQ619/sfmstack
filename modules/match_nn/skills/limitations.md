@@ -115,13 +115,13 @@ real relighting is not.
 
 *Symptom:* `planarity` above 0.9.
 
-There is no matcher fix, and switching modules does not help either — a learned
-matcher will match a planar scene beautifully and the triangulation will still be
-degenerate. The correspondence is not what is failing.
+**Not a matcher problem, and not fixable by swapping matchers.** The explanation
+and what to do instead are owned by `families/matching.md` section 5, "`planarity`
+is the one metric here whose answer is not a matcher" -- read it there rather than
+here, because three matcher files used to restate it and drifted apart in wording
+while agreeing in substance.
 
-What to do instead: widen the baseline (raise `window`), accept that the affected
-pairs cannot contribute depth, or recognise that a planar target is a homography
-estimation problem rather than an SfM one.
+The one module-local note: widening the baseline here means raising `window`.
 
 Recorded because it is the failure most likely to be misdiagnosed as a matching
 problem: every matching metric can look excellent while the reconstruction
@@ -148,8 +148,3 @@ order of likelihood:
    in the features artifact and switches automatically, but a detector that
    writes uint8 descriptors *without* setting that flag will match under L2 and
    produce garbage.
-
-
-## `no_pairs` is not a diagnostic, and used to be listed as one
-
-The manifest declared it and the module never emitted it, because when no image pair survives matching -- the module RAISES, with a message naming the attempted pair count, the best raw match count and min_matches. A raise is the right behaviour — there is no artifact to hang a diagnostic on — but a diagnostic listed in the contract and unreachable in practice is worse than none: a reader planning against `sfm_describe_module` sees a failure mode they can catch and read, and will instead get an exception. The declaration is gone; the raise and its message are unchanged, and the message says more than the diagnostic did.

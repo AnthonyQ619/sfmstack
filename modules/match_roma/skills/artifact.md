@@ -35,21 +35,6 @@ calibrated uncertainty than LightGlue's matchability score, which is why
 `min_certainty` is a usable dial rather than a guess. It is still self-reported
 and not comparable across methods.
 
-## Metrics that mislead
-
-**`matches_per_pair` is bounded by `max_matches`.** 4951 out of 5000 sampled means
-the field was almost entirely usable; the same number out of 50000 would mean the
-opposite. Always read the parameter beside it.
-
-**`inlier_ratio` near 0.99 is normal here** on an easy scene and stops being
-informative in that regime. On a hard scene it is one of the two metrics that
-still discriminate, along with `planarity`.
-
-**`mean_certainty` near 1.0 is normal** and is informative mainly at its low end.
-
-**`certainty_floor_effect` is null when `min_certainty` is 0**, which is the
-default — a null means the filter did not run, not that nothing was low-certainty.
-
 ## What is NOT here
 
 **Keypoints.** No `features/v1` is produced and none is consumed. Anything wanting

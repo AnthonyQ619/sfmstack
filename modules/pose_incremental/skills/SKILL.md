@@ -6,6 +6,26 @@ curated_at: 2026-08-07
 sources: 4
 ---
 
+## Where to go next
+
+This file is the router. Everything below is orientation; the detail lives in the
+other four documents, and this table is how to pick one without fetching all of
+them.
+
+| If | Fetch |
+| --- | --- |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 13 parameters documented, starting with `min_triangulation_angle_deg` |
+| you need to know whether this module can do the thing at all | **`limitations`** — e.g. "Uncalibrated scenes" |
+| you are reading what it wrote | **`artifact`** — the layout of `poses/v1` |
+| you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |
+
+**First readings on this module's output:** `registered_fraction`, `registered_images`, `points_triangulated`.
+
+**Diagnostics it can raise:** `uncalibrated_scene`, `no_viable_initial_pair`, `partial_registration`, `high_reprojection_error`, `local_ba_diverged`, `local_ba_not_converging`, and 2 more.
+
+## What this module is for
+
+
 Incremental structure-from-motion: seed on a well-conditioned pair, then
 repeatedly register whichever image has the most 2D-3D correspondences.
 CPU-only, deterministic given fixed RANSAC seeds, no weights.

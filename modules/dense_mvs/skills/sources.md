@@ -70,3 +70,20 @@ Differences:
   intended tuning knobs were the ones next to the ones it set.
 - It reported no metrics at all; `DenseSceneEstimation` set `use_base_metrics =
   True` and registered no providers. Everything under `metrics:` here is new.
+
+## What is asserted without a source
+
+Audited 2026-09-02 against this module's own manifest.
+
+- **Healthy bands with nothing behind them.** `point_count`, `views_contributing` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
+- **Numeric tuning advice with no citation in this file.** `max_image_size`, `window_radius`, `window_step`, `num_samples`, `num_iterations`, `filter_min_ncc`, and 6 more name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
+- **Everything about this module's behaviour in a real pipeline.** It was run **zero times** in the seventeen-capture sweep, so every claim here is from isolated testing or carried over from the predecessor. Nothing in this file has been exercised end to end.
+
+## Review triggers
+
+Re-read and re-check this file when any of these happens:
+
+- **This module's version changes from 1.0.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
+- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
+- **A reading crosses one of `point_count`, `views_contributing` and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.
+- **The first time this module is run in a real pipeline.** Everything here is untested at that level; the first end-to-end run is the trigger to rewrite this file rather than to trust it.
