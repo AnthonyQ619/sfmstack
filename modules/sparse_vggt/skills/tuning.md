@@ -107,3 +107,14 @@ well. It is not a probability and not comparable to any other module's confidenc
 triangulator. There it means the poses disagree with each other; here it means the
 depth prior and the poses disagree about which side of the camera the scene is on,
 which is usually a scale problem wearing a different hat.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Eleven healthy bands**
+(`min_frame_points`, `two_view_fraction`, `p95_reprojection_error`,
+`p05_triangulation_angle`, `point_count`, `observation_count`, and five more)
+declare a range no diagnostic reads — descriptions of the captures measured so
+far, not judgements on yours, and this module has run **zero times** in a real
+pipeline, so they come from isolated testing. The numbers in the
+`min_track_len` and `min_confidence` advice are settings that worked in that
+isolated testing, not published results.

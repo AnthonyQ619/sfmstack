@@ -52,3 +52,10 @@ SuperPoint's. `FeatureMatchLightGlue` infers this from provenance, because the
 wrong set produces confident nonsense rather than an error.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+Exercised across only **2 runs at version 1.2.0** in the seventeen-capture sweep
+(`evidence/CORPUS.txt`); the thinnest evidence base of the sweep-run detectors,
+and no capture outside the two benchmark families. Claim-by-claim citations: the
+`sources` skill.

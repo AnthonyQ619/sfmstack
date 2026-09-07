@@ -23,7 +23,21 @@ per-item skills, a large corpus of worked examples indexed by tags, atomic lesso
 cards cross-referenced from those examples, reasoning-based retrieval with no
 embeddings, and a loop that ends in *distil lessons back into files*.
 
-## STATUS — what is built, measured 2026-09-02
+## REORGANISED 2026-09-07 — the tiers below now live under different names
+
+The knowledge-kind tiers this document designs were reorganised into **moment
+tiers** — organised by where in the loop the reader is standing, which is the
+lesson the `workflow/` retirement taught. The mapping (old → new):
+`scene_to_pipeline.md` and `families/` → `plan/`; `judgment/swap_or_build` and
+`judgment/tradeoffs` → `judge/`; `judgment/stopping` → `health/ladder`,
+`judgment/smells` → `health/smells`, plus a new `health/bounce`;
+`judgment/priors` folded into `evidence/EVIDENCE.md`; `runs/` → `evidence/`,
+with per-campaign files and `EVIDENCE.md` as their index. Old topic names
+redirect at the resolver. Every path in the STATUS table and the design below is
+pre-reorganisation; [`docs/context-structure-design.md`](../context-structure-design.md)
+describes what is on disk now.
+
+## STATUS — what is built, measured 2026-09-02 (paths pre-reorganisation)
 
 **This document is the DESIGN. Most of the tier structure below was never built,
 and a seventeen-capture sweep measured what that costs.** Read the table before
@@ -112,9 +126,12 @@ them:
   `INDEX.md` is still empty, and it is blocked on trait derivation rather than on
   transcription.
 - lesson cards and the distillation loop — never built, never requested, **held**.
-  `distill/SKILL.md` describes a process that has never executed. The open proposal
-  is to seed `runs/` from the seventeen-capture sweep, which is the first body of
-  evidence large enough to be worth a loop rather than a hand transcription.
+  `distill/SKILL.md` describes a process that has never executed. The seed-from-
+  the-sweep proposal was overtaken by a fact: the sweep's raw records were not
+  preserved. The decided replacement (2026-09-07) is a **reference campaign** — a
+  deterministic re-run of the corpus that seeds `evidence/` with durable
+  per-capture rows and the reference values for the seven-rung health profile
+  defined in `health/ladder.md`.
 
 ## Layout
 

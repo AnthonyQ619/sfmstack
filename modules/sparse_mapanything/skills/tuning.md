@@ -112,3 +112,14 @@ depth and then measured it. Comparing them compares the objective, not the resul
 **`point_count` is not comparable across `max_reprojection_error`** — and this
 module is far more sensitive to that threshold than a geometric triangulator, for
 the same reason.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Eleven healthy bands**
+(`min_frame_points`, `two_view_fraction`, `p95_reprojection_error`,
+`p05_triangulation_angle`, `point_count`, `observation_count`, and five more)
+declare a range no diagnostic reads — descriptions of the captures measured so
+far, not judgements on yours, and this module has run **zero times** in a real
+pipeline, so they come from isolated testing. The numbers in the
+`use_model_mask`, `min_track_len`, `min_confidence` and `amp_dtype` advice are
+settings that worked in that isolated testing, not published results.

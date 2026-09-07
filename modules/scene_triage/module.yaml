@@ -49,7 +49,8 @@ description: |
   groups are present.
 
   **This module emits numbers, not traits.** The `traits` group is derived by the
-  orchestrator from thresholds held in `skills/judgment/`, so revising what counts
+  orchestrator from thresholds held in the global skills tier (which deliberately
+  do not exist yet -- see `evidence/INDEX`), so revising what counts
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 

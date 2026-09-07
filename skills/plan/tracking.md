@@ -185,7 +185,7 @@ The conflict-rate gap is now closed, but the habit is the point: **check every
 published metric against its own band, and treat diagnostics as the second pass.**
 And where a metric's own text disagrees with its band — several here are documented
 as unreachable given the detector or the pairing in use — the text wins. See
-`scene_to_pipeline.md` §3.0.
+`plan/scene_to_pipeline.md` §3.0.
 
 ## Which end to reach for
 
@@ -318,7 +318,7 @@ with the reason written down, is a legitimate answer.
 those modules' own manifests state. The matchers' `cycle_merge_rate` and
 `cycle_split_rate` would be the earlier reading — but a predictive tracker consumes
 `features/v1` directly and there is no matcher in the chain to publish them. So on
-a detector → predictive-tracker → pose chain, a chain `families/pose.md` explicitly
+a detector → predictive-tracker → pose chain, a chain `plan/pose.md` explicitly
 blesses, **both** readings for a self-contradictory track table are absent, and
 nothing published can see one.
 

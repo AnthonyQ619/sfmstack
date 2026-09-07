@@ -63,3 +63,10 @@ Then read `spatial_coverage`, not the keypoint count — the count is capped and
 tells you almost nothing.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end. The first real run is the trigger to re-check all of it.
+Claim-by-claim citations: the `sources` skill.

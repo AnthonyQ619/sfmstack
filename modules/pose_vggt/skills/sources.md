@@ -1,81 +1,22 @@
 ---
 module: PoseVGGT
 module_version: 1.0.0
-curated_at: 2026-08-10
+curated_at: 2026-09-07
 ---
 
-# Sources
+# Where PoseVGGT's claims come from
 
-## VGGT: Visual Geometry Grounded Transformer
-Wang, Leroy, Cabon, Chidlovskii, Revaud et al. — CVPR 2025 (best paper).
-<https://arxiv.org/abs/2503.11651> · <https://github.com/facebookresearch/vggt>
+**Cite-only, like the evidence tier: this file exists to be referenced, not
+browsed.** The provenance summary rides `SKILL.md`; unsourced-band warnings sit
+in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
 
-The model. A transformer that alternates frame-wise and global attention over the
-whole image set and reads camera parameters, depth, point maps and tracks off the
-aggregated tokens in a single forward pass. This module uses the camera head only.
-
-Read for: why it needs no correspondences at all, and why accuracy is
-initialisation-grade rather than final — it is trained to be right about geometry,
-not to minimise reprojection error on your scene.
-
-Pinned to commit `a288dd0`; checkpoint `facebook/VGGT-1B` (5 GB), baked into the
-base image so no job touches the network.
-
-API notes verified against that commit:
-
-- `model.aggregator(images)` takes `(B, N, 3, 518, 518)` — batch AND frame
-  dimensions, so a single set is `images[None]`.
-- `pose_encoding_to_extri_intri(pose_enc, image_hw)` returns extrinsics as
-  **cam_from_world** 3×4 in OpenCV convention, matching `poses/v1` directly, and
-  intrinsics in pixels of the 518-square it was given.
-- `load_and_preprocess_images(paths, mode=)` documents the two preprocessing
-  conventions: `crop` sets width to 518 and centre-crops height, `pad` fits the
-  long side to 518 and pads the short one white. This module implements `pad`
-  itself so it can invert it exactly in the intrinsics.
-- The checkpoint is saved as a plain `state_dict` at a fixed path rather than left
-  in the HuggingFace cache: the cache location follows `HOME`, and the container
-  runs as the host uid with `HOME=/tmp`, so a hub-cached file written as root at
-  build time is not where the module looks at run time.
-
-**The preprocessing bug this module had, and the measurement that found it:**
-squeezing images anisotropically into 518×518 and undoing it per axis produced
-`fx/fy` = 1.329 (exactly the 1024/768 aspect ratio) and a focal 1.48× the
-calibration, because VGGT predicts square pixels and cannot know the aspect was
-changed. Letterboxing took `estimated_focal_ratio` from 1.48 to 1.095, points
-triangulated from 1315 to 5899, and reprojection error from 1.943 px to 1.051 px.
-
-## DUSt3R / MASt3R
-Wang, Leroy et al., CVPR 2024. <https://arxiv.org/abs/2312.14132>
-
-VGGT's predecessor in approach — pairwise pointmap regression with a global
-alignment step. VGGT replaces the alignment with attention across the whole set,
-which is why this module has no stitching stage and why chunking is a hard
-boundary rather than something it can align away.
-
-## The predecessor
-`scene_agent/breadth_agent/src/sfmcore/camerapose.py`,
-`CamPoseEstimatorVGGTModel`.
-
-Same head, same decode. Differences: it asserted square input (`Height must equal
-Width`) to sidestep the intrinsics mapping, where this module letterboxes and
-handles any aspect; it rewrote the scene's calibration in place, where this writes
-its estimate into its own artifact and leaves the scene alone; and it ran the
-camera head inside autocast, where this runs it in full precision because the
-decode produces a rotation.
-
-## What is asserted without a source
-
-Audited 2026-09-02 against this module's own manifest.
-
-- **Healthy bands with nothing behind them.** `registered_fraction`, `registered_images`, `baseline_span`, `chunks` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
-- **Numeric tuning advice with no citation in this file.** `max_images_per_pass`, `dtype` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
-- **Everything about this module's behaviour in a real pipeline.** It was run **zero times** in the seventeen-capture sweep, so every claim here is from isolated testing or carried over from the predecessor. Nothing in this file has been exercised end to end.
-
-## Review triggers
-
-Re-read and re-check this file when any of these happens:
-
-- **This module's version changes from 1.0.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
-- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
-- **A reading crosses one of `registered_fraction`, `registered_images`, `baseline_span`, and 1 more and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.
-- **The first time this module is run in a real pipeline.** Everything here is untested at that level; the first end-to-end run is the trigger to rewrite this file rather than to trust it.
+| Claim / content | Rests on |
+| --- | --- |
+| alternating frame-wise and global attention over the whole set; cameras, depth, point maps and tracks read off aggregated tokens in one forward pass — this module uses the camera head only. Needs no correspondences; accuracy is **initialisation-grade**, trained to be right about geometry, not to minimise reprojection on your scene | VGGT — Wang, Leroy, Cabon, Chidlovskii, Revaud et al., CVPR 2025; <https://arxiv.org/abs/2503.11651> |
+| commit `a288dd0`, checkpoint `facebook/VGGT-1B` (5 GB) baked into the image — the HF cache follows `HOME`, and the container runs as the host uid with `HOME=/tmp`, so a hub-cached file written as root at build is not where the module looks at run time | implementation, verified |
+| `aggregator(images)` takes `(B, N, 3, 518, 518)` — a single set is `images[None]`; `pose_encoding_to_extri_intri` returns **cam_from_world** 3×4 OpenCV, matching `poses/v1`, with intrinsics in pixels of the 518-square; the module implements `pad` preprocessing itself so it can invert it exactly in the intrinsics | verified against the commit |
+| **the anisotropic-squeeze bug and its measurement**: squeezing to 518×518 produced `fx/fy` = 1.329 (exactly the source aspect ratio) and a focal 1.48× calibration, because VGGT predicts square pixels; letterboxing took `estimated_focal_ratio` 1.48 → 1.095, triangulated points 1315 → 5899, reprojection error 1.943 → 1.051 px | measured directly |
+| no stitching stage; chunking is a hard boundary — VGGT replaced DUSt3R/MASt3R's pairwise-then-align design with whole-set attention, so there is no alignment to fall back on | DUSt3R — Wang, Leroy et al., CVPR 2024 |
+| letterboxes any aspect (predecessor asserted square input); writes its estimate into its own artifact (predecessor rewrote the scene's calibration in place); camera head in full precision because the decode produces a rotation (predecessor used autocast) | predecessor `sfmcore/camerapose.py`, `CamPoseEstimatorVGGTModel` |
+| **everything about behaviour in a real pipeline** | **nothing** — run zero times in the sweep; isolated testing and the predecessor only |
+| 4 healthy bands; numeric values in `max_images_per_pass`, `dtype` advice | **nothing** — see the audit section in `tuning.md` |

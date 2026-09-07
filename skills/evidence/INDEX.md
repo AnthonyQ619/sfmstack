@@ -12,9 +12,10 @@ Tag table used for trait-based retrieval. One row per run; see
 
 ## Where the raw numbers live
 
-**The per-capture measurement tables are not in this file.** They are in
-[EVIDENCE.md](EVIDENCE.md), and they were moved there because the two things were
-sharing a file and are not the same kind of thing:
+**The per-capture measurement tables are not in this file.** They are in the
+per-campaign files indexed by [EVIDENCE.md](EVIDENCE.md), and they were moved
+there because the two things were sharing a file and are not the same kind of
+thing:
 
 | | INDEX.md (this file) | EVIDENCE.md |
 | --- | --- | --- |

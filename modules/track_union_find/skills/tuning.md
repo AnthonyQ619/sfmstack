@@ -289,3 +289,11 @@ over-merging, not of good tracking.
 so it describes the merge, not the surviving tracks. A track dropped for being
 contradictory still counts in the numerator, which is what makes the number a
 report on the matcher rather than on the output.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `avg_track_length`,
+`split_rate` and `track_survival_5` bands have no diagnostic reading them —
+descriptions of the captures measured so far, not judgements on yours. The
+specific numbers in the `min_track_len`, `probe_merge_headroom` and
+`merge_eps_px` advice are settings that worked here, not published results.

@@ -1,27 +1,19 @@
 # Sources — FeatureDetectionSIFT
 
-Every quantitative or mechanistic claim in the principled sections of
+**Cite-only, like the evidence tier: this file exists to be referenced, not
+browsed.** Every quantitative or mechanistic claim in the principled sections of
 [tuning.md](tuning.md) and [limitations.md](limitations.md) resolves to a tag
-here. Uncited numbers are not allowed in those sections.
+here. Uncited numbers are not allowed in those sections. The provenance summary
+rides `SKILL.md`; unsourced-band warnings sit in `tuning.md`; the re-check rule
+is the one global rule in `SKILLS.md`.
 
 | Tag | Source | Where | Claims it supports |
 | --- | --- | --- | --- |
 | S1 | Lowe, *Distinctive Image Features from Scale-Invariant Keypoints*, IJCV 60(2), 2004 | §3 (scale space, σ and prior smoothing), §4 (low-contrast rejection), §4.1 (principal-curvature / edge ratio, r=10), §3.2 (three scales per octave) | `n_octave_layers` default of 3; `contrast_threshold` as the low-contrast filter; `edge_threshold` being a curvature ratio whose sense is inverted; `sigma` assuming ~0.5 of existing blur |
 | S2 | Arandjelović & Zisserman, *Three things everyone should know to improve object retrieval*, CVPR 2012 | §2 | RootSIFT: L1-normalise then square-root makes L2 distance behave as Hellinger; free and strictly better for L2 matching |
 | S3 | OpenCV `SIFT_create` documentation and `sift.cpp` | `nfeatures` handling | The cap retains the strongest by contrast score rather than truncating detection, which is why `saturation` distinguishes cap-binding from filter-binding |
-| S4 | Direct measurement, this repository | pilot run 2026-08-08, DTU scan1 | The single observed card in [tuning.md](tuning.md#observed) — 1024 vs 8192 on 8 images |
-
-## Review triggers
-
-Re-verify against these when any of the following changes:
-
-- **The OpenCV pin moves.** S3 is behavioural, read off a specific
-  implementation, not a specification. `nfeatures` selection and default
-  thresholds have changed across major versions before.
-- **`root_sift` default changes.** S2 assumes L2 matching downstream; a matcher
-  using a different metric invalidates the recommendation.
-- **A new observed card contradicts a principled claim.** The measurement wins.
-  Amend the principled text and note the run that forced it.
+| S4 | Direct measurement, this repository | pilot run 2026-08-08, one controlled-rig capture | The single observed card in [tuning.md](tuning.md#observed) — 1024 vs 8192 on 8 images |
+| S5 | The seventeen-capture sweep, 35 runs at 1.1.0 | scope: [evidence/CORPUS.txt](../../../skills/evidence/CORPUS.txt) | every measured band and episode in these skills |
 
 ## Deliberately absent
 
@@ -30,11 +22,3 @@ comparisons are benchmark- and scene-dependent, and the useful form of that
 knowledge is a routing decision, which belongs in
 [limitations.md](limitations.md) as a capability escape rather than as a cited
 number.
-
-## What is asserted without a source
-
-Audited 2026-09-02 against this module's own manifest.
-
-- **Healthy bands with nothing behind them.** `keypoints_per_image`, `spatial_coverage` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
-- **Numeric tuning advice with no citation in this file.** `max_keypoints`, `n_octave_layers`, `contrast_threshold`, `root_sift` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
-- **Scope of the measurements.** What is written here was exercised across 35 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.1.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.

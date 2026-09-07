@@ -128,3 +128,14 @@ between it and the matcher's `pairs_matched`.
 
 **`models_found` of 1 is necessary, not sufficient** — one model containing half
 the images is still a split scene, and `registered_fraction` is what reports that.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Ten healthy bands**
+(`min_frame_points`, `two_view_fraction`, `p95_reprojection_error`,
+`p05_triangulation_angle`, `median_triangulation_angle`, `point_count`, and
+four more) declare a range no diagnostic reads — descriptions of the captures
+measured so far, not judgements on yours, fitted on eight runs. The specific
+numbers in the `min_num_matches`, `min_track_len`, `max_epipolar_error`,
+`min_inlier_ratio`, `min_tri_angle_deg`, `ba_num_iterations` advice (and one
+more) are settings that worked here, not published results.

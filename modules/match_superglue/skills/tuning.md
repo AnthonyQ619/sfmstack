@@ -107,3 +107,13 @@ highest-scoring keypoints, which are not the best-spread ones.
 means verification found almost nothing to reject, which is what a good learned
 matcher on an easy scene should produce. It stops being informative in that
 regime; `planarity` and `graph_components` still are.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Five healthy bands**
+(`pairs_matched`, `matches_per_pair`, `largest_component_fraction`,
+`min_image_degree`, `mean_match_score`) declare a range no diagnostic reads —
+descriptions of the captures measured so far, not judgements on yours. The
+numbers in the `match_threshold`, `sinkhorn_iterations`, `max_keypoints` and
+`window` advice are settings that worked in isolated testing, not published
+results — and this module has run **zero times** in a real pipeline.

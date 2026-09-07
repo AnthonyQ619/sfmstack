@@ -58,3 +58,10 @@ nothing at 0.9 and everything at, say, 0.99 of the wrong scale. Read
 `mean_depth_confidence` from a run first.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end — and by the standing plan, dense modules run after the sparse
+holdout. Claim-by-claim citations: the `sources` skill.

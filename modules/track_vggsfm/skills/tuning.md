@@ -168,3 +168,14 @@ concatenates: 3.46 without, 3.85 with. That is not the tracker getting better.
 **Nothing here measures positional accuracy.** Visibility is a confidence about
 *whether* a point is seen, not *where*. The first number that measures where is the
 triangulator's reprojection error.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `avg_track_length`,
+`min_frame_observations`, `split_rate` and `track_survival_5` bands have no
+diagnostic reading them — descriptions of the captures measured so far, not
+judgements on yours. The numbers in the `query_selection`, `query_frame_num`,
+`max_query_points_per_frame`, `visibility_threshold`, `min_track_len`,
+`fine_tracking` advice (and two more) are settings that worked in isolated
+testing, not published results — and this module has run **zero times** in a
+real pipeline.

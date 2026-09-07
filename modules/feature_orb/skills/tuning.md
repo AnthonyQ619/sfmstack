@@ -110,3 +110,12 @@ SIFT — the cap is binding — but ORB reaches it on scenes where SIFT would no
 
 `suppression_ratio` near 1.0 means suppression did nothing, which usually means
 `detect_multiplier` is too low rather than that the image had few keypoints.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `keypoints_per_image` band has
+no diagnostic reading it — a description of the captures measured so far, not a
+judgement on yours. The numbers in the `max_keypoints`, `ssc_tolerance`,
+`detect_multiplier`, `scale_factor`, `fast_threshold`, `edge_threshold` advice
+(and one more) are settings that worked in isolated testing, not published
+results — and this module has run **zero times** in a real pipeline.

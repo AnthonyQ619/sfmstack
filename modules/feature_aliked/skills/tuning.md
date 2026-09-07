@@ -103,3 +103,12 @@ design.
 The metric that actually decides whether ALIKED was the right choice is not in this
 artifact at all. It is `reprojection_error_after` from bundle adjustment, because
 localisation is what this detector trades for.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `keypoints_per_image` and
+`spatial_coverage` bands have no diagnostic reading them — descriptions of the
+captures measured so far, not judgements on yours. The specific numbers in the
+`variant`, `max_keypoints`, `detection_threshold`, `nms_radius` and
+`resize_long_edge` advice are settings that worked here, not published results —
+and "here" is two runs.

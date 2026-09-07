@@ -37,10 +37,10 @@ this document covers only what ships with a module.
 
 The split matters because a lot of real SfM knowledge is **not** module-local
 ("low inlier yield at the matcher means don't bother tuning the tracker"). That
-kind of reasoning lives above the module — in `skills/scene_to_pipeline.md` §3 and
-the `skills/families/` files — not in any one module's files. (A `skills/workflow/`
+kind of reasoning lives above the module — in `skills/plan/scene_to_pipeline.md` §3 and
+the `skills/plan/` stage files — not in any one module's files. (A `skills/workflow/`
 tier was designed to hold it, never written, and retired; see
-[knowledge-system.md](knowledge-system.md#status--what-is-built-measured-2026-09-02).)
+[knowledge-system.md](knowledge-system.md#status--what-is-built-measured-2026-09-02-paths-pre-reorganisation).)
 
 ## Layout
 
@@ -114,7 +114,7 @@ under-constrained and sparse reconstruction will likely fail outright.
 
 **Related upstream signal (advisory):** matcher `inlier_yield`. If it is also
 below ~0.15 the deficit may originate in matching rather than here — see
-[`skills/scene_to_pipeline.md`](../../skills/scene_to_pipeline.md) §3. This is a
+[`skills/plan/scene_to_pipeline.md`](../../skills/plan/scene_to_pipeline.md) §3. This is a
 pointer, not a gate: tune locally first if you prefer, and come back to it.
 
 **Gradient, in order of expected effect:**
@@ -136,7 +136,7 @@ short tracks while making the underlying problem worse.
 ### Observed episodes
 
 > **L-0042 · max_keypoints stops paying past 8192 on turntable sets**
-> **Run:** [runs/2026-08-07-dtu-scan1](...) · **Seen in:** 3 runs · **Confidence:** medium
+> **Run:** `runs/2026-08-07-dtu-scan1` (illustrative) · **Seen in:** 3 runs · **Confidence:** medium
 > **Context:** DTU scan1/9/10, 49 images, calibrated, SIFT → FLANN → this module.
 > **Observed:** 4096→8192 moved `survival_ge_3` 0.31→0.44. 8192→16384 moved it
 > 0.44→0.46 for +140% runtime.
@@ -144,7 +144,7 @@ short tracks while making the underlying problem worse.
 > wide-baseline outdoor sets.
 
 > **L-0057 · min_track_len=3 flattered the metric and broke reconstruction**
-> **Run:** [runs/2026-08-11-eth-courtyard](...) · **Seen in:** 1 run · **Confidence:** low
+> **Run:** `runs/2026-08-11-eth-courtyard` (illustrative) · **Seen in:** 1 run · **Confidence:** low
 > **Observed:** raising to 3 lifted `avg_track_length` 3.8→5.1 but dropped
 > `track_count` 210k→48k, and sparse reconstruction then failed on too few points.
 > **Takeaway:** on sparse-coverage scenes, judge by `track_count` alongside the mean.
@@ -160,7 +160,7 @@ Four properties that make this work:
   right section (`see_also: tuning.md#survival_ge_3-below-040`).
 - **Cross-module signals are advisory pointers**, never mandatory ordering. The
   agent decides when to go upstream; the skill only tells it where to look. The
-  reasoning behind those pointers lives in `skills/scene_to_pipeline.md` §3.
+  reasoning behind those pointers lives in `skills/plan/scene_to_pipeline.md` §3.
 - **States expected magnitude and cost**, so the agent can decide whether a
   change is worth a run at all.
 - **Principled guidance and observed episodes are visually separate.** The first
@@ -190,14 +190,14 @@ tracks through texture-poor regions [S3, §5.1].
 ### Observed switches
 
 > **L-0061 · Gave up on this module for ETH/facade after 4 tuning runs**
-> **Run:** [runs/2026-08-11-eth-facade](...) · **Confidence:** medium
+> **Run:** `runs/2026-08-11-eth-facade` (illustrative) · **Confidence:** medium
 > **Trigger:** `survival_ge_3` plateaued at 0.22 across max_keypoints
 > 4096/8192/16384 and RANSAC 1.0/2.0/3.0. Matcher `inlier_yield` never exceeded 0.09.
 > **Switched to:** `FeatureTrackingVGGSfM` (direct tracker).
 > **Result:** `survival_ge_3` 0.71, runtime 40s → 11min.
 > **In hindsight:** the flat repetitive brick facade was visible in the input
 > mosaic from the start. Four runs of tuning were avoidable — check
-> `skills/scene_to_pipeline.md` §3 for repetitive texture before sweeping.
+> `skills/plan/scene_to_pipeline.md` §3 for repetitive texture before sweeping.
 ```
 
 **Escapes name a capability, never a module.** "Switch to LoFTR" goes stale the
@@ -325,7 +325,7 @@ running the system.
 - Every `tuning.md` heading names a metric the module actually emits (enforced).
 - Every `limitations.md` escape is a capability query, not a module name (enforced).
 - Cross-module claims are **advisory pointers into the cross-cutting files**
-  (`scene_to_pipeline.md`, `families/`, `judgment/`), never ordering rules. A module's skills never dictate what the agent must do first.
+  (`plan/scene_to_pipeline.md`, the `plan/` stage files, `judge/`, `health/`), never ordering rules. A module's skills never dictate what the agent must do first.
 - Skills are versioned with `module_version`; bumping the upstream pin flags the
   principled sections for review. Observed cards survive version bumps but their
   confidence is downgraded.

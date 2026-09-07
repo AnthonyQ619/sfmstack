@@ -8,14 +8,14 @@ datasets: [DTU, ETH3D, Tanks and Temples]
 
 # Reading a scene into a pipeline
 
-This file is the missing half of step 3. `skills/families/*.md` say *which member
+This file is the missing half of step 3. `skills/plan/<stage>.md` say *which member
 of a stage to reach for* in prose — "when the scene is repetitive", "when the
 detector fires on nothing". `SceneTriage`, `SceneMotion` and `SceneDescription`
 produce numbers. **Nothing else in this repository translates between the two**,
 and this file is where that translation is written down.
 
 Measured against the family files: of the 29 metrics the three analysis modules
-produce, exactly two are named anywhere in `skills/families/` —
+produce, exactly two are named anywhere in `skills/plan/` stage files —
 `planar_dominance` and `pure_rotation_risk`, both in one paragraph of
 `matching.md`. The families speak in adjectives; step 2 speaks in numbers. What
 follows is the bridge, and it is empirical.
@@ -24,7 +24,7 @@ follows is the bridge, and it is empirical.
 listed at the top of each. A reference to another file always names it —
 `matching.md §5`, `swap_or_build.md`, `modules/scene_triage/skills/limitations.md`.
 Raw per-capture measurements are not kept here; they live in
-[`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md), and this file carries only what
+[`skills/evidence/`](../evidence/EVIDENCE.md), and this file carries only what
 generalises from them.
 
 **Read this as evidence, not as rules.** Every band below is *the range observed
@@ -100,7 +100,7 @@ Three groups, and the difference is mechanical rather than statistical:
 extremes are named by the KIND of capture that produced them rather than by scene
 id — a plan for a new capture can use "a controlled rig against a lit backdrop"
 and cannot use a name. Per-capture numbers and their scene ids are in
-[`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md) for traceability.
+[`skills/evidence/`](../evidence/EVIDENCE.md) for traceability.
 
 | metric | low end is | median | high end is | spread |
 | --- | --- | --- | --- | --- |
@@ -133,7 +133,7 @@ carrying an identifier.
 **So locate yourself by kind, not by value.** "Is this a fast outdoor traverse or a
 tight-arc rig?" is answerable from the description and transfers to a capture from
 outside this corpus; "is 0.31 high?" is answerable only by lookup and does not. The
-per-capture numbers remain in [`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md) for
+per-capture numbers remain in [`skills/evidence/`](../evidence/EVIDENCE.md) for
 traceability — and following that link is how a reader leaks their own answer, so
 go there to re-run a claim, not to place a reading.
 
@@ -188,7 +188,7 @@ thousands of rows, megabytes of it. Readers have been surprised in both directio
 some expected a summary and got the raw array, one assumed the raw array was
 unavailable and did not try. Whole is the useful behaviour and worth knowing about,
 because it is what makes the content-masked coverage analysis in
-`families/detection.md` §3 possible at all — but ask for one deliberately rather
+`plan/detection.md` §3 possible at all — but ask for one deliberately rather
 than in passing, and check the row count against the array shape the artifact
 reports before you compute anything on it.
 
@@ -554,7 +554,7 @@ Both of those planar readings came from captures near the bottom of the
 near-planar subject shot with small rotation is the
 configuration that produces this, and it now has two independent instances.
 
-`skills/families/matching.md` §5 separates the two causes and prescribes
+`skills/plan/matching.md` §5 separates the two causes and prescribes
 different fixes, and
 **`SceneMotion` has already done that separation** — which is the one place a
 measured number reaches a module choice directly. When the reading is the planar
@@ -796,8 +796,8 @@ Everything else in this file is a reading. This is a measurement: fourteen
 captures run through three detector+matcher branches to a sparse model, everything
 downstream held identical and all matchers at `pairing: exhaustive`. It is the
 first swap in this repository carried through and compared —
-`judgment/swap_or_build.md` was written admitting none existed. The per-capture
-numbers are in [`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md); what follows is what
+`judge/swap_or_build.md` was written admitting none existed. The per-capture
+numbers are in [`skills/evidence/`](../evidence/EVIDENCE.md); what follows is what
 generalises.
 
 ### 1. The failure that actually costs you frames is view-graph fragmentation
@@ -1025,7 +1025,7 @@ three — often by a factor of two or more. (This sentence used to continue "bec
 its keypoint budget is capped where a classical detector's is not." That explanation
 is refuted: at caps neither detector binds on, the learned detector has returned
 *more* keypoints than the classical one on several captures. The point-count result
-stands; its cause is open. See `families/detection.md`.) That is not an argument against it: on the
+stands; its cause is open. See `plan/detection.md`.) That is not an argument against it: on the
 fragmenting captures it was the only branch that finished. **It is an argument
 against reaching for it by default.** Buy it for connectivity and robustness, and
 expect to pay for that in point count; if the graph was never in danger, the cheap
@@ -1184,136 +1184,13 @@ that would otherwise act on it.
 
 ---
 
-## 5. Recording protocol
+## 5. Where the recording protocol went
 
-**This file is a staging area, and deliberately so.** Everything here is written
-in one place now so it can be split later, and the split is already known:
-
-| destination | content |
-| --- | --- |
-| `skills/families/*.md` | *when a given module is good* — distilled per stage, joining the structural axes already there |
-| `skills/judgment/*.md` | family-based, and specifically **when to swap a module or build a new one** |
-| this file | the metric-to-adjective translation, which belongs to no single family |
-
-Until that split happens, add here. The same applies to `docs/import_lessons.md`
-and to any other experiment write-up: dump first, organise once there is enough
-to organise, and do not fragment an observation across files before its shape is
-clear.
-
-**Write the SCENARIO, not the scene.** This is the rule that decides whether an
-entry is worth anything later. A plan for a capture nobody has seen cannot use
-"&lt;scene&gt; gained 20%"; it can use "a capture whose subject repeats and whose graph
-is not at risk gains from a joint matcher". Every claim here must be phrased so
-that a reader can tell **whether their capture is the kind being described**,
-without knowing any of ours.
-
-| write this | not this |
-| --- | --- |
-| *a built interior whose blank walls are the subject* | *&lt;dataset&gt; &lt;scene&gt;* |
-| *a near-planar surface shot nearly square-on* | *&lt;two scenes you happen to remember&gt;* |
-| *a capture that covers ground quickly between adjacent frames* | *the four high-`overall_magnitude` scenes* |
-| *the highest readings you have seen, with a gap below them* | *above &lt;the cut point you happened to fit&gt;* |
-
-**The right-hand column is deliberately empty of real names, and that is part of
-the rule rather than tidiness.** A table that pairs a capture description with the
-capture it came from is a lookup key: a reader who recognises one of those names
-has been handed their own answer and will read it as confirmation. This section
-was itself the leak — it used to name a capture beside its measured swap outcome,
-and a reader driving that very capture found its own prior result here, in the file
-telling it not to do that. Illustrate the mistake with a placeholder; the evidence
-record is where names belong.
-
-### A corpus member cannot be a cold reading of itself
-
-The de-naming above protects a reader planning a *new* capture. It does nothing for
-the case that turns out to be common: **the capture in front of you is one of the
-captures these bands were fitted on.**
-
-When that happens, this file stops being guidance and becomes recall. Its range
-table's extremes are, by construction, specific captures' own readings printed to
-five significant figures — so a planner who "locates their reading in the observed
-range" and finds it *is* the maximum has looked up their own number. Several
-readings in this file have been recognised that way by readers who then said so.
-
-Two things follow, and they pull in opposite directions.
-
-**For the reader.** Before treating a band as independent evidence, check whether
-your capture is in it. If your reading matches a quoted extreme to several digits,
-it is yours. Say so in the plan rather than presenting the reading as confirmation —
-a rule reproducing on its own training data is worth much less than the same rule
-reproducing out of sample, and the difference is exactly the thing a plan should be
-honest about.
-
-**For whoever writes here.** The evidence records exist so a claim can be traced
-back and re-run — that is their whole point, and this file links to them from three
-places for exactly that reason. But those records are indexed by scene name and
-carry downstream results, so **following the traceability link is itself the leak**:
-a reader sent there to locate a threshold finds their own capture's registration
-outcome on the same screen. That has happened, and the reader disclosed it rather
-than pretending otherwise, which is the right behaviour and not a fix.
-
-There is no clean way to have both. What is achievable: a brief that says plainly
-when the capture it describes is already in the corpus, so a planner knows which
-kind of reasoning they are doing before they start. Until that exists, treat
-"unrecognised capture" as an assumption to check rather than a given.
-
-**And note what this does *not* excuse.** A named capture in the prose is still the
-wrong way to write a lesson, including where the name would let a reader detect
-contamination — an evidence record is the place for names. The two problems have
-different fixes and solving one with the other makes both worse.
-
-### The same rule binds the family files, and a number leaks as surely as a name
-
-**Everything above is written about this file, and that scoping was itself the
-gap.** The de-naming rule and the corpus-membership warning were both phrased
-around this file's range table, so a worked example carrying one capture's
-measured readings into `skills/families/*.md` passed every check here — and one
-did, quoting a pair of transfer errors to three significant figures in a file
-whose whole job is to be read by someone who has never seen that capture.
-
-**A quoted measurement is a lookup key whether or not a name is attached to it.**
-A reader whose run reproduces a figure to the digit has found their own result,
-and the family files are read on every capture rather than only at planning time,
-so they leak more often than this one does. The rule for a worked example in a
-family file is the rule for a band here: give the RATIO, the DIRECTION and the
-SCENARIO, and let the evidence record hold the digits.
-
-| write this | not this |
-| --- | --- |
-| *several times the chaining tracker's error, on captures where the ratio ran well above one* | *&lt;x.xx&gt;px against &lt;y.yy&gt;px* |
-| *moved by nearly an order of magnitude on some captures and almost nothing on others* | *moved this metric by &lt;0.00xx&gt; across &lt;n&gt; runs* |
-
-**Thresholds are the same mistake in numeric form.** A cut point derived from N
-captures is a property of those captures. **Do not print the number even as an
-example of what not to write** — a reader in a hurry lifts it straight out of the
-counter-example column and uses it as the threshold, which is exactly what
-happened to an earlier version of the row above. State the *direction* and the *shape of
-the evidence* (unanimous, a clean gap, one exception and why), and let the reader
-locate their own reading in it. Where a number genuinely is load-bearing, name it
-once and say what corpus produced it.
-
-**Raw per-capture numbers belong in
-[`skills/runs/EVIDENCE.md`](runs/EVIDENCE.md), not here.** Provenance matters and it
-should be traceable — but it should be traceable from a place a planner is not
-reading, so the reasoning in this file cannot quietly become a lookup table.
-
-**What a new entry needs.** A claim without these is not usable later:
-
-1. **The scenario** — what kind of capture this was, in terms someone could match
-   against their own, plus the count so the sample is weighable
-2. **The number**, not an adjective — and its direction, not just its value
-3. **How it was checked** — measured end to end, seen at full resolution, or
-   inferred. Say which; these are not interchangeable
-4. **What it changed**, or explicitly that it changed nothing
-5. **What the check could NOT have caught.** A comparison only settles a question
-   whose failure mode shows up in the metrics collected. Say which failure modes
-   would have been invisible to it
-
-**Update the frontmatter `scenes:` count** when adding, and update §1's table when
-a new reading moves a min or max. A range that has not moved in twenty scenes is
-worth more than one asserted once.
-
-**Contradictions stay.** When a reading disagrees with something written here, add
-it beside the original rather than replacing it, and say which scene produced
-each. Both `repetitiveness` failures in §2 are recorded that way, and they are the
-most useful lines in the file.
+**The protocol for writing into this file — and into the stage files beside it —
+lives in [`distill/SKILL.md`](../distill/SKILL.md) §9**, with the rest of the
+rules for turning a session into context. The two rules a READER of this file
+still needs are stated where they bite: §1 says what corpus every range is
+scoped to, and `sfm_plan_brief`'s `in_planning_corpus` field says whether the
+capture in front of you is a member — in which case locating your readings in
+these ranges is recall, not confirmation (the full caution is in
+[`evidence/EVIDENCE.md`](../evidence/EVIDENCE.md)).

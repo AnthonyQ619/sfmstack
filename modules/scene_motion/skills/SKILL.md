@@ -67,7 +67,7 @@ module produces.** They measure adjacent-frame overlap, and a capture that cover
 ground quickly between neighbours shares less between distant frames — which is
 what an exhaustive view graph is built from. A high reading predicts a sparse
 graph: plan exhaustive pairing and budget for a learned detector and matcher. See
-[limitations.md](limitations.md) and `skills/scene_to_pipeline.md`.
+[limitations.md](limitations.md) and `skills/plan/scene_to_pipeline.md`.
 
 `low_baseline_risk` survives on different grounds: it has never fired, but no
 capture in the corpus is a dense video-rate sequence, so it is untested rather
@@ -90,3 +90,10 @@ checkpoint. One forward pass per pair at 640px.
 unconditionally; run this one when the capture geometry is in question.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+Exercised across **66 runs at version 1.3.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill — including which two of its own
+thresholds rest on reasoning rather than measurement.

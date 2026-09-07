@@ -286,7 +286,7 @@ cap is the observable form of the same fact, and it is enough.
 > orientation part-way through.** A block of portrait frames among landscape ones
 > is invisible to every analysis metric and inverts the advice below, because
 > upright-trained learned detectors fail across the break where a
-> rotation-invariant classical one does not. `families/matching.md` has the
+> rotation-invariant classical one does not. `plan/matching.md` has the
 > signature to look for and what to do.
 
 ## Which end to reach for
@@ -314,7 +314,7 @@ have chosen it.
 **Ask connectivity FIRST and repetition second.** The two questions have an order
 and getting it wrong is expensive: on a fast capture whose subject does not
 repeat, the repetition question sends you to the classical detector precisely
-where the graph cannot afford it. See `skills/scene_to_pipeline.md` §3b.
+where the graph cannot afford it. See `skills/plan/scene_to_pipeline.md` §3b.
 
 Applied cold to captures it had not been fitted on, the ordered pair decided the
 detector every time and nothing else came close to deciding it — not texture

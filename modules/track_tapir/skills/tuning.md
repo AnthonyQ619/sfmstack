@@ -166,3 +166,14 @@ single-factor confidence would. 0.71 here is healthy.
 **`mean_confidence` and `mean_occlusion` read the query selection**, not the
 quality of what survived — both are computed over all predictions, before
 thresholding.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Seven healthy bands**
+(`track_count`, `avg_track_length`, `long_track_fraction`,
+`trifocal_transfer_px`, `split_rate`, `track_survival_5`, and one more) declare
+a range no diagnostic reads — descriptions of the captures measured so far, not
+judgements on yours. The numbers in the `query_frame_num`, `input_size`,
+`min_confidence`, `pyramid_level` and `dedupe_eps_px` advice are settings that
+worked in isolated testing, not published results — and this module has run
+**zero times** in a real pipeline.

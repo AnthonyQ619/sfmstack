@@ -75,3 +75,9 @@ angle, zero cheirality rejections, in 1.3s.
 
 **Reading the output:** [artifact.md](artifact.md). The cloud is unrefined —
 `BundleAdjustmentGlobal` took it from 0.376px to 0.253px on that same run.
+
+## Provenance
+
+Exercised across **27 runs at version 1.1.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill.

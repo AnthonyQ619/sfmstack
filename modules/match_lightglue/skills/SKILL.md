@@ -80,3 +80,9 @@ are not what it was trained on.
 
 **Reading the output:** [artifact.md](artifact.md). Interchangeable with the
 classical matchers' output by design.
+
+## Provenance
+
+Exercised across **75 runs at version 1.6.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`) — the most-run matcher in the
+registry; no capture outside them. Claim-by-claim citations: the `sources` skill.

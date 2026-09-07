@@ -126,3 +126,12 @@ are close and opposite ones are a diameter apart, so a clean partial orbit reads
 around a third. Low values mean a few distant pairs dominate while the rest sit
 nearly on top of each other. Read `median_camera_separation` for the size, and
 note that neither says anything about correctness.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `registered_fraction`,
+`registered_images`, `baseline_span` and `chunks` bands have no diagnostic
+reading them — descriptions of the captures measured so far, not judgements on
+yours. The numbers in the `max_images_per_pass` and `dtype` advice are settings
+that worked in isolated testing, not published results — and this module has
+run **zero times** in a real pipeline.

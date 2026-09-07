@@ -16,7 +16,7 @@ description: |
   Traits are the retrieval key: they match the `scene_traits` frontmatter on
   worked runs, so "find scenes like this one" is a set intersection rather than a
   judgment call. Traits are DERIVED BY THE ORCHESTRATOR from these numbers using
-  thresholds held in skills/judgment/, not computed here -- revising a threshold
+  thresholds held in the global skills tier, not computed here -- revising a threshold
   must not cost a GPU hour.
 
 files:

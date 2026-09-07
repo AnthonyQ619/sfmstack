@@ -133,3 +133,10 @@ combine `square` with a supplied `calibration_path`.
 ## Observed
 
 *None yet. Populated by the distillation loop.*
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest: no healthy band here lacks a
+diagnostic, and the only numeric advice without a citation is `image_dir`'s.
+The dataset-layout table in the `sources` skill is the part that actually goes
+stale — it lists its own review triggers.

@@ -63,3 +63,10 @@ pose estimator: **8/8 registered at 0.33 px**.
 `merge_eps_px` 3–4 px for a 1024 px working resolution.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end. The first real run is the trigger to re-check all of it.
+Claim-by-claim citations: the `sources` skill.

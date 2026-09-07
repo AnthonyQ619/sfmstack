@@ -170,3 +170,14 @@ is what removes them.
 `long_track_fraction` measured downstream will look terrible until the tracker's
 `merge_eps_px` is set correctly, and that is a *tracker* configuration problem, not
 a matching one. Check it before concluding this module matched badly.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Six healthy bands**
+(`pairs_matched`, `matches_per_pair`, `largest_component_fraction`,
+`min_image_degree`, `planarity`, `mean_match_score`) declare a range no
+diagnostic reads — descriptions of the captures measured so far, not judgements
+on yours. The numbers in the `pairing`, `min_confidence`, `max_matches`,
+`resize_long_edge` and `min_matches` advice are settings that worked in
+isolated testing, not published results — and this module has run **zero
+times** in a real pipeline.

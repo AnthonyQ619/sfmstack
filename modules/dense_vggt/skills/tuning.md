@@ -82,3 +82,13 @@ was never checked.
 **Nothing here measures agreement between views.** There is no fusion, so a
 consistent-looking cloud may be four slightly different surfaces overlaid. The
 metrics cannot see that and neither can a viewer at low zoom.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `point_count`,
+`views_contributing`, `mean_depth_confidence` and `depth_scale_spread` bands
+have no diagnostic reading them — descriptions of the captures measured so far,
+not judgements on yours. The numbers in the `stride`, `min_confidence`,
+`depth_scale` and `write_ply` advice are settings that worked in isolated
+testing, not published results — and this module has run **zero times** in a
+real pipeline.

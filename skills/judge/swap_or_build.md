@@ -1,7 +1,7 @@
 ---
 name: swap_or_build
 description: When to stop tuning a module and change it, and when nothing in the registry fits and a new one is warranted. Organised by family.
-status: mostly structural — one branch comparison has been run over fourteen captures; those rows are tagged [measured]. Claims are stated as scene properties, never scene names; raw per-capture numbers are in skills/runs/EVIDENCE.md.
+status: mostly structural — one branch comparison has been run over fourteen captures; those rows are tagged [measured]. Claims are stated as scene properties, never scene names; raw per-capture numbers are in skills/evidence/branch-comparison-2026-08.md.
 ---
 
 # Tune, swap, or build
@@ -126,7 +126,7 @@ no swap performed. **`[unmeasured]`** is argument only.
   repeat. **`[measured: 14]`** The ratio test is doing real work when nothing is
   confusing it, and replacing it costs real points. `repetitiveness` is the
   closest thing to a signal for which side you are on, and it is a weak one —
-  see `scene_to_pipeline.md` §2, which explains why it is measuring a different
+  see `plan/scene_to_pipeline.md` §2, which explains why it is measuring a different
   axis than the hazard.
 - **Repeated PATTERN between images** → try scale and context first: a larger
   descriptor support, a higher working resolution. Swap only if that fails.
@@ -256,11 +256,11 @@ a manifest that omits one fails before any container starts.
 ## What is NOT in this file
 
 **Thresholds.** What counts as "narrow baseline" or "repetitive texture" lives in
-[scene_to_pipeline.md](../scene_to_pipeline.md) with the measured ranges behind
+[plan/scene_to_pipeline.md](../plan/scene_to_pipeline.md) with the measured ranges behind
 it. This file assumes you have already read a number as high or low and asks what
 to do about it.
 
-**Stopping.** When a result is good enough is [stopping.md](stopping.md), which is
+**Stopping.** When a result is good enough is [health/ladder.md](../health/ladder.md), which is
 not written yet.
 
 **Which families to trust.** Not written, and not linked — there is no `priors.md`.
@@ -273,7 +273,7 @@ not written yet.
 to scenes where a *reading* supported the claim, not to swaps that were performed
 and compared, **with one exception, now recorded.** Six scenes have been run
 through three detector+matcher branches to a sparse model with everything
-downstream held identical — see `scene_to_pipeline.md` §4a. What it settled:
+downstream held identical — see `plan/scene_to_pipeline.md` §4a. What it settled:
 
 - **A learned detector is not a way to get more points.** SuperPoint's keypoint
   cap binds at 2048 where SIFT returns 4000–7000 on the same frames, and
@@ -297,7 +297,7 @@ The claims marked `[structural]` do not need that evidence — they follow from
 where each family's numbers come from. The ones marked `[observed]` and
 `[unmeasured]` do, and until it exists they are arguments dressed as guidance.
 
-Add to this file the same way as to `scene_to_pipeline.md`: the scene, the
+Add to this file the same way as to `plan/scene_to_pipeline.md`: the scene, the
 number, how it was checked, and what it changed. A swap that was tried and did
 NOT help is worth more here than one that did, and is the entry most likely to be
 left out.

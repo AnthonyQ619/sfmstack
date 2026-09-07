@@ -55,7 +55,7 @@ orbit it will usually skip the adjacent pair, which has the most matches and the
 least baseline. Seeding on adjacent frames is worth one probe with
 `init_min_angle_deg` — but note that index distance is not viewpoint distance on
 every capture, so an adjacent-index seed is not by itself evidence of anything.
-See `families/matching.md` on that precondition.
+See `plan/matching.md` on that precondition.
 
 ## `registered_fraction` below 1.0
 
@@ -176,7 +176,7 @@ sweep of twelve-image sets:
    *together*, and neither ranks the two runs on its own. A bigger model is a
    harder model. Error rising while a quarter more structure survives is not a
    regression, and reading it as one is the same mistake
-   [`families/optimization.md`](../../../skills/families/optimization.md) names
+   [`plan/optimization.md`](../../../skills/plan/optimization.md) names
    for bundle adjustment, arriving one stage earlier than that file expects it.
 
    **Correction, because this item said something stronger.** It claimed the error
@@ -454,3 +454,14 @@ failed to register 14 images. Compare error only between models with the same
 `registered_images`; across different counts it is not a comparison at all. This
 is the single easiest way to misread this artifact, and it is the mistake made once
 already in this repository's own reporting.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Five healthy bands**
+(`registered_images`, `points_triangulated`, `median_triangulation_angle`,
+`track_utilization`, `init_pair_angle`) declare a range no diagnostic reads —
+descriptions of the captures measured so far, not judgements on yours. The
+specific numbers in the `min_triangulation_angle_deg`,
+`max_reprojection_error`, `min_pnp_inliers`, `min_track_len`,
+`local_ba_window`, `local_ba_interval` advice (and one more) are settings that
+worked here, not published results.

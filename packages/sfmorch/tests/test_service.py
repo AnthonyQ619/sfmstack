@@ -242,6 +242,56 @@ def test_workflow_skill_reads_the_knowledge_base(service):
     assert "Knowledge Index" in doc["text"]
 
 
+def test_workflow_skill_resolves_moment_tiers_on_a_bare_topic(service):
+    """`ladder` finds health/ladder.md the way `stopping` used to find
+    judgment/stopping.md -- the bare-topic search follows the tiers."""
+    doc = service.workflow_skill("ladder")
+    assert doc["path"].endswith("health/ladder.md")
+    assert "moved_to" not in doc
+
+
+def test_workflow_skill_redirects_pre_reorganisation_topics(service):
+    """Old topic names must keep resolving. A miss costs more than a redirect:
+    when workflow/ raised on every request, readers concluded the whole
+    knowledge base was gone. The response says where the file went so the
+    reader learns the new name instead of a dead one."""
+    for old, new_suffix in [
+        ("judgment/stopping", "health/ladder.md"),
+        ("judgment/priors", "evidence/EVIDENCE.md"),
+        ("families/tracking", "plan/tracking.md"),
+        ("scene_to_pipeline", "plan/scene_to_pipeline.md"),
+        ("runs/EVIDENCE", "evidence/EVIDENCE.md"),
+    ]:
+        doc = service.workflow_skill(old)
+        assert doc["path"].endswith(new_suffix), (old, doc["path"])
+        assert doc["moved_to"], old
+        assert "moved" in doc["note"]
+
+
+def test_a_sparse_model_run_carries_the_health_digest(service, scene):
+    """The health tier's one compelled delivery: the payload of any run that
+    produces a sparse_model/v1 carries the seven-rung profile. With no
+    reference corpus on disk every rung says so honestly instead of guessing --
+    a rung's raw value without the corpus distribution behind it invites
+    exactly the threshold-reading the ladder file warns against."""
+    scene_id = scene["outputs"]["scene"]
+    _, _, tracks = pipeline(service, scene_id)
+    assert "health_profile" not in tracks, "only a sparse model gets the digest"
+    rec = service.run(
+        "FakeReconstructor", run_id="r",
+        inputs={"scene": scene_id, "tracks": tracks["outputs"]["tracks"]},
+    )
+    profile = rec["health_profile"]
+    assert profile["status"].startswith("cannot evaluate")
+    assert set(profile["rungs"]) == {
+        "registration", "conditioning", "composition", "coverage",
+        "error", "yield", "pose_agreement",
+    }
+    for rung in profile["rungs"].values():
+        assert "cannot evaluate" in rung["value"]
+    assert "health/ladder" in profile["read"]
+
+
 # --------------------------------------------------------------------------- #
 # Authoring
 # --------------------------------------------------------------------------- #

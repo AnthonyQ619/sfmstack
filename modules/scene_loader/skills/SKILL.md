@@ -58,3 +58,9 @@ representative of the whole trajectory.
 arrays are the part worth understanding; see
 [limitations.md](limitations.md#mixed-source-resolutions) for why they are arrays
 and not scalars.
+
+## Provenance
+
+Exercised across **20 runs at version 1.1.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill.

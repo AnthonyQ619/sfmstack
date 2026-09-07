@@ -83,6 +83,68 @@ opposite responses.
 
 ---
 
+## The health profile — the ladder as seven measurable rungs
+
+The run summary of any run that produces a `sparse_model/v1` carries a **health
+profile**: one reading per rung below, each expressed as a **percentile within the
+reference corpus** — the reconstruction of every corpus capture by the reference
+pipeline, recorded in the reference campaign under
+[`evidence/`](../evidence/EVIDENCE.md). Until that campaign has run, the digest
+reports every rung as *cannot evaluate: no reference yet*, and that is the honest
+state, not an error.
+
+Every component is computable from the model and its inputs alone — no ground
+truth — and scene-size invariant, so a percentile against the corpus is a fair
+comparison rather than a measure of which scene you are on:
+
+| Rung | Component | Why it cannot be gamed |
+| --- | --- | --- |
+| Registration | registered frames / capture frames | a fraction, not a count |
+| Conditioning | median triangulation angle over points | angle is scale-free |
+| Composition | median track length, and points per registered frame | support, not raw point count |
+| Coverage | median over frames of the fraction of image grid cells holding ≥1 observation | evenness, not totals |
+| Error | median reprojection error **among well-supported points only** (track length ≥ corpus-median support) | composition-adjusted; dropping long tracks cannot flatter it |
+| Yield | structure surviving into the model / structure the pipeline had available | self-normalised by the capture's own upstream supply |
+| Pose agreement | median angular discrepancy between final relative poses and the pairwise two-view estimates (rotation angle, and translation *direction* angle) | never touches the points, so it sees the drift reprojection error cannot |
+
+**The scalar, when one number is wanted, is the minimum percentile across the
+seven** — the weakest rung. That matches the ladder's semantics (a model is only
+as healthy as its worst constraint) and cannot average a failure away. The report
+is always the vector plus the weakest rung; the raw point count and model size sit
+in the header as stated context, because a raw count is only comparable *within* a
+capture (model A against model B of the same scene — the procedure below), never
+across scenes.
+
+Three rungs need a definitional note:
+
+- **Yield is recorded in both its forms** until the reference campaign decides
+  between them: track-yield (3D points / tracks entering reconstruction) and
+  observation-yield (observations in the model / observations in the tracks). The
+  second is stricter — it also punishes truncating long tracks — and is the
+  provisional default. Yield is the profile's anti-gaming guard: any tuning that
+  flatters error, composition or coverage by discarding structure pays here,
+  visibly. Its own blind spot — a starved pipeline converting its few tracks
+  efficiently — is covered by coverage and registration, which read the emptiness
+  directly.
+- **Pose agreement** exists because the profile otherwise reads pose quality only
+  through the points, and a pose set that is *self-consistently* wrong — drift, a
+  solve locked into a distorted but coherent frame — produces structure that
+  reprojects cleanly (see the wrong-depth entry in [smells.md](smells.md)). It is
+  a consistency reading, not an error against truth: the pairwise measurements
+  are themselves noisy, and the discrepancy blends both errors.
+- **Percentiles over the corpus are coarse** — with seventeen reference draws
+  they move in roughly six-point steps — and a capture below the corpus minimum
+  reads as *below the observed range*, never as *failed*: the minimum is the
+  smallest of seventeen draws, not a floor.
+
+On the reference corpus itself, ground-truth poses exist (the benchmark families
+ship them), so the reference campaign records GT pose error **beside** the
+internal readings — used once, to validate which internal readings actually track
+truth before any definition is frozen. GT can never be a rung; the profile must
+work on captures that have none.
+
+---
+
 ## Comparing two finished models
 
 Most stopping decisions are really this decision. The procedure that survives
@@ -155,7 +217,10 @@ because the two are not measuring equally constrained geometry. Everything above
 is comparative or structural for that reason.
 
 **Nothing here is ground truth.** Every reading in this stack is internal
-consistency — the model agreeing with itself. A reconstruction can satisfy every
-rung above and be globally wrong in a way no metric here can see. Where accuracy
+consistency — the model agreeing with itself. The pose-agreement rung narrows
+this blind spot (it checks the global solve against the local evidence it was
+built from, independently of the points) but does not close it: a reconstruction
+can satisfy every rung above and be globally wrong in a way no metric here can
+see. Where accuracy
 against reference geometry actually matters, that requires a dataset with
 reference structure, and the answer does not live in this pipeline.

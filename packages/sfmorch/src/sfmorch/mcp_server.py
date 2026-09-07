@@ -263,10 +263,10 @@ def build_server(service: SfmService):
             `series` is what makes that followable; indices are positions in
             `scene.images`, and each series carries the index it was written
             against, which is not always the same one
-          - `skills/scene_to_pipeline.md`, which is how those numbers are read:
+          - `skills/plan/scene_to_pipeline.md`, which is how those numbers are read:
             the ranges measured across every scene so far, what each metric can
             and cannot tell you, and the traps that have already caught someone
-          - the family file for each pipeline stage, which is what says which
+          - the stage file (`skills/plan/<stage>.md`) for each pipeline stage, which is what says which
             member of that stage to reach for
           - the live menu of modules consuming `scene/v1`
           - the shape the plan should take
@@ -332,7 +332,7 @@ def build_server(service: SfmService):
 
     @mcp.tool()
     def sfm_workflow_skill(topic: str) -> dict[str, Any]:
-        """Read a cross-cutting workflow guide or judgment document."""
+        """Read a cross-cutting guide: plan/, judge/, health/, evidence/, distill/, docs/."""
         return service.workflow_skill(topic)
 
     # ------------------------------------------------------------ authoring

@@ -392,7 +392,8 @@ def test_the_two_producers_cover_the_type_without_a_merge_step(orch, monkeypatch
     assert triage.type == motion.type == "scene_analysis/v1"
     assert not (a & b), f"the two producers overlap on {a & b}"
     # `traits` is the one declared group neither fills: it is derived by the
-    # orchestrator from thresholds in skills/judgment/, not computed here.
+    # orchestrator from thresholds held outside the modules, not computed here
+    # -- and those thresholds deliberately do not exist yet (see evidence/INDEX).
     assert a | b == {"metadata", "photometric", "texture", "motion", "degeneracy"}
 
 

@@ -163,3 +163,11 @@ signal as 4096 SIFT ones.
 `spatial_coverage` is the metric worth reading, and SuperPoint scores well on it
 (0.932 on the reference run) largely because of the heatmap NMS. Do not treat that
 high number as headroom — it is the normal operating point, not a margin.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `keypoints_per_image` and
+`spatial_coverage` bands have no diagnostic reading them — descriptions of the
+captures measured so far, not judgements on yours. The specific numbers in the
+`max_keypoints`, `detection_threshold`, `nms_radius` and `resize_long_edge`
+advice are settings that worked here, not published results.

@@ -31,7 +31,7 @@ nearly free" that is true: a joint matcher can consume a classical detector's
 ## When to spend
 
 **Spend on the A/B, not on the prediction.** The corpus's predictive claims about
-which branch wins have failed repeatedly ([priors.md](priors.md)), and the
+which branch wins have failed repeatedly (the reliability ladder in [evidence/EVIDENCE.md](../evidence/EVIDENCE.md)), and the
 comparison has been right every time it was carried to a model. An hour of
 matching is cheap against shipping the wrong branch.
 
@@ -45,7 +45,7 @@ and increases graph density quadratically. Fragmentation that motivates an
 expensive branch swap has been measured disappearing when every frame was loaded.
 
 **Do not spend on a metric at its ceiling.** If a reading will not move across a
-real sweep, the next run will not move it either ([smells.md](smells.md)).
+real sweep, the next run will not move it either ([health/smells.md](../health/smells.md)).
 
 ---
 

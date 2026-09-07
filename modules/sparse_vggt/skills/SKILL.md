@@ -60,3 +60,10 @@ The 1.0044 is the sanity check: fed its own model's poses, the scale estimator
 recovers unity, because the two units already agree.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end. The first real run is the trigger to re-check all of it.
+Claim-by-claim citations: the `sources` skill.

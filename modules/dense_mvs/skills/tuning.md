@@ -122,3 +122,13 @@ nothing.
 **Nothing here measures accuracy against ground truth.** Every number is internal
 consistency. A reconstruction can be complete, well-fused, and in the wrong place
 if the poses were.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `point_count` and
+`views_contributing` bands have no diagnostic reading them — descriptions of
+the captures measured so far, not judgements on yours. The specific numbers in
+the tuning advice for `max_image_size`, `window_radius`, `window_step`,
+`num_samples`, `num_iterations`, `filter_min_ncc` and six more parameters are
+settings that worked in isolated testing, not published results — and this
+module has run **zero times** in a real pipeline.

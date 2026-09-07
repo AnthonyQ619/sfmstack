@@ -1,90 +1,24 @@
 ---
 module: BundleAdjustmentGlobal
 module_version: 1.1.0
-curated_at: 2026-08-07
+curated_at: 2026-09-07
 ---
 
-# Sources
+# Where BundleAdjustmentGlobal's claims come from
 
-## Bundle adjustment
+**Cite-only, like the evidence tier: this file exists to be referenced, not
+browsed.** The provenance summary rides `SKILL.md` (inlined into every describe
+call); warnings about unsourced bands sit in `tuning.md` beside the bands; the
+re-check rule is the one global rule in `SKILLS.md`.
 
-**Triggs, McLauchlan, Hartley, Fitzgibbon, "Bundle Adjustment — A Modern
-Synthesis", Vision Algorithms 1999.** Still the reference. Sections 3 and 4 cover
-the sparse normal-equation structure that makes the problem tractable; section 6
-covers gauge freedom, which is why this module pins two cameras
-(`BundleAdjustmentGauge.TWO_CAMS_FROM_WORLD`) rather than leaving the similarity
-free.
-
-The gauge choice matters practically: without it the solver wanders along the
-7-dimensional similarity manifold, which costs iterations and produces a model in
-an arbitrary frame each run.
-
-## The robust loss
-
-Cauchy, via Ceres. **Triggs et al., section 5.3** on robust cost functions.
-
-The default-on choice is a judgement, not a citation: real correspondence sets
-always contain a few gross outliers that survive upstream filtering, and squared
-error lets them dominate. The predecessor also defaulted `robust_loss=True`, using
-Huber; Cauchy is more aggressive at large residuals, which suits an input where
-the outliers are *wrong* rather than merely noisy.
-
-## Implementation
-
-**pycolmap 4.1.1**, wrapping COLMAP's `BundleAdjuster` over Ceres.
-
-Two API details worth recording, because both produced plausible wrong numbers
-rather than errors:
-
-- `Reconstruction.compute_mean_reprojection_error()` averages a per-point `error`
-  field that is unset until `update_point_3d_errors()` is called. It returns
-  **0.0** on a freshly built reconstruction.
-- `pycolmap.bundle_adjustment(rec, options)` returns `None` (its signature says
-  so). Convergence and iteration counts must come from
-  `create_default_bundle_adjuster(...).solve()`.
-
-Ceres solver options live at `options.ceres.solver_options`, not on
-`options.ceres`. The object rejects unknown attributes, so a typo is an
-`AttributeError` at solve time rather than a silently ignored setting — the good
-failure mode, and worth relying on.
-
-## COLMAP's larger loop
-
-**Schönberger and Frahm, CVPR 2016**, section 4.5. COLMAP does not call BA once;
-it alternates local BA, global BA, retriangulation, and filtering, iterating until
-the model stops growing.
-
-This module is one call. The alternation is expressible at the orchestrator level —
-triangulate, adjust, triangulate again — which the driving agent can drive without
-any new module, and which is a better fit for this architecture than nesting
-optimisers inside estimators (as the predecessor did).
-
-## Predecessor code
-
-`scene_agent/breadth_agent/src/sfmcore/optimization.py`,
-`BundleAdjustmentOptimizerGlobal` (lines 332+).
-
-Same backend, same defaults for `refine_*` (all False) and `max_num_iterations`
-(50 there, 100 here). The substantive differences:
-
-- It consumed and returned a live `Scene` object holding a `pycolmap.Reconstruction`
-  in memory, which is what forced the whole pipeline into one process. Here the
-  model round-trips through arrays, and the COLMAP form is an optional sidecar.
-- It could not report before/after error, because it had no independent measure of
-  the input — the reconstruction it was handed was the same object it mutated.
-
-## What is asserted without a source
-
-Audited 2026-09-02 against this module's own manifest.
-
-- **Healthy bands with nothing behind them.** `min_frame_points`, `p95_reprojection_error`, `observations_optimized`, `observation_count`, `mean_track_length`, `mean_reprojection_error`, and 1 more declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
-- **Numeric tuning advice with no citation in this file.** `max_iterations`, `loss_scale`, `min_track_length` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
-- **Scope of the measurements.** What is written here was exercised across 88 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.1.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.
-
-## Review triggers
-
-Re-read and re-check this file when any of these happens:
-
-- **This module's version changes from 1.1.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
-- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
-- **A reading crosses one of `min_frame_points`, `p95_reprojection_error`, `observations_optimized`, and 4 more and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.
+| Claim / content | Rests on |
+| --- | --- |
+| sparse normal-equation structure; gauge must be pinned (`TWO_CAMS_FROM_WORLD` — else the solve wanders the 7-dim similarity manifold) | Triggs, McLauchlan, Hartley, Fitzgibbon, "Bundle Adjustment — A Modern Synthesis", 1999, §3–4, §6 |
+| Cauchy robust loss family | Triggs et al. §5.3; the **default-on** choice is judgement, not citation (predecessor used Huber) |
+| `compute_mean_reprojection_error()` returns **0.0** until `update_point_3d_errors()` is called | pycolmap 4.1.1, observed directly |
+| `pycolmap.bundle_adjustment(...)` returns `None`; convergence must come from `create_default_bundle_adjuster(...).solve()` | pycolmap 4.1.1 API |
+| Ceres knobs live at `options.ceres.solver_options`; unknown attributes raise | pycolmap 4.1.1 API |
+| the BA/retriangulate/filter alternation belongs at orchestrator level, not nested in the module | Schönberger & Frahm, CVPR 2016, §4.5 |
+| `refine_*` defaults (all False); `max_num_iterations` raised 50→100 (then 300 after the converged audit — see `BundleAdjustmentLocal`'s sources for the bug that found it) | predecessor `sfmcore/optimization.py`, `BundleAdjustmentOptimizerGlobal` |
+| every measured band and episode in these skills | 88 runs at 1.1.0 across the seventeen-capture sweep — scope pinned by `evidence/CORPUS.txt`; no out-of-corpus capture |
+| 7 healthy bands; numeric values in `max_iterations`, `loss_scale`, `min_track_length` advice | **nothing** — see the audit section in `tuning.md` |

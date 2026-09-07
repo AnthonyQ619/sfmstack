@@ -190,7 +190,7 @@ invites.)
 One caution from the same set: a subject that *looks* planar need not read as
 planar. A carved relief panel photographed head-on scores zero, because the
 figures project far enough to cast their own shadows. The metric was right and the
-intuition was wrong — see `skills/scene_to_pipeline.md`.
+intuition was wrong — see `skills/plan/scene_to_pipeline.md`.
 
 When the analysis has not been run, the fallback is still the pose stage's own
 behaviour: a seed pair that cannot be found (`init_min_angle_deg` rejecting
@@ -225,7 +225,7 @@ on repetition grounds will save it; the answer there is a learned detector AND
 matcher together. Only once the graph is safe does the repetition question decide
 anything. On a fast capture with a repetitive subject, both halves of the usual
 argument are answering the wrong question — the graph fails before ambiguity gets
-a chance to matter. See `skills/scene_to_pipeline.md` §3b.
+a chance to matter. See `skills/plan/scene_to_pipeline.md` §3b.
 
 **When the graph IS safe and the subject repeats, swap only the matcher.** A
 jointly-reasoning matcher accepts classical descriptors — `FeatureMatchLightGlue`

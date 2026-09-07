@@ -1,7 +1,7 @@
 ---
 name: context-structure-design
 description: How written context is organised so an agent can select and tune SfM modules from retrieval alone — the layout, what each file is for, what causes it to be read, and what is measured about whether that works.
-status: current as of 2026-09-02; the layout described here is what is on disk
+status: current as of 2026-09-07; the layout described here is what is on disk (reorganised into moment tiers 2026-09-07)
 audience: for review and critique
 ---
 
@@ -51,30 +51,52 @@ response is the thing to critique.
 
 ## 2. The layout
 
+The global tier is organised by **the moment the reader is standing in** — the
+one thing a reader always knows about themselves:
+
 ```
 skills/
-  SKILLS.md              12 KB   ALWAYS RESIDENT. The index and the judgment digest.
-  scene_to_pipeline.md   80 KB   How to read a capture's measured numbers into a plan.
-  families/                      Choosing WITHIN a stage. 8 files, one per stage + README.
-    README.md · detection · matching · tracking · pose · sparse · optimization · dense
-  judgment/                      Practitioner calls. Human-authored, subjective, non-binding.
-    swap_or_build · stopping · smells · priors · tradeoffs
-  runs/                          Evidence, with scene names.
+  SKILLS.md              ALWAYS RESIDENT. The index; routes by moment.
+
+  plan/                  BEFORE ANYTHING RUNS
+    scene_to_pipeline.md   how to read a capture's measured numbers into a plan
+    detection.md … dense.md  one per stage: which member, for this scene
+
+  judge/                 A RUN FINISHED, NUMBERS IN HAND
+    swap_or_build.md       tuning stopped paying — is the module wrong, or is there no module?
+    tradeoffs.md           what the next attempt costs, incl. a run that dies partway
+
+  health/                A SPARSE MODEL EXISTS
+    ladder.md              the constraint ladder + the SEVEN-RUNG HEALTH PROFILE
+    smells.md              results that look fine numerically and are wrong
+    bounce.md              weakest rung low AND immobile across attempts → BUILD
+
+  evidence/              CHECKING OR CITING A CLAIM (scene names live here, only here)
+    EVIDENCE.md            campaign index + the reliability ladder (was judgment/priors)
+    <campaign>.md          one file per campaign, raw per-capture tables
     INDEX.md               trait-keyed retrieval table  [NO ROWS — see §7]
-    EVIDENCE.md            per-capture citation record
     CORPUS.txt             the captures every quoted range was fitted on
+
   distill/
-    SKILL.md               how to write new context      [THE LOOP HAS NEVER RUN — see §7]
+    SKILL.md               how to write new context; §9 is the recording protocol
+                           [THE LOOP HAS NEVER RUN — see §7]
 
 modules/<name>/
   module.yaml                    THE MANIFEST. Params, metrics, diagnostics, types.
   skills/
-    SKILL.md                     router + orientation    (inlined into every describe call)
-    tuning.md                    how to move this module's numbers
+    SKILL.md                     router + orientation + provenance line
+                                 (inlined into every describe call)
+    tuning.md                    how to move this module's numbers, and which
+                                 bands rest on nothing
     limitations.md               what this module cannot do
     artifact.md                  the payload it writes
-    sources.md                   where claims come from, and what rests on nothing
+    sources.md                   thin citation table: claim → evidence row
 ```
+
+Old topic names (`scene_to_pipeline`, `families/<stage>`, `judgment/<name>`,
+`runs/*`) redirect transparently at the resolver, with a `moved_to` note in the
+response — a miss costs more than a redirect, which is the `workflow/` lesson
+in §5.
 
 **Scale.** 28 modules across 8 stages (source 1, analysis 3, detection 4, matching
 6, tracking 3, pose 2, sparse 5, optimization 2, dense 2), declaring 238
@@ -94,31 +116,44 @@ any other document beside `skills/`.
 
 ### 3.1 The global tier
 
-| File | The question it answers | Not this |
-| --- | --- | --- |
-| `SKILLS.md` | "What exists, and what should I be worried about?" | Any actual guidance. It is an index and a digest. |
-| `scene_to_pipeline.md` | "I have numbers off this capture. What do they imply for my plan?" | A decision. It translates measurements into the vocabulary the family files are written in. |
-| `families/<stage>.md` | "I know I need a tracker — which one, for this scene?" | Which stage to look at. That is the file above. |
-| `judgment/*.md` | "Is this good enough? Which of these claims do I trust?" | Anything measured. This tier is explicitly subjective and non-binding. |
-| `runs/EVIDENCE.md` | "Where did this claim come from? How do I re-run it?" | A plan. See §3.3. |
-| `runs/INDEX.md` | "Has a capture like mine been solved before?" | Currently anything — it has no rows. |
-| `distill/SKILL.md` | "I learned something. Where does it go and in what shape?" | Currently anything — it has never been executed. |
+| File | The moment | The question it answers | Not this |
+| --- | --- | --- | --- |
+| `SKILLS.md` | always resident | "What exists, and where do I stand?" | Any actual guidance. It is an index that routes by moment. |
+| `plan/scene_to_pipeline.md` | before anything runs | "I have numbers off this capture. What do they imply for my plan?" | A decision. It translates measurements into the vocabulary the stage files are written in. |
+| `plan/<stage>.md` | before anything runs | "I know I need a tracker — which one, for this scene?" | Which stage to look at. That is the file above. |
+| `judge/swap_or_build.md` | a run finished | "Tuning stopped paying — is the module wrong, or is there no module?" | Whole-model doubt. That is `health/bounce.md`. |
+| `judge/tradeoffs.md` | a run finished | "What does the next attempt cost, and is it worth it?" | Quality judgements. |
+| `health/ladder.md` | a sparse model exists | "Is this good enough? When do I stop?" | An absolute threshold. Everything in it is comparative or corpus-relative. |
+| `health/smells.md` | a sparse model exists | "It looks fine — is it?" | Anything a single metric can answer. |
+| `health/bounce.md` | a sparse model exists, unhealthy | "Can the registry fix this, or is the right next act building a tool?" | Module-level doubt — that is `judge/swap_or_build.md`, which it hands off to. |
+| `evidence/EVIDENCE.md` | checking a claim | "Where did this come from, and how much is it worth?" | A plan. See §3.3. |
+| `evidence/INDEX.md` | planning | "Has a capture like mine been solved before?" | Currently anything — it has no rows. |
+| `distill/SKILL.md` | session ends | "I learned something. Where does it go and in what shape?" | Currently anything — it has never been executed. |
 
-The five `judgment/` files divide by the *kind of doubt* a reader has, which is
-different from the kind of question:
+judge/ and health/ divide by the *kind of doubt* a reader has: doubt about the
+module (`swap_or_build`), about the spend (`tradeoffs`), about the result
+(`ladder`), about the reading (`smells`), about the whole approach (`bounce`).
+Doubt about the corpus itself — which claims to believe when they contradict —
+is the reliability ladder at the top of `evidence/EVIDENCE.md`, folded there
+from a standalone file (`judgment/priors.md`) that nothing would ever have
+compelled a reader to fetch.
 
-- **`swap_or_build`** — the doubt is about the module. Tuning has stopped paying;
-  is the tool wrong, or is there no tool?
-- **`stopping`** — the doubt is about the result. The objective is as much
-  structure as possible from a model you have reason to trust, and this file
-  carries the constraint ladder (registration → conditioning → composition →
-  coverage → error) and the procedure for comparing two models.
-- **`smells`** — the doubt is about the reading. Seven cases where every metric
-  was individually correct and the conclusion drawn from them was wrong.
-- **`priors`** — the doubt is about the context itself. Which parts of this corpus
-  to believe when they contradict each other or your own measurement.
-- **`tradeoffs`** — the doubt is about the spend. What actually costs time,
-  including the axis normally left out: the cost of a run that dies partway.
+### 3.1b The health profile — the one designed-in push channel
+
+`health/ladder.md` defines a **seven-rung health profile**: registration
+fraction, conditioning (median triangulation angle), composition (support per
+point), coverage evenness, composition-adjusted error, yield (structure kept /
+structure available, recorded in both track- and observation-form), and pose
+agreement (final relative poses against the pairwise two-view estimates —
+the reading reprojection error is structurally blind to). Each rung is
+scene-size invariant and computable without ground truth; each is reported as a
+**percentile within the reference corpus**, and the scalar is the **minimum
+percentile** — the weakest rung, matching the ladder's semantics. The per-scene
+reference values are recorded by a reference campaign in `evidence/` (with GT
+validation columns, used once, to validate the internal readings); the run
+summary of any run producing a `sparse_model/v1` carries the digest. Until the
+reference campaign runs, every rung reports *cannot evaluate: no reference
+yet* — which is the mechanism working honestly, not a gap in it.
 
 ### 3.2 The per-module five, and why they are five
 
@@ -132,7 +167,7 @@ split has failed.
 | `tuning.md` | a number is out of band; which dial, which way, how far | fetched, usually from a diagnostic |
 | `limitations.md` | tuning is not working; can this module do the thing at all | fetched, usually from a diagnostic |
 | `artifact.md` | reading what it wrote | fetched |
-| `sources.md` | "where is this claim from, and what is it worth?" | fetched (rarely — §4) |
+| `sources.md` | "which evidence row backs this claim?" | cite-only, like the evidence tier — deliberately not written to be fetched (§4) |
 
 Two rules follow from the moment, and both were applied as edits rather than
 stated as aspirations:
@@ -155,36 +190,40 @@ that module's own manifest ("9 parameters, starting with `weights`"; a real "It
 cannot…" heading from its own limitations). This exists because `SKILL.md` is
 inlined, so it is the one place a pointer is guaranteed to be seen.
 
-**`sources.md` carries two mandatory sections, in all 28**, generated from a
-per-module audit of the manifest:
+**`sources.md` was 141 KB of prose nothing ever compelled, and it has been
+shrunk by promotion rather than deletion.** Its two load-bearing facts moved to
+where they are actually seen: the provenance line — how many runs of *this*
+module, at what version, on what corpus, or "run zero times; nothing here is
+exercised" — now rides the `SKILL.md` router, which is inlined into every
+describe call; and each unsourced-band warning sits in `tuning.md` beside the
+band it indicts, delivered when a diagnostic fires — the exact moment the band
+is about to be trusted. The 28 near-identical "review triggers" sections
+collapsed to one rule in `SKILLS.md`. What remains in `sources.md` is a thin
+module-major citation table — claim → evidence row — kept because the evidence
+tier is scene-major and nothing else answers "everything this module claims,
+and what each claim rests on."
 
-- **"What is asserted without a source"** — the healthy bands no diagnostic reads,
-  the numeric tuning advice with no citation, and the scope of the measurements
-  (how many runs of *this* module, at what version, on what corpus).
-- **"Review triggers"** — the events that should send someone back to this file: a
-  version change, a capture unlike the corpus, a reading crossing a band with
-  nothing firing.
+### 3.3 The tier that must not be used for its obvious purpose
 
-These are module-specific by construction, never blanket. `PoseEssentialToPnP`'s
-names its own uncited metrics and "109 runs at 1.2.0"; `DenseMVS`'s says plainly
-that it was run zero times and that nothing in it has been exercised end to end.
+The `evidence/` campaign files hold per-capture measurement tables **with scene
+names**, which exist nowhere else — every claim elsewhere is deliberately stated
+as a scene *property* ("a controlled rig against a lit backdrop") rather than a
+scene name, because a name does not transfer to a capture from outside the
+corpus.
 
-### 3.3 The one file that must not be used for its obvious purpose
+The tables are there so a claim can be **traced and re-run**, and the tier says
+at the top that planning from a row is the misuse it is most likely to cause: a
+reader who matches their own readings against a row to find "the capture like
+mine" is usually reading their own capture back to themselves.
 
-`runs/EVIDENCE.md` holds per-capture measurement tables **with scene names**, which
-exist nowhere else — every claim elsewhere is deliberately stated as a scene
-*property* ("a controlled rig against a lit backdrop") rather than a scene name,
-because a name does not transfer to a capture from outside the corpus.
-
-The tables are there so a claim can be **traced and re-run**, and the file says at
-the top that planning from a row is the misuse it is most likely to cause: a reader
-who matches their own readings against a row to find "the capture like mine" is
-usually reading their own capture back to themselves.
-
-This is why `INDEX.md` and `EVIDENCE.md` were split apart in this round. They had
-been one file, and they answer incompatible questions: retrieval wants a row you
+This is why `INDEX.md` and the campaign record were split apart. They had been
+one file, and they answer incompatible questions: retrieval wants a row you
 match against; citation exists to be cited and not matched. Anyone fetching the
-file to plan got a page of scene-named tables under a heading promising precedent.
+file to plan got a page of scene-named tables under a heading promising
+precedent. `EVIDENCE.md` is now the campaign index, and it also carries the
+**reliability ladder** — which kind of claim in this corpus to believe when two
+of them disagree — because doubt about the corpus is resolved by looking at how
+the corpus was measured, which is this tier's question.
 
 ---
 
@@ -231,12 +270,16 @@ necessary and are nowhere near sufficient. The natural fix — "add more
 `see_also`" — is falsified by the two cases above: 4 pointers and 0 reads against 0
 pointers and 30 reads.
 
-**A consequence the numbers make hard to argue with.** `sources.md` is 141 KB, the
-second-largest of the five, and **zero of the 126 diagnostic pointers point into
-it**. Nothing in the system compels it. Its content is real — provenance, and the
-audit of what rests on nothing — but on current evidence it is written for a reader
-who has already decided to be suspicious. Whether that reader exists often enough
-to justify 141 KB is an open question and it is on the list in §8.
+**A consequence acted on in the reorganisation.** `sources.md` was 141 KB, the
+second-largest of the five, with **zero of the 126 diagnostic pointers pointing
+into it** — nothing in the system compelled it, ever. Its load-bearing facts
+have been promoted onto the two strongest mechanisms above (the provenance line
+onto the inlined router, mechanism 1; the unsourced-band warnings into
+`tuning.md` beside the bands, mechanism 3) and the file shrunk to a cite-only
+table (§3.2). The same finding drove the health digest: the health moment had
+no compelled delivery at all, so the run payload now carries the profile the
+instant a sparse model exists, with `see_also`-style routing into `health/` —
+mechanism 3, applied to the one moment that had none.
 
 **A second consequence, about economics rather than discoverability.** The five
 per-module files total ~37.9 KB per module across five separate calls. The
@@ -264,6 +307,15 @@ mechanical or subjective. They know what went wrong. Sorted the other way,
 these numbers mean for my plan?"), was written without being designed and became
 the most-read file in the tier (36 fetches, all 17 captures).
 
+The current moment tiers are that principle applied to the whole tree: the
+question a reader holds is indexed by **where in the loop they are standing** —
+planning, judging a finished run, evaluating a model, checking a claim — because
+the moment is the one thing a reader always knows about themselves, even when
+they cannot yet name their problem. Each moment also gets a delivery mechanism
+matched to it: `plan/` is bundled into `sfm_plan_brief`, `judge/` and the module
+tier are routed by firing diagnostics, `health/` is pushed by the run payload's
+digest, and `evidence/` is the citation target of everything else.
+
 `workflow/` was requested **24 times across the sweep and returned an error every
 time**. The cost was not the missing content. The error's `Available:` list did not
 name the documents that do exist, so readers who followed a pointer into it
@@ -276,12 +328,12 @@ The four questions the sweep showed readers actually asking, with demand:
 
 | The question, as readers phrased it | Answered by | Fetches |
 | --- | --- | --- |
-| "What do these scene numbers mean for my plan?" | `scene_to_pipeline.md` | 36, all 17 captures |
-| "Which member of this stage, for this scene?" | `families/<stage>.md` | 2–6 each, ≤6 captures |
-| "Is this good enough, and is it actually right?" | `judgment/stopping.md`, `smells.md` | 8 requests *before either existed* |
+| "What do these scene numbers mean for my plan?" | now `plan/scene_to_pipeline.md` | 36, all 17 captures |
+| "Which member of this stage, for this scene?" | now `plan/<stage>.md` | 2–6 each, ≤6 captures |
+| "Is this good enough, and is it actually right?" | now `health/ladder.md`, `health/smells.md` | 8 requests *before either existed* |
 | "How do I move this number?" | the module's `tuning.md`, via a diagnostic | 64 diagnostics route there |
 
-`judgment/stopping.md` being the single most-requested missing document — asked for
+The stopping guide (now `health/ladder.md`) being the single most-requested missing document — asked for
 8 times by readers who could not decide whether a finished model was good enough —
 is the clearest demand signal the sweep produced, and nothing ever asked for the
 atomic lesson cards the original design centred on.
@@ -297,7 +349,7 @@ lesson defeats that.
 **Describe the scenario, never the scene.** "A controlled rig against a lit
 backdrop", not `DTU_scan33`. A scene name is a lookup key for this corpus and
 carries nothing to a new capture. Scene names survive in exactly one place,
-`runs/EVIDENCE.md`, as provenance.
+the `evidence/` campaign files, as provenance.
 
 **A band is an observed range over a named corpus, not a threshold.** Quoted
 ranges say what was seen across the captures in `runs/CORPUS.txt`. The distinction
@@ -338,10 +390,21 @@ a module that *was* run, and the most-run modules (`PoseEssentialToPnP` 109 runs
 concentrated — the converged-solve claim, the local-BA window default, the
 triangulation-angle reading, the matcher's tuning criterion. Nothing was corrected
 on a module that never ran, and the honest reading of that is that nothing was
-*checked* there. This is the largest outstanding item.
+*checked* there.
 
-This also means the family files are asymmetrically evidenced. `families/dense.md`
-compares two modules neither of which has run; `families/sparse.md` compares five
+**The plan of record (approved, not yet executed):** a two-phase reference
+campaign. Phase A re-runs the reference pipeline deterministically over the whole
+corpus, seeding `evidence/` with durable per-capture rows and the reference
+values for the health profile. Phase B runs ten of the twelve in the situation
+each exists for — the detector-free matchers on the captures where classical
+detection starves, the feed-forward pose/sparse modules on the worst-registration
+captures, the alternate trackers on the high-motion ones, local BA against global
+in the reference pipeline — landing each result beside the existing evidence it
+should be compared with. The two dense modules stay deferred by the standing
+plan (dense comes after the strict-context holdout).
+
+This also means the stage files are asymmetrically evidenced. `plan/dense.md`
+compares two modules neither of which has run; `plan/sparse.md` compares five
 of which three have.
 
 ### 7.2 The distillation loop has never executed
@@ -352,23 +415,24 @@ metric claim owes a denominator, that the evidence is a shape and never a cut
 point. It was fetched once across seventeen captures and the loop it describes has
 never run. Every edit in this repository's context has been written by hand.
 
-**Held deliberately, with a proposal on the table:** seed `runs/` from the
-seventeen-capture sweep, which is the first body of evidence large enough that hand
-transcription is the wrong move. Until that is decided, `distill/SKILL.md` is a
-specification for a process that does not exist, which is a form of staleness even
-though every sentence in it is defensible.
+**The seed-from-the-sweep proposal died of a fact:** the sweep's raw records
+were not preserved, so there is nothing to transcribe. Its replacement is the
+reference campaign (§7.1), which regenerates the per-capture record durably.
+Until something executes the loop, `distill/SKILL.md` is a specification for a
+process that does not exist, which is a form of staleness even though every
+sentence in it is defensible.
 
-### 7.3 `runs/INDEX.md` is empty, and is blocked upstream
+### 7.3 `evidence/INDEX.md` is empty, and is blocked upstream
 
 Its retrieval is a set intersection between a capture's derived traits and a run's
 recorded traits. **Nothing derives traits.** `scene_analysis/v1` declares a `traits`
 group and neither analysis module fills it, by design: traits were to be derived by
-the orchestrator from thresholds held in `judgment/`, so that revising "narrow
+the orchestrator from thresholds held in the global tier, so that revising "narrow
 baseline" would not cost a re-run.
 
 Those thresholds do not exist, and their absence is a position rather than an
-omission — `scene_to_pipeline.md` records observed ranges over a named corpus and
-refuses to name cut points the evidence does not support (§6). So the blockage is
+omission — `plan/scene_to_pipeline.md` records observed ranges over a named corpus
+and refuses to name cut points the evidence does not support (§6). So the blockage is
 now a stated disagreement about whether cut points should exist at all, which is a
 better place to be than an unwritten file, but the capability is still blocked.
 
@@ -386,7 +450,7 @@ and which is a per-band decision.
 ### 7.5 Claims caveated rather than re-derived
 
 At least one falsified claim was corrected by adding a caveat where it needs an
-experiment — the detector-recovery finding in `scene_to_pipeline.md` §3b, which was
+experiment — the detector-recovery finding in `plan/scene_to_pipeline.md` §3b, which was
 observed on a subset of frames and needs both branches re-run at full frame count
 on the same captures. A caveat is honest and it is not a result.
 
@@ -408,10 +472,15 @@ delivery mechanism in the system that works every time.
    annoys its users into ignoring it. There is no measurement of where refusal
    stops being worth it.
 
-2. **`sources.md` is 141 KB with zero compulsion.** Either something should point
-   into it or it should be much smaller. The current answer — that it serves a
-   reader who has already decided to be suspicious — is unfalsified because it is
-   nearly unfalsifiable.
+2. **The `sources.md` shrink promoted facts onto stronger channels, but the
+   citation tables that remain still have zero compulsion** — they are now
+   cheap enough that this may be fine, and "cheap enough to be fine" is exactly
+   the kind of claim this corpus has been wrong about before.
+
+   **2b. The health profile is designed but unvalidated.** Seven rungs were
+   chosen by argument, not measurement; the GT-validation columns of the
+   reference campaign are the test, and until it runs, the profile is exactly
+   the kind of principled-but-unexercised structure §7.1 warns about.
 
 3. **The refusal to name thresholds may be costing more than it saves.** It is
    principled (§6) and it is what blocks trait derivation and therefore

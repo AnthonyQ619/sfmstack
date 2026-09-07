@@ -132,3 +132,10 @@ what each version learned. Two fields have been cut for failing the rule at the
 top of it: `expected_difficulty` (a grade where a reason belongs) and
 `capture_style` (already measured, by `rotation_median_deg`, `variability` and
 `metadata.ordered`).
+
+## Provenance
+
+Exercised across **48 runs at version 0.7.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`) — but note the `sources` skill:
+the rubric itself is a hypothesis at version 3, revised twice against three
+scenes, and most of what it asserts is deliberately unmeasured.

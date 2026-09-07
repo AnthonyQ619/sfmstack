@@ -112,7 +112,7 @@ walked site whose halves barely overlap, a facade with a band of loose aggregate
 below it — never the dataset and scene it came from. A reader cannot check whether
 their capture is scene 15; they can check whether it is a facade with gravel.
 
-Scene names belong in exactly two places: the run index and the sources files,
+Scene names belong in exactly two places: the evidence tier and the sources files,
 which exist so a claim can be traced back and re-run. Those are citation records,
 and they are the reason the prose does not need names.
 
@@ -252,15 +252,15 @@ measured ones. One that states everything flatly is trusted on none of it.
 
 | The lesson is about… | It goes in |
 | --- | --- |
-| choosing between modules of one stage | `skills/families/<stage>.md` |
+| choosing between modules of one stage | `skills/plan/<stage>.md` |
 | how to move one module's numbers | `modules/<name>/skills/tuning.md`, indexed by symptom |
 | where a module stops being the answer | `modules/<name>/skills/limitations.md`, with the escape as a capability query |
 | what a metric means and what it is a function of | the module's `module.yaml` and `artifact.md` |
 | what to do the moment a diagnostic fires | the diagnostic's own `suggested_actions` — it is the only context guaranteed to be read |
-| reading a whole capture before running anything | `skills/scene_to_pipeline.md` |
-| a rule spanning two stages | `skills/scene_to_pipeline.md` §3, not either module — there is no `workflow/` tier and there is not going to be one |
-| the raw numbers behind any of the above | `skills/runs/EVIDENCE.md`, with scene names — never `INDEX.md`, which is keyed on traits for retrieval |
-| taste — when a result is good enough | `skills/judgment/`, and **propose it, never write it** |
+| reading a whole capture before running anything | `skills/plan/scene_to_pipeline.md` |
+| a rule spanning two stages | `skills/plan/scene_to_pipeline.md` §3, not either module — there is no `workflow/` tier and there is not going to be one |
+| the raw numbers behind any of the above | a campaign file under `skills/evidence/` (see `evidence/EVIDENCE`), with scene names — never `evidence/INDEX`, which is keyed on traits for retrieval |
+| taste — when a result is good enough | `skills/judge/` and `skills/health/`, and **propose it, never write it** |
 
 **Two placement rules learned the hard way.**
 
@@ -275,3 +275,141 @@ said certain frames were "candidates for exclusion" was, on every capture where 
 ever fired, naming sharply-focused frames aimed at a flat surface — the metric
 reports content, not focus. Write them as the whole instruction, including what to
 check before acting.
+
+---
+
+## 9. The recording protocol for the planning guide and the stage files
+
+*(Moved here from the planning guide; “this file” below means `plan/scene_to_pipeline.md`.)*
+
+**The planning guide is a staging area, and deliberately so.** Everything there is written
+in one place now so it can be split later, and the split is already known:
+
+| destination | content |
+| --- | --- |
+| `skills/plan/<stage>.md` | *when a given module is good* — distilled per stage, joining the structural axes already there |
+| `skills/judge/swap_or_build.md` | family-based, and specifically **when to swap a module or build a new one** |
+| this file | the metric-to-adjective translation, which belongs to no single family |
+
+Until that split happens, add to the planning guide. The same applies to `docs/import_lessons.md`
+and to any other experiment write-up: dump first, organise once there is enough
+to organise, and do not fragment an observation across files before its shape is
+clear.
+
+**Write the SCENARIO, not the scene.** This is the rule that decides whether an
+entry is worth anything later. A plan for a capture nobody has seen cannot use
+"&lt;scene&gt; gained 20%"; it can use "a capture whose subject repeats and whose graph
+is not at risk gains from a joint matcher". Every claim here must be phrased so
+that a reader can tell **whether their capture is the kind being described**,
+without knowing any of ours.
+
+| write this | not this |
+| --- | --- |
+| *a built interior whose blank walls are the subject* | *&lt;dataset&gt; &lt;scene&gt;* |
+| *a near-planar surface shot nearly square-on* | *&lt;two scenes you happen to remember&gt;* |
+| *a capture that covers ground quickly between adjacent frames* | *the four high-`overall_magnitude` scenes* |
+| *the highest readings you have seen, with a gap below them* | *above &lt;the cut point you happened to fit&gt;* |
+
+**The right-hand column is deliberately empty of real names, and that is part of
+the rule rather than tidiness.** A table that pairs a capture description with the
+capture it came from is a lookup key: a reader who recognises one of those names
+has been handed their own answer and will read it as confirmation. This section
+was itself the leak — it used to name a capture beside its measured swap outcome,
+and a reader driving that very capture found its own prior result here, in the file
+telling it not to do that. Illustrate the mistake with a placeholder; the evidence
+record is where names belong.
+
+### A corpus member cannot be a cold reading of itself
+
+The de-naming above protects a reader planning a *new* capture. It does nothing for
+the case that turns out to be common: **the capture in front of you is one of the
+captures these bands were fitted on.**
+
+When that happens, this file stops being guidance and becomes recall. Its range
+table's extremes are, by construction, specific captures' own readings printed to
+five significant figures — so a planner who "locates their reading in the observed
+range" and finds it *is* the maximum has looked up their own number. Several
+readings in this file have been recognised that way by readers who then said so.
+
+Two things follow, and they pull in opposite directions.
+
+**For the reader.** Before treating a band as independent evidence, check whether
+your capture is in it. If your reading matches a quoted extreme to several digits,
+it is yours. Say so in the plan rather than presenting the reading as confirmation —
+a rule reproducing on its own training data is worth much less than the same rule
+reproducing out of sample, and the difference is exactly the thing a plan should be
+honest about.
+
+**For whoever writes here.** The evidence records exist so a claim can be traced
+back and re-run — that is their whole point, and this file links to them from three
+places for exactly that reason. But those records are indexed by scene name and
+carry downstream results, so **following the traceability link is itself the leak**:
+a reader sent there to locate a threshold finds their own capture's registration
+outcome on the same screen. That has happened, and the reader disclosed it rather
+than pretending otherwise, which is the right behaviour and not a fix.
+
+There is no clean way to have both. What is achievable: a brief that says plainly
+when the capture it describes is already in the corpus, so a planner knows which
+kind of reasoning they are doing before they start. Until that exists, treat
+"unrecognised capture" as an assumption to check rather than a given.
+
+**And note what this does *not* excuse.** A named capture in the prose is still the
+wrong way to write a lesson, including where the name would let a reader detect
+contamination — an evidence record is the place for names. The two problems have
+different fixes and solving one with the other makes both worse.
+
+### The same rule binds the family files, and a number leaks as surely as a name
+
+**Everything above is written about this file, and that scoping was itself the
+gap.** The de-naming rule and the corpus-membership warning were both phrased
+around this file's range table, so a worked example carrying one capture's
+measured readings into `skills/plan/<stage>.md` passed every check here — and one
+did, quoting a pair of transfer errors to three significant figures in a file
+whose whole job is to be read by someone who has never seen that capture.
+
+**A quoted measurement is a lookup key whether or not a name is attached to it.**
+A reader whose run reproduces a figure to the digit has found their own result,
+and the family files are read on every capture rather than only at planning time,
+so they leak more often than this one does. The rule for a worked example in a
+family file is the rule for a band here: give the RATIO, the DIRECTION and the
+SCENARIO, and let the evidence record hold the digits.
+
+| write this | not this |
+| --- | --- |
+| *several times the chaining tracker's error, on captures where the ratio ran well above one* | *&lt;x.xx&gt;px against &lt;y.yy&gt;px* |
+| *moved by nearly an order of magnitude on some captures and almost nothing on others* | *moved this metric by &lt;0.00xx&gt; across &lt;n&gt; runs* |
+
+**Thresholds are the same mistake in numeric form.** A cut point derived from N
+captures is a property of those captures. **Do not print the number even as an
+example of what not to write** — a reader in a hurry lifts it straight out of the
+counter-example column and uses it as the threshold, which is exactly what
+happened to an earlier version of the row above. State the *direction* and the *shape of
+the evidence* (unanimous, a clean gap, one exception and why), and let the reader
+locate their own reading in it. Where a number genuinely is load-bearing, name it
+once and say what corpus produced it.
+
+**Raw per-capture numbers belong in
+[`skills/evidence/`](../evidence/EVIDENCE.md), not here.** Provenance matters and it
+should be traceable — but it should be traceable from a place a planner is not
+reading, so the reasoning in this file cannot quietly become a lookup table.
+
+**What a new entry needs.** A claim without these is not usable later:
+
+1. **The scenario** — what kind of capture this was, in terms someone could match
+   against their own, plus the count so the sample is weighable
+2. **The number**, not an adjective — and its direction, not just its value
+3. **How it was checked** — measured end to end, seen at full resolution, or
+   inferred. Say which; these are not interchangeable
+4. **What it changed**, or explicitly that it changed nothing
+5. **What the check could NOT have caught.** A comparison only settles a question
+   whose failure mode shows up in the metrics collected. Say which failure modes
+   would have been invisible to it
+
+**Update the frontmatter `scenes:` count** when adding, and update §1's table when
+a new reading moves a min or max. A range that has not moved in twenty scenes is
+worth more than one asserted once.
+
+**Contradictions stay.** When a reading disagrees with something written here, add
+it beside the original rather than replacing it, and say which scene produced
+each. Both `repetitiveness` failures in §2 are recorded that way, and they are the
+most useful lines in the file.

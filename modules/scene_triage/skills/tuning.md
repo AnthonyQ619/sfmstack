@@ -140,3 +140,13 @@ question is asked at rather than the answer: 32px at a 512px long edge is roughl
 one brick or one window pane; 64px asks whether whole architectural bays repeat.
 A building frontage can score low at one and high at the other, and which one
 matters depends on the scale your detector's descriptors cover.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `texture_density`,
+`repetitiveness` and `textureless_fraction` bands have no diagnostic reading
+them — descriptions of the captures measured so far, not judgements on yours.
+The numbers in the `texture_floor`, `patch_size` and `source_dir` advice are
+settings that worked here, not published results — and no run here has yet
+paired a high `repetitiveness` with a measured `inlier_ratio` collapse, which
+is the experiment that metric is waiting on (see the `sources` skill).

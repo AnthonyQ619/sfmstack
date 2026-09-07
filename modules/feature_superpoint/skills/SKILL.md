@@ -57,3 +57,9 @@ into a multi-minute stall that the duration estimator learns as normal.
 
 **Reading the output:** [artifact.md](artifact.md). Note `mean_score` is on
 SuperPoint's own scale and is not comparable to ALIKED's.
+
+## Provenance
+
+Exercised across **21 runs at version 1.1.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill.

@@ -63,3 +63,9 @@ everything else default. Check `graph_components` is 1 and `inlier_ratio` is abo
 mislead you is `matches_per_pair` — it is a mean over *surviving* pairs, so
 loosening a filter can lower it by admitting thin pairs that were previously
 dropped. Read it beside `pairs_matched`.
+
+## Provenance
+
+Exercised across **18 runs at version 1.6.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill.

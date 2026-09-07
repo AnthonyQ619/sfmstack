@@ -9,7 +9,8 @@ status: proposal / under discussion — not implemented
 Status: **draft for discussion.** Nothing here is built. Decisions still open are
 collected in [Open questions](#open-questions).
 
-Current state is documented in [../overview/](../overview/). Read
+Current state was documented in the predecessor's `overview/` notes (that
+repository, not this one). Read
 the refactor targets (not written) first for what
 is in the way.
 
@@ -531,7 +532,7 @@ Not the agent's job, not the module's job:
 | 6 | **Artifact = directory + `artifact.md`** (YAML frontmatter manifest + narrative body). Envelope free-form, payload typed via an open type registry. |
 | 7 | **Every module ships curated skills** — metric interpretation, an improvement gradient, and limitations. See [module-skills.md](module-skills.md). |
 | 8 | **No backwards compatibility** with the current `sfmcore` / `AutoSFM` stack. |
-| 9 | **A layered knowledge system** — a human-authored `judgment/` tier, a capture-to-pipeline guide, per-stage family comparisons, per-module skills, and a corpus of worked runs. Designed as four tiers with cross-cutting `workflow/` guides; that tier was never written and has been retired, and a distillation loop was designed to feed the rest and has never run. See [knowledge-system.md](knowledge-system.md) — read its STATUS section first. |
+| 9 | **A layered knowledge system** — moment tiers (`plan/`, `judge/`, `health/`, `evidence/`), per-module skills, and a corpus of worked runs. Originally designed as knowledge-kind tiers with cross-cutting `workflow/` guides; `workflow/` was never written and was retired, the rest were reorganised by the moment a reader stands in, and a distillation loop was designed to feed them and has never run. See [knowledge-system.md](knowledge-system.md) — read its STATUS section first. |
 | 10 | **Local filesystem** for artifact store and image builds. Re-run from the last completed artifact rather than resuming in-flight jobs. |
 | 11 | **`sfm_replay` adopted.** Going back upstream branches the DAG; nothing is marked stale; `sfm_compare` surfaces lineage divergence instead. |
 | 12 | **Type safety via four guards** — pre-spawn type check, write-time schema validation in `sfmkit`, additive extension (required + optional arrays) instead of new type names, orphan-type warnings at registration. |

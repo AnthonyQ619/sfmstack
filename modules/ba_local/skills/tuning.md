@@ -121,3 +121,14 @@ Read it together with whether `window_error_after` is where you want it.
 
 `cameras_refined` can be less than `window_size` when the model is small, because
 two cameras must stay fixed to pin the gauge.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Seven healthy bands**
+(`min_frame_points`, `p95_reprojection_error`, `window_error_before`,
+`observation_count`, `mean_track_length`, `mean_reprojection_error`, and one
+more) declare a range no diagnostic reads — each is a description of the
+captures measured so far, not a judgement on yours. The numbers in the
+`window_size` and `min_track_length` advice are settings that worked here, not
+published results. And this module has run **zero times** in a real pipeline,
+so every band here comes from isolated testing.

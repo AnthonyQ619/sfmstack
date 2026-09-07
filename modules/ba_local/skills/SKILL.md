@@ -63,3 +63,10 @@ itself wrong until recently — see [sources](sources.md).
 
 **Reading the output:** [artifact.md](artifact.md). Same type in and out, so it
 chains and is idempotent in shape.
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end. The first real run is the trigger to re-check all of it.
+Claim-by-claim citations: the `sources` skill.

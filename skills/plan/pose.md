@@ -137,7 +137,7 @@ across that sweep. A gap between two configurations narrower than that span is n
 interpretable — it is inside the noise the module generates by itself. Measured on
 one capture, fifteen configurations spanned 0.207 to 0.246 px of mean error, so a
 6% difference between two of them settles nothing, and a reader correctly refused a
-change on that basis. This is the same rule `families/tracking.md` gives for
+change on that basis. This is the same rule `plan/tracking.md` gives for
 `trifocal_transfer_px`; there is no pose-specific span published, so measure it on
 the capture in front of you.
 

@@ -60,3 +60,10 @@ assignment probability, LightGlue's is a matchability head. Read
 vs MegaDepth), not merely tuned.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end. The first real run is the trigger to re-check all of it.
+Claim-by-claim citations: the `sources` skill.

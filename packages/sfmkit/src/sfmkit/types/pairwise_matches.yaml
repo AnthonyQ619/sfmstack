@@ -36,7 +36,7 @@ files:
           positions: twenty matches on an edge whose images already share a
           thousand elsewhere is redundant, and twenty matches on the only link
           between two halves of a capture is the reconstruction. No aggregate can
-          tell those apart. See skills/families/matching.md for how to read it.
+          tell those apart. See skills/plan/matching.md for how to read it.
 
   matches:
     required: true
@@ -81,7 +81,7 @@ files:
           populations. A group sitting well below the rest, on a handful of pairs,
           is the shape of matches that are wrong rather than merely thin -- and it
           separates them when count and spatial spread do not. See
-          skills/families/matching.md.
+          skills/plan/matching.md.
 
 invariants:
   - check: same_length
@@ -334,4 +334,4 @@ metrics:
       This metric cannot separate the two -- it is per-pair and averaged. What
       separates them is whether OTHER pairs in the set carry parallax, which is
       scene_analysis/v1's degeneracy group (pure_rotation_risk beside
-      planar_dominance). See skills/families/matching.md.
+      planar_dominance). See skills/plan/matching.md.

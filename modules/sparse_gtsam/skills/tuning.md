@@ -138,3 +138,13 @@ zero there means the filter did not run, not that nothing escaped.
 **`yield` near 1.0** means the filters are barely biting — good on clean data, and
 a sign the thresholds are loose if `mean_reprojection_error` is simultaneously
 poor.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Ten healthy bands**
+(`min_frame_points`, `two_view_fraction`, `p95_reprojection_error`,
+`p05_triangulation_angle`, `point_count`, `observation_count`, and four more)
+declare a range no diagnostic reads — descriptions of the captures measured so
+far, not judgements on yours. The specific numbers in the
+`max_landmark_distance` and `min_track_len` advice are settings that worked
+here, not published results.

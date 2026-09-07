@@ -95,3 +95,12 @@ reaching for the exact matcher, separate the two things that can cause it here:
 
 The order matters. Tightening the ratio test to compensate for a bad index throws
 away correct matches to hide incorrect ones.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Five healthy bands**
+(`pairs_matched`, `matches_per_pair`, `largest_component_fraction`,
+`min_image_degree`, `planarity`) declare a range no diagnostic reads —
+descriptions of the captures measured so far, not judgements on yours. The
+specific numbers in the `window`, `ratio_test`, `trees` and `lsh_tables` advice
+are settings that worked here, not published results — and "here" is four runs.

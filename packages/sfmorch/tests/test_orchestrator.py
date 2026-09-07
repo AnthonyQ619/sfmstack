@@ -82,7 +82,7 @@ def test_run_md_is_written_and_reloadable(orch, scene):
 
 
 def test_the_run_is_bound_to_its_scene(orch, scene):
-    """runs/INDEX.md retrieval keys on this, so it has to be recorded rather
+    """evidence/INDEX.md retrieval keys on this, so it has to be recorded rather
     than reconstructed by walking every step later."""
     assert orch.open_run("run_test").scene == scene.id
     assert orch.summary("run_test")["scene"] == scene.id

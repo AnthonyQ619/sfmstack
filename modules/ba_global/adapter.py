@@ -399,7 +399,7 @@ def run(ctx: Ctx):
     # scene's, and until now it published nothing about them -- so a refinement that
     # gave a one-lens rig twelve different focal lengths, and improved reprojection
     # error by 21% doing it, was invisible unless a reader dumped two artifacts and
-    # divided. families/pose.md names estimated_focal_ratio as the warning that
+    # divided. plan/pose.md names estimated_focal_ratio as the warning that
     # matters when a module estimates K; this is that reading, plus the spread that
     # says whether one physical camera is being modelled as many.
     if refined_K is not None:

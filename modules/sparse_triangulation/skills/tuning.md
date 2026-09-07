@@ -101,3 +101,13 @@ count at 3px with a 1° median angle is a bad one. Read it beside
 `mean_reprojection_error` is measured against the poses that were given, so it
 cannot detect a globally wrong-but-self-consistent model. A reconstruction can be
 internally consistent and still be the wrong shape.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Nine healthy bands**
+(`min_frame_points`, `two_view_fraction`, `p95_reprojection_error`,
+`p05_triangulation_angle`, `point_count`, `observation_count`, and three more)
+declare a range no diagnostic reads — descriptions of the captures measured so
+far, not judgements on yours. The specific numbers in the
+`min_triangulation_angle_deg` and `min_observations` advice are settings that
+worked here, not published results.

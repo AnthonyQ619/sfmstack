@@ -214,3 +214,11 @@ textureless and no detector setting will populate them. That is a
 - **`root_sift`** — leave on. It is two vector operations and strictly better for
   L2 matching [S2]; there is no scenario in this pipeline where turning it off is
   correct.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `keypoints_per_image` and
+`spatial_coverage` bands have no diagnostic reading them — descriptions of the
+captures measured so far, not judgements on yours. The specific numbers in the
+`max_keypoints`, `n_octave_layers`, `contrast_threshold` and `root_sift` advice
+are settings that worked here, not published results.

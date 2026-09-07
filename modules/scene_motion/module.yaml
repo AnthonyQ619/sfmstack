@@ -63,7 +63,8 @@ description: |
   every pair; this measures it in seconds, before the choice.
 
   **This module emits numbers, not traits.** The `traits` group is derived by the
-  orchestrator from thresholds in `skills/judgment/`. The `healthy` bands here
+  orchestrator from thresholds in the global skills tier (deliberately unwritten
+  so far -- see `evidence/INDEX`). The `healthy` bands here
   are this module's own advisory reading.
 
 image: sfmstack/scene-motion:1.3.0
@@ -248,7 +249,7 @@ metrics:
       corpus rather than of the algorithm and n is small. But read a high value as
       a prediction that the graph will be sparse: plan exhaustive pairing, budget
       for a learned detector and matcher, and treat the cheap classical branch as
-      something to verify rather than assume. See skills/scene_to_pipeline.md.
+      something to verify rather than assume. See skills/plan/scene_to_pipeline.md.
 
   high_motion_tail:
     direction: neutral

@@ -60,3 +60,9 @@ it costs one extra pass.
 
 **Reading the output:** [artifact.md](artifact.md) — identical in shape to
 `FeatureMatchNN`'s, deliberately.
+
+## Provenance
+
+Exercised across **4 runs at version 1.6.0** in the seventeen-capture sweep of two
+benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill.

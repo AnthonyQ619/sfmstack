@@ -109,3 +109,9 @@ More points, slightly *higher* reprojection error — and that is the expected
 direction, not a defect. See [artifact.md](artifact.md#why-lower-error-is-not-the-goal).
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+Exercised across **21 runs at version 1.1.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill.

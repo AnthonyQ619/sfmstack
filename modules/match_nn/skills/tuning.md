@@ -231,3 +231,12 @@ perfect score; it means nothing was checked.
 `planarity` is `None` when it could not be measured — fewer than 4 inliers on
 every pair, or `geometric_model: homography` (where the comparison would be
 against itself).
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Four healthy bands**
+(`pairs_matched`, `min_image_degree`, `largest_component_fraction`,
+`planarity`) declare a range no diagnostic reads — descriptions of the captures
+measured so far, not judgements on yours. The specific numbers in the
+`pairing`, `window`, `ratio_test`, `ransac_threshold` and `min_matches` advice
+are settings that worked here, not published results.

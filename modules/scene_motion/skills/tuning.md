@@ -164,3 +164,14 @@ This bites hardest on the captures most likely to tempt you into raising it: the
 tuning advice for a scene whose textured area is a small part of the frame is to
 lower `flow_step`, and that is exactly the kind of capture whose motion reading is
 already being asked to carry a detector decision.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `variability` and
+`large_rotation_risk` bands have no diagnostic reading them — descriptions of
+the captures measured so far, not judgements on yours. The numbers in the
+`stride`, `max_pairs`, `max_side`, `low_motion_thresh` and `rotation_only_tol`
+advice are settings that worked here, not published results — and the `sources`
+skill records that `rotation_only_tol = 0.15` in particular has demonstrated
+specificity but untested sensitivity: no scene measured here has been
+rotational.

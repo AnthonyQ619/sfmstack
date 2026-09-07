@@ -92,3 +92,10 @@ Scale linearly in views and quadratically in `max_image_size`. A 50-view set at
 
 **Reading the output:** [artifact.md](artifact.md) ·
 **Tuning:** [tuning.md](tuning.md) · **Limits:** [limitations.md](limitations.md)
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end — and by the standing plan, dense modules run after the sparse
+holdout. Claim-by-claim citations: the `sources` skill.

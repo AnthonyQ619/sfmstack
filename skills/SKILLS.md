@@ -1,125 +1,108 @@
 # sfmstack — Knowledge Index
 
-The only file always in context. Everything else is one tool call away.
+The only file always in context. Everything else is one tool call away, and the
+tree is organised by **the moment you are standing in**, because that is the one
+thing you always know about yourself:
 
-Design: [../docs/design/knowledge-system.md](../docs/design/knowledge-system.md).
+| Moment | Tier | Answers | Reach it via |
+| --- | --- | --- | --- |
+| **before anything runs** | [plan/](plan/) | "what do this capture's numbers imply, and which member of each stage?" | `sfm_plan_brief` bundles the guide and the stage files; or `sfm_workflow_skill("plan/<topic>")` |
+| **a run finished, numbers in hand** | [judge/](judge/) | "tuning stopped paying — swap, build, or spend more?" | `sfm_workflow_skill("judge/swap_or_build")`, `("judge/tradeoffs")` |
+| **a sparse model exists** | [health/](health/) | "is this reconstruction healthy? if not — fixable, or bounce to build?" | the run summary's health digest anchors here; `sfm_workflow_skill("health/ladder")`, `("health/smells")`, `("health/bounce")` |
+| **checking or citing a claim** | [evidence/](evidence/) | "where did this claim come from, and how much is it worth?" | `sfm_workflow_skill("evidence/EVIDENCE")`; campaign files beside it |
+| **any module, any moment** | `modules/` | "what does this tool do, and how do I move its numbers?" | `sfm_describe_module`, `sfm_module_skill` |
+| **session ends** | [distill/](distill/) | "I learned something — what shape does it get written in?" | `sfm_workflow_skill("distill/SKILL")` |
+| — | `docs/` | the design record and full experiment write-ups | `sfm_workflow_skill("import_lessons")`, `("design/DECISIONS")` |
 
-## Tiers
-
-| Tier | Answers | Reach it via |
-| --- | --- | --- |
-| [judgment/](judgment/) | "What would a practitioner do? Is this good enough?" | digest below; full text on demand |
-| [families/](families/) | "I know I need a tracker — which one, for this scene?" | [families/README.md](families/README.md) |
-| [modules/](modules/) | "What does this tool do, and how do I move its numbers?" | `sfm_describe_module`, `sfm_module_skill` |
-| [runs/](runs/) | "Has a scene like this been solved before?" (INDEX, still empty) and "where does this claim come from?" (EVIDENCE) | `sfm_workflow_skill("runs/INDEX")`, `sfm_workflow_skill("runs/EVIDENCE")` |
-| `docs/` | "Where are the numbers behind a claim, and what was actually run?" | `sfm_workflow_skill("import_lessons")`, `sfm_workflow_skill("design/DECISIONS")` |
-
-**Every path in this table is reachable by a call**, and that has not always been
-true. The family files and module skills cite `docs/import_lessons.md` and
-`docs/design/DECISIONS.md` repeatedly as where the per-capture magnitudes and the
-full experiments live, and until recently neither could be fetched by any means a
-reader had — so every quoted range arrived with no way to check its scope. A reader
-who cannot follow a citation is being shown evidence they cannot examine, which is
-worse than a claim with no citation at all. If a link in any skill file resolves to
-a path you cannot reach with `sfm_workflow_skill`, that is a defect worth
+**Every path in this table is reachable by a call.** If a link in any skill file
+resolves to a path `sfm_workflow_skill` cannot reach, that is a defect worth
 reporting.
 
-## Judgment digest
+## plan/ — before anything runs
 
-> Human-authored, subjective, authoritative but non-binding. Say when you depart
-> from one. Distillation may *propose* edits here; it never writes them.
+- **[scene_to_pipeline.md](plan/scene_to_pipeline.md)** — how to read a capture's
+  measured numbers into a plan: what each metric decides, the observed ranges and
+  what corpus scopes them, the traps in the order they have bitten. The most-read
+  file in the tier, and `sfm_plan_brief` returns it with the analysis it reads.
+- **One stage file per family** — the axis each stage trades along, what each end
+  is for keyed on metrics available *before* the choice, and what has not been
+  measured: [detection](plan/detection.md) · [matching](plan/matching.md) ·
+  [tracking](plan/tracking.md) · [pose](plan/pose.md) · [sparse](plan/sparse.md) ·
+  [optimization](plan/optimization.md) · [dense](plan/dense.md)
 
-- **[swap_or_build](judgment/swap_or_build.md)** — when tuning stops and the
+Stage files are structural, none quantified; each ends with what it would take to
+put numbers on it. A measured table may be added only with its scene count stated,
+and **nothing is recorded here without being asked for first**. Scene analysis has
+no stage file — the trade (appearance from a CPU pass against geometry from a GPU
+one) has not been asked for; the two modules' own `SKILL.md` files carry it.
+
+## judge/ — a run finished, and the numbers are in hand
+
+- **[swap_or_build.md](judge/swap_or_build.md)** — when tuning stops and the
   module is the problem; when nothing in the registry fits at all. Organised by
-  family. *Written, and honest that most of it is structural rather than measured.*
-- **[stopping](judgment/stopping.md)** — when a result is good enough; when to
-  stop turning a dial. The objective is as much structure as possible from a
-  model you have reason to trust, with the constraint ladder and the
-  model-comparison procedure.
-- **[smells](judgment/smells.md)** — results that look fine numerically and are
-  wrong. Every entry is a case where the metrics were individually correct and
-  the conclusion drawn from them was not.
-- **[priors](judgment/priors.md)** — which parts of THIS corpus to trust when
-  they disagree with each other or with your reading. Mechanism claims held up
-  across seventeen captures; predictive "X beats Y" claims failed six times.
-- **[tradeoffs](judgment/tradeoffs.md)** — runtime against quality; what actually
-  costs time, when to spend it, and the cost of a run that dies partway.
-- **triage** — *not a file.* What to read off a scene before running anything is
-  [`scene_to_pipeline.md`](scene_to_pipeline.md), which carries the measured
-  ranges behind each call and is reached through `sfm_plan_brief`.
+  family. *Honest that most of it is structural rather than measured.*
+- **[tradeoffs.md](judge/tradeoffs.md)** — what actually costs time, when to spend
+  it, and the axis normally left out: the cost of a run that dies partway.
 
-**This tier is complete.** One planned file was cut rather than written:
-`triage.md`, which was to hold what to read off a scene before running anything.
-That is [scene_to_pipeline.md](scene_to_pipeline.md), which carries the measured
-ranges behind each call and is reached through `sfm_plan_brief` — so the entry
-above points at it by name rather than leaving a link that resolves to nothing.
+## health/ — a sparse model exists
 
-`smells.md` and `tradeoffs.md` were cut once for the reasons that used to be
-printed here — that they duplicated `families/` and that they had not earned a
-page — and both reasons turned out to be wrong. The material that became
-`smells.md` was not a duplicate: every entry is a case where each metric was
-individually correct and the conclusion drawn from them was not, which is a claim
-about *reading* and had no home in a file organised by stage. And the cost of a
-run that dies partway, which is most of `tradeoffs.md`, appeared in no file at
-all. A tier is not finished because its remaining topics look small.
+- **[ladder.md](health/ladder.md)** — when a result is good enough. The objective
+  (as much structure as possible from a model you have reason to trust), the
+  constraint ladder, the **seven-rung health profile** the run summary reports
+  against the reference corpus, the procedure for comparing two models, and when
+  to stop turning a dial.
+- **[smells.md](health/smells.md)** — results that look fine numerically and are
+  wrong. Every entry is a case where the metrics were individually correct and the
+  conclusion drawn from them was not.
+- **[bounce.md](health/bounce.md)** — when an unhealthy model means BUILD: the
+  weakest rung of the health profile, low and immobile across the swaps and sweeps
+  already tried. Hands off to `judge/swap_or_build` §BUILD. *Skeleton until the
+  reference campaign runs.*
 
-**Trait thresholds are NOT here any more.** The analysis modules emit numbers and
-`scene_to_pipeline.md` says how to read them; this tier says what to do once you
-have.
+> judge/ and health/ are human-authored, subjective, authoritative but
+> non-binding. Say when you depart from one. Distillation may *propose* edits
+> there; it never writes them.
 
-## Family comparisons
+## evidence/ — the record
 
-> Measured, not judged. One file per stage, holding the axis that stage trades
-> along and the evidence for it. Read before running anything, beside
-> `scene_to_pipeline.md`. Nothing is recorded here without being asked for first.
+- **[EVIDENCE.md](evidence/EVIDENCE.md)** — the index of campaigns, and the
+  reliability ladder: when two pieces of this corpus disagree, which to believe.
+  One file per campaign beside it, raw per-capture tables with scene names —
+  **cite, never match**. [INDEX.md](evidence/INDEX.md) is the trait-keyed
+  retrieval table (still no rows); [CORPUS.txt](evidence/CORPUS.txt) pins what
+  every quoted range was fitted on.
 
-- **[detection.md](families/detection.md)** — invariance by construction or by
-  training; the descriptor type decides the matcher; coverage beats count
-- **[matching.md](families/matching.md)** — detector-based or detector-free, and
-  that choice reaches forward into how the tracker must merge
-- **[tracking.md](families/tracking.md)** — track length and positional precision
-  move in opposite directions
-- **[pose.md](families/pose.md)** — geometric or feed-forward; and a third option
-  that skips the stage entirely
-- **[sparse.md](families/sparse.md)** — ray intersection or a learned prior; poses
-  as input or as output; the scale a prior carries
-- **[optimization.md](families/optimization.md)** — scope against cost, and the
-  trap that error is never comparable across differing model sizes
-- **[dense.md](families/dense.md)** — verification against prediction; holes are
-  the honest part
+Scene names live in this tier and nowhere else; every claim elsewhere describes
+the *scenario*. Trait thresholds are nowhere: the analysis modules emit numbers,
+`plan/scene_to_pipeline.md` says how to read them, and judge/ and health/ say
+what to do once you have.
 
-All structural, none quantified. Each file ends with what it would take to put
-numbers on it.
+## Paths that moved — old names redirect, do not recreate them
 
-## The retired workflow tier
+The tree was reorganised from knowledge-kind tiers into the moment tiers above.
+`sfm_workflow_skill` transparently redirects every old topic and says so in its
+response; nothing should cite these except historical documents:
 
-**`skills/workflow/` no longer exists, and this section is here so nothing tries
-to recreate it.** Six cross-cutting stage guides were designed for it and none was
-ever written. Across a seventeen-capture sweep it was requested 24 times, and every
-request raised rather than returned — a tier that is only ever an error is worse
-than no tier, because a reader who follows one pointer into a miss concludes the
-whole knowledge base is gone, and one said so in writing.
-
-The diagnosis is not that nobody got around to it. The original split was
-`workflow/` for the mechanical half and `judgment/` for the subjective half, which
-is a distinction about **who authored a claim**, not about **what question a reader
-is holding**. A reader with a broken reconstruction does not know or care which
-half their answer lives in; they know what went wrong. Organised that way, the
-mechanical half had nowhere natural to go and its content settled where readers
-were already standing:
-
-| The question that sent readers to `workflow/` | Where it is answered |
+| Old topic | Now |
 | --- | --- |
-| composing a pipeline; which stage a symptom belongs to | [`scene_to_pipeline.md`](scene_to_pipeline.md), [`families/README.md`](families/README.md) |
-| sweep mechanics, and when to stop turning a dial | [`judgment/stopping.md`](judgment/stopping.md) |
-| a surprise spanning modules | `scene_to_pipeline.md` §3, "the traps, in the order they have bitten" |
-| reading an artifact and each payload type | each module's `artifact` skill, plus the type contract `sfm_describe_module` now returns |
-| signals that nothing existing fits | [`judgment/swap_or_build.md`](judgment/swap_or_build.md) |
-| a result that looks fine and is not | [`judgment/smells.md`](judgment/smells.md) |
+| `scene_to_pipeline` | `plan/scene_to_pipeline` |
+| `families/<stage>` | `plan/<stage>` |
+| `judgment/swap_or_build`, `judgment/tradeoffs` | `judge/` same names |
+| `judgment/stopping` | `health/ladder` |
+| `judgment/smells` | `health/smells` |
+| `judgment/priors` | the reliability ladder inside `evidence/EVIDENCE` |
+| `runs/EVIDENCE`, `runs/INDEX` | `evidence/` same names |
+| `workflow/*` (retired earlier, never written) | see the table in the section below |
 
-The search path was removed with the directory, so `sfm_workflow_skill` no longer
-looks under `workflow/` for a bare topic. **Do not add the path back without the
-files**; that combination is what produced the 24 misses.
+**`skills/workflow/` no longer exists and must not be recreated.** Across a
+seventeen-capture sweep it was requested 24 times and raised every time — a tier
+that is only ever an error is worse than no tier. Its planned content settled
+where readers actually stand: composing a pipeline and cross-stage surprises →
+`plan/scene_to_pipeline.md` (§3 for the traps); sweep mechanics and when to stop →
+`health/ladder.md`; reading an artifact → the module's `artifact` skill plus the
+type contract `sfm_describe_module` returns; nothing fits → `judge/swap_or_build`;
+looks fine but is not → `health/smells`. The resolver's search path was removed
+with the directory; do not add either back without the files.
 
 ## Loop
 
@@ -131,40 +114,43 @@ SKILLS.md (this file)
   │
   ├─ sfm_plan_brief(scene)         ONE call, and it gathers:
   │    ├─ the analysis above       metrics, diagnostics, narrative
-  │    ├─ scene_to_pipeline.md     how to READ those numbers — measured ranges,
-  │    │                           what each cannot tell you, the known traps
-  │    ├─ families/<stage>.md      which member of each stage, and why
+  │    ├─ plan/scene_to_pipeline   how to READ those numbers
+  │    ├─ plan/<stage>.md          which member of each stage, and why
   │    └─ sfm_list_modules(...)    the live menu
   │  → you write the plan. The tool prepares; it does not decide.
   │
-  ├─ runs/INDEX.md by trait        has this been solved?      [NO ROWS YET]
-  ├─ runs/EVIDENCE.md              where did this claim come from?
-  ├─ judgment/swap_or_build.md     tuning stopped - now what?
+  ├─ evidence/INDEX by trait       has this been solved?      [NO ROWS YET]
   │
   └─ run → metrics + diagnostics(see_also)
-        ├─ tuning.md          principled gradient + observed episodes
-        ├─ sfm_replay(...)    suspect upstream? branch the DAG
-        ├─ judgment/stopping  good enough? when to stop a sweep
-        ├─ limitations.md     stuck? what this module cannot do
-        └─ sfm_find_alternatives(...) or scaffold a new module
+        ├─ tuning.md              principled gradient + observed episodes
+        ├─ sfm_replay(...)        suspect upstream? branch the DAG
+        ├─ judge/swap_or_build    tuning stopped — now what?
+        ├─ limitations.md         stuck? what this module cannot do
+        └─ produces sparse_model/v1 →
+              health digest in the run summary (seven rungs vs the reference corpus)
+                ├─ health/ladder   good enough? stop the sweep?
+                ├─ health/smells   looks fine — is it?
+                └─ health/bounce   weakest rung immobile → BUILD
   │
-  └─ session ends → distill → reviewed diff (judgment/ proposed, not applied)
+  └─ session ends → distill → reviewed diff (judge/ & health/ proposed, not applied)
                               see distill/SKILL.md for the SHAPE to write in
 ```
 
 ## Writing new context
 
 **[distill/SKILL.md](distill/SKILL.md)** — what to record after a session and what
-shape to record it in, so an agent reading it cold reaches the same decision for the
-same reason. Selection context and tuning context need different shapes; a metric
-claim owes a denominator; the evidence is a shape, never a cut point. Read it before
-adding to any file below.
+shape to record it in. Selection and tuning context need different shapes; a
+metric claim owes a denominator; the evidence is a shape, never a cut point. Its
+§9 carries the recording protocol for the planning guide and the stage files.
 
 **Read it as a specification, not as a description of what happens.** The loop it
-defines has never executed: every line of context in this tree was written by hand.
-That does not make its rules wrong — they are the rules the hand-written edits were
-held to — but nothing automatic is maintaining any of this, so a claim's age is the
-age of the last person who looked at it.
+defines has never executed: every line of context in this tree was written by
+hand, so a claim's age is the age of the last person who looked at it.
+
+**One review rule replaces the per-module boilerplate:** re-check a module's
+claims when its version changes, when a capture unlike the corpus arrives, or
+when a reading crosses a band with nothing firing. This used to be printed in all
+28 `sources.md` files; it is the same rule everywhere and it lives here now.
 
 ## Conventions
 

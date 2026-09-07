@@ -298,7 +298,7 @@ class Orchestrator:
     def _scene_of(self, inputs: dict[str, Artifact], run: Run) -> str:
         """Which scene this step belongs to, binding the run to it on first sight.
 
-        The run's scene is what `runs/INDEX.md` is keyed on for trait-based
+        The run's scene is what `evidence/INDEX.md` is keyed on for trait-based
         retrieval, so it has to be recorded rather than left to be reconstructed
         by walking every step's inputs later.
         """

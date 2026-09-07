@@ -194,3 +194,13 @@ stage later and one run more expensively.
 `inlier_ratio` has a higher healthy floor here (0.7) than for classical matchers
 (0.5), because the raw matches are already learned-filtered. The same number means
 something worse.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Six healthy bands**
+(`pairs_matched`, `matches_per_pair`, `largest_component_fraction`,
+`min_image_degree`, `planarity`, `mean_match_score`) declare a range no
+diagnostic reads — descriptions of the captures measured so far, not judgements
+on yours. The specific numbers in the `window`, `filter_threshold`, `n_layers`,
+`depth_confidence` and `width_confidence` advice are settings that worked here,
+not published results.

@@ -1,5 +1,10 @@
 # Sources — SceneLoader
 
+**Cite-only, like the evidence tier: this file exists to be referenced, not
+browsed.** The provenance summary rides `SKILL.md`; unsourced-band warnings sit
+in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
+
+
 In-house infrastructure, so there is no paper. The claims that need backing are
 about real dataset behaviour and about the predecessor's failure modes, both of
 which are checkable.
@@ -41,9 +46,3 @@ CO3D             <root>/<category>/calibration_new_<sequence>.npz
   approximation documented in [limitations.md](limitations.md#mixed-source-resolutions)
   stops being adequate and `camera_index` should carry real per-camera entries.
 
-## What is asserted without a source
-
-Audited 2026-09-02 against this module's own manifest.
-
-- **Numeric tuning advice with no citation in this file.** `image_dir` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
-- **Scope of the measurements.** What is written here was exercised across 20 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.1.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.

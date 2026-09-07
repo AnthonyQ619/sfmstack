@@ -118,3 +118,13 @@ is weak. No module in the sparse or optimization families has a parameter, filte
 metric that separates a virtual point from a real one. The honest position on a
 capture with this hazard is that the model is internally consistent and that
 internal consistency and correctness are further apart here than usual.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. The `dynamic_content`,
+`material_hazards` and `subject_complete` bands have no diagnostic reading
+them — descriptions of the captures measured so far, not judgements on yours.
+The numbers in the `n_images` and `thumbnail_max_side` advice are settings that
+worked here, not published results. And the deeper unsourced layer is the
+rubric itself — see the `sources` skill for exactly which of its claims rest on
+reasoning alone.

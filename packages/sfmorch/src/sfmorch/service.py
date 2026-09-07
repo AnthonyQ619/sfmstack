@@ -47,11 +47,11 @@ MAX_IMAGE_BYTES = 8 * 2**20
 SCENE_TYPE = "scene/v1"
 ANALYSIS_TYPE = "scene_analysis/v1"
 
-# The guide that translates step 2's numbers into the adjectives the family files
+# The guide that translates step 2's numbers into the adjectives the stage files
 # are written in. Named here rather than inlined so the prose can be revised
 # without touching the orchestrator, which is the same arrangement every other
 # curated document has.
-PLANNING_GUIDE = "scene_to_pipeline"
+PLANNING_GUIDE = "plan/scene_to_pipeline"
 
 # `dense` is deliberately absent. A first plan reaches a sparse model; dense
 # reconstruction is a separate decision made after one exists, and carrying its
@@ -491,15 +491,14 @@ class SfmService:
             )]
         }
 
-    @staticmethod
-    def _run_payload(result) -> dict[str, Any]:
+    def _run_payload(self, result) -> dict[str, Any]:
         step = result.step
         notes = {
             slot: art.manifest.body.strip()
             for slot, art in result.outputs.items()
             if art.manifest.body.strip()
         }
-        return {
+        payload = {
             "module": step.module,
             "outputs": step.outputs,
             "params": step.params,
@@ -511,6 +510,74 @@ class SfmService:
                 for d in art.manifest.diagnostics
             ],
             "notes": notes,
+        }
+        digest = self._health_digest(result.outputs)
+        if digest is not None:
+            payload["health_profile"] = digest
+        return payload
+
+    # The seven rungs of the reconstruction health profile, in ladder order.
+    # Defined and argued in skills/health/ladder.md -- the run payload carries
+    # the digest because a file nothing delivers is a file nothing reads: the
+    # health tier gets the same compelled delivery a diagnostic's see_also gives
+    # tuning.md, at the exact moment a sparse model exists.
+    _HEALTH_RUNGS = (
+        ("registration", "registered frames / capture frames"),
+        ("conditioning", "median triangulation angle over points"),
+        ("composition", "median track length, and points per registered frame"),
+        ("coverage", "median per-frame fraction of image grid cells holding "
+                     "an observation"),
+        ("error", "median reprojection error among well-supported points only"),
+        ("yield", "structure surviving into the model / structure available "
+                  "(track- and observation-form, both recorded)"),
+        ("pose_agreement", "median angular discrepancy between final relative "
+                           "poses and the pairwise two-view estimates"),
+    )
+
+    SPARSE_MODEL_TYPE = "sparse_model/v1"
+
+    def _health_digest(self, outputs) -> dict[str, Any] | None:
+        """The health profile for a run that just produced a sparse model.
+
+        Every rung is a percentile against the reference corpus -- the reference
+        pipeline's reconstruction of every corpus capture, recorded as a campaign
+        under skills/evidence/ with a machine-readable reference_profile.yaml
+        beside it. Until that campaign has run there is nothing to normalise
+        against, and the honest report is "cannot evaluate", not a guess: a
+        rung's raw value without the corpus distribution behind it invites
+        exactly the threshold-reading the ladder file warns against.
+        """
+        if not any(a.type == self.SPARSE_MODEL_TYPE for a in outputs.values()):
+            return None
+        root = self.config.skills_dir
+        ref = (root / "evidence" / "reference_profile.yaml") if root else None
+        if ref is None or not ref.is_file():
+            return {
+                "status": "cannot evaluate: no reference corpus yet",
+                "reference": (
+                    "skills/evidence/reference_profile.yaml -- absent; it is "
+                    "written by the reference campaign (see evidence/EVIDENCE)"
+                ),
+                "rungs": {
+                    name: {"component": component,
+                           "value": "cannot evaluate: no reference yet"}
+                    for name, component in self._HEALTH_RUNGS
+                },
+                "read": (
+                    "sfm_workflow_skill('health/ladder') defines each rung and "
+                    "the weakest-rung scalar; 'health/bounce' says what a "
+                    "persistently weak rung means. Until the reference exists, "
+                    "judge the model with the qualitative ladder there."
+                ),
+            }
+        # Computation against the reference lands with the reference campaign;
+        # shipping a half-computed profile would report numbers with no corpus
+        # behind them, which is the failure mode this digest exists to prevent.
+        return {
+            "status": "reference present but profile computation not yet "
+                      "implemented",
+            "reference": str(ref),
+            "read": "sfm_workflow_skill('health/ladder')",
         }
 
     # ===================================================================== #
@@ -774,7 +841,7 @@ class SfmService:
         families, missing = {}, []
         for stage in wanted:
             try:
-                families[stage] = self.workflow_skill(f"families/{stage}")["text"]
+                families[stage] = self.workflow_skill(f"plan/{stage}")["text"]
             except OrchestratorError:
                 missing.append(stage)
 
@@ -868,11 +935,11 @@ class SfmService:
     # The captures the planning guide's ranges were fitted on, by the source path
     # their scene was built from. A path rather than an artifact id because the id
     # changes with every loader parameter while the capture does not.
-    _CORPUS_MARKER = "skills/runs/CORPUS.txt"
+    _CORPUS_MARKER = "skills/evidence/CORPUS.txt"
 
     def _corpus_membership(self, scene) -> dict[str, Any]:
         root = self.config.skills_dir
-        marker = (root / "runs" / "CORPUS.txt") if root else None
+        marker = (root / "evidence" / "CORPUS.txt") if root else None
         if marker is None or not marker.exists():
             return {"known": False, "note": "no corpus record available"}
         entries = [ln.strip() for ln in marker.read_text(encoding="utf-8").splitlines()
@@ -961,21 +1028,47 @@ class SfmService:
             ],
         }
 
+    # The tree was reorganised from knowledge-kind tiers (families/, judgment/,
+    # runs/) into moment tiers (plan/, judge/, health/, evidence/). Old topics
+    # keep resolving -- transparently, to the file's new home -- because a miss
+    # costs more than a redirect: when `workflow/` raised on every request, one
+    # sweep's readers concluded the whole knowledge base was gone. The response
+    # carries `moved_to` so a reader learns the new name instead of a dead one.
+    _MOVED_TOPICS = {
+        "scene_to_pipeline": "plan/scene_to_pipeline",
+        "judgment/swap_or_build": "judge/swap_or_build",
+        "judgment/tradeoffs": "judge/tradeoffs",
+        "judgment/stopping": "health/ladder",
+        "judgment/smells": "health/smells",
+        "judgment/priors": "evidence/EVIDENCE",
+        "runs/EVIDENCE": "evidence/EVIDENCE",
+        "runs/INDEX": "evidence/INDEX",
+        **{f"families/{s}": f"plan/{s}"
+           for s in ("detection", "matching", "tracking", "pose", "sparse",
+                     "optimization", "dense")},
+    }
+
     def workflow_skill(self, topic: str) -> dict[str, Any]:
-        """Read a cross-cutting guide or judgment document from the knowledge base."""
+        """Read a cross-cutting guide from the knowledge base."""
         root = self.config.skills_dir
         if root is None:
             raise OrchestratorError("no skills directory is configured")
 
+        moved_from = None
+        clean = topic.removesuffix(".md")
+        if clean in self._MOVED_TOPICS:
+            moved_from, topic = topic, self._MOVED_TOPICS[clean]
+
         candidates = [root / topic, root / f"{topic}.md"]
-        # `judgment/` is the only bare-topic tier. There was a `workflow/` here
-        # too and it is deliberately gone: it was requested 24 times across a
+        # The moment tiers are bare-topic searchable: `ladder` finds
+        # `health/ladder.md`. There was a `workflow/` search path here once and
+        # it is deliberately gone: it was requested 24 times across a
         # seventeen-capture sweep and raised an error every time, because the six
-        # guides it was to hold were never written and their content had already
-        # settled into `scene_to_pipeline.md` and `families/`. A search path for a
-        # directory that does not exist is an invitation to a miss, so the path
-        # was removed with the directory. Do not add it back without the files.
-        candidates += [root / d / f"{topic}.md" for d in ("judgment",)]
+        # guides it was to hold were never written. A search path for a directory
+        # that does not exist is an invitation to a miss; do not add one back
+        # without the files.
+        candidates += [root / d / f"{topic}.md"
+                       for d in ("plan", "judge", "health", "evidence")]
         # docs/ sits beside skills/, not inside it, and the family files and module
         # skills cite `docs/import_lessons.md` and `docs/design/DECISIONS.md`
         # repeatedly as where the per-capture numbers and the full experiments live.
@@ -989,8 +1082,16 @@ class SfmService:
                        parent / "docs" / "design" / f"{topic}.md"]
         for path in candidates:
             if path.is_file():
-                return {"topic": topic, "path": str(path),
-                        "text": path.read_text(encoding="utf-8")}
+                doc = {"topic": topic, "path": str(path),
+                       "text": path.read_text(encoding="utf-8")}
+                if moved_from is not None:
+                    doc["moved_to"] = topic
+                    doc["note"] = (
+                        f"'{moved_from}' moved to '{topic}' when the tree was "
+                        f"reorganised by moment (plan/ judge/ health/ evidence/)."
+                        f" Cite the new name."
+                    )
+                return doc
 
         # Enumerate from the SAME places the lookup above searches. Listing only
         # `skills/` was a half-fix: `docs/import_lessons.md` and

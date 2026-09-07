@@ -69,3 +69,9 @@ in 154 iterations, converged, 5.3s.
 
 **Reading the output:** [artifact.md](artifact.md). Also writes a `colmap`
 sidecar, so a pycolmap consumer can open the model natively.
+
+## Provenance
+
+Exercised across **88 runs at version 1.1.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them has been
+run through it. Claim-by-claim citations: the `sources` skill.

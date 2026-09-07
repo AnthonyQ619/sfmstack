@@ -66,3 +66,10 @@ Triangulate against these poses and read the triangulator's error.
 **Cheapest thing that usually works:** defaults. 12 images in ~20 s on an A6000.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end. The first real run is the trigger to re-check all of it.
+Claim-by-claim citations: the `sources` skill.

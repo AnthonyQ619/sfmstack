@@ -316,7 +316,7 @@ def run(ctx: Ctx):
     ratio = float(np.mean(inliers / raw))
     mean_planarity = float(np.mean(planarity)) if planarity else None
 
-    # 2: the denominator. scene_to_pipeline.md tells a reader to watch
+    # 2: the denominator. plan/scene_to_pipeline.md tells a reader to watch
     # pairs_matched "against the number of pairs your pairing proposed" -- a
     # number the module HAS (it built the list) and used to throw away. Every
     # reader recovered it as n(n-1)/2 by hand, which is right only under

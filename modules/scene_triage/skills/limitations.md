@@ -49,7 +49,7 @@ global context, or the whole image pair jointly.
 sfm_find_alternatives(produces='pairwise_matches/v1')
 ```
 
-and read [`skills/families/matching.md`](../../../skills/families/matching.md)
+and read [`skills/plan/matching.md`](../../../skills/plan/matching.md)
 before choosing. This module cannot tell you *which* alternative; it tells you
 that the choice is a family one.
 

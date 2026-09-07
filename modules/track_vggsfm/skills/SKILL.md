@@ -108,3 +108,10 @@ Full numbers and the failure at 0: [tuning.md](tuning.md#dedupe_eps_px--worth-tu
 
 **Reading the output:** [artifact.md](artifact.md) ·
 **Tuning:** [tuning.md](tuning.md) · **Limits:** [limitations.md](limitations.md)
+
+## Provenance
+
+**Run zero times in any pipeline.** Every claim in these skills is from isolated
+testing or carried from the predecessor codebase; nothing here has been exercised
+end to end. The first real run is the trigger to re-check all of it.
+Claim-by-claim citations: the `sources` skill.

@@ -79,3 +79,9 @@ about a third of them. The one parameter worth reaching for beyond that is
 
 **Reading the output:** [artifact.md](artifact.md). This module does not refine
 globally — run [BundleAdjustmentGlobal](../../ba_global/skills/SKILL.md) after it.
+
+## Provenance
+
+Exercised across **109 runs at version 1.2.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`) — the most-run module in the
+registry; no capture outside them. Claim-by-claim citations: the `sources` skill.

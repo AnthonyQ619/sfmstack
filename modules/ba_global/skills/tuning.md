@@ -130,3 +130,15 @@ A model folded on itself converges perfectly well.
 cannot detect a globally wrong-but-self-consistent reconstruction. It is a
 consistency measure, not an accuracy measure — there is no ground truth anywhere in
 this pipeline.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Seven healthy bands**
+(`min_frame_points`, `p95_reprojection_error`, `observations_optimized`,
+`observation_count`, `mean_track_length`, `mean_reprojection_error`, and one
+more) declare a range that no diagnostic reads: each is a description of the
+captures measured so far, not a judgement on yours, and a corpus maximum is the
+largest of N draws — the next capture exceeding it is expected, not anomalous.
+The specific numbers in the `max_iterations`, `loss_scale` and
+`min_track_length` advice above are settings that worked here, not results
+anyone has published.

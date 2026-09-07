@@ -27,7 +27,7 @@ correspondences — which is exactly what starves the view graph. They answer "a
 these matches good", and the question is "is there enough here to reconstruct".
 
 **What to do:** registration is a precondition, not a tiebreak
-([stopping.md](stopping.md)). For a branch choice, carry both branches to a model
+([ladder.md](ladder.md)). For a branch choice, carry both branches to a model
 — the stage-local comparison has been wrong every time it was checked.
 
 ---

@@ -17,7 +17,7 @@ status: partly built 2026-08-14 — SceneTriage and SceneMotion exist; trait der
 > | metadata: ordering, capture interval, EXIF focal | **partly** — ordering is a filename heuristic; the EXIF cues need the new `source_dir` parameter, because `SceneLoader` re-encodes and drops EXIF |
 > | EXIF sanity-check of supplied calibration, GPS | not built |
 > | view-graph shape, dynamic content | not built |
-> | **trait derivation** | **not built**, and blocked on `skills/judgment/` — see below |
+> | **trait derivation** | **not built**, and blocked on thresholds the global skills tier deliberately does not name — see below |
 > | `sfm_open_scene` auto-runs `SceneTriage` | not built; there is no `sfm_open_scene` tool, and `SceneTriage` is an ordinary `sfm_run` |
 >
 > The open question at the end of this document — orchestrator or module — was
@@ -70,7 +70,7 @@ Two properties worth having:
 ## What exists today
 
 Both live in
-[`breadth_agent/src/agent/core/utility/`](../../breadth_agent/src/agent/core/utility/)
+`scene_agent/breadth_agent/src/agent/core/utility/` (the predecessor repository)
 and are better than their obscurity suggests. Port, don't rewrite.
 
 ### `optical_flow.py` → `SceneMotion` (GPU)
@@ -186,8 +186,8 @@ becomes mechanical rather than intuitive:
 sfm_open_scene(...)            → scene/v1  (+ SceneTriage auto-run)
 sfm_run(SceneMotion, ...)      → scene_analysis/v1, traits derived
       │
-      ├─ runs/INDEX.md filtered by trait overlap   → "scenes like this were solved how?"
-      ├─ judgment/triage.md                        → your read on what those traits imply
+      ├─ evidence/INDEX.md filtered by trait overlap   → "scenes like this were solved how?"
+      ├─ plan/scene_to_pipeline.md                 → how those numbers read into a plan
       └─ sfm_list_modules(...) + SKILL.md          → candidate first pipeline
 ```
 
@@ -196,7 +196,7 @@ prose: a card recorded on `[outdoor, repetitive-texture, wide-baseline]` can be
 matched against the current scene's traits automatically, so the agent knows
 whether it transfers.
 
-**Thresholds live in `judgment/`, not in the module.** What counts as "narrow
+**Thresholds live in the global skills tier, not in the module.** What counts as "narrow
 baseline" is a practitioner call, it will change as the module set grows, and it
 is exactly the kind of subjective boundary that
 [knowledge-system.md](knowledge-system.md#the-judgment-tier) exists to hold. The

@@ -64,7 +64,8 @@ re-encodes images into the scene artifact and EXIF does not survive that. See
 [limitations.md](limitations.md#exif-does-not-survive-the-scene-artifact).
 
 **What it does not do:** derive traits. The `traits` group of `scene_analysis/v1`
-is the orchestrator's job, from thresholds held in `skills/judgment/`, so that
+is the orchestrator's job, from thresholds held in the global skills tier
+(deliberately unwritten so far -- see `evidence/INDEX`), so that
 revising what counts as "repetitive" does not mean re-running analysis. The
 `healthy` bands here are this module's own advisory reading and are explicitly
 provisional — see [limitations.md](limitations.md#the-bands-here-are-provisional).
@@ -74,3 +75,10 @@ provisional — see [limitations.md](limitations.md#the-bands-here-are-provision
 fill different groups, so they compose without a merge step.
 
 **Reading the output:** [artifact.md](artifact.md).
+
+## Provenance
+
+Exercised across **19 runs at version 1.4.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill — including the experiment
+`repetitiveness` is still waiting on.

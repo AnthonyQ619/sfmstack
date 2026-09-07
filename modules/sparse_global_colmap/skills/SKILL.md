@@ -63,3 +63,9 @@ cameras, 3608 points, **0.316 px** in 4.5 s — better than the incremental chai
 
 **Reading the output:** [artifact.md](artifact.md). It writes a COLMAP sidecar,
 so a pycolmap consumer opens the model natively.
+
+## Provenance
+
+Exercised across **8 runs at version 1.1.0** in the seventeen-capture sweep of two
+benchmark families (`evidence/CORPUS.txt`); no capture outside them.
+Claim-by-claim citations: the `sources` skill.

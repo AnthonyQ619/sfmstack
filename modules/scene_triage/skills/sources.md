@@ -1,5 +1,10 @@
 # Sources — SceneTriage
 
+**Cite-only, like the evidence tier: this file exists to be referenced, not
+browsed.** The provenance summary rides `SKILL.md`; unsourced-band warnings sit
+in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
+
+
 The photometric block is a port with its measurements and weights unchanged; the
 texture and metadata blocks are new here. No paper backs any of it — these are
 standard image statistics assembled for a purpose — so what needs citing is where
@@ -34,7 +39,8 @@ and one computed there are the same quantity.
    against whatever is registered.
 3. **LOW/MEDIUM/HIGH labels are gone.** They were a trait vocabulary living inside
    the measurement. Traits belong to the orchestrator, derived from thresholds in
-   `skills/judgment/`, so that revising a boundary does not invalidate every
+   the global skills tier (deliberately unwritten so far -- see `evidence/INDEX`),
+   so that revising a boundary does not invalidate every
    analysis already computed.
 
 ## What is asserted without a source
@@ -50,17 +56,3 @@ Stated plainly so it is not mistaken for measurement:
   sensor noise on a flat surface does not register as texture, and checked only
   for plausibility against [S4].
 
-**Audited 2026-09-02, in addition to the above:**
-
-
-- **Healthy bands with nothing behind them.** `texture_density`, `repetitiveness`, `textureless_fraction` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
-- **Numeric tuning advice with no citation in this file.** `texture_floor`, `patch_size`, `source_dir` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
-- **Scope of the measurements.** What is written here was exercised across 19 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.4.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.
-
-## Review triggers
-
-Re-read and re-check this file when any of these happens:
-
-- **This module's version changes from 1.4.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
-- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
-- **A reading crosses one of `texture_density`, `repetitiveness`, `textureless_fraction` and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.

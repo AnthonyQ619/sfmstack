@@ -67,3 +67,9 @@ again — do not touch anything here.
 is the single most misleading number in this pipeline: it rises both when things
 get better and when they get much worse. [tuning.md](tuning.md) has the measured
 case.
+
+## Provenance
+
+Exercised across **84 runs at version 1.4.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`) — the most-run tracker in the
+registry; no capture outside them. Claim-by-claim citations: the `sources` skill.

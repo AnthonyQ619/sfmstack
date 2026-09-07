@@ -1,5 +1,10 @@
 # Sources — SceneMotion
 
+**Cite-only, like the evidence tier: this file exists to be referenced, not
+browsed.** The provenance summary rides `SKILL.md`; unsourced-band warnings sit
+in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
+
+
 | Tag | Source | Where | Claims it supports |
 | --- | --- | --- | --- |
 | S1 | Predecessor source | `scene_agent/breadth_agent/src/agent/core/utility/optical_flow.py` | RAFT-large over consecutive pairs; normalisation by image diagonal; the p75/p90/IQR summary; the `low_motion_thresh = 0.005` default and the `high_motion_thresh = 0.08` one that has since been cut; the 20° large-rotation cut; the essential-matrix rotation estimate from flow correspondences |
@@ -50,17 +55,3 @@ scaled to the flow resolution.
   — that a rotation-invariant descriptor cares about view change rather than
   displacement — is reasoning, not measurement.
 
-**Audited 2026-09-02, in addition to the above:**
-
-
-- **Healthy bands with nothing behind them.** `variability`, `large_rotation_risk` declare a range and no diagnostic on this module reads them. A band with no diagnostic is a description of the captures measured so far, not a judgement on yours -- and a corpus maximum is the largest of N draws, so the next capture exceeding it is expected rather than anomalous.
-- **Numeric tuning advice with no citation in this file.** `stride`, `max_pairs`, `max_side`, `low_motion_thresh`, `rotation_only_tol` name specific values in their tuning prose. The reasoning behind them may be sound; the numbers are settings that worked here, not results anyone has published.
-- **Scope of the measurements.** What is written here was exercised across 66 runs of this module in a seventeen-capture sweep of benchmark captures, at version 1.3.0. That is the whole evidence base: no capture outside those two benchmark families has been run through it.
-
-## Review triggers
-
-Re-read and re-check this file when any of these happens:
-
-- **This module's version changes from 1.3.0.** These notes were written against it; a metric set or a published band can change with a version and the prose does not follow automatically.
-- **A capture unlike the benchmark families appears.** Every band here was fitted on controlled-rig and field captures from two benchmark datasets. Per-frame appearance readings transfer to a larger capture; adjacent-motion readings and anything denominated in pairs do not.
-- **A reading crosses one of `variability`, `large_rotation_risk` and nothing fires.** That is this file's known gap, not a defect in the capture -- but it is the signal that the band deserves either a diagnostic or a wider range.

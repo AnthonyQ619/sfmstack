@@ -37,7 +37,7 @@ one detection artifact, so the A/B costs no re-detection; run it, and if you mus
 choose before the outcome exists, say which reading you chose on.
 
 *Traceability:* the run behind the numbers above is in
-[`skills/runs/EVIDENCE.md`](../../../skills/runs/EVIDENCE.md). Do not locate your capture
+[`skills/evidence/EVIDENCE.md`](../../../skills/evidence/EVIDENCE.md). Do not locate your capture
 by matching its readings against that table — check it against the capture
 properties in the second paragraph instead. A number that matches a recorded run to
 several digits usually means you are reading your own capture back.
@@ -97,7 +97,7 @@ sfm_find_alternatives(produces="pairwise_matches/v1", not_consuming="features/v1
 *Symptom:* `planarity` above 0.9.
 
 **Not a matcher problem, and not fixable by swapping matchers.** The explanation
-and what to do instead are owned by `families/matching.md` section 5, "`planarity`
+and what to do instead are owned by `plan/matching.md` section 5, "`planarity`
 is the one metric here whose answer is not a matcher" -- read it there rather than
 here, because three matcher files used to restate it and drifted apart in wording
 while agreeing in substance.

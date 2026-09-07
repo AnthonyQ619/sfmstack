@@ -136,3 +136,13 @@ still discriminate, along with `planarity`.
 
 **`certainty_floor_effect` is null when `min_certainty` is 0**, which is the
 default — a null means the filter did not run, not that nothing was low-certainty.
+
+## What here rests on nothing — the manifest audit
+
+Audited against this module's own manifest. **Five healthy bands**
+(`pairs_matched`, `matches_per_pair`, `largest_component_fraction`,
+`min_image_degree`, `mean_certainty`) declare a range no diagnostic reads —
+descriptions of the captures measured so far, not judgements on yours. The
+numbers in the `max_matches`, `min_certainty`, `use_custom_corr`, `pairing` and
+`ransac_threshold` advice are settings that worked in isolated testing, not
+published results — and this module has run **zero times** in a real pipeline.

@@ -48,7 +48,7 @@ directly, is the fix. See [limitations](limitations.md#repetitive-structure).
 **And ask connectivity before you ask about repetition.** If the capture also
 covers ground quickly between adjacent frames, the connectivity question outranks
 this one and can send you to a learned detector after all — for a completely
-different reason. `skills/families/detection.md` has the order.
+different reason. `skills/plan/detection.md` has the order.
 
 **Deterministic**, so re-running with identical parameters is a cache hit, and
 comparing two parameter settings is a clean A/B with no seed noise.
@@ -62,3 +62,9 @@ the default cap, the contrast filter is binding rather than the cap, and
 **Reading the output:** [artifact.md](artifact.md). Note that `keypoints_min`
 matters more than the mean — one starved frame breaks the track chain through it
 regardless of how good the average is.
+
+## Provenance
+
+Exercised across **35 runs at version 1.1.0** in the seventeen-capture sweep of
+two benchmark families (`evidence/CORPUS.txt`) — the most-run detector in the
+registry; no capture outside them. Claim-by-claim citations: the `sources` skill.

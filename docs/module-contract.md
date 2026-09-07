@@ -439,13 +439,14 @@ a scene before anything is known about it.
   uncalibrated scene a zero would read as "no rotation detected" when the truth
   is "the test could not run".
 - **Thresholds do not live here.** The analyser emits numbers; what counts as
-  "narrow baseline" belongs in `skills/judgment/`.
+  "narrow baseline" belongs in the global skills tier, outside any module.
 - **`traits` has no producer, and that is deliberate.** It is the one declared
   group neither module fills. Deriving it is the orchestrator's job, from
-  thresholds in `skills/judgment/`, so that revising a cut point does not
-  invalidate every analysis already computed. Until `judgment/` is written,
+  thresholds held in the global skills tier, so that revising a cut point does
+  not invalidate every analysis already computed. Until those thresholds are
+  written (they deliberately are not, so far),
   trait-based retrieval does not run — see
-  [mcp-tools.md](mcp-tools.md#4-the-tiers-that-were-empty--what-filled-them-and-what-did-not).
+  [mcp-tools.md](mcp-tools.md#4-the-global-tier-by-moment--and-how-it-got-this-shape).
 - This is the only family whose output no module consumes. The orphan warning
   at registry load is expected: `scene_analysis/v1` is read by the agent, not by
   a pipeline stage.
