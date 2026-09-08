@@ -60,16 +60,23 @@ above before it justifies a build.
 
 ---
 
-## Not yet operational — what this skeleton is waiting on
+## What works now, and what this still waits on
 
-**The reference corpus does not exist yet**, so no percentile can be computed and
-no rung can be called "in the bottom tail". Until the reference campaign lands in
-[`evidence/`](../evidence/EVIDENCE.md), the run-summary digest reports every rung
-as *cannot evaluate: no reference yet* — and the bounce call falls back to the
-qualitative ladder plus [`judge/swap_or_build.md`](../judge/swap_or_build.md)'s
-per-family signals, which is what it was before this file existed.
+**The reference corpus exists**, so rungs 1 and 2 of the signal are live: the
+digest reports each rung's percentile against
+[`evidence/reference-pipeline-2026-09`](../evidence/reference-pipeline-2026-09.md),
+and "in the bottom tail" is a reading rather than a wish. The corpus is coarse —
+sixteen draws, so percentiles move in steps of several points — and it is one
+fixed pipeline over two benchmark families, so a capture unlike those is being
+scored against a distribution that never saw its kind.
 
-The frontier bookkeeping (rung 3 of the signal: which swaps and sweeps this run
-already tried) is readable from the run record today; nothing summarises it yet.
-That summary belongs in the same digest and is part of the reference-campaign
-work.
+**Rung 3 is still manual.** Whether the failing rung has moved across the swaps
+and bracketed sweeps already tried is readable from the run record, and nothing
+summarises it for you. Until something does, that half of the signal is a
+judgement you make by looking, and a bounce call made without it is a call made
+on a low reading alone — which the corpus says is not enough, because the worst
+model in it reads *high* on two rungs.
+
+**And no bounce has been acted on yet.** Nothing in this file has sent anyone to
+build a module; it is a specification for a decision, checked against the
+corpus's failures rather than against its own successes.

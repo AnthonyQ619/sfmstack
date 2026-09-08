@@ -30,6 +30,29 @@ these matches good", and the question is "is there enough here to reconstruct".
 ([ladder.md](ladder.md)). For a branch choice, carry both branches to a model
 — the stage-local comparison has been wrong every time it was checked.
 
+**A second shape of the same smell: nothing upstream separated the failures from
+the successes.** The reference campaign drove one fixed pipeline over every
+corpus capture. Three models registered two frames each, out of twenty-six to
+forty-five. Looking upstream for what distinguished them from the thirteen that
+worked:
+
+- **The view graph was a single connected component on every capture in the
+  corpus** — the failures and the successes alike. `largest_component_fraction`
+  never left 1.0, so it separated nothing.
+- Matcher inlier ratio on the three failures sat in the same band as the
+  successes.
+- Average track length was barely above two everywhere, failures and successes
+  overlapping.
+- Seed-pair geometry did not sort them either: two failures seeded on the widest
+  pairs in the corpus and the third on one of the narrowest, inside the range
+  the successful captures used.
+
+**So "the graph is connected" is not the same claim as "the model will grow",
+and on this corpus no upstream reading anticipated the collapse at all.** That
+is not an argument for a better upstream metric; it is the reason the health
+profile is read *after* the sparse step. The failure is only visible in the
+object the failure is about.
+
 ---
 
 ## A better mean reprojection error on a differently-composed cloud

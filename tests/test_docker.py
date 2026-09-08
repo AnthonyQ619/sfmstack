@@ -13,6 +13,7 @@ isolated from one another and still interoperate.
     docker build -t sfmstack/track-union-find:1.0.0 -f modules/track_union_find/Dockerfile .
 """
 
+import hashlib
 import shutil
 import subprocess
 from pathlib import Path
@@ -152,6 +153,42 @@ def test_provenance_records_the_image_that_actually_ran(orch):
         capture_output=True, text=True, timeout=60,
     ).stdout.strip()
     assert prov.image_digest == live
+
+
+@pytest.mark.parametrize("module", MODULES)
+def test_the_image_still_carries_the_source_it_is_tagged_for(module):
+    """A version tag does not pin behaviour, and the cache will not notice.
+
+    The orchestrator's cache key is (module, module_version, slot, params, input
+    ids). It does NOT cover adapter source, so an image built before an adapter
+    edit keeps its tag, keeps satisfying the cache, and keeps running the old
+    code -- while every skill file describes the new one.
+
+    This is not hypothetical. The reference campaign's first attempt was
+    invalidated by exactly this: an image at an unchanged version was running
+    code from before the guard that stops one degenerate image pair from killing
+    a whole exhaustive matching run, so a capture failed in a way the
+    repository's own source says cannot happen. Fifteen of twenty-eight modules
+    had drifted the same way.
+
+    `tools/image_drift.py` is the same check over every module at once; this one
+    is here so the suite fails rather than the next campaign.
+    """
+    src = REPO / "modules" / _DIRS[module]
+    for name in ("adapter.py", "module.yaml"):
+        want = hashlib.md5((src / name).read_bytes()).hexdigest()
+        out = subprocess.run(
+            ["docker", "run", "--rm", "--entrypoint", "md5sum",
+             _image_of(module), f"/module/{name}"],
+            capture_output=True, text=True, timeout=180,
+        )
+        assert out.returncode == 0, f"cannot read {name} from the image: {out.stderr}"
+        assert out.stdout.split()[0] == want, (
+            f"{module}: the built image's {name} differs from "
+            f"modules/{_DIRS[module]}/{name}. The image is stale at an unchanged "
+            f"version tag -- rebuild it with tools/build_images.sh "
+            f"{_DIRS[module]}, and re-run anything measured against it."
+        )
 
 
 def test_a_real_pipeline_runs_across_two_containers(orch):

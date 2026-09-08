@@ -76,9 +76,10 @@ skills/
     smells.md              results that look fine numerically and are wrong
     bounce.md              weakest rung low AND immobile across attempts → BUILD
 
-  evidence/              ~15 KB  CHECKING OR CITING A CLAIM (scene names live here, only here)
+  evidence/                      CHECKING OR CITING A CLAIM (scene names live here, only here)
     EVIDENCE.md            campaign index + the reliability ladder
     <campaign>.md          one file per campaign, raw per-capture tables
+    reference_profile.yaml GENERATED: the distribution the health digest scores against
     INDEX.md               trait-keyed retrieval table  [NO ROWS — see §7]
     CORPUS.txt             the captures every quoted range was fitted on
 
@@ -162,11 +163,12 @@ model from upstream readings is the first entry in `health/smells.md`. The
 digest enforces the scope mechanically: the run payload carries it exactly when
 a run produces a `sparse_model/v1`.
 
-The per-scene reference values will be recorded by a reference campaign in
-`evidence/` (with ground-truth validation columns, used once, to validate the
-internal readings before any definition is frozen); until that campaign runs,
-every rung honestly reports *cannot evaluate: no reference yet* — the mechanism
-working, not a gap in it. `health/bounce.md` reads the profile across a run's
+The per-scene reference values were recorded by the reference campaign in
+`evidence/`, and the digest scores against them now. The campaign also falsified
+two rung definitions on its own first reading — one had the same value on every
+capture in the corpus, the other's filter admitted every point — which is the
+process working rather than a defect in it, and both are corrected. What it could
+not do is validate a rung; see §7.2. `health/bounce.md` reads the profile across a run's
 frontier of attempts: a rung that is low says unhealthy; a rung that is low
 **and immobile** across the swaps and bracketed sweeps already tried says the
 registry has been given its chance and declined — take the failing rung's
@@ -411,12 +413,27 @@ This also means the stage files are asymmetrically evidenced: `plan/dense.md`
 compares two modules neither of which has run; `plan/sparse.md` compares five of
 which three have.
 
-### 7.2 The health profile is designed but has no reference corpus
+### 7.2 The health profile has a reference corpus, and is still not validated
 
-The digest ships and honestly reports every rung unevaluable; the percentile
-normalisation, the yield-form decision, and the validation of pose agreement
-against ground truth all wait on Phase A. Until then the profile is a
-specification, and `health/bounce.md`'s three-part signal cannot fire.
+Phase A ran: one fixed pipeline over all sixteen corpus captures, and
+`evidence/reference-pipeline-2026-09` plus its generated `reference_profile.yaml`
+are the distribution the digest now scores against. Two rung definitions did not
+survive their own first reading — composition read the same value on every
+capture in the corpus, and the error rung's "well-supported" filter admitted
+every point — and both were corrected against the data rather than defended.
+
+What the campaign could **not** do is validate a rung. It computed ground-truth
+pose error beside every internal reading, and that check collapsed for a reason
+worth more than the intended result: true pose error is measured over the images
+a model registered, so the three models that abandoned most of their capture
+scored at least as well as every fully-registered one. A single accuracy number
+cannot see what a model discarded — which vindicates the vector-with-registration-
+first design and disqualifies the cross-capture correlation as a test.
+
+Validating a rung needs two models of the same capture at equal registration.
+That is what the alternate legs are shaped to produce, and until they run, every
+rung is a designed reading rather than a measured-good one. The yield-form
+decision waits on the same comparison.
 
 ### 7.3 The distillation loop has never executed
 
@@ -482,10 +499,12 @@ mechanism that works every time.
    28 modules) — but "cheap enough to be fine" is exactly the kind of claim this
    corpus has been wrong about before.
 
-3. **The health profile is designed by argument, not measurement.** Seven rungs
-   were chosen by reasoning about gaming and blind spots; the GT-validation
-   columns of the reference campaign are the test, and until it runs the profile
-   is exactly the kind of principled-but-unexercised structure §7.1 warns about.
+3. **The health profile still is not validated, only exercised.** The reference
+   campaign falsified two of its rung definitions, which is evidence the process
+   works — but the ground-truth check it was meant to end with turned out to be
+   confounded by registration (§7.2), so no rung has been shown to order two
+   models the way truth does. The corpus is also sixteen draws from two
+   benchmark families, so a percentile is coarse and provincial at once.
 
 4. **The refusal to name thresholds may be costing more than it saves.** It is
    principled (§6) and it is what blocks trait derivation and therefore

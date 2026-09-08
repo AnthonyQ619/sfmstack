@@ -96,11 +96,13 @@ capture. The digest enforces the scope mechanically: it attaches only to a run
 that produced a `sparse_model/v1`.
 
 The run summary of any such run carries the **health profile**: one reading per
-rung below, each expressed as a **percentile within the reference corpus** — the reconstruction of every corpus capture by the reference
-pipeline, recorded in the reference campaign under
-[`evidence/`](../evidence/EVIDENCE.md). Until that campaign has run, the digest
-reports every rung as *cannot evaluate: no reference yet*, and that is the honest
-state, not an error.
+rung below, each expressed as a **percentile within the reference corpus** — the
+reconstruction of every corpus capture by one fixed pipeline, recorded in
+[`evidence/reference-pipeline-2026-09`](../evidence/reference-pipeline-2026-09.md).
+Read that file before trusting a percentile: it says what ran, and it says which
+two of these rung definitions did not survive their own first reading. Where a
+rung cannot be computed the digest reports it as unevaluable rather than
+guessing, which is the honest state and not an error.
 
 Every component is computable from the model and its inputs alone — no ground
 truth — and scene-size invariant, so a percentile against the corpus is a fair
@@ -110,9 +112,9 @@ comparison rather than a measure of which scene you are on:
 | --- | --- | --- |
 | Registration | registered frames / capture frames | a fraction, not a count |
 | Conditioning | median triangulation angle over points | angle is scale-free |
-| Composition | median track length, and points per registered frame | support, not raw point count |
+| Composition | share of points seen in MORE than two views | support, not raw point count |
 | Coverage | median over frames of the fraction of image grid cells holding ≥1 observation | evenness, not totals |
-| Error | median reprojection error **among well-supported points only** (track length ≥ corpus-median support) | composition-adjusted; dropping long tracks cannot flatter it |
+| Error | median reprojection error **among points seen in more than two views** | composition-adjusted; dropping long tracks cannot flatter it |
 | Yield | structure surviving into the model / structure the pipeline had available | self-normalised by the capture's own upstream supply |
 | Pose agreement | median angular discrepancy between final relative poses and the pairwise two-view estimates (rotation angle, and translation *direction* angle) | never touches the points, so it sees the drift reprojection error cannot |
 
@@ -124,8 +126,22 @@ in the header as stated context, because a raw count is only comparable *within*
 capture (model A against model B of the same scene — the procedure below), never
 across scenes.
 
-Three rungs need a definitional note:
+Five rungs need a definitional note:
 
+- **Composition is the share of points over-determined, not the median support.**
+  It was the median observations-per-point until the reference campaign measured
+  it, and the median read **exactly 2 on every capture in the corpus** — healthy
+  and broken alike — because a sparse cloud is two-view-dominated by
+  construction. A rung with no variance across the reference corpus has a
+  meaningless percentile, which is worse than no rung: it still reports a number.
+  The replacement is the reading rung 3 above already argues from, so the
+  profile and the ladder now measure the same thing.
+- **"Well-supported" in the error rung means more than two views, and that is
+  arithmetic rather than a tuned cut point.** It was the corpus-median support
+  until the reference campaign measured that median at 2 on every capture, which
+  admitted every point and left the qualifier doing nothing. A two-view point is
+  exactly determined, so averaging its residual in measures the algebra rather
+  than the reconstruction.
 - **Yield is recorded in both its forms** until the reference campaign decides
   between them: track-yield (3D points / tracks entering reconstruction) and
   observation-yield (observations in the model / observations in the tracks). The
@@ -146,11 +162,23 @@ Three rungs need a definitional note:
   reads as *below the observed range*, never as *failed*: the minimum is the
   smallest of seventeen draws, not a floor.
 
-On the reference corpus itself, ground-truth poses exist (the benchmark families
-ship them), so the reference campaign records GT pose error **beside** the
-internal readings — used once, to validate which internal readings actually track
-truth before any definition is frozen. GT can never be a rung; the profile must
-work on captures that have none.
+**What the ground truth settled, and what it could not.** The reference corpus
+has ground-truth poses, so the campaign computed true pose error beside every
+internal reading — once, to check whether the rungs track accuracy. The answer
+was that the check itself does not work, for a reason that vindicates the
+design: true pose error is measured over the images a model *registered*, so a
+model that keeps two frames and gets that one pair right outscores a complete
+reconstruction. Two such models did. **A single accuracy number cannot see what
+a model discarded**, which is why this profile is a vector with registration
+first, and why the weakest-rung scalar is a minimum rather than a mean — on the
+worst model in the corpus, conditioning and pose agreement both sit near the top
+of their distributions, and a mean would have called it mediocre instead of
+broken.
+
+A rung is therefore validated by comparing two models of the SAME capture at
+EQUAL registration, where a ground-truth comparison is legitimate. That
+comparison is what the alternate-leg campaigns are shaped to produce, and until
+one runs, every rung here is a designed reading rather than a measured-good one.
 
 ---
 

@@ -22,6 +22,7 @@ rows that support it.
 | --- | --- | --- |
 | [branch-comparison-2026-08](branch-comparison-2026-08.md) | 14 captures × 3 detector/matcher branches to a sparse model | `plan/scene_to_pipeline.md` §3b; the swap signals in `judge/swap_or_build.md` |
 | [detection-phase-2026-08](detection-phase-2026-08.md) | 5 captures, detection stage driven cold | `plan/detection.md` §3 and §5; the coverage-denominator finding |
+| [reference-pipeline-2026-09](reference-pipeline-2026-09.md) | every corpus capture through one fixed pipeline at full frame count | the reference distribution the health digest scores against; two rung definitions it falsified; what ground truth cannot measure |
 
 [CORPUS.txt](CORPUS.txt) lists the captures every quoted range in
 `plan/scene_to_pipeline.md` was fitted on. [INDEX.md](INDEX.md) is the trait-keyed
@@ -29,12 +30,13 @@ retrieval table — a different question ("has a capture like mine been solved
 before?"), kept separate because retrieval wants a row you match against and this
 tier exists to be cited and not matched.
 
-**The reference campaign is not yet here.** When the reference re-run of the corpus
-executes, its campaign file lands in this directory carrying the per-scene values
-of the seven-rung health profile (defined in [`health/ladder.md`](../health/ladder.md)),
-the ground-truth validation columns, and a machine-readable
-`reference_profile.yaml` beside it that the run-summary health digest reads.
-Until then the digest reports every rung as unevaluable, and says so.
+**The reference campaign has run.** [reference-pipeline-2026-09](reference-pipeline-2026-09.md)
+carries the per-scene values of the health profile (defined in
+[`health/ladder.md`](../health/ladder.md)) with ground truth beside them, and
+`reference_profile.yaml` next to it is the machine-readable distribution the
+run-summary health digest scores a new model against. Two rung definitions did
+not survive their own first reading and were corrected; the campaign file says
+which and why.
 
 ---
 
@@ -90,6 +92,22 @@ appearance readings transfer to a full capture; adjacent-motion readings do not,
 because "adjacent" means something different; anything denominated in *pairs*
 does not at all, because pairs grow quadratically with frames.
 
+**A version number did not pin the software that produced a row.** A module's
+image is tagged with its manifest version, and the artifact cache keys on that
+version and never on the adapter source — so an image built before a code edit
+keeps its tag, keeps satisfying the cache, and keeps running the old code while
+every skill file describes the new one. Measured when the reference campaign was
+first attempted: **fifteen of twenty-eight modules were running images that no
+longer matched their source**, one of them missing a guard its own repository
+docstring describes, which killed a whole exhaustive matching run on the one
+image pair it could not solve.
+
+The consequence for reading this tier: **a row is evidence about the code that
+ran, which is not automatically the code you can read.** Any campaign recorded
+here states the check; `tools/image_drift.py` performs it, and the docker suite
+fails when an image drifts. A campaign run without that check is worth less than
+its numbers suggest, and older campaigns here predate the check.
+
 ## Where it held up
 
 The claims that survived contact with seventeen full captures were **mechanism
@@ -103,7 +121,12 @@ claims and definitional ones**, and the corrections made after measurement:
 - A producer's published mean matching a bundle adjuster's independent reading of
   the same artifact — matched twice.
 - "Registration is a precondition, not a tiebreak" — the single sentence that
-  prevented the worst decision of the sweep.
+  prevented the worst decision of the sweep, and since confirmed **against ground
+  truth**: in the reference campaign the models that abandoned most of their
+  capture scored at least as well on true pose error as every fully-registered
+  reconstruction, because each kept two images and got the one surviving pair
+  right. An accuracy number computed over what a model kept cannot see what it
+  discarded.
 
 **The pattern to carry:** this corpus is reliable about *what a number means* and
 *why a mechanism behaves as it does*, and unreliable about *what will happen if
@@ -126,5 +149,9 @@ runs, 108 backtracks — is the evidence behind most of the corrections made acr
 is not in this tier**; its transcripts were not preserved. The captures it ran on
 are listed in [CORPUS.txt](CORPUS.txt), which is what pins the scope of every
 range in `plan/scene_to_pipeline.md`, but the per-run numbers are not citable.
-The reference campaign above exists in part to close this gap with a record that
-is durable this time.
+
+[reference-pipeline-2026-09](reference-pipeline-2026-09.md) closes part of that
+gap: it is the same corpus re-run durably, with per-capture rows and the image
+digests that produced them. It does **not** reproduce the sweep — one fixed
+pipeline is not seventeen agent-driven sessions with their backtracks — so the
+sweep's own claims remain traceable to their scope and not to their rows.

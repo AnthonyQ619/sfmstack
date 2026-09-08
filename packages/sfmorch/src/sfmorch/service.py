@@ -116,6 +116,25 @@ PLAN_SHAPE = {
 }
 
 
+def _percentile(value: float, reference: list, *, lower_better: bool):
+    """Where a reading sits within the reference corpus, in [0, 100].
+
+    Coarse by construction -- with a corpus this size a percentile moves in
+    steps of several points -- so it is an ORDERING over observed readings, not
+    a score. A value past either extreme is outside what has been seen, which
+    the caller reports as such: an extreme is the largest or smallest of N
+    draws, never a limit.
+    """
+    ref = sorted(float(r) for r in reference
+                 if isinstance(r, (int, float)) and r == r)
+    if not ref or value is None or value != value:
+        return None
+    below = sum(1 for r in ref if r < value)
+    equal = sum(1 for r in ref if r == value)
+    pct = 100.0 * (below + 0.5 * equal) / len(ref)
+    return round(100.0 - pct if lower_better else pct, 1)
+
+
 def _cell(value):
     """One array element, as something JSON can carry."""
     if isinstance(value, (bytes, np.bytes_)):
@@ -516,25 +535,59 @@ class SfmService:
             payload["health_profile"] = digest
         return payload
 
-    # The seven rungs of the reconstruction health profile, in ladder order.
-    # Defined and argued in skills/health/ladder.md -- the run payload carries
-    # the digest because a file nothing delivers is a file nothing reads: the
-    # health tier gets the same compelled delivery a diagnostic's see_also gives
+    # The rungs of the reconstruction health profile, in ladder order. Defined
+    # and argued in skills/health/ladder.md -- the run payload carries the
+    # digest because a file nothing delivers is a file nothing reads: the health
+    # tier gets the same compelled delivery a diagnostic's see_also gives
     # tuning.md, at the exact moment a sparse model exists.
+    #
+    # `yield` is two entries because the corpus has not decided between the two
+    # forms; recording both is cheaper than freezing the wrong one.
     _HEALTH_RUNGS = (
         ("registration", "registered frames / capture frames"),
-        ("conditioning", "median triangulation angle over points"),
-        ("composition", "median track length, and points per registered frame"),
+        ("conditioning", "median widest triangulation angle over points"),
+        ("composition", "median observations per surviving point"),
         ("coverage", "median per-frame fraction of image grid cells holding "
                      "an observation"),
         ("error", "median reprojection error among well-supported points only"),
-        ("yield", "structure surviving into the model / structure available "
-                  "(track- and observation-form, both recorded)"),
+        ("yield_obs", "model observations / track observations"),
+        ("yield_track", "model points / input tracks"),
         ("pose_agreement", "median angular discrepancy between final relative "
                            "poses and the pairwise two-view estimates"),
     )
 
     SPARSE_MODEL_TYPE = "sparse_model/v1"
+    TRACKS_TYPE = "tracks/v1"
+    MATCHES_TYPE = "pairwise_matches/v1"
+
+    def _ancestor_of_type(self, art, wanted: str, *, depth: int = 8):
+        """The nearest artifact of `wanted` upstream of `art`, or None.
+
+        A sparse model does not consume every artifact its rungs need -- a
+        triangulator takes tracks and poses, never the matches the pose
+        agreement rung is measured against -- so the digest walks the lineage
+        the manifests already record rather than demanding a wider contract.
+        """
+        seen, frontier = set(), [(art, 0)]
+        while frontier:
+            node, d = frontier.pop(0)
+            if d > depth:
+                continue
+            # `Manifest.inputs` is a list of artifact ids, not a slot mapping:
+            # the slot names belong to the producing step, and the artifact only
+            # records what it was built from.
+            for aid in list(node.manifest.inputs):
+                if aid in seen:
+                    continue
+                seen.add(aid)
+                try:
+                    up = self.store.open(aid)
+                except Exception:
+                    continue
+                if up.type == wanted:
+                    return up
+                frontier.append((up, d + 1))
+        return None
 
     def _health_digest(self, outputs) -> dict[str, Any] | None:
         """The health profile for a run that just produced a sparse model.
@@ -547,38 +600,105 @@ class SfmService:
         rung's raw value without the corpus distribution behind it invites
         exactly the threshold-reading the ladder file warns against.
         """
-        if not any(a.type == self.SPARSE_MODEL_TYPE for a in outputs.values()):
+        model = next((a for a in outputs.values()
+                      if a.type == self.SPARSE_MODEL_TYPE), None)
+        if model is None:
             return None
+
         root = self.config.skills_dir
-        ref = (root / "evidence" / "reference_profile.yaml") if root else None
-        if ref is None or not ref.is_file():
+        ref_path = (root / "evidence" / "reference_profile.yaml") if root else None
+        reference = None
+        if ref_path is not None and ref_path.is_file():
+            try:
+                import yaml
+                reference = yaml.safe_load(ref_path.read_text())
+            except Exception:
+                reference = None
+
+        read_note = (
+            "sfm_workflow_skill('health/ladder') defines each rung and the "
+            "weakest-rung scalar; 'health/bounce' says what a persistently weak "
+            "rung means. Read these only AFTER the sparse step -- they describe "
+            "a finished model and say nothing about an upstream stage."
+        )
+        if reference is None:
             return {
                 "status": "cannot evaluate: no reference corpus yet",
                 "reference": (
                     "skills/evidence/reference_profile.yaml -- absent; it is "
                     "written by the reference campaign (see evidence/EVIDENCE)"
                 ),
-                "rungs": {
-                    name: {"component": component,
-                           "value": "cannot evaluate: no reference yet"}
-                    for name, component in self._HEALTH_RUNGS
-                },
-                "read": (
-                    "sfm_workflow_skill('health/ladder') defines each rung and "
-                    "the weakest-rung scalar; 'health/bounce' says what a "
-                    "persistently weak rung means. Until the reference exists, "
-                    "judge the model with the qualitative ladder there."
-                ),
+                "rungs": {name: {"component": component,
+                                 "value": "cannot evaluate: no reference yet"}
+                          for name, component in self._HEALTH_RUNGS},
+                "read": read_note,
             }
-        # Computation against the reference lands with the reference campaign;
-        # shipping a half-computed profile would report numbers with no corpus
-        # behind them, which is the failure mode this digest exists to prevent.
+
+        try:
+            measured = self._health_components(model)
+        except Exception as exc:
+            return {
+                "status": f"cannot evaluate: {type(exc).__name__}: {exc}",
+                "reference": str(ref_path),
+                "read": read_note,
+            }
+
+        rungs, weakest = {}, None
+        for name, component in self._HEALTH_RUNGS:
+            spec = (reference.get("rungs") or {}).get(name) or {}
+            value = measured.get(name)
+            entry: dict[str, Any] = {"component": component, "value": value}
+            values = spec.get("values") or []
+            if value is None or not values:
+                entry["percentile"] = None
+                entry["note"] = "no reference values for this rung"
+                rungs[name] = entry
+                continue
+            lower_better = spec.get("direction") == "lower_better"
+            entry["percentile"] = _percentile(value, values,
+                                              lower_better=lower_better)
+            lo, hi = min(values), max(values)
+            entry["corpus_range"] = [lo, hi]
+            if value < lo or value > hi:
+                # An extreme is the largest or smallest of N draws, so a reading
+                # past it is outside what has been seen -- which is not a verdict.
+                entry["note"] = ("outside the observed range of the reference "
+                                 "corpus; that is not the same as wrong")
+            if entry["percentile"] is not None and (
+                    weakest is None or entry["percentile"] < weakest[1]):
+                weakest = (name, entry["percentile"])
+            rungs[name] = entry
+
         return {
-            "status": "reference present but profile computation not yet "
-                      "implemented",
-            "reference": str(ref),
-            "read": "sfm_workflow_skill('health/ladder')",
+            "status": "evaluated",
+            "reference": {
+                "campaign": reference.get("campaign"),
+                "captures": reference.get("captures"),
+                "path": str(ref_path),
+            },
+            "rungs": rungs,
+            # The scalar is the MINIMUM percentile, never a mean: a model is only
+            # as healthy as its worst constraint, and an average hides exactly
+            # the rung the ladder would have disqualified it on.
+            "weakest_rung": (
+                {"rung": weakest[0], "percentile": round(weakest[1], 1)}
+                if weakest else None),
+            "how_to_read": (
+                "Percentiles locate this model in the reference corpus; they are "
+                "an ordering over observed readings, not a score and not a pass "
+                "mark. With this many reference draws they move in coarse steps."
+            ),
+            "read": read_note,
         }
+
+    def _health_components(self, model) -> dict[str, Any]:
+        """Raw rung components for a sparse model, from it and its lineage."""
+        from .health import components
+
+        scene = self.store.open(model.manifest.scene) if model.manifest.scene else None
+        tracks = self._ancestor_of_type(model, self.TRACKS_TYPE)
+        matches = self._ancestor_of_type(model, self.MATCHES_TYPE)
+        return components(model, scene=scene, tracks=tracks, matches=matches)
 
     # ===================================================================== #
     # Inspection

@@ -284,14 +284,99 @@ def test_a_sparse_model_run_carries_the_health_digest(service, scene):
         inputs={"scene": scene_id, "tracks": tracks["outputs"]["tracks"]},
     )
     profile = rec["health_profile"]
-    assert profile["status"].startswith("cannot evaluate")
     assert set(profile["rungs"]) == {
         "registration", "conditioning", "composition", "coverage",
-        "error", "yield", "pose_agreement",
+        "error", "yield_obs", "yield_track", "pose_agreement",
     }
-    for rung in profile["rungs"].values():
-        assert "cannot evaluate" in rung["value"]
     assert "health/ladder" in profile["read"]
+    assert "AFTER the sparse step" in profile["read"], (
+        "the digest must say the rungs describe a finished model")
+
+
+def test_the_shipped_reference_corpus_is_readable_by_the_digest(service, scene):
+    """The reference that actually ships must parse and score.
+
+    The test above builds its own reference, so it would keep passing if
+    skills/evidence/reference_profile.yaml were malformed, renamed, or written
+    with rung names that no longer match the ones health.components emits --
+    which is the failure that silently turns every percentile into None.
+    """
+    ref = service.config.skills_dir / "evidence" / "reference_profile.yaml"
+    assert ref.is_file(), "the reference campaign's output is missing"
+
+    scene_id = scene["outputs"]["scene"]
+    _, _, tracks = pipeline(service, scene_id)
+    rec = service.run("FakeReconstructor", run_id="r", inputs={
+        "scene": scene_id, "tracks": tracks["outputs"]["tracks"]})
+
+    profile = rec["health_profile"]
+    assert profile["status"] == "evaluated"
+    assert profile["reference"]["campaign"]
+    scored = {name for name, r in profile["rungs"].items()
+              if r["percentile"] is not None}
+    # Every rung the fixture can compute must find reference values under the
+    # same name. A rung renamed on one side of that join scores None forever.
+    assert {"registration", "composition", "coverage"} <= scored, (
+        f"rung names in the shipped reference do not match what health."
+        f"components emits; only {sorted(scored)} scored"
+    )
+
+
+def test_the_health_digest_scores_against_a_reference_when_one_exists(
+    service, scene, tmp_path, monkeypatch
+):
+    """With a reference corpus present the digest reports each rung as a
+    percentile within it, and the scalar is the MINIMUM -- a model is only as
+    healthy as its worst constraint, and a mean would hide exactly the rung the
+    ladder disqualifies it on."""
+    import yaml
+
+    skills = tmp_path / "skills"
+    (skills / "evidence").mkdir(parents=True)
+    (skills / "evidence" / "reference_profile.yaml").write_text(yaml.safe_dump({
+        "campaign": "test-corpus",
+        "captures": 3,
+        "rungs": {
+            "registration": {"direction": "higher_better",
+                             "values": [0.5, 0.75, 1.0]},
+            # Deliberately a range this model's error sits BELOW, so the
+            # out-of-range note is exercised rather than assumed.
+            "error": {"direction": "lower_better", "values": [5.0, 6.0, 7.0]},
+        },
+    }))
+    monkeypatch.setattr(service.config, "skills_dir", skills)
+
+    scene_id = scene["outputs"]["scene"]
+    _, _, tracks = pipeline(service, scene_id)
+    rec = service.run("FakeReconstructor", run_id="r", inputs={
+        "scene": scene_id, "tracks": tracks["outputs"]["tracks"]})
+
+    profile = rec["health_profile"]
+    assert profile["status"] == "evaluated"
+    assert profile["reference"]["campaign"] == "test-corpus"
+
+    reg = profile["rungs"]["registration"]
+    assert reg["value"] == 1.0
+    # Ties take the mid-rank, so matching the corpus maximum is not "better
+    # than everything": it ties one member of a three-draw reference.
+    assert reg["percentile"] == 83.3
+
+    err = profile["rungs"]["error"]
+    if err["value"] is not None:
+        assert err["percentile"] == 100.0, (
+            "an error below every reference draw is the healthiest reading")
+        assert "outside the observed range" in err.get("note", ""), (
+            "a reading past a corpus extreme is outside what has been seen, "
+            "and the digest must say so rather than implying a verdict"
+        )
+
+    scored = [r["percentile"] for r in profile["rungs"].values()
+              if r["percentile"] is not None]
+    assert profile["weakest_rung"]["percentile"] == min(scored)
+
+    # A rung the reference says nothing about is reported, not silently dropped.
+    assert profile["rungs"]["coverage"]["percentile"] is None
+    assert "no reference values" in profile["rungs"]["coverage"]["note"]
 
 
 # --------------------------------------------------------------------------- #

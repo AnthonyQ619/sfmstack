@@ -404,6 +404,18 @@ reading, so the reasoning in this file cannot quietly become a lookup table.
 5. **What the check could NOT have caught.** A comparison only settles a question
    whose failure mode shows up in the metrics collected. Say which failure modes
    would have been invisible to it
+6. **Which software actually produced it.** A module version is not enough: the
+   image is tagged with the version and the artifact cache keys on the version,
+   so an image built before a code edit keeps its tag and keeps running the old
+   code. Fifteen of twenty-eight modules were drifted that way when the reference
+   campaign was first attempted. Run `tools/image_drift.py` BEFORE measuring
+   anything you intend to record, and say in the entry that you did
+
+**A campaign starts with the drift check, not with the first run.** Artifact ids
+are recipe-derived and do not cover the image, so a store that already holds
+artifacts built by stale code will hand them back rather than recompute them —
+which means the fix is a fresh store as well as a rebuilt image. This is the one
+precondition that invalidates every row at once when it is skipped.
 
 **Update the frontmatter `scenes:` count** when adding, and update §1's table when
 a new reading moves a min or max. A range that has not moved in twenty scenes is
