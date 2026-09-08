@@ -53,6 +53,68 @@ is not an argument for a better upstream metric; it is the reason the health
 profile is read *after* the sparse step. The failure is only visible in the
 object the failure is about.
 
+**And the collapse was not a property of the captures.** The alternate-leg
+campaign put each of those three captures through three different single-stage
+swaps — a detector-free semi-dense matcher, a learned sparse detector/matcher
+pair, and a feed-forward pose estimator — and **every one of the nine runs
+registered between 0.88 and 1.00 of its capture**, against a reference that had
+registered 0.04, 0.08 and 0.13.
+
+**The pose swap is the one that settles it.** It changed nothing upstream of
+pose and consumed the *same cached tracks* the reference had already failed on,
+and it registered 100% of every capture in seconds.
+
+So the correspondences were sufficient all along. What failed was
+seed-and-grow: an incremental estimator places one image at a time against
+structure built so far, and a chain that cannot get started does not report a
+bad number — it reports two registered frames and a clean error over them. That
+is why the upstream readings looked fine. They were fine.
+
+**The lesson is about what a low registration licenses you to conclude.** It
+says the configuration did not reconstruct this capture. It does not say the
+capture is hard, it does not say the matching was thin, and it is not evidence
+about the registry until a swap has been tried in a *different paradigm* — see
+[bounce.md](bounce.md), whose third signal exists for exactly this.
+
+---
+
+## Every frame registered, every track long and clean, and no structure at all
+
+**The smell:** the tracking stage reports the best numbers in the corpus, the
+pose stage registers 100% of the frames, and triangulation returns an empty
+model.
+
+**Measured**, on an orbit rig driven by a point tracker instead of a match
+graph. The tracker reported tracks an order of magnitude longer than the
+match-graph branch produced on the same capture, almost all of them long, a
+**zero** inconsistency rate, and near-total five-frame survival. The pose stage
+registered every frame and seeded on the widest initial pair anywhere in the
+corpus. Then triangulation rejected **every single track** — none behind a
+camera, all of them failing the parallax and reprojection filters — and the
+pose stage's own `points_triangulated` had already read 0.
+
+**Why it happens:** a point tracker follows a chosen point through a sequence
+and reports how confidently it followed it. That is a different question from
+whether the pixel it landed on is the *same physical point*. Confidence,
+consistency and survival can all be excellent while the tracked position drifts
+off the true correspondence — and a drift of a few pixels is invisible to every
+one of those readings, tolerable to a PnP solve fitting poses to a soft
+consensus, and fatal to triangulation, which intersects rays and enforces a
+reprojection threshold.
+
+Two readings did see it, and both are about *geometry* rather than about track
+quality: the tracker's trifocal transfer error sat several times above anything
+in the corpus, and its duplicate-track rate said most of the tracks were
+re-findings of the same few points. Neither is a track-quality metric, which is
+the point.
+
+**What to do:** on any tracker that follows points rather than merging matches,
+read the geometric agreement readings and ignore the confidence ones. And treat
+`points_triangulated` at the pose stage as the earliest honest signal — a pose
+stage can report full registration with zero structure, so **registration is a
+precondition and not a guarantee**; the top entry in this file is the same
+mistake with the numbers reversed.
+
 ---
 
 ## A better mean reprojection error on a differently-composed cloud

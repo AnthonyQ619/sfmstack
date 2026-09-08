@@ -88,6 +88,54 @@ here — not a judgement call, an absence.
 when the geometric estimator reports `registered_fraction` below 1 and the missing
 images are ones you need.
 
+That second case has now been measured, and it is the strongest single result in
+this file. Seven captures on which the geometric estimator stalled — three of
+them at under a seventh of their frames — were re-run with the pose stage
+swapped and **nothing else changed**: the same detector, the same matcher, the
+same cached tracks the geometric estimator had already failed on. The
+feed-forward estimator registered **every frame of all seven**, in seconds.
+
+Two things follow, and the second matters more than the first.
+
+The correspondences were never the constraint. It is tempting to read a stalled
+registration as thin matching, and on these captures that reading was wrong on
+all seven — the tracks were byte-identical to the ones that failed. **A stalled
+incremental registration is evidence about seed-and-grow, not about the data it
+grew from.**
+
+And the swap is nearly free to try. It needs no correspondences, so it can run
+off the artifacts already on disk, and it costs seconds where the campaign it
+rescues costs an afternoon. Where `registered_fraction` is low, run it before
+you spend a single run tuning the matcher.
+
+**What it does not automatically buy is accuracy, and the trade is sharp.**
+Against ground truth, the fully-registered feed-forward model was *worse* per
+pair on six of the seven, and the damage scaled with how much the geometric
+branch had already been doing: on a capture it had registered around
+three-quarters of, at good accuracy, the swap completed the registration and cost
+roughly two orders of magnitude of pose error. Part of that gap is the confound
+in [`health/ladder.md`](../health/ladder.md) — an error over the frames a stalled
+model kept is not comparable to one over the whole capture — but not all of it,
+because the gap grows precisely where the stalled model kept the most frames.
+
+**One reading on the stalled model told the two cases apart, before the swap
+ran.** The seventh capture — the one where feed-forward was better, by a factor
+of fifty — is the one whose stalled model read **wildly outside the corpus on
+pose agreement**, two orders of magnitude above the other six, which all sat in
+the ordinary band. The mechanism is why it should: pose agreement asks whether
+the poses a model *did* produce agree with the two-view evidence they were built
+from, so it separates a pose stage that ran out of images from one that was
+producing wrong poses and would have kept producing them.
+
+**The rule this supports:** low registration is the reason to consider the swap;
+the stalled model's pose agreement is what says whether to expect it to help. In
+the corpus band, expect to trade accuracy for coverage and decide which you need.
+Far outside it, the geometric solve is broken rather than stalled and the swap is
+a straight improvement. One positive case supports this, so carry it as a
+mechanism-backed expectation and not as a measured law — and see the reliability
+ladder in [`evidence/EVIDENCE.md`](../evidence/EVIDENCE.md) for why a predictive
+claim from this corpus is the category to trust least.
+
 **Global reconstruction instead** when `registered_fraction` is low on an
 *unordered* set and the matcher's `graph_components` is 1. That combination says
 the correspondences are there and the order is the problem.
@@ -207,7 +255,7 @@ angle is usually buying a smaller, easier model rather than a better one.
 
 | Question | Needs |
 | --- | --- |
-| **Absolute pose accuracy of either** | Ground-truth extrinsics. Nothing here has been compared against them — the dataset in use carries none, so every comparison so far is internal consistency. AUC at 5/10/30 degrees against a posed dataset is the missing measurement, and the report now exports poses in a form that supports it. |
-| **What feed-forward buys where geometric stalls** | A scene where it genuinely stalls. Measured so far only where the geometric estimator registers everything, which is the case it is best at and says nothing about the case the alternative exists for. |
+| **Absolute pose accuracy of either** | ~~Ground-truth extrinsics.~~ **Measured.** Relative pose error against reference extrinsics, per capture, over the images each model registered. What it settled is above and in [`health/ladder.md`](../health/ladder.md); what it could not is that an error over the frames a stalled model kept is not comparable to one over a whole capture, so absolute *rankings* between models of unequal registration remain unavailable. AUC at fixed angle thresholds is still not computed. |
+| ~~**What feed-forward buys where geometric stalls**~~ | **Measured**, on seven captures where it genuinely stalled: full registration on all seven, worse per-pair accuracy on six. Above. |
 | **How far in-loop local BA carries** | Sequence length against drift, on captures long enough for drift to dominate. The mechanism is understood; the length at which it stops being enough is not. |
 | **Whether estimated intrinsics are usable** | `estimated_focal_ratio` says whether a model agrees with a calibration. Whether its estimate is good enough to reconstruct with, on a scene with no calibration at all, is a different question and untested. |

@@ -383,13 +383,14 @@ duplication and the one place the design accepts it.
 
 Listed by how much it undermines the claims above.
 
-### 7.1 Twelve of 28 modules have never been run in a pipeline
+### 7.1 Two of 28 modules have still never been run in a pipeline
 
-`BundleAdjustmentLocal`, `DenseMVS`, `DenseVGGT`, `FeatureDetectionORB`,
-`FeatureMatchLoFTR`, `FeatureMatchRoMa`, `FeatureMatchSuperGlue`, `PoseVGGT`,
-`SparseMapAnything`, `SparseVGGT`, `FeatureTrackTapir`, `FeatureTrackVGGSfM`.
+`DenseMVS` and `DenseVGGT`. They are deferred deliberately — dense comes after
+the strict-context holdout in the standing three-step plan — rather than
+overlooked.
 
-Their prose is from isolated testing or carried from the predecessor codebase.
+Ten others were in this list until the alternate-leg campaign, and their prose
+was from isolated testing or carried from the predecessor codebase.
 Each one's provenance line says so on every describe call — but **saying so is
 not testing it**. The argument for running them: every correction in the current
 corpus came from a module that *was* run, and the corrections concentrated on
@@ -397,21 +398,24 @@ the most-run modules (109, 88 and 84 runs). Nothing was ever corrected on a
 module that never ran, and the honest reading is that nothing was *checked*
 there.
 
-**The plan of record (approved, awaiting go):** a two-phase reference campaign.
-Phase A re-runs the reference pipeline deterministically over the whole corpus,
-seeding `evidence/` with durable per-capture rows and the reference values for
-the health profile (with GT pose-error validation columns). Phase B runs ten of
-the twelve in the situation each exists for — the detector-free matchers on the
-captures where classical detection starves, the feed-forward pose/sparse modules
-on the worst-registration captures, the alternate trackers on the high-motion
-ones, local BA against global inside the reference pipeline — landing each
-result beside the existing evidence it should be compared with. The two dense
-modules stay deferred by the standing plan (dense comes after the strict-context
-holdout).
+**Both phases of the reference campaign have now run.** Phase A re-ran the
+reference pipeline deterministically over the whole corpus, seeding `evidence/`
+with durable per-capture rows and the reference distribution for the health
+profile. Phase B ran ten of the twelve in the situation each exists for — the
+detector-free matchers where classical detection starves, the feed-forward
+pose/sparse modules on the worst-registration captures, the alternate trackers,
+local BA against global — each as a **single-stage swap against the reference**,
+so every comparison has one variable in it. The two dense modules stay deferred
+by the standing plan (dense comes after the strict-context holdout).
 
-This also means the stage files are asymmetrically evidenced: `plan/dense.md`
-compares two modules neither of which has run; `plan/sparse.md` compares five of
-which three have.
+**Ten modules moved from unrun to measured**, which closes the asymmetry above
+for every family except dense. What Phase B could not close is the *quality* of
+that evidence: one capture per situation is a characterisation, not a ranking,
+and the campaign was explicitly not a sweep of any module's dials.
+
+The asymmetry that remains is one family wide: `plan/dense.md` still compares
+two modules neither of which has run, and is the only stage file in that
+position.
 
 ### 7.2 The health profile has a reference corpus, and is still not validated
 
@@ -431,9 +435,36 @@ cannot see what a model discarded — which vindicates the vector-with-registrat
 first design and disqualifies the cross-capture correlation as a test.
 
 Validating a rung needs two models of the same capture at equal registration.
-That is what the alternate legs are shaped to produce, and until they run, every
-rung is a designed reading rather than a measured-good one. The yield-form
-decision waits on the same comparison.
+That is what the alternate legs were shaped to produce, and **they have now run**
+— `evidence/alternate-legs-2026-09`. Two conditions supplied comparable models:
+a swap at or after the pose stage cannot add or drop a camera, and several
+captures ended with three or four *different* pipelines each registering the
+capture in full. Seventeen comparisons resulted, and each rung was scored on
+whether it ranked the pair the way ground truth did.
+
+**Coverage and observation-yield ranked all seventeen correctly. Composition
+ranked six.** Conditioning and composition turn out to be *conditional* readings
+rather than rungs: both rise when short, weakly-triangulated points are
+discarded, so on the nine comparisons where the two models differed only by a
+point-retention rule they were right once and never; on the eight where the
+difference was a genuine change of branch, conditioning was right eight times.
+Yield is the reading that says which case you are in, which is the argument
+yield was put in the profile to make, now measured on both sides. The error rung
+was right twice of eight across branches. Pose agreement ranked fourteen of the
+fifteen it could be computed on — and is unevaluable on a pipeline with no
+matching stage, since its two-view estimates are re-derived from a matches
+artifact.
+
+**The yield-form decision is still open.** Observation-yield ranked 17 of 17 and
+track-yield 16, which is one comparison of difference and not enough to choose
+on; observation-yield stays the provisional default on the argument that it also
+punishes truncating long tracks.
+
+What is still not settled is whether the rungs discriminate *within* a healthy
+band. Every comparison here is between models that differ visibly, and a corpus
+of one pipeline means an alternate leg is scored against a distribution that
+never contained its kind — the weakest-rung scalar saturates and ties exactly
+where the vector still separates.
 
 ### 7.3 The distillation loop has never executed
 

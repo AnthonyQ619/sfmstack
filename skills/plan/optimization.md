@@ -71,6 +71,26 @@ independent implementations of one quantity; if they disagree, one of them has a
 convention bug. That check was already written in `ba_global`'s tuning notes and
 had simply never been run.
 
+**It has now been run, on both adjusters, over every capture in the reference
+corpus — and it holds for one of them and cannot hold for the other.** The
+global adjuster's `reprojection_error_before` reproduced the triangulator's
+`mean_reprojection_error` **to four decimal places on every capture**, which is
+the check working. The local adjuster's was **higher on every capture**, by a
+tenth to nearly a half.
+
+That is not a convention bug and the check should not be read as failing. The
+local module's `min_track_length` deletes points *before* the entry error is
+measured, so its "before" describes the cloud it kept and the triangulator's
+describes the cloud it was handed. **The direction is the tell, and it is the
+same mechanism as everything else on this page**: the points removed are the
+two-view ones, whose residuals are near zero by construction, so removing them
+can only push the mean up.
+
+So the check applies to an adjuster that deleted nothing. Where a module's
+`min_track_length` bites, a "before" above the producer's mean is evidence that
+it bit — and the size of the gap is a free reading on how much of the cloud
+went.
+
 **What is comparable**: the before/after pair on *one* model. That is why a bundle
 adjuster's own interesting numbers are its deltas, and why the type's required
 metrics describe the artifact rather than the process.
@@ -99,8 +119,29 @@ type does, measured on the model they SHIP rather than the one they were handed:
 The two-view reading is also the one that decides between the adjusters, because
 `min_track_length` deletes rather than holds out: the local module defaults to 3
 and the global one to 2, so on a two-view-heavy cloud the local module ships half
-the points — measured at 49.4% on one capture. Both now announce that with
-`points_dropped_by_min_track_length` rather than leaving it to be noticed.
+the points. Both now announce that with `points_dropped_by_min_track_length`
+rather than leaving it to be noticed.
+
+**"Half" was measured on one capture and is optimistic.** Across every capture in
+the reference corpus, run through both adjusters from one shared triangulation,
+the local module shipped between a quarter and a half of the global module's
+points — so the typical loss is nearer two-thirds than one-half, and the worst
+case is three-quarters. The loss tracks the input's `two_view_fraction`, which is
+the mechanism and which you can read before choosing.
+
+**And it drives the composition rung to a perfect score.** Every point below
+three views is gone, so the share of over-determined points is 1.000 by
+construction — on a model that is a strict subset of the one it is being compared
+against, and which scored *worse* against ground truth on twelve of those
+thirteen captures. If you rank two adjusters on composition or on median
+triangulation angle, this is the ranking you will get and it is backwards. Read
+yield beside them; see [`health/ladder.md`](../health/ladder.md).
+
+**Where the input cloud has no over-determined point at all, the local module
+does not run.** It raises rather than shipping an empty model, which is the right
+behaviour and worth anticipating: a health profile whose composition rung reads
+exactly zero predicts this refusal, and it predicted it exactly on the three
+captures in the corpus that read zero.
 
 ---
 

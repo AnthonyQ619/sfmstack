@@ -23,12 +23,21 @@ rows that support it.
 | [branch-comparison-2026-08](branch-comparison-2026-08.md) | 14 captures × 3 detector/matcher branches to a sparse model | `plan/scene_to_pipeline.md` §3b; the swap signals in `judge/swap_or_build.md` |
 | [detection-phase-2026-08](detection-phase-2026-08.md) | 5 captures, detection stage driven cold | `plan/detection.md` §3 and §5; the coverage-denominator finding |
 | [reference-pipeline-2026-09](reference-pipeline-2026-09.md) | every corpus capture through one fixed pipeline at full frame count | the reference distribution the health digest scores against; two rung definitions it falsified; what ground truth cannot measure |
+| [alternate-legs-2026-09](alternate-legs-2026-09.md) | every module the reference never ran, each as a single-stage swap against it | which rungs track ground truth and which invert; that the reference's collapses were reachable by three different swaps; the preconditions and refusals of the untried modules |
 
 [CORPUS.txt](CORPUS.txt) lists the captures every quoted range in
 `plan/scene_to_pipeline.md` was fitted on. [INDEX.md](INDEX.md) is the trait-keyed
 retrieval table — a different question ("has a capture like mine been solved
 before?"), kept separate because retrieval wants a row you match against and this
 tier exists to be cited and not matched.
+
+**The alternate legs have run too.** [alternate-legs-2026-09](alternate-legs-2026-09.md)
+is where a rung stops being a designed reading: it produced models of one capture
+that register the same images, which is the only condition under which
+ground-truth accuracy can rank two models, and it scored every rung on them. Read
+it before quoting a rung as evidence of anything: over seventeen such
+comparisons, two rungs ranked every one correctly and three — error,
+conditioning and composition — landed at 10, 9 and 6, which is chance or worse.
 
 **The reference campaign has run.** [reference-pipeline-2026-09](reference-pipeline-2026-09.md)
 carries the per-scene values of the health profile (defined in
@@ -120,6 +129,18 @@ claims and definitional ones**, and the corrections made after measurement:
 - `converged` being bookkeeping — reproduced to four decimal places.
 - A producer's published mean matching a bundle adjuster's independent reading of
   the same artifact — matched twice.
+- `converged` being bookkeeping, again on a **second** optimizer: it read 0 on
+  every capture in the corpus while the window error it was solving fell by
+  between an eighth and a half, every time. A flag that is never 1 on a module
+  that always improves is not reporting on the model.
+- The documented cross-check that a bundle adjuster's entry error should
+  reproduce its producer's published mean — run for the first time, and exact to
+  four decimals on every capture for the adjuster that deletes nothing. It is a
+  working check, not a slogan; the adjuster that *does* delete fails it
+  systematically and in the direction its own filter predicts.
+- The tracker reading that exposes a predictive tracker's real quality —
+  reproduced on a capture where every confidence and consistency reading was the
+  best in the corpus and the model came out empty.
 - "Registration is a precondition, not a tiebreak" — the single sentence that
   prevented the worst decision of the sweep, and since confirmed **against ground
   truth**: in the reference campaign the models that abandoned most of their

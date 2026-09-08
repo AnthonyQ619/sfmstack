@@ -58,6 +58,16 @@ A rung names the stage that owns it, which is what scopes the build:
 These are directions, not verdicts; each one still owes the three-part signal
 above before it justifies a build.
 
+**Two of the rows carry a health warning.** Composition and conditioning were
+scored against ground truth across every pair of comparable models the corpus
+holds, and composition ranked *below chance* while conditioning ranked at it —
+because both rise when a stage merely discards its weak points
+([`ladder.md`](ladder.md)). A build scoped from either of those rows alone would
+be scoped from a reading that moves for reasons unrelated to the capability it
+is supposed to name. Read yield beside them before scoping anything, and treat
+coverage and yield — which ranked every comparison correctly — as the rows to
+lean on.
+
 ---
 
 ## What works now, and what this still waits on
@@ -77,6 +87,29 @@ judgement you make by looking, and a bounce call made without it is a call made
 on a low reading alone — which the corpus says is not enough, because the worst
 model in it reads *high* on two rungs.
 
-**And no bounce has been acted on yet.** Nothing in this file has sent anyone to
-build a module; it is a specification for a decision, checked against the
-corpus's failures rather than against its own successes.
+**But it has now been tested by hand, and it is the rung that does the work.**
+The
+reference corpus contains three captures that satisfy rungs 1 and 2 as clearly
+as anything could: registration is the minimum-percentile rung, it sits at the
+very bottom of the corpus, and the other rungs do not. On a low reading alone,
+all three read as bounce candidates. The alternate-leg campaign then gave the
+registry its chance at them — a detector-free matcher, a learned
+detector/matcher pair, and a feed-forward pose estimator, one stage swapped each
+time — and **every one of the three swaps registered between 0.88 and 1.00 of
+every one of the three captures.** Not one was a build.
+
+The most instructive of the three changed nothing upstream of pose: it ran off
+the *same cached tracks* the reference had already failed on. So the failing
+rung was not describing a gap in the registry at all. It was describing one
+paradigm's behaviour on data that another paradigm handled without complaint.
+
+**What that calibrates:** a persistently weak registration rung is a strong
+signal that this configuration cannot reconstruct this capture, and a weak
+signal about the registry. Before a registration bounce, the swaps rung 3
+requires must cross **paradigms** and not merely modules — a second incremental
+estimator is not a second attempt. And the cost asymmetry favours doing it: the
+pose swap that rescued all three captures ran in seconds against artifacts
+already on disk, which is nothing against the days a build costs.
+
+**No bounce has been acted on yet**, and this campaign is why: the three
+strongest candidates the corpus has produced all turned out to be swaps.

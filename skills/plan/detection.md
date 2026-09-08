@@ -295,6 +295,25 @@ cap is the observable form of the same fact, and it is enough.
 network was trained on, or when a predictable failure mode is worth more than a
 better average.
 
+**Between the two classical detectors, the difference that shows up is the
+WORST frame, not the average.** Driven cold at the same cap over four captures,
+the corner detector with spatial suppression stayed within a tenth of its full
+budget on the weakest frame of all four, while the blob detector's weakest frame
+fell to **around a quarter of the cap** on the hardest of them. The per-image
+means never diverged nearly as far as the minima did. That is the suppression
+doing what it is for: it spreads a fixed budget instead of spending it where the
+response is strongest. The cost is spatial coverage — lower on three of the
+four, marginally on two of those and by more than a tenth on the third.
+
+**`keypoints_min` is therefore the reading that separates them**, and it is the
+one that matters downstream: a frame the detector starved is a frame the matcher
+cannot connect, and a whole-capture mean cannot be moved by one of them. The
+same argument as `min_frame_points` at the other end of the pipeline.
+
+None of that is a claim about reconstruction. These are detection-stage readings
+only, and the two commit you to different matchers — see §2 — so the comparison
+cannot be carried downstream without changing more than the detector.
+
 **Learned** when the VIEW GRAPH is at risk — this is the measured case and it
 outranks everything else on this list. A capture that covers ground quickly
 between adjacent frames shares proportionally less between non-adjacent ones, and

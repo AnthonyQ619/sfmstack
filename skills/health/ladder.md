@@ -46,6 +46,15 @@ If two candidates register the same frames, go on. If they do not, prefer the on
 that registers more, and only look further if you are choosing between how they
 got there.
 
+**A precondition is not a guarantee, and the other half of that has now been
+measured too.** A configuration has registered **every frame of a capture** and
+produced a model with **no points in it at all** — the pose stage reported full
+registration and zero triangulated structure in the same breath, and the
+triangulator then rejected every track it was offered. So a registration
+fraction of 1.00 clears this rung and says nothing about the rungs below it;
+`points_triangulated` at the pose stage is the earliest reading that would have
+caught it. The case is in [smells.md](smells.md).
+
 ### 2. The structure has to be determined, not merely consistent
 
 `p05_triangulation_angle` is the reading here. A point on near-parallel rays sits
@@ -135,7 +144,12 @@ Five rungs need a definitional note:
   construction. A rung with no variance across the reference corpus has a
   meaningless percentile, which is worse than no rung: it still reports a number.
   The replacement is the reading rung 3 above already argues from, so the
-  profile and the ladder now measure the same thing.
+  profile and the ladder now measure the same thing. **A composition of exactly
+  zero is a hard downstream precondition, not a soft reading**: an optimizer
+  that refines a window of cameras drops points below three views by default,
+  so a cloud with no over-determined point at all leaves it nothing to solve and
+  it refuses to run. Measured on the three captures reading zero here and on
+  none of the others — the rung predicted the refusal exactly.
 - **"Well-supported" in the error rung means more than two views, and that is
   arithmetic rather than a tuned cut point.** It was the corpus-median support
   until the reference campaign measured that median at 2 on every capture, which
@@ -176,9 +190,119 @@ of their distributions, and a mean would have called it mediocre instead of
 broken.
 
 A rung is therefore validated by comparing two models of the SAME capture at
-EQUAL registration, where a ground-truth comparison is legitimate. That
-comparison is what the alternate-leg campaigns are shaped to produce, and until
-one runs, every rung here is a designed reading rather than a measured-good one.
+EQUAL registration, where a ground-truth comparison is legitimate. **That
+comparison has now run**, and what it found is below.
+
+---
+
+## What the controlled comparisons said about each rung
+
+A comparison is legitimate when the two models contain the **same images**, and
+the campaign produced two kinds. The direct kind: a swap at or after the pose
+stage cannot add or drop a camera, so the alternate registers exactly what the
+reference did, by construction. The stronger kind: several captures ended up
+with **three or four different pipelines each registering 100% of the capture**,
+which makes every pair among them comparable and — unlike the first kind —
+includes cases where the alternate genuinely wins.
+
+Taking every pair of models of one capture where both registered the whole
+capture gives **seventeen comparisons**, and each rung can be scored on whether
+it ranked the pair the way ground truth did
+([`evidence/alternate-legs-2026-09`](../evidence/alternate-legs-2026-09.md)):
+
+| Rung | ranked correctly | of |
+| --- | --- | --- |
+| **Coverage** | **17** | 17 |
+| **Yield (observations)** | **17** | 17 |
+| Yield (tracks) | 16 | 17 |
+| Point count | 16 | 17 |
+| Pose agreement (either form) | 14 | 15 evaluable |
+| Error | 10 | 17 |
+| Conditioning | 9 | 17 |
+| **Composition** | **6** | 17 |
+
+**Coverage and observation-yield did not miss once.** They are the two rungs
+that ask how much of the capture the model actually accounts for — one over the
+image plane, one over the structure the pipeline supplied — and nothing in this
+campaign fooled either. Where a single reading is wanted before the vector,
+these two are the ones that earned it.
+
+**The error rung barely beat a coin flip overall, and lost badly where it
+mattered.** Ten of seventeen is not a signal at this sample size, and on the
+eight comparisons that cross *branches* rather than optimizers it was right
+**twice** — actively anti-correlated with truth on the comparisons a planner
+would actually be making. The composition adjustment did not rescue it:
+restricting the median to points seen
+in more than two views removes the crudest version of the trap and leaves the
+rest, because a model can still hold fewer and better-supported points, report a
+lower error, and sit further from the truth. Rung 5 says to read the error last;
+this says it may not deserve a place in a ranking at all.
+
+### Composition and conditioning are conditional readings, not rungs you can read alone
+
+Split the same seventeen comparisons by what actually differs between the two
+models, and these two rungs stop looking unreliable and start looking
+*conditional*:
+
+| | conditioning | composition |
+| --- | --- | --- |
+| pairs differing by a **point-retention rule** (an optimizer that deletes short tracks) | 1 of 9 | **0 of 9** |
+| pairs differing by an actual **change of branch** (detector, matcher, tracker, pose) | **8 of 8** | 6 of 8 |
+
+One mechanism explains both halves. **Both rungs rise when short,
+weakly-triangulated points are discarded** — the median widest angle rises
+because the low tail left, the over-determined share rises because the two-view
+points left — and nothing about the surviving geometry improved. One leg drove
+composition to a flawless **1.000 on every capture it ran**, by removing every
+two-view point from a model that was otherwise a strict subset of the one it was
+being compared against, and which was worse against truth almost every time.
+Where the difference between two models is real geometry rather than a filter,
+the same rungs are excellent.
+
+**Yield is the reading that tells you which case you are in**, and it is the
+whole reason yield is in the profile:
+
+| | composition & conditioning | yield | truth |
+| --- | --- | --- | --- |
+| a filter removed the weak points | rose | **fell** | worse |
+| the branch produced better tracks | rose | **held** | better |
+
+**So never read composition or conditioning without reading yield beside them.**
+With yield falling, either is a measure of what a model threw away, dressed as a
+measure of what it kept. This is the same trap as rung 3 above, one level up:
+rung 3 warns that a model's *error* is a function of its composition, and this
+warns that its *composition* is a function of what it discarded.
+
+### Pose agreement, and the pipeline that cannot have it
+
+Pose agreement ranked 14 of the 15 comparisons it could be computed on. It is
+the only rung that never touches the points — it compares the final relative
+poses against the pairwise two-view estimates, over cameras the swap did not
+change — which is why the point-retention confound above does not reach it: it
+scored the same on both halves of the split.
+
+**And it is the one rung a pipeline can be shaped so as not to have.** Those
+two-view estimates are re-derived from a matches artifact, so a pipeline with no
+matching stage at all — a point tracker run straight off a detector — has
+nothing to compare its final poses against and the rung reports unevaluable.
+That is the two missing comparisons. The rung with the best independent record
+is absent exactly where the profile has fewest other defences, because a
+matcherless branch also has no matcher diagnostics upstream.
+
+### Two limits that apply to all of the above
+
+**Seventeen comparisons is a small sample, and they are not independent.** Nine
+of them are one capture against one optimizer swap, repeated across the corpus,
+so they contribute one mechanism nine times rather than nine mechanisms. The
+eight cross-branch comparisons come from three captures. A rung scoring 17 of 17
+here has not been shown to be reliable in general; it has been shown not to have
+failed yet, on a corpus this small.
+
+And **percentiles saturate outside the reference corpus.** Several alternate
+models fall below the corpus's observed range on the error rung and read 0
+together, so the weakest-rung scalar stops ordering them. The corpus is one
+pipeline's distribution; an alternate leg is out of distribution for it, and the
+scalar degrades to a tie exactly where the vector still separates.
 
 ---
 

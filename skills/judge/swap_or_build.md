@@ -199,13 +199,35 @@ no swap performed. **`[unmeasured]`** is argument only.
   GPU hours on an A/B that cannot answer it.
 - **The seed cannot be found at all** (`init_min_angle_deg` rejecting
   everything) → rotation, not planarity. Different fix, same metric. **`[structural]`**
+- **`registered_fraction` is low and every upstream reading looks fine** → swap
+  the pose stage to a feed-forward estimator **before** touching anything
+  upstream. It consumes the scene alone, so it runs off artifacts already on
+  disk in seconds, and on every capture in the corpus where incremental
+  registration stalled it registered the whole capture from the same tracks the
+  incremental route had already failed on. Treat it as a diagnostic first: a
+  full registration from unchanged correspondences says the correspondences were
+  never the problem, which redirects the whole investigation. **Then decide
+  whether to keep it** — it registered the frames at worse pose accuracy on most
+  captures, and where the matching stage can be swapped instead, that is the
+  better repair (see [`plan/pose.md`](../plan/pose.md) and
+  [`plan/matching.md`](../plan/matching.md)). **`[observed: 7]`**
 
 ### Sparse and optimization
 
 - **Reprojection error is not comparable across differing model sizes.** A model
-  with fewer points can report a better error and be worse. Judge a swap here on
-  point count and `median_triangulation_angle` together, never on error alone.
-  **`[structural]`**
+  with fewer points can report a better error and be worse. Never judge a swap
+  here on error alone. **`[structural]`**
+
+  **The replacement this bullet used to name is only half right, and the half
+  that fails is measurable.** It said to judge on point count and
+  `median_triangulation_angle` together. Ranked against ground truth on models
+  of one capture that register the same images, point count was right 16 times
+  in 17 — but the triangulation angle was right **once in nine** whenever the two
+  models differed by a point-retention rule, because deleting short tracks raises
+  the median angle without improving any surviving geometry. Where a swap changes
+  what a module *keeps* rather than what it *computes*, read a yield term beside
+  the angle; where it changes the branch, the angle was right every time. See
+  [`health/ladder.md`](../health/ladder.md). **`[observed: 17 model pairs]`**
 - **Small baseline against a shallow subject** → everything will look excellent.
   `inlier_ratio` and reprojection error both stay healthy while triangulation
   angles are poor. Judge on `median_triangulation_angle`. **`[observed: 1]`** — a

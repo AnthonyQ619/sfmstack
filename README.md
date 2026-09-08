@@ -144,9 +144,9 @@ the predecessor; `SceneDescription` is new and is the odd one out — it renders
 contact sheet, and the description comes from the agent *looking* at it through
 `sfm_artifact_image` rather than from any code in the container. All three fill
 disjoint groups of one `scene_analysis/v1`, and none derives traits — that is the
-orchestrator's job, from thresholds in `skills/judgment/`, and it is not built.
-See
-[docs/mcp-tools.md](docs/mcp-tools.md#4-the-empty-tiers--which-tools-read-them-and-what-does-not-work).
+orchestrator's job, and it is not built, which is why the trait-keyed retrieval
+table at `skills/evidence/INDEX.md` still has no rows. See
+[docs/mcp-tools.md](docs/mcp-tools.md#4-the-global-tier-by-moment--and-how-it-got-this-shape).
 
 `tools/build_images.sh` builds everything in dependency order — and it has to be
 everything: sfmkit is COPYed into `sfmstack/runtime`, the first layer of every

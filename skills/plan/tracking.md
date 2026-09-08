@@ -262,6 +262,56 @@ a reason to prefer chaining.
 
 ---
 
+## Two preconditions the predictive branch has that the chaining branch does not
+
+Neither is a tuning question and neither shows up in any metric, because a module
+that refuses an input publishes no metrics at all. Check both before planning a
+predictive leg.
+
+**Every image must be the same size.** Both predictive trackers stack the capture
+into a single tensor and track across the stack, so a capture whose frames differ
+in resolution is refused outright — measured on both modules, on the same
+mixed-resolution capture, with each naming the constraint in its error. Benchmark
+collections are a common source: a set assembled from more than one camera or one
+crop convention looks uniform in a file listing and is not. The fix is upstream,
+at the loader's resize, and it changes the scene artifact — so a predictive leg
+planned as a swap against an existing chaining run is **not a one-stage swap**
+unless the scene was already loaded at a fixed size.
+
+**Running out of GPU memory here is a setting, not a limit.** One tracker
+exhausted a 44 GB device on a fifty-frame capture at its defaults. Its memory
+chunk parameter is documented as affecting throughput only and not the result;
+lowering it by a factor of eight produced a complete reconstruction of the same
+capture. That documented claim held, so an out-of-memory failure on this branch
+is not evidence that the capture is too large — reach for the chunk dial before
+reaching for fewer frames, which would change the problem.
+
+## What the predictive branch was worth, measured against truth
+
+On an ordered orbit of a compact subject, swapping the chaining tracker for the
+SfM-derived predictive one — nothing else changed — registered every frame, as
+chaining also did, and came out **closer to the true poses**, on fewer points.
+It is the only configuration anywhere in this corpus measured beating the
+reference pipeline against ground truth at equal registration, and the reading
+that showed why is that its tracks were both longer and better conditioned
+*without* the model's yield falling — structure genuinely gained rather than
+weak structure discarded (the distinction is
+[`health/ladder.md`](../health/ladder.md)'s).
+
+**The video-derived tracker on the same capture produced the opposite**, and it
+is the more instructive result: excellent confidence, near-zero inconsistency,
+tracks an order of magnitude longer than chaining's, full registration — and a
+model with **no points in it at all**, because every track failed triangulation's
+parallax and reprojection filters. The reading that exposed it is
+`trifocal_transfer_px`, which is what this file already says to confirm on, and
+which read several times the corpus's range. The full case is in
+[`health/smells.md`](../health/smells.md). One capture is not a ranking between
+the two modules; what it does show is that on this branch **track-quality
+readings and geometric-agreement readings can point in opposite directions, and
+only the geometric ones survive contact with a triangulator.**
+
+---
+
 ## The tracker is where the matcher gets judged, so backtracking is the normal move
 
 **This stage is the first place a matcher's real quality becomes visible, and

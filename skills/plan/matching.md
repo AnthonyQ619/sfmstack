@@ -244,6 +244,38 @@ detection artifact, the A/B is nearly free: **run both and compare rather than
 predicting.** That is the one thing here that settles it, and it costs less than
 being wrong does.
 
+**Where the classical branch collapses, changing the correspondences is the
+strongest move available — and it has been measured against ground truth.**
+Three captures in the reference corpus registered under a seventh of their
+frames through a classical detector and a joint matcher. Swapping only the
+matching stage rescued all three: a detector-free semi-dense matcher registered
+0.88 to 1.00 of each, a learned detector/matcher pair 0.91 to 1.00, and a dense
+warping matcher took one of them to 1.00. Against true poses the rescued models
+were **no worse per pair than the collapsed ones had been over the two frames
+they kept** — better on two of the three captures, and within half again on the
+third. So this is coverage bought at essentially no cost in precision, which
+almost nothing else in this corpus manages.
+
+It is worth contrasting with the other way to rescue those captures. Swapping
+the *pose* stage for a feed-forward estimator also registers all three, faster
+and off artifacts already on disk — but at markedly worse pose accuracy (see
+[pose.md](pose.md)). **Where both work, fix the correspondences.** The pose swap
+is the cheap diagnostic; the matcher swap is the repair.
+
+**The same move on a capture that was already half-working cost two-thirds of
+the model.** On a capture the classical branch registered half of, the
+detector-free matcher registered a sixth — while producing more matches per pair
+and near-perfect spatial coverage on the frames it kept. Semi-dense
+correspondence is not a strictly better input; it is a different one, and its
+proximity-merged tracks can fragment a view graph that keypoint identity was
+holding together.
+
+**So the rule keeps its direction and gains a boundary.** Reach for detector-free
+where the classical branch has *failed*, not where it is *struggling*. There is
+still no threshold — but "registered a majority of the frames" is now a measured
+case where the swap made things much worse, and "registered almost none" is a
+measured case where it fixed them completely.
+
 ---
 
 ## A capture can change camera ORIENTATION, and nothing upstream will tell you
@@ -483,6 +515,6 @@ scene → detect → track with no matcher. See [tracking.md](tracking.md).
 | Question | Needs |
 | --- | --- |
 | **How much a learned matcher buys on repetitive structure** | A repetitive scene. Everything measured here so far is a well-textured object with no repetition, where the ratio test is not under stress. |
-| **Where detector-free overtakes detector-based** | A sweep along texture strength. The rule "reach for detector-free when the detector fails" has a direction and no threshold. |
+| **Where detector-free overtakes detector-based** | ~~A sweep along texture strength.~~ Still no threshold, but both sides are now measured: total rescue where the classical branch registered almost nothing, and a two-thirds loss where it registered half. Above. A sweep along texture strength would turn those two points into a boundary. |
 | **Whether `merge_eps_px` can be derived rather than tuned** | Its right value is known to depend on matcher and resolution. Whether it is predictable *from* the matcher's own reported precision is open, and would remove a manual step. |
 | **The cost of an exhaustive sweep against what it recovers** | Loop closures found per extra pair, on a sequential capture. This decides pairing on every large set and is currently a guess. |

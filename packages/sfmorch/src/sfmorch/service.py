@@ -832,9 +832,9 @@ class SfmService:
         calls with the early ones already out of context.
 
         The gap being closed is real and was measured: of the 29 metrics the three
-        analysis modules produce, exactly two are named anywhere in
-        `skills/families/`. The families speak in adjectives and step 2 speaks in
-        numbers, and `skills/scene_to_pipeline.md` is the translation.
+        analysis modules produce, exactly two are named anywhere in the stage
+        files of `skills/plan/`. Those speak in adjectives and step 2 speaks in
+        numbers, and `skills/plan/scene_to_pipeline.md` is the translation.
         """
         scene = self.store.open(scene_id)
         if scene.type != SCENE_TYPE:
