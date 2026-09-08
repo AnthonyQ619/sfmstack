@@ -29,7 +29,7 @@ MINIMAL = {
 }
 
 
-from conftest import contract_metrics  # noqa: E402
+from sfmorch_test_helpers import contract_metrics  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # Manifest parsing

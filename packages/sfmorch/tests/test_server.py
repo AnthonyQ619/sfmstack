@@ -19,7 +19,7 @@ from sfmorch.container import ContainerRunner
 from sfmorch.backends import _pid_alive
 from sfmorch.gpu import GpuBroker
 
-from conftest import FIXTURE_MODULES
+from sfmorch_test_helpers import FIXTURE_MODULES
 
 
 @pytest.fixture

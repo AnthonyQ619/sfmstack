@@ -216,7 +216,7 @@ def test_find_alternatives_resolves_a_capability_escape(service):
     )
     assert empty["matches"] == []
 
-    from conftest import contract_metrics
+    from sfmorch_test_helpers import contract_metrics
     from sfmorch import ModuleSpec
 
     service.registry.add(ModuleSpec.from_doc({

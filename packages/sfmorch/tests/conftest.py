@@ -6,7 +6,7 @@ from sfmkit.schema import _CORE_TYPES_DIR
 
 from sfmorch import ModuleRegistry, Orchestrator
 
-FIXTURE_MODULES = Path(__file__).parent / "fixtures" / "modules"
+from sfmorch_test_helpers import FIXTURE_MODULES, contract_metrics  # noqa: F401
 
 
 @pytest.fixture
@@ -39,19 +39,3 @@ def orch(store, registry):
 def scene(orch):
     """A synthetic scene, ready to hang a pipeline off."""
     return orch.run("MakeScene", run_id="run_test", params={"n_images": 4}).primary
-
-
-def contract_metrics(*type_names):
-    """The metric block a manifest needs to satisfy the types it produces.
-
-    Generated from the type registry rather than hardcoded, so tests whose subject
-    is something else -- orphan warnings, tool-surface size, capability queries --
-    keep testing that when the contract changes.
-    """
-    from sfmkit.schema import registry as core_types
-
-    return {
-        name: {"direction": req.direction, "meaning": req.meaning}
-        for tname in type_names
-        for name, req in core_types().get(tname).metrics.items()
-    }
