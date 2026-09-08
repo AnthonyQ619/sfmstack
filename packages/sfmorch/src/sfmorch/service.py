@@ -1030,10 +1030,11 @@ class SfmService:
 
     # The tree was reorganised from knowledge-kind tiers (families/, judgment/,
     # runs/) into moment tiers (plan/, judge/, health/, evidence/). Old topics
-    # keep resolving -- transparently, to the file's new home -- because a miss
-    # costs more than a redirect: when `workflow/` raised on every request, one
-    # sweep's readers concluded the whole knowledge base was gone. The response
-    # carries `moved_to` so a reader learns the new name instead of a dead one.
+    # resolve silently to the file's new home -- a miss costs more than a
+    # redirect (when `workflow/` raised on every request, one sweep's readers
+    # concluded the whole knowledge base was gone), and the response carries no
+    # mention of the old name: the returned `topic` and `path` are simply the
+    # current ones, so nothing keeps advertising names that no longer exist.
     _MOVED_TOPICS = {
         "scene_to_pipeline": "plan/scene_to_pipeline",
         "judgment/swap_or_build": "judge/swap_or_build",
@@ -1054,10 +1055,9 @@ class SfmService:
         if root is None:
             raise OrchestratorError("no skills directory is configured")
 
-        moved_from = None
         clean = topic.removesuffix(".md")
         if clean in self._MOVED_TOPICS:
-            moved_from, topic = topic, self._MOVED_TOPICS[clean]
+            topic = self._MOVED_TOPICS[clean]
 
         candidates = [root / topic, root / f"{topic}.md"]
         # The moment tiers are bare-topic searchable: `ladder` finds
@@ -1082,16 +1082,8 @@ class SfmService:
                        parent / "docs" / "design" / f"{topic}.md"]
         for path in candidates:
             if path.is_file():
-                doc = {"topic": topic, "path": str(path),
-                       "text": path.read_text(encoding="utf-8")}
-                if moved_from is not None:
-                    doc["moved_to"] = topic
-                    doc["note"] = (
-                        f"'{moved_from}' moved to '{topic}' when the tree was "
-                        f"reorganised by moment (plan/ judge/ health/ evidence/)."
-                        f" Cite the new name."
-                    )
-                return doc
+                return {"topic": topic, "path": str(path),
+                        "text": path.read_text(encoding="utf-8")}
 
         # Enumerate from the SAME places the lookup above searches. Listing only
         # `skills/` was a half-fix: `docs/import_lessons.md` and

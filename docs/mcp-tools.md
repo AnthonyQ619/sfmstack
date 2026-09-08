@@ -89,11 +89,11 @@ files cite are fetchable, and anything else in the tree is reachable by relative
 path. A miss returns every topic under both roots, printed as it must be *typed*,
 which makes wrong guesses self-correcting.
 
-**Old topic names redirect.** The tree was reorganised from knowledge-kind tiers
-(`families/`, `judgment/`, `runs/`) into moment tiers; every pre-reorganisation
-topic (`scene_to_pipeline`, `families/<stage>`, `judgment/<name>`,
-`runs/{INDEX,EVIDENCE}`) resolves transparently to the file's new home, with a
-`moved_to` field and a note in the response so the reader learns the new name.
+**Old topic names redirect silently.** The tree was reorganised from
+knowledge-kind tiers (`families/`, `judgment/`, `runs/`) into moment tiers;
+every pre-reorganisation topic resolves to the file's new home, and the
+response reports only the current `topic` and `path` — the old names are not
+echoed back, so nothing keeps advertising names that no longer exist.
 
 **There is no `skills/workflow/` candidate and that is deliberate** — see §4.
 
@@ -341,9 +341,9 @@ its search path were deleted, and the whole tree was later reorganised onto the
 question the retirement exposed. **Do not restore the search path without
 files** — a search path for a directory that does not exist manufactures misses.
 
-**The old names redirect.** `sfm_workflow_skill` resolves every
-pre-reorganisation topic transparently to the file's new home and says so in its
-response (`moved_to` + note). `SKILLS.md` carries the full table.
+**The old names redirect silently.** `sfm_workflow_skill` resolves every
+pre-reorganisation topic to the file's new home and reports only the current
+name, so nothing keeps advertising names that no longer exist.
 
 **Trait derivation is still blocked, and the blockage is a position.**
 `scene_analysis/v1` declares a `traits` group and neither analysis module fills

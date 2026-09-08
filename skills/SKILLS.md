@@ -77,22 +77,12 @@ the *scenario*. Trait thresholds are nowhere: the analysis modules emit numbers,
 `plan/scene_to_pipeline.md` says how to read them, and judge/ and health/ say
 what to do once you have.
 
-## Paths that moved — old names redirect, do not recreate them
+## Retired names
 
-The tree was reorganised from knowledge-kind tiers into the moment tiers above.
-`sfm_workflow_skill` transparently redirects every old topic and says so in its
-response; nothing should cite these except historical documents:
-
-| Old topic | Now |
-| --- | --- |
-| `scene_to_pipeline` | `plan/scene_to_pipeline` |
-| `families/<stage>` | `plan/<stage>` |
-| `judgment/swap_or_build`, `judgment/tradeoffs` | `judge/` same names |
-| `judgment/stopping` | `health/ladder` |
-| `judgment/smells` | `health/smells` |
-| `judgment/priors` | the reliability ladder inside `evidence/EVIDENCE` |
-| `runs/EVIDENCE`, `runs/INDEX` | `evidence/` same names |
-| `workflow/*` (retired earlier, never written) | see the table in the section below |
+The tree was reorganised from knowledge-kind tiers (`families/`, `judgment/`,
+`runs/`) into the moment tiers above. Any pre-reorganisation topic still
+resolves — `sfm_workflow_skill` redirects it silently to the file's current
+home — but nothing should cite the old names: use the paths in this file.
 
 **`skills/workflow/` no longer exists and must not be recreated.** Across a
 seventeen-capture sweep it was requested 24 times and raised every time — a tier

@@ -250,22 +250,24 @@ def test_workflow_skill_resolves_moment_tiers_on_a_bare_topic(service):
     assert "moved_to" not in doc
 
 
-def test_workflow_skill_redirects_pre_reorganisation_topics(service):
-    """Old topic names must keep resolving. A miss costs more than a redirect:
-    when workflow/ raised on every request, readers concluded the whole
-    knowledge base was gone. The response says where the file went so the
-    reader learns the new name instead of a dead one."""
-    for old, new_suffix in [
-        ("judgment/stopping", "health/ladder.md"),
-        ("judgment/priors", "evidence/EVIDENCE.md"),
-        ("families/tracking", "plan/tracking.md"),
-        ("scene_to_pipeline", "plan/scene_to_pipeline.md"),
-        ("runs/EVIDENCE", "evidence/EVIDENCE.md"),
+def test_workflow_skill_redirects_pre_reorganisation_topics_silently(service):
+    """Old topic names must keep resolving -- a miss costs more than a
+    redirect: when workflow/ raised on every request, readers concluded the
+    whole knowledge base was gone. But the response must not mention the old
+    name either: the returned topic and path are simply the current ones, so
+    nothing keeps advertising names that no longer exist."""
+    for old, new_topic, new_suffix in [
+        ("judgment/stopping", "health/ladder", "health/ladder.md"),
+        ("judgment/priors", "evidence/EVIDENCE", "evidence/EVIDENCE.md"),
+        ("families/tracking", "plan/tracking", "plan/tracking.md"),
+        ("scene_to_pipeline", "plan/scene_to_pipeline",
+         "plan/scene_to_pipeline.md"),
+        ("runs/EVIDENCE", "evidence/EVIDENCE", "evidence/EVIDENCE.md"),
     ]:
         doc = service.workflow_skill(old)
         assert doc["path"].endswith(new_suffix), (old, doc["path"])
-        assert doc["moved_to"], old
-        assert "moved" in doc["note"]
+        assert doc["topic"] == new_topic
+        assert "moved_to" not in doc and "note" not in doc
 
 
 def test_a_sparse_model_run_carries_the_health_digest(service, scene):

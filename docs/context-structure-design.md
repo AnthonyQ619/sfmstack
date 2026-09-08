@@ -94,9 +94,9 @@ modules/<name>/
 ```
 
 Old topic names (`scene_to_pipeline`, `families/<stage>`, `judgment/<name>`,
-`runs/*`) redirect transparently at the resolver, with a `moved_to` note in the
-response — a miss costs more than a redirect, which is the `workflow/` lesson
-in §5.
+`runs/*`) redirect silently at the resolver — a miss costs more than a redirect,
+which is the `workflow/` lesson in §5 — and the response reports only the
+current name, so the retired names are never advertised back to a reader.
 
 **Scale.** 28 modules across 8 stages (source 1, analysis 3, detection 4, matching
 6, tracking 3, pose 2, sparse 5, optimization 2, dense 2), declaring 238
@@ -151,7 +151,10 @@ scene-size invariant and computable without ground truth; each is reported as a
 percentile** — the weakest rung, matching the ladder's semantics. The per-scene
 reference values are recorded by a reference campaign in `evidence/` (with GT
 validation columns, used once, to validate the internal readings); the run
-summary of any run producing a `sparse_model/v1` carries the digest. Until the
+summary of any run producing a `sparse_model/v1` carries the digest. The rungs
+are read **only after the sparse reconstruction step**, never against an
+upstream stage — upstream stages have their own diagnostics, and the digest
+enforces the scope by attaching only to a sparse model. Until the
 reference campaign runs, every rung reports *cannot evaluate: no reference
 yet* — which is the mechanism working honestly, not a gap in it.
 

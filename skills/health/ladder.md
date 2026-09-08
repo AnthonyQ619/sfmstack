@@ -85,9 +85,18 @@ opposite responses.
 
 ## The health profile — the ladder as seven measurable rungs
 
-The run summary of any run that produces a `sparse_model/v1` carries a **health
-profile**: one reading per rung below, each expressed as a **percentile within the
-reference corpus** — the reconstruction of every corpus capture by the reference
+**The rungs are read after the sparse reconstruction step, and never before.**
+The profile describes a finished sparse model; no upstream stage — detection,
+matching, tracking, pose — should be judged against these rungs, even where a
+rung's component sounds computable early (a registration fraction, a coverage
+number). Upstream stages have their own metrics and diagnostics, and the first entry in
+[smells.md](smells.md) is exactly what judging the model from upstream readings
+produces: every upstream metric agreeing while the model is a fraction of the
+capture. The digest enforces the scope mechanically: it attaches only to a run
+that produced a `sparse_model/v1`.
+
+The run summary of any such run carries the **health profile**: one reading per
+rung below, each expressed as a **percentile within the reference corpus** — the reconstruction of every corpus capture by the reference
 pipeline, recorded in the reference campaign under
 [`evidence/`](../evidence/EVIDENCE.md). Until that campaign has run, the digest
 reports every rung as *cannot evaluate: no reference yet*, and that is the honest
