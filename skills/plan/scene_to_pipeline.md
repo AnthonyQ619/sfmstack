@@ -78,10 +78,21 @@ Working resolution around 1024px on the long edge throughout.
 
 Three groups, and the difference is mechanical rather than statistical:
 
-- **Per-frame appearance metrics transfer directly.** `texture_density`,
-  `textureless_fraction`, `sharpness_ratio`, `repetitiveness`, `empty_regions`
-  and the clipping fractions are computed per image and averaged. More frames is
-  a better estimate of the same quantity, not a different quantity.
+- **Per-frame appearance metrics transfer in kind but NOT in value, because the
+  fitting sample is a PREFIX.** `texture_density`, `textureless_fraction`,
+  `sharpness_ratio`, `repetitiveness`, `empty_regions` and the clipping
+  fractions are computed per image and averaged, so they measure the same
+  quantity at any frame count. What they do not do is agree: `sampling: head`
+  takes the *first* twelve frames, which is a **biased** sample of the traverse
+  rather than a coarser one, and a capture whose content changes as it proceeds
+  is a different scene in its first twelve frames than in all of them.
+
+  Measured on every corpus capture rebuilt at the protocol: the head-sample
+  `texture_density` runs from **half** the full-capture value to **half again
+  above** it, and it is off by more than a third on a quarter of the corpus.
+  `sharpness_ratio` nearly doubles on one capture. So a band in this file and
+  your own reading may be describing different frames of the same capture, and
+  the direction of the disagreement is not predictable from the frame count.
 - **Adjacent-motion metrics are SAMPLING-DEPENDENT and do not transfer.**
   `overall_magnitude`, `combined_change`, `rotation_median_deg` and `variability`
   all measure what happens between neighbouring frames, and "neighbouring" means
@@ -204,14 +215,25 @@ it is the one that says whether a detector-based pipeline is viable at all.
 - **1600–5600** on fifteen of sixteen scenes. Anywhere in there, a classical
   detector works and the choice of detector is about the *matcher* rather than
   about texture.
-- **One scene sits seven times below the next lowest**, and it is a room of blank
-  painted walls — the case `detection.md` names: *"Neither, when the detector
-  fires on nothing… a case for a detector-free matcher, which skips this stage
+- **One scene sits far below the rest**, and it is a room of blank painted walls
+  — the case `detection.md` names: *"Neither, when the detector fires on
+  nothing… a case for a detector-free matcher, which skips this stage
   entirely."* The shape to recognise is *a built interior whose surfaces are
   uniform paint or plaster*, not the number on its own.
 
-**The gap between 475 and 1624 is empty**, so there is no calibration in the
-middle. A scene landing at 900 is genuinely unknown and worth running both ways.
+> **The size of that gap was a property of the sampling, not of the capture, and
+> this is the clearest case of the §1 warning above.** At the twelve-frame head
+> the outlier reads about a seventh of the next lowest scene and leaves a wide
+> empty band beneath the rest. **At full frame count it reads roughly double
+> that**, lands *inside* the band the fitted numbers left empty, and sits within
+> a factor of two of the next lowest capture rather than a factor of seven.
+> Nothing about the capture changed; the later frames simply carry more texture
+> than its first twelve do.
+>
+> So there is no calibrated empty middle to fall into, and a scene reading in it
+> is not anomalous. What survives is the ordering and the recognisable shape —
+> *a built interior of uniform paint or plaster is the case to worry about* —
+> which is what §1 says to locate yourself by in the first place.
 
 ### `textureless_fraction` — meaningless without `empty_regions`
 
@@ -348,6 +370,32 @@ So, in order: **take the classical detector for its exposure normalisation and
 re-ask the connectivity question**, since §3b.1's fragmentation risk is itself
 reduced by loading every frame; or accept the detector's reading on those regions
 and carry the risk into the plan's watch line.
+
+**Driven cold over the corpus, that first option is the one that keeps winning,
+and on more captures than this row was written for.** Exposure normalisation at
+detection improved three separate captures with large flat *wanted* regions —
+a dim built interior, a confined indoor room and an outdoor site under hard sun
+— on registration, point count and coverage together, and on one of them it was
+the difference between two thirds of the frames and nearly all of them. The row
+above frames it as the remedy for the hardest recoverable case; the evidence is
+that it is worth trying wherever the wanted surface is flat and unclipped,
+which is a wider set.
+
+> **It does not work alone, and this is the part that is easy to miss.**
+> Normalising raises the number of keypoints the detector *would* return, so on
+> a capture where the cap was already binding the extra keypoints are simply
+> clipped and the change reads as a non-event. `detection.md` §5 already says a
+> cap that binds is not a measurement; the coupling is that **exposure
+> normalisation and the keypoint cap have to move together.** Turn on
+> normalisation, read `saturation`, and raise `max_keypoints` until it reaches
+> zero before you read the count or judge the change.
+>
+> The same trap has now been measured on a *learned* detector, which is where it
+> is least expected: a run left at the default cap reported saturation on three
+> quarters of its frames, registered a sixth of the capture, and read as
+> evidence against the detector. At a cap raised until saturation reached zero
+> the same detector on the same capture registered **all of it**. The first run
+> measured the cap.
 What is *not* available is taking the classical detector for its CLAHE when the
 graph is at risk — that trades a connectivity failure for a contrast one, and only
 the first costs you frames.
@@ -842,60 +890,100 @@ restored full or near-full registration.
 texture" but "will enough pairs survive".** Those come apart, and the first is
 what step 2 measures.
 
-### 2. `overall_magnitude` predicts it, and this is the strongest signal in the file
+### 2. Adjacent-frame motion ranks the risk. It does not gate it.
 
-Sorted across the fourteen, the captures that fragmented are **the four highest
-readings, with a clear gap below them**. Nothing overlaps. Texture density,
-textureless fraction, rotation and large-rotation risk all fail to separate the
-two groups; this one separates them completely.
+Sorted across the fourteen twelve-frame captures this was fitted on, the ones
+that fragmented were the four highest readings with a clear gap below them, and
+nothing overlapped. **That gap does not survive a bigger corpus at full frame
+count, and this section has been rewritten around what does.**
 
-#### Where the gap is, as a ratio you can compute
+#### What the refit found
 
-This section used to stop at "a clear gap" and decline to say where, so that a
-number could not become a lookup key. That withholding made the file's own
-headline rule uncallable: five separate readings landed between the published
-median and the published maximum — exactly where the answer would be — and one
-spent six runs building a control branch to settle empirically what this
-paragraph could have stated. The rule was worth more than the withholding.
+Every corpus capture, at its full frame count, scored against the outcome on the
+branch this rule is about — a classical detector and a ratio-test matcher — over
+seven candidate statistics and two definitions of "fragmented". Separation
+measured as the probability that a fragmenting capture reads higher than a
+complete one:
 
-So it is stated here as a **ratio to the corpus median**, which carries no scene
-identity, survives a rescaling of the metric, and needs only numbers already in
-the §1 table:
+| statistic | any frame lost | a quarter or more lost |
+| --- | --- | --- |
+| `high_motion_tail` ÷ √`n_images` | **0.92** | 0.90 |
+| `overall_magnitude` ÷ √`n_images` | 0.89 | 0.90 |
+| `high_motion_tail`, full capture | 0.91 | 0.88 |
+| `overall_magnitude`, full capture | 0.86 | 0.83 |
+| `overall_magnitude` at the twelve-frame head | **0.73** | **0.94** |
 
-> **`overall_magnitude` ÷ the corpus median for this metric.**
-> At or below **1.2** every capture measured completed on the cheap branch
-> (the highest completing reading sits at 1.18).
-> At or above **1.35** every capture measured lost frames (the lowest such
-> reading sits at 1.39).
-> Between 1.2 and 1.35 **nothing has been measured**, and that is the honest
-> width of the gap rather than a rounding of it.
+**Three things follow, and the first is the one that changes how you use this.**
 
-The ratio is what transfers; the raw level is not, because a ratio is unchanged
-if the metric is redefined or the corpus is refitted, and a printed threshold is
-stale the moment either happens.
+**No statistic produced a clean gap** — not one of the seven, under either
+definition. A capture that completes reads above a capture that fragments in
+every column. So this is a **ranking heuristic, not a threshold**, and the
+published ratio band has been withdrawn rather than restated: a number that
+looked like a gate was a gate fitted to fourteen draws of a smaller quantity.
 
-#### It only means anything at comparable frame spacing
+**Which reading is best depends on which failure you are asking about, and the
+two disagree sharply.** For an outright collapse the twelve-frame head reading
+is the best of the seven; for *any* frame loss it is the **worst**, because two
+captures shed a tenth to a sixth of their frames while reading at the very
+bottom of the motion range. Those losses have nothing to do with motion, and no
+motion statistic can see them.
 
-`overall_magnitude` is motion between *adjacent* frames, so it falls as more
-frames are loaded of the same capture — the neighbours simply get closer. The
-ratio above was fitted at twelve frames, and comparing a full capture's reading
-against it understates the risk, in the direction that makes a fragmenting
-capture look safe.
+**Frame count belongs in the rule and is absent from it.** Dividing by the
+square root of the frame count improves every motion statistic tested, on both
+definitions. That is §3b.1's own mechanism showing up in the arithmetic — pairs
+grow quadratically with frames, so the same adjacent-frame speed presents a
+denser graph on a longer capture. A reading taken without the frame count beside
+it is missing half the quantity.
 
-**Normalise instead of abandoning it.** `SceneMotion`'s `stride` chooses which
-pairs are measured, so re-read the metric at the spacing the corpus was fitted
-at:
+#### So how to use it
 
-> `stride ≈ n_images / 12`, rounded to at least 1, then take the ratio.
+> **Rank, then verify.** A high reading says *try the robust branch first and
+> expect to check it*, not *the cheap branch will fail*. Carry both to a model
+> where the cost allows — which is what §5 and `matching.md` already say is the
+> only thing that settles a branch choice.
 
-That reading is comparable by construction, and you were going to sweep `stride`
-anyway — this file already tells you to check it first, and the sweep is the same
-three runs. A capture with fewer than about twelve frames needs no correction.
+Read `high_motion_tail` beside `overall_magnitude` and divide by the square root
+of the frame count when you compare two captures of different length. Locate
+yourself by capture kind rather than by value, as §1 says.
+
+#### Do not correct the reading with `stride`
+
+An earlier version of this section said `overall_magnitude` falls as more frames
+are loaded — neighbours get closer — and told you to re-read at
+`stride ≈ n_images / 12` to recover the fitted spacing. **Both halves are
+wrong, and the reason is worth keeping.**
+
+The fitting protocol drew its twelve frames with `sampling: head` — a contiguous
+*prefix*, not a coarser sample. A prefix keeps the original spacing and simply
+stops early, so there is nothing to correct for. Had the protocol been
+`sampling: uniform` the correction would have been right, and **the sampling
+mode is the whole of the difference.**
+
+Measured across the corpus, the full capture reads *higher* than its own
+twelve-frame head on ten captures of sixteen and lower on six, so the stated
+direction is wrong more often than right. And the probe itself does not survive
+contact: the stride 1 / 2 / 3 sweep is non-monotonic on two thirds of the field
+captures and falls outright on several, which by the rule in the next section
+means it has returned no local evidence at all.
+
+**If you want the published quantity, rebuild the scene at the protocol** —
+`max_images: 12, sampling: head`, same working resolution — and read
+`SceneMotion` on it at stride 1. That is the same quantity by construction
+rather than by approximation, and it costs one loader run plus one motion run on
+a twelve-image scene. Given the refit above, the reason to want it is narrow:
+it is the best available reading for an outright collapse and the worst for
+partial loss.
+
+#### The stride sweep still has a job, and it is a different one
+
+`stride` remains the cheap way to ask **whether non-adjacent pairs still share
+content**, which is the quantity fragmentation actually depends on and which no
+single-stride reading answers. Read the *direction*, not the level.
 
 **Read the sweep as well as the point.** If motion keeps climbing with stride and
 then collapses, flow has lost correspondence rather than found more of it, and
 the collapse point is itself the answer: it is the separation beyond which pairs
-share nothing, which is the quantity fragmentation actually depends on.
+share nothing.
 
 **The mechanism is straightforward, which is why it is worth trusting more than
 the correlation alone.** `overall_magnitude` is median apparent motion between
@@ -928,13 +1016,14 @@ Two consequences, and neither of them overturns the reading:
 - On a diluted capture, the tail statistic is the closer estimate of what the live
   region is doing than the headline percentile is, so read them together and let
   the tail carry more weight when the frame is mostly backdrop.
-- **The corpus band itself is mixed.** It contains both heavily-diluted rig
-  captures and undiluted field captures, so its median is not a clean reference
-  point in either direction. What survives that is the *shape* of the evidence, not
-  the level: the fragmenting captures were the highest readings with a clean gap
-  below them, and a gap is robust to a bias that shifts a subset of readings the
-  same way. Locate your capture by where it sits relative to that gap, and be aware
-  that a rig capture against a dead backdrop is being read low.
+- **The corpus is mixed, and this is one reason the gap did not survive.** It
+  contains both heavily-diluted rig captures and undiluted field captures, so a
+  reference point drawn from it is not clean in either direction. That was
+  tolerable while the evidence was a gap — a gap is robust to a bias that shifts
+  a subset of readings the same way — and it is not tolerable now that the
+  refit above shows there is no gap. A rig capture against a dead backdrop is
+  being read low, which is a reason to weight the tail statistic and a reason
+  not to treat any level as a boundary.
 
 **Read it this way:**
 
@@ -948,10 +1037,17 @@ Two consequences, and neither of them overturns the reading:
 
 **What to do when it reads high, in order:**
 
-1. **Budget for a learned detector and matcher.** On every fragmenting capture
-   measured, that branch restored full or near-full registration — and it did so
-   with *fewer* keypoints, by recovering marginal pairs rather than enriching good
-   ones.
+1. **Budget for a learned detector and matcher — as the first thing to TRY, not
+   as the decision.** On every fragmenting capture in the fourteen this was
+   fitted on, that branch restored full or near-full registration, and it did so
+   with *fewer* keypoints, by recovering marginal pairs rather than enriching
+   good ones. **Driven cold on full captures it went two for five**: it rescued
+   the two whose classical branch had collapsed outright and it *cost* two
+   others most of their registration, where the classical detector with exposure
+   normalisation beat it comfortably. So the reading buys an ordering, and the
+   ordering is settled by carrying both to a model. See the boundary in
+   [matching.md](matching.md), which is the same shape: reach for the robust
+   branch where the cheap one has **failed**, not where it is **struggling**.
 2. **Choose `pairing: exhaustive`.** A sequential window is what a sparse graph
    can least afford, and the module default is sequential.
 3. **Raise `stride` on `SceneMotion` and read it again** — but read the *direction
@@ -1037,10 +1133,23 @@ The detector-and-matcher choice is not one decision, it is two, asked in this
 order:
 
 **First: will the view graph hold together?** Read adjacent-frame motion
-(`overall_magnitude`, `high_motion_tail`). A capture that covers ground quickly
-will produce a sparse graph, and a classical detector with a ratio-test matcher
-will drop frames from it. **When this reads high, spend on a learned detector AND
-matcher, whatever the repetition looks like.**
+(`overall_magnitude`, `high_motion_tail`), against the frame count. A capture
+that covers ground quickly will produce a sparse graph, and a classical detector
+with a ratio-test matcher may drop frames from it. **When this reads high, try
+the learned detector AND matcher first, whatever the repetition looks like — and
+carry the cheap branch alongside it, because this reading ranks the risk and
+does not settle it (§3b.2).**
+
+> **The exception this rule needs, and it is not about motion at all.** A block
+> of frames shot at roughly ninety degrees of in-plane roll defeats a learned
+> detector trained upright while a classical detector matches straight across
+> the break, because its invariance is by construction. Nothing upstream sees
+> it: the pixel dimensions are merely transposed and dense flow cannot fit
+> anything across the break, so it reports only the frames it *could* match.
+> The symptom is `min_image_degree` healthy for most frames and collapsing for
+> a contiguous block. **On such a capture this rule is inverted and the learned
+> branch is the fragile one.** [matching.md](matching.md) carries the full case
+> and the remedy; it is named here because this is where the decision is made.
 
 **Second, only if the graph is safe: will the matches be ambiguous?** Read
 `repetition_notes` from the description, with `repetitiveness` as weak

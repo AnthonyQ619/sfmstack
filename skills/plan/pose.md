@@ -179,6 +179,28 @@ deleting a third of the structure, and each looked like an improvement until the
 count was read beside it. If `registered_images` differs, the comparison is void;
 say so and stop.
 
+**But `registered_fraction` is itself a configured quantity, so the rung above
+only ranks two runs that obtained their poses the same way.** This module counts
+frames it placed against structure that existed *at the moment of placement*,
+and that structure is gated by its own triangulation parameters. Measured on a
+capture that reconstructs perfectly, with byte-identical input tracks: tightening
+the minimum triangulation angle alone took `registered_fraction` from **1.00 to
+the seed pair**. Nothing about the data changed.
+
+Two consequences, and the second is the larger one:
+
+- **Compare registration at matched pose-stage parameters**, the same way
+  [`optimization.md`](optimization.md) requires a matched track-length floor
+  before comparing point counts. A registration difference across a
+  parameter change is partly the parameter.
+- **Across pipelines that obtain poses differently the axis is not comparable at
+  all.** A feed-forward estimator poses every image or none, and a global
+  reconstructor has no registration order to stall — neither is running the
+  process this fraction describes. Full registration from those means something
+  different from full registration here, and the tiebreak has to come from
+  somewhere else (see [`health/ladder.md`](../health/ladder.md), which has the
+  measured case where it went wrong).
+
 **THEN, PRICE AN UNBRACKETED MARGIN AGAINST THE MODULE'S OWN SPAN.** Sweep one
 cheap parameter with everything else held, and record the range the metric covers
 across that sweep. A gap between two configurations narrower than that span is not

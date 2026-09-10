@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.2.0
+module_version: 1.2.1
 produces: poses/v1
 curated_at: 2026-08-07
 ---

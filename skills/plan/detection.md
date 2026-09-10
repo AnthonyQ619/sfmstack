@@ -269,6 +269,16 @@ Two things this rule protects you from:
   candidates — so a default-versus-default comparison is close to meaningless.
   Match them at a cap neither one binds on.
 
+  **The cost of skipping that has now been measured end to end, and it is not a
+  rounding error.** A learned detector run at its default cap on a repetitive
+  indoor capture reported `saturation` at three quarters and its pipeline
+  registered a sixth of the frames — a result that reads as evidence the
+  detector is wrong for the capture. Raised until `saturation` reached zero, the
+  same detector on the same capture through the same downstream chain registered
+  **all of it**. The first run measured the cap; the conclusion drawn from it
+  would have been about the detector. This is the rule's most expensive failure
+  mode, because a saturated run does not look broken — it looks like a finding.
+
 Raising the cap and finding the count barely moves is itself a result: it says the
 ceiling is content rather than the parameter. Raising it again and getting
 **identical metrics** says so conclusively, and costs one run.
@@ -314,16 +324,31 @@ None of that is a claim about reconstruction. These are detection-stage readings
 only, and the two commit you to different matchers — see §2 — so the comparison
 cannot be carried downstream without changing more than the detector.
 
-**Learned** when the VIEW GRAPH is at risk — this is the measured case and it
-outranks everything else on this list. A capture that covers ground quickly
-between adjacent frames shares proportionally less between non-adjacent ones, and
-an exhaustive view graph is built from those. Run to a sparse model across
-fourteen captures, the ones reading highest on `overall_magnitude` /
-`high_motion_tail` are exactly the ones whose graph fragments under a classical
-detector and a ratio-test matcher — dropping between a quarter and three quarters
-of their frames — with a clean gap below them. A learned detector and matcher
-restored full or near-full registration on every one, **while finding fewer
-keypoints**: it recovers the marginal pairs rather than enriching the good ones.
+**Learned** when the VIEW GRAPH is at risk — this is still the case with the most
+evidence behind it, and it is now a **ranking, not a gate**. A capture that
+covers ground quickly between adjacent frames shares proportionally less between
+non-adjacent ones, and an exhaustive view graph is built from those. Run to a
+sparse model across fourteen twelve-frame captures, the ones reading highest on
+`overall_magnitude` / `high_motion_tail` were exactly the ones whose graph
+fragmented under a classical detector and a ratio-test matcher — dropping
+between a quarter and three quarters of their frames. A learned detector and
+matcher restored full or near-full registration on every one, **while finding
+fewer keypoints**: it recovers the marginal pairs rather than enriching the good
+ones.
+
+> **Driven cold on full captures the same move went two for five, and the two
+> losses were large.** It rescued both captures whose classical branch had
+> collapsed to almost nothing. On two that were *partly* working it cost most of
+> the registration they already had, and on both of those a classical detector
+> with exposure normalisation beat it comfortably. The fifth was unchanged,
+> because that capture's problem was downstream of detection entirely.
+>
+> So the boundary `matching.md` gives the detector-free matchers applies here
+> too: **reach for the learned pair where the cheap branch has FAILED, not where
+> it is STRUGGLING.** And the motion reading that sends you here no longer
+> carries a clean separation at full frame count — see
+> `plan/scene_to_pipeline.md` §3b.2, which now states it as a ranking heuristic
+> and withdraws the published band.
 
 Also learned when illumination or viewpoint change is large — that is what they
 are trained for — and when a learned matcher will follow. Choosing a learned

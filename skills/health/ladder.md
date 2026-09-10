@@ -83,6 +83,28 @@ average. A camera can be registered and carry almost no structure, and a
 whole-model `point_count` cannot be moved by one starved view. That view is where
 the next stage fails.
 
+**What to do when it reads low, because every file that names this metric says
+to READ it and none said what to do.** A reader shipping an otherwise good model
+hit exactly that and had to compute the per-frame distribution by hand, because
+no metric or series publishes it. In order:
+
+1. **Find out whether it is one frame or a tail.** One starved camera among
+   forty is a local fact and usually not worth a run; a tail of them is the
+   model telling you a whole region is thin. The distribution is derivable from
+   the model's `observations` group and nothing publishes it directly.
+2. **Look at that frame.** The same three causes recur — it is aimed at flat or
+   untextured surface, it is at the end of the traverse with few neighbours, or
+   it is the one frame the detector starved. The first two are properties of the
+   capture; the third is fixable at detection.
+3. **Fix it upstream or do not fix it.** Nothing at this stage adds structure to
+   a camera. The levers are exposure normalisation and the keypoint cap at
+   detection, or more neighbours for that frame at the matcher — and both have
+   already been tried by the time most readers get here.
+4. **Otherwise ship it and say so in the watch line.** A low reading on one
+   frame is a prediction about where the *next* stage will fail, which is worth
+   recording and is not by itself a reason to reject a model that clears the
+   rungs above.
+
 ### 5. Only now, the error
 
 `mean_reprojection_error` for the level and `p95_reprojection_error` for the
@@ -221,11 +243,56 @@ it ranked the pair the way ground truth did
 | Conditioning | 9 | 17 |
 | **Composition** | **6** | 17 |
 
-**Coverage and observation-yield did not miss once.** They are the two rungs
-that ask how much of the capture the model actually accounts for — one over the
-image plane, one over the structure the pipeline supplied — and nothing in this
-campaign fooled either. Where a single reading is wanted before the vector,
-these two are the ones that earned it.
+**Coverage and observation-yield did not miss once in that campaign.** They are
+the two rungs that ask how much of the capture the model actually accounts for —
+one over the image plane, one over the structure the pipeline supplied — and
+nothing in it fooled either.
+
+### A second campaign widened the set, and coverage did not hold
+
+Driving the whole loop over every capture at full frame count produced a further
+twenty comparable pairs
+([`evidence/agentic-campaign-2026-09`](../evidence/agentic-campaign-2026-09.md)).
+Excluding one capture on which every branch failed — all its models are broken
+and comparing two broken models measures nothing — fourteen clean pairs remain:
+
+| Rung | ranked correctly | of |
+| --- | --- | --- |
+| Coverage, yield (both forms), point count | 12 | 14 |
+| Conditioning | 11 | 14 |
+| Error | 9 | 14 |
+| Composition | 8 | 14 |
+
+**Observation-yield survives as the rung to lean on; coverage does not.** Yield
+is now right on roughly thirty-five of thirty-seven comparisons across both
+campaigns. Coverage is on thirty-one of thirty-six, and its misses are not
+scattered — see the next section, which gives them a mechanism.
+
+Conditioning's better showing here is the split below working as designed: these
+pairs are nearly all genuine branch changes rather than point-retention rules,
+which is the half of that table where it reads correctly.
+
+### Coverage is a selection effect too, and the selector is the DETECTOR
+
+Composition moves with a point-retention rule. Coverage moves with the
+**detector's spatial-distribution policy**, and the mechanism is the same shape:
+the rung is measuring an upstream choice rather than the model's quality.
+
+A detector that spreads a fixed budget evenly across the frame — suppression,
+or a learned detector's own non-maximum policy — hands the reconstruction points
+in more of the grid cells coverage counts, whether or not those points are
+better. Measured on two captures where two pipelines each registered the whole
+capture: in both, the branch with the higher detector-stage `spatial_coverage`
+produced the higher model-level coverage rung, **and was the less accurate model
+against ground truth**, by a factor of two on one of them.
+
+So coverage joins composition and conditioning as a reading that has to be
+qualified rather than ranked on:
+
+> **Compare coverage between two models only when they came from the same
+> detector at the same cap.** Across detectors it is partly comparing
+> suppression strategies. Where they differ, read yield and point count beside
+> it and let coverage explain rather than decide.
 
 **The error rung barely beat a coin flip overall, and lost badly where it
 mattered.** Ten of seventeen is not a signal at this sample size, and on the
@@ -303,6 +370,36 @@ models fall below the corpus's observed range on the error rung and read 0
 together, so the weakest-rung scalar stops ordering them. The corpus is one
 pipeline's distribution; an alternate leg is out of distribution for it, and the
 scalar degrades to a tie exactly where the vector still separates.
+
+### The profile has a hole, and it is on the branch that rescues registration
+
+**Both yield rungs are unevaluable on a model whose poses came from a global
+reconstructor**, because that module consumes matches and produces a
+`sparse_model/v1` directly — there is no tracks artifact, so there is no
+denominator for "structure the pipeline had available". The digest reports it
+honestly as unevaluable rather than guessing, which is correct behaviour and
+still leaves you without the rung.
+
+That matters more than the same gap on pose agreement (below), for two reasons.
+Yield is the rung with the best record across both campaigns, and it is the
+reading that tells you whether a movement in composition, conditioning or
+coverage is a real improvement or a selection effect — so losing it removes the
+discriminator at the same time as the score. And the global reconstructor is
+exactly what [`plan/pose.md`](../plan/pose.md) prescribes when registration
+stalls, so the hole opens precisely on the captures that most needed help.
+
+**Measured, and it has already cost a decision.** On a shallow-relief subject
+two pipelines each registered the whole capture: the incremental one carried
+more points and higher coverage, the global one fewer of both, and against
+ground truth the global model was better by roughly a factor of sixty. With
+yield unavailable the tiebreak fell to coverage and point count alone, and both
+chose the worse model. On a dim built interior the same shape recurred, milder.
+
+**So when one candidate is a global reconstruction, do not settle the choice on
+the profile.** Read registration first as always; then, if they tie, prefer a
+comparison the profile can actually make — same reconstructor, or a
+reconstruction-free check such as reprojection distributions split by
+observation count — and say in the plan that the vector was short a rung.
 
 ---
 

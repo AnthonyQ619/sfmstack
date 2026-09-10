@@ -117,6 +117,32 @@ The rule that follows:
 The single-scene magnitudes are in
 [`docs/import_lessons.md`](../../docs/import_lessons.md).
 
+**The prize has now been measured end to end against ground truth, once, and it
+is small — which is what the mechanism above predicts.** On a capture where a
+tuned pipeline shipped its best model through the all-view estimator, swapping
+only the triangulator for the pairwise one at a matched track-length floor, over
+identical poses and tracks, moved the point count by under two percent and moved
+true pose error **not at all** — the pairwise model was a hair better on both
+rotation and translation. Half that cloud was two-view points, where the two are
+the same computation by construction, so there was very little for the all-view
+path to be better *at*.
+
+Read that as the bound working rather than as a verdict against the module: it
+says **check `long_track_fraction` and `two_view_fraction` before spending the
+swap**, and expect nothing on a two-view-dominated cloud. It also means a large
+improvement observed alongside this module is probably not *from* it — on that
+capture the gain was working resolution and detector tuning, and the control is
+what separated them.
+
+> **A naming trap that stops the comparison this file prescribes.** The
+> paragraphs above and in [matching.md](matching.md) say to compare "at matched
+> `min_track_len`". **The pairwise triangulator has no such parameter** — its
+> floor is `min_observations`, and passing the other name is refused outright
+> with the accepted set printed. The all-view estimator and the global
+> reconstructor do use `min_track_len`. Two names for one concept across three
+> modules, and the guidance names only one of them, so the comparison cannot be
+> run as written. Check the schema before assuming the dial transfers.
+
 ---
 
 ## Which end to reach for

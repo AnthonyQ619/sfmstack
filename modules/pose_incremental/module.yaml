@@ -1,5 +1,5 @@
 name: PoseEssentialToPnP
-version: 1.2.0
+version: 1.2.1
 kind: pose
 summary: >
   Incremental SfM: essential-matrix bootstrap on a chosen initial pair, then
@@ -42,7 +42,7 @@ description: |
   Scale is arbitrary and unrecoverable from images alone. The initial pair's
   baseline is fixed to unit length, so every distance downstream is in that unit.
 
-image: sfmstack/pose-incremental:1.2.0
+image: sfmstack/pose-incremental:1.2.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -469,6 +469,21 @@ diagnostics:
         sequential` that is `window`; under `exhaustive` the pairs already exist
         and were dropped, so the dial is min_matches or the acceptance threshold."
       - Lower min_pnp_inliers only if you accept weaker poses.
+      - "STOP TURNING DIALS IF graph_components IS 1. Every action above tunes
+        seed-and-grow, and the failure may be seed-and-grow itself: this module
+        places one image at a time against structure built so far, so a chain
+        that cannot get started reports two registered frames and a clean error
+        over them while the correspondences were sufficient all along. A
+        reconstructor that estimates poses globally has no registration order to
+        stall, consumes the SAME matches, and needs no poses. Measured on five
+        captures this module left between 0.31 and 0.97 registered: it reached
+        1.00 on every one, and was more accurate against ground truth on every
+        one. Find it with sfm_find_alternatives(produces='sparse_model/v1',
+        consumes='pairwise_matches/v1'); the choice is argued in
+        skills/plan/pose.md. Note it produces a sparse model directly, so the
+        health profile's yield rungs cannot be computed on the result --
+        skills/health/ladder.md says how to compare one against a model from
+        this chain."
     see_also: tuning.md#registered_fraction-below-10
 
   - code: high_reprojection_error

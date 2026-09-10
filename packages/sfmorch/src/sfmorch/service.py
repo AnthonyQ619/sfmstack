@@ -883,7 +883,38 @@ class SfmService:
                 "diagnostics": [d.to_doc() for d in art.manifest.diagnostics],
                 "notes": art.manifest.body.strip(),
             })
-        analyses.sort(key=lambda a: (a["module"], a["module_version"]))
+        # Several analyses of one scene by one module are the SAME module run at
+        # different parameters -- `SceneMotion` at several `stride` values is the
+        # case the guide itself asks for. Listed unordered and unlabelled, the
+        # brief then carries three answers to "what is `overall_magnitude`" while
+        # `plan/scene_to_pipeline.md` forbids locating a raised-stride reading in
+        # the corpus band at all. Sort so the reading the ranges are denominated
+        # in comes first, and say which one that is.
+        def _analysis_key(a: dict[str, Any]) -> tuple:
+            stride = a.get("metrics", {}).get("stride")
+            return (a["module"], a["module_version"],
+                    stride if isinstance(stride, (int, float)) else 0)
+
+        analyses.sort(key=_analysis_key)
+        seen: set[str] = set()
+        for a in analyses:
+            stride = a.get("metrics", {}).get("stride")
+            if not isinstance(stride, (int, float)):
+                continue
+            if a["module"] not in seen:
+                seen.add(a["module"])
+                a["comparable_to_published_ranges"] = (stride == 1)
+                if stride != 1:
+                    a["stride_note"] = (
+                        "No stride-1 analysis of this scene exists, so NO entry "
+                        "here is on the denominator the guide's ranges use.")
+            else:
+                a["comparable_to_published_ranges"] = False
+                a["stride_note"] = (
+                    f"Read at stride {stride}. This is a different quantity on a "
+                    f"different denominator from the stride-1 entry above -- the "
+                    f"guide's ranges do not apply to it. Read the DIRECTION of "
+                    f"the change against stride 1, never the level.")
 
         # H: say when an artifact is behind the module that would produce it now.
         # The brief holds both numbers and used to print neither against the other,

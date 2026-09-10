@@ -24,6 +24,7 @@ rows that support it.
 | [detection-phase-2026-08](detection-phase-2026-08.md) | 5 captures, detection stage driven cold | `plan/detection.md` §3 and §5; the coverage-denominator finding |
 | [reference-pipeline-2026-09](reference-pipeline-2026-09.md) | every corpus capture through one fixed pipeline at full frame count | the reference distribution the health digest scores against; two rung definitions it falsified; what ground truth cannot measure |
 | [alternate-legs-2026-09](alternate-legs-2026-09.md) | every module the reference never ran, each as a single-stage swap against it | which rungs track ground truth and which invert; that the reference's collapses were reachable by three different swaps; the preconditions and refusals of the untried modules |
+| [agentic-campaign-2026-09](agentic-campaign-2026-09.md) | the whole tool loop driven over every capture at full frame count, planning only from context | the connectivity rule refitted and demoted to a ranking heuristic; coverage as a detector selection effect; the global reconstructor's five-for-five rescue; the reference recipe's two protocol defects |
 
 [CORPUS.txt](CORPUS.txt) lists the captures every quoted range in
 `plan/scene_to_pipeline.md` was fitted on. [INDEX.md](INDEX.md) is the trait-keyed
