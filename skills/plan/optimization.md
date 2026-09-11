@@ -35,6 +35,21 @@ By the time a model exists, the drift has already shaped which images registered
 all. Reaching for the module does not recover what the in-loop version would have
 prevented.
 
+**It is also where this stack's one measured source of run-to-run variation
+lives, and the mechanism is worth carrying to any optimizer in a loop.** That
+solve is multithreaded, and summing the same residuals in a different order
+across threads differs in the last bits. On a finished model that is nothing. On
+an in-loop solve it is not, because the next registration is made against the
+refined structure, so a difference far below any threshold you care about at one
+step can decide a consensus set several steps later. Measured: one capture run
+twice from bit-identical tracks reproduced exactly with the in-loop solve off and
+differed by a fraction of a percent of its points with it on.
+
+That is a reason to know about it, not a reason to turn it off — the drift it
+prevents is much larger than the variation it introduces. It matters when you
+are **attributing** a small difference to a parameter, and `health/smells.md`
+carries that reading.
+
 ### 3. Refining intrinsics changes what downstream must read
 
 A bundle adjuster that refines K writes `intrinsics` into its output, and every

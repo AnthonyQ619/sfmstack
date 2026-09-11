@@ -148,6 +148,51 @@ def main(argv=None) -> int:
           f"{num(y) if y is not None else 'unevaluable'} | {num(p.get('error'))} | "
           f"{num(r.get('gt_rot'))} | {num(r.get('gt_trn'))} |")
     w("")
+    leg = load(d, "legend.json")
+    if leg:
+        w('<a id="what-the-leg-names-mean"></a>')
+        w("")
+        w("## What the leg names mean")
+        w("")
+        n_names = len({r["leg"] for r in leg["rows"]})
+        n_amb = len(leg.get("ambiguous", []))
+        w(f"**A leg name is a label from the driving script, not a description "
+          f"of the pipeline, and {n_amb} of the {n_names} names do not mean one "
+          f"thing.** The table below is the authority; read a leg name through "
+          f"it rather than through what it looks like it says. Every row is "
+          f"read back out of the artifacts themselves — each one records the "
+          f"module, the version and the resolved parameters that produced it — "
+          f"so this is what ran, not a transcription of what a script says "
+          f"should have run.")
+        w("")
+        w("The worst case, and the reason this table exists: `sup@1600` and "
+          "`sup@1024` abbreviate *superseded path* — the pipeline a capture had "
+          "been solved with before this campaign — and that path is not the "
+          "same pipeline on every capture. On one capture it is SuperPoint into "
+          "the global reconstructor; on another it is SIFT with contrast "
+          "normalisation into the incremental chain with n-view triangulation. "
+          "A reader who expands `sup` to SuperPoint is right about one of them "
+          "and wrong about the other. This was caught when a precedent row in "
+          "`evidence/INDEX.md` was written from the name and had to be "
+          "corrected against the recorded chain.")
+        w("")
+        w("`loftr` and `roma` each cover two legs that differ only in the "
+          "`setting` parameter, which is not a detail: it selects between two "
+          "separately trained weight sets, and each module's own tuning notes "
+          "say the wrong one costs `inlier_ratio` outright. `mine@1600` covers "
+          "two legs that differ in whether contrast normalisation was on.")
+        w("")
+        w("| leg | on these captures | the chain that actually ran |")
+        w("| --- | --- | --- |")
+        for r in sorted(leg["rows"], key=lambda x: (x["leg"], x["captures"])):
+            star = " ⚠" if r["leg"] in leg.get("ambiguous", []) else ""
+            caps = ", ".join(r["captures"])
+            chain = " → ".join(f"`{s}`" for s in r["chain"])
+            w(f"| `{r['leg']}`{star} | {caps} | {chain} |")
+        w("")
+        w("⚠ marks a name that covers more than one chain. Working resolution "
+          "is in the `px` column of the tables above and is not repeated here.")
+        w("")
     w("## The connectivity rule, refitted on full captures")
     w("")
     w("The rule in `plan/scene_to_pipeline.md` §3b was fitted on fourteen captures "
@@ -234,6 +279,70 @@ def main(argv=None) -> int:
               f"{r['points']} | {num(r['coverage'])} | {num(r['gt_rot'])} | "
               f"{num(r['gt_trn'])} |")
     w("")
+    auc = load(d, "pose_auc.json")
+    if auc:
+        w('<a id="pose-accuracy-auc"></a>')
+        w("")
+        w("## Pose accuracy of the shipped models — AUC@5 and AUC@30")
+        w("")
+        w("**The convention, because AUC means several things.** Error is "
+          "measured on image PAIRS, not absolute poses: a reconstruction is "
+          "determined only up to a similarity, so an absolute comparison needs "
+          "a gauge alignment whose residual is itself a free parameter, while a "
+          "relative rotation is gauge-free and a relative translation is "
+          "gauge-free in direction. Per pair, `pose error = max(rotation error, "
+          "translation direction error)` in degrees. AUC@t is the normalised "
+          "area under the cumulative error curve on [0, t] — 1.0 means every "
+          "pair is exact, 0.0 means every pair is worse than t.")
+        w("")
+        w("**DTU rotations carry the fitted correction below; DTU translations "
+          "do not.** So a DTU pose column is bounded by its uncorrected "
+          "translation term and understates those models — the rotation columns "
+          "beside it are the fair reading for that family.")
+        w("")
+        w("| capture | leg | pairs | median rot° | median trn° | AUC@5 pose | "
+          "AUC@30 pose | AUC@5 rot | AUC@30 rot |")
+        w("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+        for r in auc["rows"]:
+            w(f"| {r['capture']} | `{r['leg']}` | {r['pairs']} | "
+              f"{num(r['rot_median'])} | {num(r['trn_median'])} | "
+              f"{num(r['auc5_pose'])} | {num(r['auc30_pose'])} | "
+              f"{num(r['auc5_rot'])} | {num(r['auc30_rot'])} |")
+        s = auc["summary"]
+        p, m = s["pooled"], s["mean_over_scenes"]
+        w("")
+        w(f"| over {s['n_scenes']} scenes | AUC@5 pose | AUC@30 pose | "
+          f"AUC@5 rot | AUC@30 rot |")
+        w("| --- | --- | --- | --- | --- |")
+        w(f"| pooled over all {s['n_pairs']} pairs | {num(p['auc5_pose'])} | "
+          f"{num(p['auc30_pose'])} | {num(p['auc5_rot'])} | {num(p['auc30_rot'])} |")
+        w(f"| mean over scenes, each weighted equally | {num(m['auc5_pose'])} | "
+          f"{num(m['auc30_pose'])} | {num(m['auc5_rot'])} | {num(m['auc30_rot'])} |")
+        w("")
+        w("**Read the two summary rows as different questions.** The pooled row "
+          "is dominated by whichever scenes contributed the most pairs, and pair "
+          "count grows with the square of the images; the mean over scenes gives "
+          "a fifteen-image capture the same weight as a fifty-image one. They "
+          "agree closely here, which is itself worth knowing — it says no single "
+          "scene is carrying the corpus figure.")
+        w("")
+        w("**Two readings the medians elsewhere in this file cannot give you.**")
+        w("")
+        w("First, one capture is not like the others: the shallow-relief "
+          "interior sits near half on AUC@5 where every other model is above "
+          "0.8, and it is the same model the selection rule preferred over a "
+          "branch truth ranks far better. The rung table said the two were "
+          "close; the error distribution says they are not.")
+        w("")
+        w("Second, **a median can be excellent while the distribution has a "
+          "tail, and AUC is where that shows.** One outdoor site reports one of "
+          "the best median rotations in the corpus and one of the worst AUC@30 "
+          "figures, which can only mean a subset of its cameras is badly placed "
+          "while most are near-exact. Every rung in `health/ladder.md` is a "
+          "median, a p75 or a fraction, so none of them can see this; it is the "
+          "clearest case in the corpus for reading a distribution rather than a "
+          "summary statistic.")
+        w("")
     w('<a id="are-these-models-reproducible"></a>')
     w("")
     w("## Are these models reproducible? Mostly, and the cache was hiding the rest")
@@ -291,6 +400,28 @@ def main(argv=None) -> int:
       "was a vacuous comparison, and the payload comparison that replaced it is "
       "what the claim above now rests on.")
     w("")
+    sp = load(d, "repeat_spread.json")
+    if sp:
+        w(f"**Both models that moved read slightly worse on both axes, and on "
+          f"the one with enough repeats to say so, that is what a top draw "
+          f"looks like rather than a model degrading.** {sp['n']} observations "
+          f"of a computationally identical chain on that capture:")
+        w("")
+        w("| points | where it came from |")
+        w("| --- | --- |")
+        for o in sp["observations"]:
+            w(f"| {o['points']} | {o['origin']} |")
+        w("")
+        w(f"They span {sp['range']} points, {sp['range_pct']:.2f}% of the "
+          f"largest, with a standard deviation of {sp['sd']}. **The shipped "
+          f"value is the highest of the {sp['n']}.** So the recompute reading "
+          f"lower is the expected consequence of having recorded the best of "
+          f"several draws, and the honest summary of that capture's point count "
+          f"is the spread rather than any one of these numbers. The other "
+          f"capture that moved has only two observations, so nothing of the "
+          f"kind can be said about it — it is lower by under a percent, and "
+          f"that is all the evidence supports.")
+        w("")
     w("**Nothing shipped was replaced.** These runs produced new artifacts "
       "beside the originals, which still exist unchanged with the point counts "
       "in the shipped table above.")

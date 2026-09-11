@@ -145,6 +145,21 @@ slot wanted, resolved from **A** at the moment of failure — so it cannot go st
 resolved params, input ids)`. It does not cover adapter *source*, which is why a
 code edit needs a fresh store or a rebuilt image rather than just a re-run.
 
+**An id therefore says what a thing was made from, never what it contains**, and
+two consequences follow that have both caught a reader:
+
+- **Comparing ids cannot tell you two runs agreed.** Two artifacts with the same
+  id are two runs of one recipe, and that is the whole claim. A check of the form
+  "the upstream ids match, so the upstream is bit-identical" is circular — the
+  ids would match whatever the bytes did. Comparing payloads is the only check
+  that means what it looks like it means.
+- **An unchanged recipe never re-executes**, so a pipeline looks perfectly
+  reproducible whether or not it is. To find out, force a real recompute: a
+  second store will do it where asking again will not. Measured on one capture,
+  that surfaced a fraction-of-a-percent difference between two executions of an
+  identical recipe, traced to a multithreaded solve inside a registration loop —
+  see `health/smells.md` and `PoseEssentialToPnP`'s limitations.
+
 **Metrics come back inline.** `sfm_run` returns `metrics`, `diagnostics` and
 `notes` — the last being the narrative body the adapter wrote into `artifact.md`.
 No second call is needed to see how a step went.

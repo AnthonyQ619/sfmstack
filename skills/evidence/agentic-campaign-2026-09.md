@@ -102,6 +102,38 @@ Selected on registration first and the accounting rungs second, which is the rul
 | ETH/relief | `sift_nn` | 1024 | 0.84 | 4262 | 0.641 | 0.814 | 0.150 | 0.059 | 0.091 |
 | ETH/relief | `sift_lg` | 1024 | 0.71 | 1746 | 0.586 | 0.520 | 0.217 | 0.135 | 0.133 |
 
+<a id="what-the-leg-names-mean"></a>
+
+## What the leg names mean
+
+**A leg name is a label from the driving script, not a description of the pipeline, and 5 of the 12 names do not mean one thing.** The table below is the authority; read a leg name through it rather than through what it looks like it says. Every row is read back out of the artifacts themselves — each one records the module, the version and the resolved parameters that produced it — so this is what ran, not a transcription of what a script says should have run.
+
+The worst case, and the reason this table exists: `sup@1600` and `sup@1024` abbreviate *superseded path* — the pipeline a capture had been solved with before this campaign — and that path is not the same pipeline on every capture. On one capture it is SuperPoint into the global reconstructor; on another it is SIFT with contrast normalisation into the incremental chain with n-view triangulation. A reader who expands `sup` to SuperPoint is right about one of them and wrong about the other. This was caught when a precedent row in `evidence/INDEX.md` was written from the name and had to be corrected against the recorded chain.
+
+`loftr` and `roma` each cover two legs that differ only in the `setting` parameter, which is not a detail: it selects between two separately trained weight sets, and each module's own tuning notes say the wrong one costs `inlier_ratio` outright. `mine@1600` covers two legs that differ in whether contrast normalisation was on.
+
+| leg | on these captures | the chain that actually ran |
+| --- | --- | --- |
+| `global_sift@1600` | ETH/facade, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `global_sift_clahe@1600` | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `loftr` ⚠ | ETH/electro, ETH/meadow | `FeatureMatchLoFTR [pairing=exhaustive, setting=outdoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `loftr` ⚠ | ETH/office | `FeatureMatchLoFTR [pairing=exhaustive, setting=indoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `mine@1600` ⚠ | ETH/delivery_area, ETH/facade, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `mine@1600` ⚠ | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `roma` ⚠ | ETH/electro, ETH/meadow | `FeatureMatchRoMa [pairing=exhaustive, setting=outdoor, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `roma` ⚠ | ETH/office | `FeatureMatchRoMa [pairing=exhaustive, setting=indoor, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift_clahe_lg` | ETH/office | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.1, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift_clahe_nn` | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift_lg` | DTU/scan1, DTU/scan10, DTU/scan15, DTU/scan23, DTU/scan33, DTU/scan4, DTU/scan9, ETH/courtyard, ETH/delivery_area, ETH/electro, ETH/facade, ETH/kicker, ETH/meadow, ETH/office, ETH/playground, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.1, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift_nn` | DTU/scan1, DTU/scan10, DTU/scan15, DTU/scan23, DTU/scan33, DTU/scan4, DTU/scan9, ETH/courtyard, ETH/delivery_area, ETH/electro, ETH/facade, ETH/kicker, ETH/meadow, ETH/office, ETH/playground, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sp_sg` | ETH/electro, ETH/kicker, ETH/meadow, ETH/office, ETH/playground | `FeatureDetectionSuperPoint [max_keypoints=2048]` → `FeatureMatchSuperGlue [max_keypoints=2048, pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sup@1024` ⚠ | ETH/delivery_area | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=20, max_iterations=10000]` → `SparseTriangulationGTSAM [min_track_len=2, use_lost=True, optimize=True]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `sup@1024` ⚠ | ETH/office | `FeatureDetectionSuperPoint [max_keypoints=8192]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=8]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `sup@1600` ⚠ | ETH/delivery_area | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=20, max_iterations=10000]` → `SparseTriangulationGTSAM [min_track_len=2, use_lost=True, optimize=True]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `sup@1600` ⚠ | ETH/office | `FeatureDetectionSuperPoint [max_keypoints=8192]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=8]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+
+⚠ marks a name that covers more than one chain. Working resolution is in the `px` column of the tables above and is not repeated here.
+
 ## The connectivity rule, refitted on full captures
 
 The rule in `plan/scene_to_pipeline.md` §3b was fitted on fourteen captures at twelve frames with `sampling: head`, and states a clean gap in `overall_magnitude` between the captures that fragment and those that do not. These are the readings and the outcomes at full frame count, scored against the branch the rule is about — a classical detector and a ratio-test matcher.
@@ -213,6 +245,46 @@ Every leg below ran at `saturation: 0.0`, so the cap is not what is being measur
 | ETH/office | `sp_global@1600` | 1.00 | 2326 | 0.609 | 0.095 | 0.415 |
 | ETH/office | `sp_incr@1600` | 0.88 | 2558 | 0.719 | 0.092 | 0.380 |
 
+<a id="pose-accuracy-auc"></a>
+
+## Pose accuracy of the shipped models — AUC@5 and AUC@30
+
+**The convention, because AUC means several things.** Error is measured on image PAIRS, not absolute poses: a reconstruction is determined only up to a similarity, so an absolute comparison needs a gauge alignment whose residual is itself a free parameter, while a relative rotation is gauge-free and a relative translation is gauge-free in direction. Per pair, `pose error = max(rotation error, translation direction error)` in degrees. AUC@t is the normalised area under the cumulative error curve on [0, t] — 1.0 means every pair is exact, 0.0 means every pair is worse than t.
+
+**DTU rotations carry the fitted correction below; DTU translations do not.** So a DTU pose column is bounded by its uncorrected translation term and understates those models — the rotation columns beside it are the fair reading for that family.
+
+| capture | leg | pairs | median rot° | median trn° | AUC@5 pose | AUC@30 pose | AUC@5 rot | AUC@30 rot |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DTU/scan1 | `sift_nn` | 1176 | 0.108 | 0.709 | 0.856 | 0.976 | 0.977 | 0.996 |
+| DTU/scan4 | `sift_nn` | 1176 | 0.092 | 0.725 | 0.847 | 0.975 | 0.980 | 0.997 |
+| DTU/scan9 | `sift_nn` | 1176 | 0.094 | 0.736 | 0.852 | 0.975 | 0.980 | 0.997 |
+| DTU/scan10 | `sift_nn` | 1176 | 0.116 | 0.759 | 0.845 | 0.974 | 0.976 | 0.996 |
+| DTU/scan15 | `sift_nn` | 1176 | 0.078 | 0.745 | 0.849 | 0.975 | 0.983 | 0.997 |
+| DTU/scan23 | `sift_nn` | 1176 | 0.118 | 0.807 | 0.838 | 0.973 | 0.974 | 0.996 |
+| DTU/scan33 | `sift_nn` | 1176 | 0.090 | 0.715 | 0.856 | 0.976 | 0.982 | 0.997 |
+| ETH/courtyard | `sift_lg` | 703 | 0.072 | 0.122 | 0.962 | 0.994 | 0.984 | 0.997 |
+| ETH/electro | `roma` | 990 | 0.079 | 0.084 | 0.803 | 0.825 | 0.819 | 0.865 |
+| ETH/meadow | `roma` | 105 | 0.136 | 0.083 | 0.952 | 0.992 | 0.961 | 0.994 |
+| ETH/delivery_area | `sup@1600` | 946 | 0.048 | 0.085 | 0.972 | 0.995 | 0.990 | 0.998 |
+| ETH/facade | `global_sift@1600` | 1225 | 0.061 | 0.080 | 0.964 | 0.993 | 0.983 | 0.997 |
+| ETH/kicker | `global_sift_clahe@1600` | 465 | 0.040 | 0.078 | 0.968 | 0.995 | 0.984 | 0.997 |
+| ETH/office | `sup@1024` | 325 | 0.090 | 0.448 | 0.816 | 0.966 | 0.975 | 0.996 |
+| ETH/playground | `global_sift_clahe@1600` | 703 | 0.088 | 0.196 | 0.944 | 0.991 | 0.982 | 0.997 |
+| ETH/relief | `mine@1600` | 465 | 3.068 | 0.962 | 0.508 | 0.802 | 0.562 | 0.926 |
+
+| over 16 scenes | AUC@5 pose | AUC@30 pose | AUC@5 rot | AUC@30 rot |
+| --- | --- | --- | --- | --- |
+| pooled over all 14159 pairs | 0.867 | 0.964 | 0.956 | 0.985 |
+| mean over scenes, each weighted equally | 0.865 | 0.961 | 0.943 | 0.984 |
+
+**Read the two summary rows as different questions.** The pooled row is dominated by whichever scenes contributed the most pairs, and pair count grows with the square of the images; the mean over scenes gives a fifteen-image capture the same weight as a fifty-image one. They agree closely here, which is itself worth knowing — it says no single scene is carrying the corpus figure.
+
+**Two readings the medians elsewhere in this file cannot give you.**
+
+First, one capture is not like the others: the shallow-relief interior sits near half on AUC@5 where every other model is above 0.8, and it is the same model the selection rule preferred over a branch truth ranks far better. The rung table said the two were close; the error distribution says they are not.
+
+Second, **a median can be excellent while the distribution has a tail, and AUC is where that shows.** One outdoor site reports one of the best median rotations in the corpus and one of the worst AUC@30 figures, which can only mean a subset of its cameras is badly placed while most are near-exact. Every rung in `health/ladder.md` is a median, a p75 or a fraction, so none of them can see this; it is the clearest case in the corpus for reading a distribution rather than a summary statistic.
+
 <a id="are-these-models-reproducible"></a>
 
 ## Are these models reproducible? Mostly, and the cache was hiding the rest
@@ -241,6 +313,19 @@ Twelve of the sixteen shipped models run through `PoseEssentialToPnP`, and all t
 **How it was isolated.** One capture was run end to end in two separate artifact stores under identical parameters, so both executed rather than one being served from cache. `scene`, `features`, `matches` and `tracks` came back with **bit-identical payloads**; `poses` diverged. Re-running only the pose module from that identical tracks payload with `local_ba: false` gave bit-identical poses in both stores, and with it on gave different ones. The local bundle adjustment is a multithreaded Ceres solve: the same residuals summed in a different order across threads differ in the last bits, and an incremental method feeds that back into its next registration until it changes a consensus set. Untested next step: that solve does not set `solver_options.num_threads`.
 
 **What is established is about the cache, and it is the part that generalises.** An unchanged recipe is served from the artifact store and never re-executed, so nothing ever runs twice to disagree with itself and a pipeline looks perfectly reproducible whether or not it is. Worse, the usual check cannot see through it: an artifact id is derived from the recipe — module, version, parameters, input ids — and not from the bytes produced, so two artifacts sharing an id are two runs of one recipe and nothing more. An earlier version of this section reported upstream stages as bit-identical on the strength of matching ids; that was a vacuous comparison, and the payload comparison that replaced it is what the claim above now rests on.
+
+**Both models that moved read slightly worse on both axes, and on the one with enough repeats to say so, that is what a top draw looks like rather than a model degrading.** 6 observations of a computationally identical chain on that capture:
+
+| points | where it came from |
+| --- | --- |
+| 28335 | the shipped model |
+| 28306 | repeat |
+| 27986 | repeat, separate store |
+| 27953 | repeat |
+| 27928 | repeat, separate store |
+| 27927 | repeat |
+
+They span 408 points, 1.44% of the largest, with a standard deviation of 194. **The shipped value is the highest of the 6.** So the recompute reading lower is the expected consequence of having recorded the best of several draws, and the honest summary of that capture's point count is the spread rather than any one of these numbers. The other capture that moved has only two observations, so nothing of the kind can be said about it — it is lower by under a percent, and that is all the evidence supports.
 
 **Nothing shipped was replaced.** These runs produced new artifacts beside the originals, which still exist unchanged with the point counts in the shipped table above.
 

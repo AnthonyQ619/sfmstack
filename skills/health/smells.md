@@ -198,6 +198,37 @@ configurations agreeing to four decimals are the same configuration.
 
 ---
 
+## A difference between two runs that is the pipeline, not the change
+
+**The smell:** a parameter is changed, the model comes back a fraction of a
+percent different, and that fraction is read as the effect of the change.
+
+**Measured:** the same recipe run twice — in two separate artifact stores, so
+both genuinely executed rather than one being served from cache — produced
+bit-identical detection, matching and tracking, and then diverged at the pose
+stage, ending a fraction of a percent apart in point count. Other captures on
+the same chain reproduced exactly.
+
+**The mechanism, because it predicts where else to look:** the divergence came
+from a multithreaded solver inside the registration loop. The same residuals
+summed in a different order across threads differ in the last bits, and an
+incremental method feeds that straight into its next decision until it changes a
+consensus set. It is not random sampling — the RANSACs on that path were probed
+and are deterministic — so expect this wherever a multithreaded optimiser sits
+in a feedback loop, and do not expect a seed to fix it.
+
+**Why it stays hidden:** an unchanged recipe is served from the artifact store
+and never re-executed, so nothing ever runs twice to disagree with itself. And
+the obvious check does not work — an artifact id is derived from the recipe, not
+from the bytes, so two artifacts with the same id are two runs of one recipe and
+nothing more.
+
+**What to do:** before believing a small difference, run the *unchanged*
+configuration a second time in a fresh store and see how far it moves on its
+own. That spread is the floor. A difference smaller than it is not a result.
+
+---
+
 ## A band exceeded on a capture where nothing is wrong
 
 **The smell:** a reading sits just outside a published range, and the run stops to
