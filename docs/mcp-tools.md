@@ -1,6 +1,6 @@
 ---
 name: mcp-tools
-description: The 19 MCP tools and the exact files each one reads or writes. Where the agent's context comes from, organised by the moment tiers (plan/judge/health/evidence), and what is still blocked on trait derivation.
+description: The 19 MCP tools and the exact files each one reads or writes. Where the agent's context comes from, organised by the moment tiers (plan/judge/health/evidence), and what is still unbuilt.
 status: current as of 2026-09-07
 ---
 
@@ -75,7 +75,7 @@ skills/judge/*.md                  <- sfm_workflow_skill("judge/swap_or_build")
 skills/health/*.md                 <- sfm_workflow_skill("ladder")
 skills/evidence/EVIDENCE.md        <- sfm_workflow_skill("evidence/EVIDENCE")
 skills/evidence/<campaign>.md      <- sfm_workflow_skill("evidence/<campaign>")
-skills/evidence/INDEX.md           <- sfm_workflow_skill("evidence/INDEX")   [NO ROWS]
+skills/evidence/INDEX.md           <- sfm_workflow_skill("evidence/INDEX")
 skills/distill/SKILL.md            <- sfm_workflow_skill("distill/SKILL.md")
 docs/*.md, docs/design/*.md        <- sfm_workflow_skill("import_lessons")
 ```
@@ -373,7 +373,7 @@ and nothing compelled the health moment.
 | `health/` | `ladder`, `smells`, `bounce` | the run payload's health digest anchors here; `sfm_workflow_skill` | populated; digest unevaluable until the reference campaign |
 | `evidence/EVIDENCE.md` | index + reliability ladder | `sfm_workflow_skill` | populated |
 | `evidence/<campaign>.md` | 5 campaigns | `sfm_workflow_skill` | populated; the 17-capture sweep's record was not preserved — the reference, alternate-leg and agentic campaigns close that gap |
-| `evidence/INDEX.md` | header only | `sfm_workflow_skill` | blocked on trait derivation |
+| `evidence/INDEX.md` | 16 precedent rows | `sfm_workflow_skill` | populated; keyed on observed capture kind from a `SceneDescription` reading, not on derived traits — no measurements, each row links to its campaign rows |
 | `evidence/CORPUS.txt` | 1 | read as a file; scopes `in_planning_corpus` | populated |
 | `distill/SKILL.md` | 1 (now incl. the recording protocol, §9) | `sfm_workflow_skill` | written; the loop it describes has never run |
 | `modules/*/skills/` | 141: five per module across 28, plus `SceneDescription/rubric.md` | `sfm_describe_module`, `sfm_module_skill` | populated |

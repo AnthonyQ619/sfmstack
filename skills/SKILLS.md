@@ -68,9 +68,12 @@ one) has not been asked for; the two modules' own `SKILL.md` files carry it.
 - **[EVIDENCE.md](evidence/EVIDENCE.md)** — the index of campaigns, and the
   reliability ladder: when two pieces of this corpus disagree, which to believe.
   One file per campaign beside it, raw per-capture tables with scene names —
-  **cite, never match**. [INDEX.md](evidence/INDEX.md) is the trait-keyed
-  retrieval table (still no rows); [CORPUS.txt](evidence/CORPUS.txt) pins what
-  every quoted range was fitted on.
+  **cite, never match**. [INDEX.md](evidence/INDEX.md) is the opposite file and
+  the one to match against: one row per worked capture, keyed on observed
+  capture kind, carrying no measurements and naming the move that decided each
+  one. [CORPUS.txt](evidence/CORPUS.txt) pins what every quoted range was fitted
+  on — and every INDEX row is a member of it, so check `in_planning_corpus`
+  before treating a match as retrieval.
 
 Scene names live in this tier and nowhere else; every claim elsewhere describes
 the *scenario*. Trait thresholds are nowhere: the analysis modules emit numbers,
@@ -109,7 +112,7 @@ SKILLS.md (this file)
   │    └─ sfm_list_modules(...)    the live menu
   │  → you write the plan. The tool prepares; it does not decide.
   │
-  ├─ evidence/INDEX by trait       has this been solved?      [NO ROWS YET]
+  ├─ evidence/INDEX by capture kind has this been solved, and by what move?
   │
   └─ run → metrics + diagnostics(see_also)
         ├─ tuning.md              principled gradient + observed episodes

@@ -163,6 +163,29 @@ Both detectable from flow before anything runs, both currently undetected:
 
 ## Derived traits — the retrieval key
 
+> **SUPERSEDED 2026-09-10. The `traits` group is not filled, retrieval is not
+> keyed on it, and a test asserts neither analysis module writes it.** The design
+> below is kept as the record of an approach that was tried and abandoned.
+>
+> **Why.** Deriving traits by thresholding needs cut points, and those were never
+> written because the evidence does not support naming them. The one cut point
+> that *was* published — the connectivity band in `plan/scene_to_pipeline.md`
+> §3b — was refitted on sixteen full captures across seven statistics and two
+> definitions of failure, separated nothing cleanly under any of them, and was
+> withdrawn. Keying retrieval on thresholds would have meant keying it on the
+> weakest thing in the corpus.
+>
+> **What replaced it.** `evidence/INDEX.md` is keyed on **observed capture kind**
+> — what a reader looked at and graded through `SceneDescription` under a fixed
+> rubric, from a closed vocabulary that file defines: setting, capture shape,
+> subject, target surface, repetition, hazards. Those categories carry things no
+> cue here measures at all, which is the deeper reason the swap was an
+> improvement rather than a retreat: whether a reflection is coherent or diffuse,
+> whether a flat region is wanted or backdrop, whether an empty region is clipped
+> or merely dim. The cues below stay exactly as they are and remain the input to
+> planning; what changed is that they are read as numbers by a planner rather
+> than cut into labels by the orchestrator.
+
 Cue values are the raw output. What retrieval needs is a small vocabulary of
 **traits**, derived by thresholding, and this is the piece that closes the loop
 you asked for:
@@ -204,9 +227,22 @@ module emits numbers; the trait vocabulary and its cut points are yours.
 
 ## Open question
 
-Does trait derivation belong in the orchestrator (reading thresholds from
-`judgment/`, so traits are consistent across every scene and cheap to re-derive
-when you change a threshold), or in the analysis modules themselves (self-contained,
-but re-running analysis to change a cut point)? I lean orchestrator, precisely
-because you will want to revise those boundaries and should not pay a GPU hour to
-do it.
+> **RESOLVED 2026-09-10, by neither of the two answers below.**
+
+The question was whether trait derivation belongs in the orchestrator (reading
+thresholds from the global tier, so traits are consistent and cheap to re-derive)
+or in the analysis modules (self-contained, but re-running analysis to change a
+cut point). The orchestrator was the better of the two and neither was taken,
+because the premise was wrong: **the thresholds it argues about placement for do
+not exist and were never going to.**
+
+What settled it was a measurement rather than a preference. The corpus's one
+published cut point failed a refit on full captures, which is a result about cut
+points on this evidence and not about where to evaluate them. Retrieval is keyed
+on observed capture kind instead, and the cues on this page are consumed as
+numbers by whoever is planning rather than cut into labels by anything.
+
+**The plumbing the answer would have needed is live anyway** — the orchestrator
+binds each run to its scene on the first step that touches one — so if a cut
+point ever earns its place, the orchestrator remains where it should be
+evaluated.

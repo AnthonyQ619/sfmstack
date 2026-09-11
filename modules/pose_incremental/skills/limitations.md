@@ -101,3 +101,57 @@ skipping the separate pose stage:
 ```
 sfm_find_alternatives(produces="sparse_model/v1", not_consuming="poses/v1")
 ```
+
+## This module's output is not bit-reproducible with `local_ba` on
+
+*Symptom:* two runs of what is genuinely the same recipe return poses that are
+not identical, and a model built on them differs by a fraction of a percent in
+point count. On a capture whose solve is comfortable you will never see it; on a
+marginal one you will.
+
+*Why:* the in-loop local bundle adjustment is a Ceres solve and it is
+multithreaded. Summing the same residuals in a different order across threads
+gives a different answer in the last bits, and incremental SfM feeds that
+straight back into the next registration — so a difference far below any
+threshold you care about at one step becomes a different consensus set a few
+steps later.
+
+**It is not the RANSAC, which is the natural first guess and is wrong.** Probed
+directly, and inside this module's own image, `findEssentialMat(USAC_MAGSAC)` and
+`solvePnPRansac(SQPNP)` both return identical results across repeated unseeded
+calls on a heavily outlier-contaminated problem, and both ignore
+`cv2.setRNGSeed`. A seed parameter was written for this module against that
+hypothesis and withdrawn when the probe falsified it; do not reintroduce one
+expecting it to help.
+
+**How it was isolated**, because the method matters more than the result here:
+the same capture was run end to end in two separate artifact stores with
+identical parameters, so both executed for real rather than one being served from
+cache. `scene`, `features`, `matches` and `tracks` came back with bit-identical
+payloads. `poses` did not. Re-running just this module from that identical
+tracks payload with `local_ba: false` produced bit-identical poses in both
+stores; with it on, they differed.
+
+*What helps:*
+
+- **`local_ba: false`** makes this module bit-reproducible, and costs you the
+  drift control that the section above says is the reason it is on by default.
+  That is a real trade, not a free fix — take it when you are trying to attribute
+  a difference between two configurations, not as a standing setting.
+- **Accept the variance and measure it.** Run the configuration you care about
+  twice, in separate stores, and treat the spread as the floor: a difference
+  between two configurations smaller than the difference between two runs of one
+  configuration is not a difference. `health/ladder.md` carries this rule.
+- **Untested, and the obvious next step:** the Ceres solve here does not set
+  `solver_options.num_threads`, so it takes the default and uses what it finds.
+  Pinning it to 1 should make the solve deterministic at a speed cost. Nobody has
+  measured either side of that yet.
+
+**The reason this went unnoticed for so long is the artifact cache**, and that
+part is not specific to this module. An unchanged recipe is served from the store
+and never re-executed, so nothing ever runs twice to disagree with itself. Worse,
+the check that looks like it would catch this does not: an artifact id is derived
+from the recipe — module, version, parameters, input ids — not from the bytes
+produced, so two artifacts with the same id are two runs of one recipe and
+nothing more. In the isolation above, every stage's id matched on both sides,
+including the stages whose payloads differ.

@@ -80,7 +80,8 @@ skills/
     EVIDENCE.md            campaign index + the reliability ladder
     <campaign>.md          one file per campaign, raw per-capture tables
     reference_profile.yaml GENERATED: the distribution the health digest scores against
-    INDEX.md               trait-keyed retrieval table  [NO ROWS — see §7]
+    INDEX.md               precedent table keyed on OBSERVED capture kind, one
+                           row per worked capture, no measurements — see §7.4
     CORPUS.txt             the captures every quoted range was fitted on
 
   distill/               ~24 KB
@@ -133,7 +134,7 @@ reports only the current name, so nothing advertises names that no longer exist.
 | `health/smells.md` | a sparse model exists | "It looks fine — is it?" | Anything a single metric can answer. |
 | `health/bounce.md` | a sparse model exists, unhealthy | "Can the registry fix this, or is the right next act building a tool?" | Module-level doubt — that is `judge/swap_or_build.md`, which it hands off to. |
 | `evidence/EVIDENCE.md` | checking a claim | "Where did this come from, and how much is it worth?" | A plan. See §3.3. |
-| `evidence/INDEX.md` | planning | "Has a capture like mine been solved before?" | Currently anything — it has no rows. |
+| `evidence/INDEX.md` | planning | "Has a capture like mine been solved before, and what solved it?" | A reading to expect. It carries no measurements at all — those are one hop away in the campaign files. |
 | `distill/SKILL.md` | session ends | "I learned something. Where does it go and in what shape?" | Currently anything — it has never been executed. |
 
 judge/ and health/ divide by the *kind of doubt* a reader has: doubt about the
@@ -476,18 +477,58 @@ written by hand, so a claim's age is the age of the last person who looked at
 it. The reference campaign doubles as the first body of evidence the loop could
 be exercised on.
 
-### 7.4 `evidence/INDEX.md` is empty, and is blocked upstream
+### 7.4 `evidence/INDEX.md` is populated, on a different key than designed
 
-Its retrieval is a set intersection between a capture's derived traits and a
-run's recorded traits. **Nothing derives traits.** `scene_analysis/v1` declares
-a `traits` group and neither analysis module fills it, by design: traits were to
-be derived by the orchestrator from thresholds held in the global tier, so that
-revising "narrow baseline" does not cost a re-run. Those thresholds
-deliberately do not exist — `plan/scene_to_pipeline.md` records observed ranges
-over a named corpus and refuses to name cut points the evidence does not support
-(§6). The blockage is a stated position about whether cut points should exist,
-not an unwritten file; the plumbing underneath is live (the orchestrator binds
-each run to its scene on the first step that touches one).
+**It was empty for a long time and the reason was a real disagreement, not an
+unwritten file.** The original design derived traits by thresholding
+`scene_analysis/v1` numbers, with the cut points held in the global tier so that
+revising "narrow baseline" would not cost a re-run. `scene_analysis/v1` still
+declares a `traits` group that neither analysis module fills, and a test asserts
+they do not. The cut points were never written because §6 refuses to name cut
+points the evidence does not support, so retrieval had no key.
+
+**What broke the deadlock was evidence against the threshold approach rather
+than a decision to relax §6.** The one published cut point — the connectivity
+band in `plan/scene_to_pipeline.md` §3b — was refitted on sixteen full captures
+over seven statistics and two definitions of fragmentation and produced no clean
+separation under any of them, and it was withdrawn. A key built on thresholds
+would have been built on the one thing this corpus has now falsified twice.
+
+**So the key is an observed capture kind rather than a derived one.** Traits are
+recorded from a `SceneDescription` reading — what a reader looked at and graded
+under a fixed rubric — from a closed vocabulary written into `INDEX.md` itself:
+setting, capture shape, subject, target surface, repetition, hazards. Three
+properties make this work where thresholding did not:
+
+- **It cannot drift.** A category someone assigned by looking can be wrong, and
+  it stays wrong in a visible way; a cut point silently changes meaning every
+  time the corpus grows.
+- **It is already compelled.** `SceneDescription` refuses to produce a report
+  without its rubric being fetched, which is the only delivery mechanism in this
+  system measured at a 100% hit rate (§4). A planner who needs to place their own
+  capture in the vocabulary reaches it through a module that will not complete
+  otherwise.
+- **It says things nothing else measures.** Coherent versus diffuse reflection,
+  whether a flat region is wanted or backdrop, whether an empty region is clipped
+  or merely dim, movers, lens flare. Those are the traits that changed decisions
+  across the campaign, and not one of them is derivable from a number this stack
+  produces.
+
+**The rows carry no measurements.** Every point count, error and profile reading
+stays in the campaign files, reached through a per-capture anchor that
+`tools/phase_c_report.py` now emits (`#cap-<slug>`). That keeps §3.3's split
+intact while giving the precedent tier a route to the evidence tier, which it
+previously lacked: the outcome column routes a reader to `health/ladder.md` when
+a model is finished, and to `judge/swap_or_build.md` when the registry may not
+hold the answer.
+
+**What is still open.** The outcome vocabulary has no `unsolved` rows, so the
+file cannot illustrate the case it routes to most consequentially. All sixteen
+rows are corpus members, so any corpus capture matches its own answer key —
+a stronger form of the recall problem than the range tables have, and the file
+says so at the top. And the vocabulary has been applied by one reader across one
+corpus of two benchmark families; whether two readers would assign the same
+traits to the same capture has not been tested.
 
 ### 7.5 Bands with no diagnostic reading them
 
@@ -537,11 +578,15 @@ mechanism that works every time.
    models the way truth does. The corpus is also sixteen draws from two
    benchmark families, so a percentile is coarse and provincial at once.
 
-4. **The refusal to name thresholds may be costing more than it saves.** It is
-   principled (§6) and it is what blocks trait derivation and therefore
-   `evidence/INDEX.md` (§7.4). A provisional cut point that is labelled
-   provisional and revised might dominate no cut point at all. I do not know,
-   and the experiment that would settle it has not been designed.
+4. **The refusal to name thresholds has now been tested once, and survived.** It
+   is principled (§6), and it blocked trait derivation for as long as retrieval
+   was designed around cut points. The one published cut point was then refitted
+   on full captures and withdrawn, which is evidence for the refusal rather than
+   against it, and `evidence/INDEX.md` was keyed on observed capture kind
+   instead (§7.4). That is one falsified threshold, not a general result: a
+   provisional cut point that is labelled provisional and revised might still
+   dominate no cut point at all for some decisions, and nothing here has tested
+   that.
 
 5. **The evidence base is two benchmark families.** Every range was fitted on
    the captures in `evidence/CORPUS.txt`, all from two benchmark datasets. The

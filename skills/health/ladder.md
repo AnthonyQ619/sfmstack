@@ -448,6 +448,38 @@ a solve at its iteration cap and a converged solve of the same problem have been
 measured agreeing to four decimals repeatedly, so clearing the flag bought
 nothing and cost a run.
 
+**And do not assume the floor is zero.** Running one pipeline twice on one
+capture does not always return the same model. Measured on a long incremental
+chain: two executions of an identical recipe, in separate stores so both really
+ran, produced bit-identical detection, matching and tracking and then diverged at
+the pose stage, ending a fraction of a percent apart in point count. Other
+captures on the same chain reproduced exactly. So a difference of that size
+between two configurations may be measuring the pipeline rather than the change
+you made.
+
+**The mechanism is refinement, not sampling**, which matters because it predicts
+where else to expect it. The divergence traced to a multithreaded solve inside
+the loop: the same residuals summed in a different order across threads differ in
+the last bits, and an incremental method feeds that back into its next decision
+until it changes a consensus set. Random sampling was the natural suspect and was
+ruled out by direct probe. So expect this wherever a multithreaded optimiser sits
+in a feedback loop, and do not expect a seed to fix it.
+
+**A content-addressed artifact cache hides this completely**, which is why it is
+worth stating rather than assuming. An unchanged recipe is served from the store
+and never re-executed, so nothing ever runs twice to disagree with itself and
+the pipeline looks perfectly reproducible whether or not it is. Two consequences
+for anyone checking:
+
+- **A re-run is not a recompute.** To find out whether a result repeats, the
+  computation has to actually happen again — a fresh store will force it where
+  simply asking again will not.
+- **Comparing artifact ids proves nothing about content.** An id is derived from
+  the recipe — module, version, parameters, input ids — not from the bytes
+  produced. Two artifacts with the same id are two runs of the same recipe, and
+  that is all it says. Lineage comparison is for finding where two branches
+  diverge in *recipe*; it cannot tell you that two runs agreed.
+
 ### Stop when the ceiling is known and small
 
 Some gains have a bound you can read before spending anything. Where a cheap

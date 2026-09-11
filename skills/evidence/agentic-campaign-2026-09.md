@@ -14,22 +14,22 @@ Selected on registration first and the accounting rungs second, which is the rul
 
 | capture | pipeline | px | reg | points | GT rot° | GT trn° |
 | --- | --- | --- | --- | --- | --- | --- |
-| DTU/scan1 | `sift_nn` | 1024 | 1.00 | 19235 | 0.108 | 0.709 |
-| DTU/scan10 | `sift_nn` | 1024 | 1.00 | 15707 | 0.116 | 0.759 |
-| DTU/scan15 | `sift_nn` | 1024 | 1.00 | 15837 | 0.078 | 0.745 |
-| DTU/scan23 | `sift_nn` | 1024 | 1.00 | 18411 | 0.118 | 0.807 |
-| DTU/scan33 | `sift_nn` | 1024 | 1.00 | 19824 | 0.090 | 0.715 |
-| DTU/scan4 | `sift_nn` | 1024 | 1.00 | 22744 | 0.092 | 0.725 |
-| DTU/scan9 | `sift_nn` | 1024 | 1.00 | 16391 | 0.094 | 0.736 |
-| ETH/courtyard | `sift_lg` | 1024 | 1.00 | 11768 | 0.072 | 0.122 |
-| ETH/delivery_area | `sup@1600` | 1600 | 1.00 | 28335 | 0.048 | 0.085 |
-| ETH/electro | `roma` | 1024 | 1.00 | 69803 | 0.079 | 0.084 |
-| ETH/facade | `global_sift@1600` | 1600 | 1.00 | 32609 | 0.061 | 0.080 |
-| ETH/kicker | `global_sift_clahe@1600` | 1600 | 1.00 | 6405 | 0.040 | 0.078 |
-| ETH/meadow | `roma` | 1024 | 1.00 | 33854 | 0.136 | 0.083 |
-| ETH/office | `sup@1024` | 1024 | 1.00 | 2382 | 0.090 | 0.448 |
-| ETH/playground | `global_sift_clahe@1600` | 1600 | 1.00 | 9307 | 0.088 | 0.196 |
-| ETH/relief | `mine@1600` | 1600 | 1.00 | 9606 | 3.068 | 0.962 |
+| <a id="cap-dtu-scan1"></a>DTU/scan1 | `sift_nn` | 1024 | 1.00 | 19235 | 0.108 | 0.709 |
+| <a id="cap-dtu-scan10"></a>DTU/scan10 | `sift_nn` | 1024 | 1.00 | 15707 | 0.116 | 0.759 |
+| <a id="cap-dtu-scan15"></a>DTU/scan15 | `sift_nn` | 1024 | 1.00 | 15837 | 0.078 | 0.745 |
+| <a id="cap-dtu-scan23"></a>DTU/scan23 | `sift_nn` | 1024 | 1.00 | 18411 | 0.118 | 0.807 |
+| <a id="cap-dtu-scan33"></a>DTU/scan33 | `sift_nn` | 1024 | 1.00 | 19824 | 0.090 | 0.715 |
+| <a id="cap-dtu-scan4"></a>DTU/scan4 | `sift_nn` | 1024 | 1.00 | 22744 | 0.092 | 0.725 |
+| <a id="cap-dtu-scan9"></a>DTU/scan9 | `sift_nn` | 1024 | 1.00 | 16391 | 0.094 | 0.736 |
+| <a id="cap-eth-courtyard"></a>ETH/courtyard | `sift_lg` | 1024 | 1.00 | 11768 | 0.072 | 0.122 |
+| <a id="cap-eth-delivery-area"></a>ETH/delivery_area | `sup@1600` | 1600 | 1.00 | 28335 | 0.048 | 0.085 |
+| <a id="cap-eth-electro"></a>ETH/electro | `roma` | 1024 | 1.00 | 69803 | 0.079 | 0.084 |
+| <a id="cap-eth-facade"></a>ETH/facade | `global_sift@1600` | 1600 | 1.00 | 32609 | 0.061 | 0.080 |
+| <a id="cap-eth-kicker"></a>ETH/kicker | `global_sift_clahe@1600` | 1600 | 1.00 | 6405 | 0.040 | 0.078 |
+| <a id="cap-eth-meadow"></a>ETH/meadow | `roma` | 1024 | 1.00 | 33854 | 0.136 | 0.083 |
+| <a id="cap-eth-office"></a>ETH/office | `sup@1024` | 1024 | 1.00 | 2382 | 0.090 | 0.448 |
+| <a id="cap-eth-playground"></a>ETH/playground | `global_sift_clahe@1600` | 1600 | 1.00 | 9307 | 0.088 | 0.196 |
+| <a id="cap-eth-relief"></a>ETH/relief | `mine@1600` | 1600 | 1.00 | 9606 | 3.068 | 0.962 |
 
 **DTU rotations are corrected**; translations are not. See [the ground-truth section](#the-ground-truth-these-were-scored-against).
 
@@ -212,6 +212,39 @@ Every leg below ran at `saturation: 0.0`, so the cap is not what is being measur
 | ETH/relief | `sp_incr@1600` | 0.58 | 6466 | 0.953 | 0.061 | 0.088 |
 | ETH/office | `sp_global@1600` | 1.00 | 2326 | 0.609 | 0.095 | 0.415 |
 | ETH/office | `sp_incr@1600` | 0.88 | 2558 | 0.719 | 0.092 | 0.380 |
+
+<a id="are-these-models-reproducible"></a>
+
+## Are these models reproducible? Mostly, and the cache was hiding the rest
+
+Twelve of the sixteen shipped models run through `PoseEssentialToPnP`, and all twelve were recomputed across a forced module version change. The four that use the global reconstructor instead were not, which is stated as a gap below rather than glossed.
+
+| capture | points | GT rot° | shipped points | shipped GT rot° | |
+| --- | --- | --- | --- | --- | --- |
+| DTU/scan1 | 19235 | 0.108 | 19235 | 0.108 | identical |
+| DTU/scan4 | 22744 | 0.092 | 22744 | 0.092 | identical |
+| DTU/scan9 | 16391 | 0.094 | 16391 | 0.094 | identical |
+| DTU/scan10 | 15707 | 0.116 | 15707 | 0.116 | identical |
+| DTU/scan15 | 15837 | 0.078 | 15837 | 0.078 | identical |
+| DTU/scan23 | 18411 | 0.118 | 18411 | 0.118 | identical |
+| DTU/scan33 | 19824 | 0.090 | 19824 | 0.090 | identical |
+| ETH/courtyard | 11768 | 0.072 | 11768 | 0.072 | identical |
+| ETH/meadow | 33854 | 0.136 | 33854 | 0.136 | identical |
+| ETH/relief | 9606 | 3.068 | 9606 | 3.068 | identical |
+| ETH/electro | 69192 | 0.082 | 69803 | 0.079 | **differs** |
+| ETH/delivery_area | 27927 | 0.052 | 28335 | 0.048 | **differs** |
+
+**10 of 12 came back bit-identical.** The 2 that moved did so by around a percent of their points, with their error against reference geometry moving in the fourth decimal.
+
+**The cause is the in-loop local bundle adjustment, and it is not RANSAC sampling.** The obvious suspect was the unseeded RANSAC in the incremental pose module and it was wrong: probed directly and inside that module's own image, `findEssentialMat(USAC_MAGSAC)` and `solvePnPRansac(SQPNP)` both return identical results over repeated unseeded calls on a heavily outlier-contaminated problem, and both ignore `cv2.setRNGSeed`. A seed parameter written against that hypothesis was withdrawn when the probe falsified it.
+
+**How it was isolated.** One capture was run end to end in two separate artifact stores under identical parameters, so both executed rather than one being served from cache. `scene`, `features`, `matches` and `tracks` came back with **bit-identical payloads**; `poses` diverged. Re-running only the pose module from that identical tracks payload with `local_ba: false` gave bit-identical poses in both stores, and with it on gave different ones. The local bundle adjustment is a multithreaded Ceres solve: the same residuals summed in a different order across threads differ in the last bits, and an incremental method feeds that back into its next registration until it changes a consensus set. Untested next step: that solve does not set `solver_options.num_threads`.
+
+**What is established is about the cache, and it is the part that generalises.** An unchanged recipe is served from the artifact store and never re-executed, so nothing ever runs twice to disagree with itself and a pipeline looks perfectly reproducible whether or not it is. Worse, the usual check cannot see through it: an artifact id is derived from the recipe — module, version, parameters, input ids — and not from the bytes produced, so two artifacts sharing an id are two runs of one recipe and nothing more. An earlier version of this section reported upstream stages as bit-identical on the strength of matching ids; that was a vacuous comparison, and the payload comparison that replaced it is what the claim above now rests on.
+
+**Nothing shipped was replaced.** These runs produced new artifacts beside the originals, which still exist unchanged with the point counts in the shipped table above.
+
+**The gap.** The four shipped models built by the global reconstructor were never recompute-checked, so nothing here says whether that branch reproduces. One of the twelve above was also nearly missed for a reason worth repeating: an earlier spot check re-ran that capture on its *global* branch, which is not the branch it shipped, and the sweep that followed then treated it as covered. Checking that a re-run used the pipeline the capture actually shipped is not automatic.
 
 <a id="the-ground-truth-these-were-scored-against"></a>
 

@@ -51,7 +51,7 @@ that do not exist and concluded the evidence behind the stack was missing.
 | `families/` | one per stage | **built**, 8 files | 2–6 fetches each, at most 6 of 17 captures |
 | `judgment/` | triage, stopping, priors, tradeoffs, smells | **5 of 5 present** as of 2026-09-02 (`swap_or_build`, `stopping`, `smells`, `priors`, `tradeoffs`); `triage` deliberately not written | `stopping` was requested 8 times before it existed |
 | `workflow/` | six guides | **RETIRED 2026-09-02** — directory deleted, resolver search path removed | 24 requests across the sweep, every one an error |
-| `runs/` | RUN.md corpus + tagged INDEX | **SPLIT 2026-09-02** into `INDEX.md` (trait table, still no rows) and `EVIDENCE.md` (two campaigns, per-capture); **no RUN.md corpus exists** | 4 fetches, nothing to retrieve |
+| `runs/` | RUN.md corpus + tagged INDEX | **SPLIT 2026-09-02** into `INDEX.md` and `EVIDENCE.md`; **no RUN.md corpus exists and none will** — the working unit is a generated campaign file. `INDEX.md` **populated 2026-09-10** with 16 precedent rows, keyed on observed capture kind rather than on derived traits | 4 fetches during the sweep, when there was nothing to retrieve |
 | lesson cards (`L-00NN`) | atomic, cross-referenced | **never built** | — |
 | distillation loop | end-of-session, reviewed diff | `distill/SKILL.md` describes it; not run | 1 fetch |
 
@@ -123,8 +123,12 @@ them:
   evidence table were sharing a file and answer incompatible questions: one wants a
   row you match your capture against, the other exists to be cited and explicitly
   must not be matched. They are now `runs/INDEX.md` and `runs/EVIDENCE.md`.
-  `INDEX.md` is still empty, and it is blocked on trait derivation rather than on
-  transcription.
+  **`INDEX.md` was populated on 2026-09-10**, on a different key than this
+  document designs: observed capture kind from a `SceneDescription` reading
+  rather than traits derived by thresholding. It was empty until then because
+  the cut points this design assumes were never written, and the one that was
+  published did not survive a refit. See
+  [`context-structure-design.md`](../context-structure-design.md) §7.4.
 - lesson cards and the distillation loop — never built, never requested, **held**.
   `distill/SKILL.md` describes a process that has never executed. The seed-from-
   the-sweep proposal was overtaken by a fact: the sweep's raw records were not
@@ -157,8 +161,8 @@ skills/
   modules/<ModuleName>/            # per-module — see module-skills.md
     SKILL.md · tuning.md · limitations.md · artifact.md · sources.md
   runs/                            # worked examples, the long-form references
-    INDEX.md                       # [header only] the tag table has NO ROWS; blocked
-                                   #   on trait derivation, not on transcription
+    INDEX.md                       # [built 2026-09-10] 16 precedent rows keyed on
+                                   #   OBSERVED capture kind; no measurements in it
     EVIDENCE.md                    # [built 2026-09-02] per-capture citation record,
                                    #   split out of INDEX.md. Cite it; never plan from it
     CORPUS.txt                     # [built] the captures every range is fitted on
@@ -256,10 +260,32 @@ should be allowed to overwrite it.
 
 ## The worked-run corpus
 
-The long human-led sessions you will drive are the highest-value artifact here,
-and they serve two purposes at once: raw material for distillation, **and** a
-retrievable reference in their own right. Interioragent's 55 worked scenes are the
-same idea.
+> **SUPERSEDED 2026-09-10. Read
+> [`docs/context-structure-design.md`](../context-structure-design.md) §7.4 for
+> what was built.** Three things in the design below were tried and did not
+> survive contact, and they are kept here as history rather than as a plan:
+>
+> - **`RUN.md` was never written and will not be.** The unit of evidence that
+>   actually works is a **generated campaign file** under `skills/evidence/` —
+>   per-capture rows, the image digests behind them, and a map from each derived
+>   claim back to the rows supporting it. It is produced by a script from a run
+>   record rather than narrated by hand, so it cannot drift from what happened,
+>   which is the failure mode a hand-written narrative has by construction. Five
+>   campaigns exist.
+> - **Lesson cards were never built and were never asked for.** Across a
+>   seventeen-capture sweep nothing requested one. The routing table below
+>   survived the idea that produced it: the *questions* it routes are real, and
+>   `skills/distill/SKILL.md` §8 carries the live version.
+> - **Traits are not derived by thresholding, and the retrieval key is not
+>   `scene_traits` as specified below.** The cut points this design assumes were
+>   never written, because the evidence does not support naming them; the one
+>   that was published was later refitted and withdrawn. `evidence/INDEX.md` is
+>   keyed on **observed capture kind** from a `SceneDescription` reading, drawn
+>   from a closed vocabulary the file itself defines.
+>
+> What did survive is the *shape* of the idea: a table of worked captures, matched
+> by reasoning over recorded semantic traits rather than by embedding similarity,
+> pointing at fuller records. That part is built and populated.
 
 ### `RUN.md` — the narrative
 
@@ -441,8 +467,8 @@ read SKILLS.md (index + judgment digest)
       ├─ sfm_run(SceneLoader) → scene/v1   (there is no sfm_open_scene)
       ├─ sfm_run(SceneMotion) → scene_analysis/v1 → TRAITS   see scene-analysis.md
       ├─ scene_to_pipeline.md → what those traits imply (no judgment/triage.md)
-      ├─ runs/INDEX.md filtered by trait overlap           "has this been solved?"
-      │                                                     [NO ROWS — trait derivation]
+      ├─ runs/INDEX.md by observed capture kind            "has this been solved?"
+      │                                (SceneDescription supplies the key, not thresholds)
       ├─ families/<stage>.md + scene_to_pipeline.md         "what shape of pipeline?"
       │                                (workflow/pipeline_principles.md was retired)
       ├─ sfm_list_modules(produces=...) + describe_module    "which tools?"

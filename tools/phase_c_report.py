@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -29,6 +30,18 @@ def load(d: Path, name: str):
 
 def num(v, p=3):
     return f"{v:.{p}f}" if isinstance(v, (int, float)) else "—"
+
+
+def capture_anchor(capture: str) -> str:
+    """A stable per-capture id so a precedent row can cite THIS capture's rows.
+
+    `evidence/INDEX.md` is keyed on capture kind and carries no measurements;
+    each of its rows links here instead, which is what keeps the retrieval file
+    free of numbers while leaving the numbers one hop away. Changing this slug
+    breaks those links, so it is derived mechanically from the capture name
+    rather than written by hand.
+    """
+    return "cap-" + re.sub(r"[^a-z0-9]+", "-", capture.lower()).strip("-")
 
 
 def shipped_table(legs) -> list[str]:
@@ -44,7 +57,8 @@ def shipped_table(legs) -> list[str]:
     for c in sorted(best):
         r = best[c]
         p = r["profile"]
-        out.append(f"| {c} | `{r['leg']}` | {r['px']} | {p['registration']:.2f} | "
+        out.append(f"| <a id=\"{capture_anchor(c)}\"></a>{c} | `{r['leg']}` | "
+                   f"{r['px']} | {p['registration']:.2f} | "
                    f"{p.get('point_count') or 0} | {num(r.get('gt_rot'))} | "
                    f"{num(r.get('gt_trn'))} |")
     return out
@@ -219,6 +233,75 @@ def main(argv=None) -> int:
             w(f"| {r['capture']} | `{r['leg']}` | {num(r['reg'], 2)} | "
               f"{r['points']} | {num(r['coverage'])} | {num(r['gt_rot'])} | "
               f"{num(r['gt_trn'])} |")
+    w("")
+    w('<a id="are-these-models-reproducible"></a>')
+    w("")
+    w("## Are these models reproducible? Mostly, and the cache was hiding the rest")
+    w("")
+    w("Twelve of the sixteen shipped models run through `PoseEssentialToPnP`, "
+      "and all twelve were recomputed across a forced module version change. "
+      "The four that use the global reconstructor instead were not, which is "
+      "stated as a gap below rather than glossed.")
+    w("")
+    rec = load(d, "recompute.json")
+    if rec:
+        same = sum(1 for r in rec if r["identical"])
+        w("| capture | points | GT rot° | shipped points | shipped GT rot° | |")
+        w("| --- | --- | --- | --- | --- | --- |")
+        for r in rec:
+            w(f"| {r['capture']} | {r['points']} | {num(r['gt_rot'])} | "
+              f"{r['was_points']} | {num(r['was_gt_rot'])} | "
+              f"{'identical' if r['identical'] else '**differs**'} |")
+        w("")
+        w(f"**{same} of {len(rec)} came back bit-identical.** The {len(rec) - same} "
+          "that moved did so by around a percent of their points, with their "
+          "error against reference geometry moving in the fourth decimal.")
+    w("")
+    w("**The cause is the in-loop local bundle adjustment, and it is not RANSAC "
+      "sampling.** The obvious suspect was the unseeded RANSAC in the "
+      "incremental pose module and it was wrong: probed directly and inside "
+      "that module's own image, `findEssentialMat(USAC_MAGSAC)` and "
+      "`solvePnPRansac(SQPNP)` both return identical results over repeated "
+      "unseeded calls on a heavily outlier-contaminated problem, and both "
+      "ignore `cv2.setRNGSeed`. A seed parameter written against that "
+      "hypothesis was withdrawn when the probe falsified it.")
+    w("")
+    w("**How it was isolated.** One capture was run end to end in two separate "
+      "artifact stores under identical parameters, so both executed rather than "
+      "one being served from cache. `scene`, `features`, `matches` and `tracks` "
+      "came back with **bit-identical payloads**; `poses` diverged. Re-running "
+      "only the pose module from that identical tracks payload with "
+      "`local_ba: false` gave bit-identical poses in both stores, and with it "
+      "on gave different ones. The local bundle adjustment is a multithreaded "
+      "Ceres solve: the same residuals summed in a different order across "
+      "threads differ in the last bits, and an incremental method feeds that "
+      "back into its next registration until it changes a consensus set. "
+      "Untested next step: that solve does not set "
+      "`solver_options.num_threads`.")
+    w("")
+    w("**What is established is about the cache, and it is the part that "
+      "generalises.** An unchanged recipe is served from the artifact store and "
+      "never re-executed, so nothing ever runs twice to disagree with itself "
+      "and a pipeline looks perfectly reproducible whether or not it is. Worse, "
+      "the usual check cannot see through it: an artifact id is derived from "
+      "the recipe — module, version, parameters, input ids — and not from the "
+      "bytes produced, so two artifacts sharing an id are two runs of one "
+      "recipe and nothing more. An earlier version of this section reported "
+      "upstream stages as bit-identical on the strength of matching ids; that "
+      "was a vacuous comparison, and the payload comparison that replaced it is "
+      "what the claim above now rests on.")
+    w("")
+    w("**Nothing shipped was replaced.** These runs produced new artifacts "
+      "beside the originals, which still exist unchanged with the point counts "
+      "in the shipped table above.")
+    w("")
+    w("**The gap.** The four shipped models built by the global reconstructor "
+      "were never recompute-checked, so nothing here says whether that branch "
+      "reproduces. One of the twelve above was also nearly missed for a reason "
+      "worth repeating: an earlier spot check re-ran that capture on its "
+      "*global* branch, which is not the branch it shipped, and the sweep that "
+      "followed then treated it as covered. Checking that a re-run used the "
+      "pipeline the capture actually shipped is not automatic.")
     w("")
     w('<a id="the-ground-truth-these-were-scored-against"></a>')
     w("")
