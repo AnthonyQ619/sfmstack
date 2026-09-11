@@ -14,22 +14,22 @@ Selected on registration first and the accounting rungs second, which is the rul
 
 | capture | pipeline | px | reg | points | GT rot° | GT trn° |
 | --- | --- | --- | --- | --- | --- | --- |
-| <a id="cap-dtu-scan1"></a>DTU/scan1 | `sift_nn` | 1024 | 1.00 | 19235 | 0.108 | 0.709 |
-| <a id="cap-dtu-scan10"></a>DTU/scan10 | `sift_nn` | 1024 | 1.00 | 15707 | 0.116 | 0.759 |
-| <a id="cap-dtu-scan15"></a>DTU/scan15 | `sift_nn` | 1024 | 1.00 | 15837 | 0.078 | 0.745 |
-| <a id="cap-dtu-scan23"></a>DTU/scan23 | `sift_nn` | 1024 | 1.00 | 18411 | 0.118 | 0.807 |
-| <a id="cap-dtu-scan33"></a>DTU/scan33 | `sift_nn` | 1024 | 1.00 | 19824 | 0.090 | 0.715 |
-| <a id="cap-dtu-scan4"></a>DTU/scan4 | `sift_nn` | 1024 | 1.00 | 22744 | 0.092 | 0.725 |
-| <a id="cap-dtu-scan9"></a>DTU/scan9 | `sift_nn` | 1024 | 1.00 | 16391 | 0.094 | 0.736 |
-| <a id="cap-eth-courtyard"></a>ETH/courtyard | `sift_lg` | 1024 | 1.00 | 11768 | 0.072 | 0.122 |
-| <a id="cap-eth-delivery-area"></a>ETH/delivery_area | `sup@1600` | 1600 | 1.00 | 28335 | 0.048 | 0.085 |
-| <a id="cap-eth-electro"></a>ETH/electro | `roma` | 1024 | 1.00 | 69803 | 0.079 | 0.084 |
-| <a id="cap-eth-facade"></a>ETH/facade | `global_sift@1600` | 1600 | 1.00 | 32609 | 0.061 | 0.080 |
-| <a id="cap-eth-kicker"></a>ETH/kicker | `global_sift_clahe@1600` | 1600 | 1.00 | 6405 | 0.040 | 0.078 |
-| <a id="cap-eth-meadow"></a>ETH/meadow | `roma` | 1024 | 1.00 | 33854 | 0.136 | 0.083 |
-| <a id="cap-eth-office"></a>ETH/office | `sup@1024` | 1024 | 1.00 | 2382 | 0.090 | 0.448 |
-| <a id="cap-eth-playground"></a>ETH/playground | `global_sift_clahe@1600` | 1600 | 1.00 | 9307 | 0.088 | 0.196 |
-| <a id="cap-eth-relief"></a>ETH/relief | `mine@1600` | 1600 | 1.00 | 9606 | 3.068 | 0.962 |
+| <a id="cap-dtu-scan1"></a>DTU/scan1 | `sift+nn/incr@1024` | 1024 | 1.00 | 19235 | 0.108 | 0.709 |
+| <a id="cap-dtu-scan10"></a>DTU/scan10 | `sift+nn/incr@1024` | 1024 | 1.00 | 15707 | 0.116 | 0.759 |
+| <a id="cap-dtu-scan15"></a>DTU/scan15 | `sift+nn/incr@1024` | 1024 | 1.00 | 15837 | 0.078 | 0.745 |
+| <a id="cap-dtu-scan23"></a>DTU/scan23 | `sift+nn/incr@1024` | 1024 | 1.00 | 18411 | 0.118 | 0.807 |
+| <a id="cap-dtu-scan33"></a>DTU/scan33 | `sift+nn/incr@1024` | 1024 | 1.00 | 19824 | 0.090 | 0.715 |
+| <a id="cap-dtu-scan4"></a>DTU/scan4 | `sift+nn/incr@1024` | 1024 | 1.00 | 22744 | 0.092 | 0.725 |
+| <a id="cap-dtu-scan9"></a>DTU/scan9 | `sift+nn/incr@1024` | 1024 | 1.00 | 16391 | 0.094 | 0.736 |
+| <a id="cap-eth-courtyard"></a>ETH/courtyard | `sift+lightglue/incr@1024` | 1024 | 1.00 | 11768 | 0.072 | 0.122 |
+| <a id="cap-eth-delivery-area"></a>ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1600` | 1600 | 1.00 | 28335 | 0.048 | 0.085 |
+| <a id="cap-eth-electro"></a>ETH/electro | `roma-outdoor/incr@1024` | 1024 | 1.00 | 69803 | 0.079 | 0.084 |
+| <a id="cap-eth-facade"></a>ETH/facade | `sift+lightglue/global@1600` | 1600 | 1.00 | 32609 | 0.061 | 0.080 |
+| <a id="cap-eth-kicker"></a>ETH/kicker | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 6405 | 0.040 | 0.078 |
+| <a id="cap-eth-meadow"></a>ETH/meadow | `roma-outdoor/incr@1024` | 1024 | 1.00 | 33854 | 0.136 | 0.083 |
+| <a id="cap-eth-office"></a>ETH/office | `superpoint+lightglue/global@1024` | 1024 | 1.00 | 2382 | 0.090 | 0.448 |
+| <a id="cap-eth-playground"></a>ETH/playground | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 9307 | 0.088 | 0.196 |
+| <a id="cap-eth-relief"></a>ETH/relief | `sift+nn/incr@1600` | 1600 | 1.00 | 9606 | 3.068 | 0.962 |
 
 **DTU rotations are corrected**; translations are not. See [the ground-truth section](#the-ground-truth-these-were-scored-against).
 
@@ -39,100 +39,109 @@ Selected on registration first and the accounting rungs second, which is the rul
 
 | capture | leg | px | reg | points | coverage | yield_obs | error | GT rot° | GT trn° |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| DTU/scan1 | `sift_lg` | 1024 | 1.00 | 5273 | 0.594 | 0.816 | 0.395 | 0.094 | 0.775 |
-| DTU/scan1 | `sift_nn` | 1024 | 1.00 | 19235 | 0.750 | 0.867 | 0.266 | 0.108 | 0.709 |
-| DTU/scan10 | `sift_nn` | 1024 | 1.00 | 15707 | 0.609 | 0.873 | 0.266 | 0.116 | 0.759 |
-| DTU/scan10 | `sift_lg` | 1024 | 0.90 | 1902 | 0.383 | 0.496 | 0.340 | 0.173 | 0.778 |
-| DTU/scan15 | `sift_lg` | 1024 | 1.00 | 3984 | 0.609 | 0.785 | 0.446 | 0.092 | 0.750 |
-| DTU/scan15 | `sift_nn` | 1024 | 1.00 | 15837 | 0.812 | 0.820 | 0.270 | 0.078 | 0.745 |
-| DTU/scan23 | `sift_lg` | 1024 | 1.00 | 5283 | 0.625 | 0.812 | 0.387 | 0.131 | 0.787 |
-| DTU/scan23 | `sift_nn` | 1024 | 1.00 | 18411 | 0.859 | 0.854 | 0.261 | 0.118 | 0.807 |
-| DTU/scan33 | `sift_lg` | 1024 | 1.00 | 3031 | 0.422 | 0.767 | 0.180 | 0.202 | 0.606 |
-| DTU/scan33 | `sift_nn` | 1024 | 1.00 | 19824 | 0.547 | 0.902 | 0.175 | 0.090 | 0.715 |
-| DTU/scan4 | `sift_lg` | 1024 | 1.00 | 4826 | 0.562 | 0.824 | 0.395 | 0.101 | 0.788 |
-| DTU/scan4 | `sift_nn` | 1024 | 1.00 | 22744 | 0.703 | 0.954 | 0.261 | 0.092 | 0.725 |
-| DTU/scan9 | `sift_lg` | 1024 | 1.00 | 4247 | 0.578 | 0.748 | 0.445 | 0.112 | 0.708 |
-| DTU/scan9 | `sift_nn` | 1024 | 1.00 | 16391 | 0.797 | 0.853 | 0.275 | 0.094 | 0.736 |
-| ETH/courtyard | `sift_lg` | 1024 | 1.00 | 11768 | 0.867 | 0.817 | 0.196 | 0.072 | 0.122 |
-| ETH/courtyard | `sift_nn` | 1024 | 1.00 | 11049 | 0.805 | 0.642 | 0.112 | 0.482 | 2.263 |
-| ETH/delivery_area | `sift_lg` | 1024 | 1.00 | 5856 | 0.633 | 0.752 | 0.241 | 0.107 | 0.252 |
-| ETH/delivery_area | `sift_nn` | 1024 | 1.00 | 7245 | 0.641 | 0.796 | 0.163 | 0.185 | 0.268 |
-| ETH/delivery_area | `sup@1600` | 1600 | 1.00 | 28335 | 0.906 | 0.914 | 0.207 | 0.048 | 0.085 |
-| ETH/delivery_area | `sup@1024` | 1024 | 1.00 | 15372 | 0.867 | 0.914 | 0.201 | 0.043 | 0.074 |
-| ETH/delivery_area | `mine@1600` | 1600 | 1.00 | 11294 | 0.648 | 0.762 | 0.165 | 0.054 | 0.217 |
-| ETH/electro | `roma` | 1024 | 1.00 | 69803 | 0.953 | 0.620 | 0.507 | 0.079 | 0.084 |
-| ETH/electro | `sp_sg` | 1024 | 0.91 | 2367 | 0.703 | 0.365 | 0.559 | 0.142 | 0.353 |
-| ETH/electro | `loftr` | 1024 | 0.91 | 43254 | 0.938 | 0.539 | 0.413 | 0.096 | 0.228 |
-| ETH/electro | `sift_nn` | 1024 | 0.38 | 1684 | 0.562 | 0.216 | 0.218 | 0.139 | 0.172 |
-| ETH/electro | `sift_lg` | 1024 | 0.04 | 79 | 0.211 | 0.009 | — | 0.203 | 0.249 |
-| ETH/facade | `global_sift@1600` | 1600 | 1.00 | 32609 | 0.867 | unevaluable | 0.165 | 0.061 | 0.080 |
-| ETH/facade | `sift_nn` | 1024 | 0.90 | 11985 | 0.891 | 0.462 | 0.123 | 0.159 | 0.170 |
-| ETH/facade | `sift_lg` | 1024 | 0.88 | 7103 | 0.734 | 0.475 | 0.202 | 0.261 | 0.213 |
-| ETH/facade | `mine@1600` | 1600 | 0.88 | 13061 | 0.719 | 0.535 | 0.105 | 0.085 | 0.093 |
-| ETH/kicker | `global_sift_clahe@1600` | 1600 | 1.00 | 6405 | 0.531 | unevaluable | 0.274 | 0.040 | 0.078 |
-| ETH/kicker | `mine@1600` | 1600 | 0.97 | 7652 | 0.547 | 0.591 | 0.175 | 0.065 | 0.091 |
-| ETH/kicker | `sift_nn` | 1024 | 0.94 | 4184 | 0.500 | 0.599 | 0.164 | 0.815 | 1.199 |
-| ETH/kicker | `sift_clahe_nn` | 1024 | 0.94 | 5215 | 0.547 | 0.649 | 0.187 | 0.452 | 0.554 |
-| ETH/kicker | `sift_lg` | 1024 | 0.77 | 1852 | 0.500 | 0.495 | 0.274 | 0.105 | 0.237 |
-| ETH/kicker | `sp_sg` | 1024 | 0.16 | 699 | 0.703 | 0.175 | 0.654 | 0.183 | 0.415 |
-| ETH/meadow | `sp_sg` | 1024 | 1.00 | 1946 | 0.672 | 0.573 | 0.620 | 0.546 | 0.553 |
-| ETH/meadow | `loftr` | 1024 | 1.00 | 15328 | 0.781 | 0.722 | 0.473 | 0.155 | 0.147 |
-| ETH/meadow | `roma` | 1024 | 1.00 | 33854 | 0.875 | 0.793 | 0.549 | 0.136 | 0.083 |
-| ETH/meadow | `sift_nn` | 1024 | 0.20 | 149 | 0.156 | 0.111 | 0.703 | 26.480 | 65.714 |
-| ETH/meadow | `sift_lg` | 1024 | 0.13 | 72 | 0.117 | 0.032 | — | 43.435 | 77.806 |
-| ETH/office | `sup@1600` | 1600 | 1.00 | 2324 | 0.594 | unevaluable | 0.974 | 0.098 | 0.455 |
-| ETH/office | `sup@1024` | 1024 | 1.00 | 2382 | 0.625 | unevaluable | 0.757 | 0.090 | 0.448 |
-| ETH/office | `global_sift_clahe@1600` | 1600 | 1.00 | 1715 | 0.375 | unevaluable | 0.268 | 0.073 | 0.265 |
-| ETH/office | `sift_clahe_nn` | 1024 | 0.31 | 166 | 0.219 | 0.078 | 0.520 | 3.560 | 61.809 |
-| ETH/office | `mine@1600` | 1600 | 0.31 | 1859 | 0.414 | 0.374 | 0.113 | 0.102 | 0.523 |
-| ETH/office | `loftr` | 1024 | 0.15 | 1173 | 0.398 | 0.084 | 1.426 | 3.008 | 14.288 |
-| ETH/office | `sift_clahe_lg` | 1024 | 0.12 | 316 | 0.547 | 0.117 | 0.424 | 0.188 | 0.389 |
-| ETH/office | `sift_lg` | 1024 | 0.08 | 168 | 0.453 | 0.109 | — | 0.071 | 0.344 |
-| ETH/office | `sp_sg` | 1024 | 0.08 | 267 | 0.547 | 0.091 | — | 0.169 | 0.399 |
-| ETH/office | `sift_nn` | 1024 | 0.08 | 22 | 0.062 | 0.011 | — | 123.669 | 61.792 |
-| ETH/office | `roma` | 1024 | 0.08 | 392 | 0.547 | 0.003 | — | 178.589 | 80.419 |
-| ETH/playground | `global_sift_clahe@1600` | 1600 | 1.00 | 9307 | 0.680 | unevaluable | 0.249 | 0.088 | 0.196 |
-| ETH/playground | `sift_lg` | 1024 | 0.50 | 3677 | 0.766 | 0.267 | 0.510 | 0.137 | 0.327 |
-| ETH/playground | `sift_clahe_nn` | 1024 | 0.50 | 3781 | 0.797 | 0.337 | 0.203 | 0.112 | 0.161 |
-| ETH/playground | `mine@1600` | 1600 | 0.47 | 3192 | 0.781 | 0.329 | 0.213 | 0.113 | 0.135 |
-| ETH/playground | `sift_nn` | 1024 | 0.45 | 2211 | 0.750 | 0.224 | 0.242 | 0.079 | 0.232 |
-| ETH/playground | `sp_sg` | 1024 | 0.16 | 1245 | 0.938 | 0.164 | 0.715 | 0.065 | 0.137 |
-| ETH/relief | `global_sift@1600` | 1600 | 1.00 | 6016 | 0.609 | unevaluable | 0.185 | 0.052 | 0.067 |
-| ETH/relief | `mine@1600` | 1600 | 1.00 | 9606 | 0.672 | 0.840 | 0.143 | 3.068 | 0.962 |
-| ETH/relief | `sift_nn` | 1024 | 0.84 | 4262 | 0.641 | 0.814 | 0.150 | 0.059 | 0.091 |
-| ETH/relief | `sift_lg` | 1024 | 0.71 | 1746 | 0.586 | 0.520 | 0.217 | 0.135 | 0.133 |
+| DTU/scan1 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 5273 | 0.594 | 0.816 | 0.395 | 0.094 | 0.775 |
+| DTU/scan1 | `sift+nn/incr@1024` | 1024 | 1.00 | 19235 | 0.750 | 0.867 | 0.266 | 0.108 | 0.709 |
+| DTU/scan10 | `sift+nn/incr@1024` | 1024 | 1.00 | 15707 | 0.609 | 0.873 | 0.266 | 0.116 | 0.759 |
+| DTU/scan10 | `sift+lightglue/incr@1024` | 1024 | 0.90 | 1902 | 0.383 | 0.496 | 0.340 | 0.173 | 0.778 |
+| DTU/scan15 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 3984 | 0.609 | 0.785 | 0.446 | 0.092 | 0.750 |
+| DTU/scan15 | `sift+nn/incr@1024` | 1024 | 1.00 | 15837 | 0.812 | 0.820 | 0.270 | 0.078 | 0.745 |
+| DTU/scan23 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 5283 | 0.625 | 0.812 | 0.387 | 0.131 | 0.787 |
+| DTU/scan23 | `sift+nn/incr@1024` | 1024 | 1.00 | 18411 | 0.859 | 0.854 | 0.261 | 0.118 | 0.807 |
+| DTU/scan33 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 3031 | 0.422 | 0.767 | 0.180 | 0.202 | 0.606 |
+| DTU/scan33 | `sift+nn/incr@1024` | 1024 | 1.00 | 19824 | 0.547 | 0.902 | 0.175 | 0.090 | 0.715 |
+| DTU/scan4 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 4826 | 0.562 | 0.824 | 0.395 | 0.101 | 0.788 |
+| DTU/scan4 | `sift+nn/incr@1024` | 1024 | 1.00 | 22744 | 0.703 | 0.954 | 0.261 | 0.092 | 0.725 |
+| DTU/scan9 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 4247 | 0.578 | 0.748 | 0.445 | 0.112 | 0.708 |
+| DTU/scan9 | `sift+nn/incr@1024` | 1024 | 1.00 | 16391 | 0.797 | 0.853 | 0.275 | 0.094 | 0.736 |
+| ETH/courtyard | `sift+lightglue/incr@1024` | 1024 | 1.00 | 11768 | 0.867 | 0.817 | 0.196 | 0.072 | 0.122 |
+| ETH/courtyard | `sift+nn/incr@1024` | 1024 | 1.00 | 11049 | 0.805 | 0.642 | 0.112 | 0.482 | 2.263 |
+| ETH/delivery_area | `sift+lightglue/incr@1024` | 1024 | 1.00 | 5856 | 0.633 | 0.752 | 0.241 | 0.107 | 0.252 |
+| ETH/delivery_area | `sift+nn/incr@1024` | 1024 | 1.00 | 7245 | 0.641 | 0.796 | 0.163 | 0.185 | 0.268 |
+| ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1600` | 1600 | 1.00 | 28335 | 0.906 | 0.914 | 0.207 | 0.048 | 0.085 |
+| ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1024` | 1024 | 1.00 | 15372 | 0.867 | 0.914 | 0.201 | 0.043 | 0.074 |
+| ETH/delivery_area | `sift+nn/incr@1600` | 1600 | 1.00 | 11294 | 0.648 | 0.762 | 0.165 | 0.054 | 0.217 |
+| ETH/electro | `roma-outdoor/incr@1024` | 1024 | 1.00 | 69803 | 0.953 | 0.620 | 0.507 | 0.079 | 0.084 |
+| ETH/electro | `superpoint+superglue/incr@1024` | 1024 | 0.91 | 2367 | 0.703 | 0.365 | 0.559 | 0.142 | 0.353 |
+| ETH/electro | `loftr-outdoor/incr@1024` | 1024 | 0.91 | 43254 | 0.938 | 0.539 | 0.413 | 0.096 | 0.228 |
+| ETH/electro | `sift+nn/incr@1024` | 1024 | 0.38 | 1684 | 0.562 | 0.216 | 0.218 | 0.139 | 0.172 |
+| ETH/electro | `sift+lightglue/incr@1024` | 1024 | 0.04 | 79 | 0.211 | 0.009 | — | 0.203 | 0.249 |
+| ETH/facade | `sift+lightglue/global@1600` | 1600 | 1.00 | 32609 | 0.867 | unevaluable | 0.165 | 0.061 | 0.080 |
+| ETH/facade | `sift+nn/incr@1024` | 1024 | 0.90 | 11985 | 0.891 | 0.462 | 0.123 | 0.159 | 0.170 |
+| ETH/facade | `sift+lightglue/incr@1024` | 1024 | 0.88 | 7103 | 0.734 | 0.475 | 0.202 | 0.261 | 0.213 |
+| ETH/facade | `sift+nn/incr@1600` | 1600 | 0.88 | 13061 | 0.719 | 0.535 | 0.105 | 0.085 | 0.093 |
+| ETH/kicker | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 6405 | 0.531 | unevaluable | 0.274 | 0.040 | 0.078 |
+| ETH/kicker | `sift-clahe+nn/incr@1600` | 1600 | 0.97 | 7652 | 0.547 | 0.591 | 0.175 | 0.065 | 0.091 |
+| ETH/kicker | `sift+nn/incr@1024` | 1024 | 0.94 | 4184 | 0.500 | 0.599 | 0.164 | 0.815 | 1.199 |
+| ETH/kicker | `sift-clahe+nn/incr@1024` | 1024 | 0.94 | 5215 | 0.547 | 0.649 | 0.187 | 0.452 | 0.554 |
+| ETH/kicker | `sift+lightglue/incr@1024` | 1024 | 0.77 | 1852 | 0.500 | 0.495 | 0.274 | 0.105 | 0.237 |
+| ETH/kicker | `superpoint+superglue/incr@1024` | 1024 | 0.16 | 699 | 0.703 | 0.175 | 0.654 | 0.183 | 0.415 |
+| ETH/meadow | `superpoint+superglue/incr@1024` | 1024 | 1.00 | 1946 | 0.672 | 0.573 | 0.620 | 0.546 | 0.553 |
+| ETH/meadow | `loftr-outdoor/incr@1024` | 1024 | 1.00 | 15328 | 0.781 | 0.722 | 0.473 | 0.155 | 0.147 |
+| ETH/meadow | `roma-outdoor/incr@1024` | 1024 | 1.00 | 33854 | 0.875 | 0.793 | 0.549 | 0.136 | 0.083 |
+| ETH/meadow | `sift+nn/incr@1024` | 1024 | 0.20 | 149 | 0.156 | 0.111 | 0.703 | 26.480 | 65.714 |
+| ETH/meadow | `sift+lightglue/incr@1024` | 1024 | 0.13 | 72 | 0.117 | 0.032 | — | 43.435 | 77.806 |
+| ETH/office | `superpoint+lightglue/global@1600` | 1600 | 1.00 | 2324 | 0.594 | unevaluable | 0.974 | 0.098 | 0.455 |
+| ETH/office | `superpoint+lightglue/global@1024` | 1024 | 1.00 | 2382 | 0.625 | unevaluable | 0.757 | 0.090 | 0.448 |
+| ETH/office | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 1715 | 0.375 | unevaluable | 0.268 | 0.073 | 0.265 |
+| ETH/office | `sift-clahe+nn/incr@1024` | 1024 | 0.31 | 166 | 0.219 | 0.078 | 0.520 | 3.560 | 61.809 |
+| ETH/office | `sift-clahe+nn/incr@1600` | 1600 | 0.31 | 1859 | 0.414 | 0.374 | 0.113 | 0.102 | 0.523 |
+| ETH/office | `loftr-indoor/incr@1024` | 1024 | 0.15 | 1173 | 0.398 | 0.084 | 1.426 | 3.008 | 14.288 |
+| ETH/office | `sift-clahe+lightglue/incr@1024` | 1024 | 0.12 | 316 | 0.547 | 0.117 | 0.424 | 0.188 | 0.389 |
+| ETH/office | `sift+lightglue/incr@1024` | 1024 | 0.08 | 168 | 0.453 | 0.109 | — | 0.071 | 0.344 |
+| ETH/office | `superpoint+superglue/incr@1024` | 1024 | 0.08 | 267 | 0.547 | 0.091 | — | 0.169 | 0.399 |
+| ETH/office | `sift+nn/incr@1024` | 1024 | 0.08 | 22 | 0.062 | 0.011 | — | 123.669 | 61.792 |
+| ETH/office | `roma-indoor/incr@1024` | 1024 | 0.08 | 392 | 0.547 | 0.003 | — | 178.589 | 80.419 |
+| ETH/playground | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 9307 | 0.680 | unevaluable | 0.249 | 0.088 | 0.196 |
+| ETH/playground | `sift+lightglue/incr@1024` | 1024 | 0.50 | 3677 | 0.766 | 0.267 | 0.510 | 0.137 | 0.327 |
+| ETH/playground | `sift-clahe+nn/incr@1024` | 1024 | 0.50 | 3781 | 0.797 | 0.337 | 0.203 | 0.112 | 0.161 |
+| ETH/playground | `sift-clahe+nn/incr@1600` | 1600 | 0.47 | 3192 | 0.781 | 0.329 | 0.213 | 0.113 | 0.135 |
+| ETH/playground | `sift+nn/incr@1024` | 1024 | 0.45 | 2211 | 0.750 | 0.224 | 0.242 | 0.079 | 0.232 |
+| ETH/playground | `superpoint+superglue/incr@1024` | 1024 | 0.16 | 1245 | 0.938 | 0.164 | 0.715 | 0.065 | 0.137 |
+| ETH/relief | `sift+lightglue/global@1600` | 1600 | 1.00 | 6016 | 0.609 | unevaluable | 0.185 | 0.052 | 0.067 |
+| ETH/relief | `sift+nn/incr@1600` | 1600 | 1.00 | 9606 | 0.672 | 0.840 | 0.143 | 3.068 | 0.962 |
+| ETH/relief | `sift+nn/incr@1024` | 1024 | 0.84 | 4262 | 0.641 | 0.814 | 0.150 | 0.059 | 0.091 |
+| ETH/relief | `sift+lightglue/incr@1024` | 1024 | 0.71 | 1746 | 0.586 | 0.520 | 0.217 | 0.135 | 0.133 |
 
 <a id="what-the-leg-names-mean"></a>
 
 ## What the leg names mean
 
-**A leg name is a label from the driving script, not a description of the pipeline, and 5 of the 12 names do not mean one thing.** The table below is the authority; read a leg name through it rather than through what it looks like it says. Every row is read back out of the artifacts themselves — each one records the module, the version and the resolved parameters that produced it — so this is what ran, not a transcription of what a script says should have run.
+**A leg is one end-to-end pipeline attempt on one capture.** Several were tried per capture and compared, so each needed a short label for the tables above. That label is all a leg name is: bookkeeping for this record. Nothing in the orchestrator, the module system or the skills tier reads one, and leg names appear nowhere outside this file.
 
-The worst case, and the reason this table exists: `sup@1600` and `sup@1024` abbreviate *superseded path* — the pipeline a capture had been solved with before this campaign — and that path is not the same pipeline on every capture. On one capture it is SuperPoint into the global reconstructor; on another it is SIFT with contrast normalisation into the incremental chain with n-view triangulation. A reader who expands `sup` to SuperPoint is right about one of them and wrong about the other. This was caught when a precedent row in `evidence/INDEX.md` was written from the name and had to be corrected against the recorded chain.
+The 18 names below are built from the chain itself, in the order that decides a plan:
 
-`loftr` and `roma` each cover two legs that differ only in the `setting` parameter, which is not a detail: it selects between two separately trained weight sets, and each module's own tuning notes say the wrong one costs `inlier_ratio` outright. `mine@1600` covers two legs that differ in whether contrast normalisation was on.
+```
+<detector>+<matcher>/<reconstructor>@<working resolution>
+```
 
-| leg | on these captures | the chain that actually ran |
-| --- | --- | --- |
-| `global_sift@1600` | ETH/facade, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
-| `global_sift_clahe@1600` | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
-| `loftr` ⚠ | ETH/electro, ETH/meadow | `FeatureMatchLoFTR [pairing=exhaustive, setting=outdoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `loftr` ⚠ | ETH/office | `FeatureMatchLoFTR [pairing=exhaustive, setting=indoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `mine@1600` ⚠ | ETH/delivery_area, ETH/facade, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `mine@1600` ⚠ | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `roma` ⚠ | ETH/electro, ETH/meadow | `FeatureMatchRoMa [pairing=exhaustive, setting=outdoor, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `roma` ⚠ | ETH/office | `FeatureMatchRoMa [pairing=exhaustive, setting=indoor, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `sift_clahe_lg` | ETH/office | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.1, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `sift_clahe_nn` | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `sift_lg` | DTU/scan1, DTU/scan10, DTU/scan15, DTU/scan23, DTU/scan33, DTU/scan4, DTU/scan9, ETH/courtyard, ETH/delivery_area, ETH/electro, ETH/facade, ETH/kicker, ETH/meadow, ETH/office, ETH/playground, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.1, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `sift_nn` | DTU/scan1, DTU/scan10, DTU/scan15, DTU/scan23, DTU/scan33, DTU/scan4, DTU/scan9, ETH/courtyard, ETH/delivery_area, ETH/electro, ETH/facade, ETH/kicker, ETH/meadow, ETH/office, ETH/playground, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `sp_sg` | ETH/electro, ETH/kicker, ETH/meadow, ETH/office, ETH/playground | `FeatureDetectionSuperPoint [max_keypoints=2048]` → `FeatureMatchSuperGlue [max_keypoints=2048, pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
-| `sup@1024` ⚠ | ETH/delivery_area | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=20, max_iterations=10000]` → `SparseTriangulationGTSAM [min_track_len=2, use_lost=True, optimize=True]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
-| `sup@1024` ⚠ | ETH/office | `FeatureDetectionSuperPoint [max_keypoints=8192]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=8]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
-| `sup@1600` ⚠ | ETH/delivery_area | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=20, max_iterations=10000]` → `SparseTriangulationGTSAM [min_track_len=2, use_lost=True, optimize=True]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
-| `sup@1600` ⚠ | ETH/office | `FeatureDetectionSuperPoint [max_keypoints=8192]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=8]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+A detector-free matcher consumes the scene directly and so has no detector half. `incr` is seed-and-grow registration, `global` is the global mapper, and `incr+gtsam` is seed-and-grow with the n-view triangulator in place of the pairwise one. Where a matcher takes an indoor/outdoor `setting`, it is in the name, because that selects between two separately trained weight sets and each module's tuning notes say the wrong one costs `inlier_ratio` outright.
 
-⚠ marks a name that covers more than one chain. Working resolution is in the `px` column of the tables above and is not repeated here.
+**These names were changed, and the old ones are kept beside them because they are wrong in a way worth remembering.** The first version of this record used labels from the driving script. Five of twelve covered more than one chain, and one pair — `sup@1600` and `sup@1024`, short for *superseded path* — meant SuperPoint into the global mapper on one capture and SIFT with contrast normalisation into the incremental chain with n-view triangulation on another. A precedent row in `evidence/INDEX.md` was written from the name and had to be corrected against the recorded chain. Every name here now maps to exactly one chain.
+
+Every row is read back out of the artifacts — each one records the module, the version and the resolved parameters that produced it — so this is what ran, not a transcription of what a script says should have run.
+
+| leg | was called | on these captures | the chain that ran |
+| --- | --- | --- | --- |
+| `loftr-indoor/incr@1024` | `loftr` | ETH/office | `FeatureMatchLoFTR [pairing=exhaustive, setting=indoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `loftr-outdoor/incr@1024` | `loftr` | ETH/electro, ETH/meadow | `FeatureMatchLoFTR [pairing=exhaustive, setting=outdoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `roma-indoor/incr@1024` | `roma` | ETH/office | `FeatureMatchRoMa [pairing=exhaustive, setting=indoor, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `roma-outdoor/incr@1024` | `roma` | ETH/electro, ETH/meadow | `FeatureMatchRoMa [pairing=exhaustive, setting=outdoor, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift+lightglue/global@1600` | `global_sift@1600` | ETH/facade, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `sift+lightglue/incr@1024` | `sift_lg` | DTU/scan1, DTU/scan10, DTU/scan15, DTU/scan23, DTU/scan33, DTU/scan4, DTU/scan9, ETH/courtyard, ETH/delivery_area, ETH/electro, ETH/facade, ETH/kicker, ETH/meadow, ETH/office, ETH/playground, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.1, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift+nn/incr@1024` | `sift_nn` | DTU/scan1, DTU/scan10, DTU/scan15, DTU/scan23, DTU/scan33, DTU/scan4, DTU/scan9, ETH/courtyard, ETH/delivery_area, ETH/electro, ETH/facade, ETH/kicker, ETH/meadow, ETH/office, ETH/playground, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift+nn/incr@1600` | `mine@1600` | ETH/delivery_area, ETH/facade, ETH/relief | `FeatureDetectionSIFT [grayscale_clahe=False, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift-clahe+lightglue/global@1600` | `global_sift_clahe@1600` | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `sift-clahe+lightglue/incr+gtsam@1024` | `sup@1024` | ETH/delivery_area | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=20, max_iterations=10000]` → `SparseTriangulationGTSAM [min_track_len=2, use_lost=True, optimize=True]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `sift-clahe+lightglue/incr+gtsam@1600` | `sup@1600` | ETH/delivery_area | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=16384]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=20, max_iterations=10000]` → `SparseTriangulationGTSAM [min_track_len=2, use_lost=True, optimize=True]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `sift-clahe+lightglue/incr@1024` | `sift_clahe_lg` | ETH/office | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.1, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift-clahe+nn/incr@1024` | `sift_clahe_nn` | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `sift-clahe+nn/incr@1600` | `mine@1600` | ETH/kicker, ETH/office, ETH/playground | `FeatureDetectionSIFT [grayscale_clahe=True, max_keypoints=4096]` → `FeatureMatchNN [pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+| `superpoint+lightglue/global@1024` | `sup@1024` | ETH/office | `FeatureDetectionSuperPoint [max_keypoints=8192]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=8]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `superpoint+lightglue/global@1600` | `sup@1600, sp_global@1600` | ETH/kicker, ETH/office, ETH/relief | `FeatureDetectionSuperPoint [max_keypoints=8192]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5, min_matches=8]` → `SparseGlobalCOLMAP [min_track_len=2, min_num_matches=8]` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `superpoint+lightglue/incr@1600` | `sp_incr@1600` | ETH/kicker, ETH/office, ETH/relief | `FeatureDetectionSuperPoint [max_keypoints=8192]` → `FeatureMatchLightGlue [pairing=exhaustive, filter_threshold=0.5]` → `FeatureTrackUnionFind [min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [local_ba_window=20]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=600, min_track_length=2]` |
+| `superpoint+superglue/incr@1024` | `sp_sg` | ETH/electro, ETH/kicker, ETH/meadow, ETH/office, ETH/playground | `FeatureDetectionSuperPoint [max_keypoints=2048]` → `FeatureMatchSuperGlue [max_keypoints=2048, pairing=exhaustive, min_matches=15]` → `FeatureTrackUnionFind [merge_eps_px=1.5, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_length=2]` |
+
+Each name above resolves to exactly one chain. The triangulator control further down names `gtsam` and `pairwise`, which are triangulators inside one comparison rather than pipelines.
 
 ## The connectivity rule, refitted on full captures
 
@@ -238,12 +247,12 @@ Every leg below ran at `saturation: 0.0`, so the cap is not what is being measur
 
 | capture | leg | reg | points | coverage | GT rot° | GT trn° |
 | --- | --- | --- | --- | --- | --- | --- |
-| ETH/kicker | `sp_global@1600` | 1.00 | 5037 | 0.672 | 0.092 | 0.123 |
-| ETH/kicker | `sp_incr@1600` | 0.97 | 5619 | 0.766 | 0.076 | 0.120 |
-| ETH/relief | `sp_global@1600` | 0.58 | 3761 | 0.883 | 0.101 | 0.142 |
-| ETH/relief | `sp_incr@1600` | 0.58 | 6466 | 0.953 | 0.061 | 0.088 |
-| ETH/office | `sp_global@1600` | 1.00 | 2326 | 0.609 | 0.095 | 0.415 |
-| ETH/office | `sp_incr@1600` | 0.88 | 2558 | 0.719 | 0.092 | 0.380 |
+| ETH/kicker | `superpoint+lightglue/global@1600` | 1.00 | 5037 | 0.672 | 0.092 | 0.123 |
+| ETH/kicker | `superpoint+lightglue/incr@1600` | 0.97 | 5619 | 0.766 | 0.076 | 0.120 |
+| ETH/relief | `superpoint+lightglue/global@1600` | 0.58 | 3761 | 0.883 | 0.101 | 0.142 |
+| ETH/relief | `superpoint+lightglue/incr@1600` | 0.58 | 6466 | 0.953 | 0.061 | 0.088 |
+| ETH/office | `superpoint+lightglue/global@1600` | 1.00 | 2326 | 0.609 | 0.095 | 0.415 |
+| ETH/office | `superpoint+lightglue/incr@1600` | 0.88 | 2558 | 0.719 | 0.092 | 0.380 |
 
 <a id="pose-accuracy-auc"></a>
 
@@ -255,22 +264,22 @@ Every leg below ran at `saturation: 0.0`, so the cap is not what is being measur
 
 | capture | leg | pairs | median rot° | median trn° | AUC@5 pose | AUC@30 pose | AUC@5 rot | AUC@30 rot |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| DTU/scan1 | `sift_nn` | 1176 | 0.108 | 0.709 | 0.856 | 0.976 | 0.977 | 0.996 |
-| DTU/scan4 | `sift_nn` | 1176 | 0.092 | 0.725 | 0.847 | 0.975 | 0.980 | 0.997 |
-| DTU/scan9 | `sift_nn` | 1176 | 0.094 | 0.736 | 0.852 | 0.975 | 0.980 | 0.997 |
-| DTU/scan10 | `sift_nn` | 1176 | 0.116 | 0.759 | 0.845 | 0.974 | 0.976 | 0.996 |
-| DTU/scan15 | `sift_nn` | 1176 | 0.078 | 0.745 | 0.849 | 0.975 | 0.983 | 0.997 |
-| DTU/scan23 | `sift_nn` | 1176 | 0.118 | 0.807 | 0.838 | 0.973 | 0.974 | 0.996 |
-| DTU/scan33 | `sift_nn` | 1176 | 0.090 | 0.715 | 0.856 | 0.976 | 0.982 | 0.997 |
-| ETH/courtyard | `sift_lg` | 703 | 0.072 | 0.122 | 0.962 | 0.994 | 0.984 | 0.997 |
-| ETH/electro | `roma` | 990 | 0.079 | 0.084 | 0.803 | 0.825 | 0.819 | 0.865 |
-| ETH/meadow | `roma` | 105 | 0.136 | 0.083 | 0.952 | 0.992 | 0.961 | 0.994 |
-| ETH/delivery_area | `sup@1600` | 946 | 0.048 | 0.085 | 0.972 | 0.995 | 0.990 | 0.998 |
-| ETH/facade | `global_sift@1600` | 1225 | 0.061 | 0.080 | 0.964 | 0.993 | 0.983 | 0.997 |
-| ETH/kicker | `global_sift_clahe@1600` | 465 | 0.040 | 0.078 | 0.968 | 0.995 | 0.984 | 0.997 |
-| ETH/office | `sup@1024` | 325 | 0.090 | 0.448 | 0.816 | 0.966 | 0.975 | 0.996 |
-| ETH/playground | `global_sift_clahe@1600` | 703 | 0.088 | 0.196 | 0.944 | 0.991 | 0.982 | 0.997 |
-| ETH/relief | `mine@1600` | 465 | 3.068 | 0.962 | 0.508 | 0.802 | 0.562 | 0.926 |
+| DTU/scan1 | `sift+nn/incr@1024` | 1176 | 0.108 | 0.709 | 0.856 | 0.976 | 0.977 | 0.996 |
+| DTU/scan4 | `sift+nn/incr@1024` | 1176 | 0.092 | 0.725 | 0.847 | 0.975 | 0.980 | 0.997 |
+| DTU/scan9 | `sift+nn/incr@1024` | 1176 | 0.094 | 0.736 | 0.852 | 0.975 | 0.980 | 0.997 |
+| DTU/scan10 | `sift+nn/incr@1024` | 1176 | 0.116 | 0.759 | 0.845 | 0.974 | 0.976 | 0.996 |
+| DTU/scan15 | `sift+nn/incr@1024` | 1176 | 0.078 | 0.745 | 0.849 | 0.975 | 0.983 | 0.997 |
+| DTU/scan23 | `sift+nn/incr@1024` | 1176 | 0.118 | 0.807 | 0.838 | 0.973 | 0.974 | 0.996 |
+| DTU/scan33 | `sift+nn/incr@1024` | 1176 | 0.090 | 0.715 | 0.856 | 0.976 | 0.982 | 0.997 |
+| ETH/courtyard | `sift+lightglue/incr@1024` | 703 | 0.072 | 0.122 | 0.962 | 0.994 | 0.984 | 0.997 |
+| ETH/electro | `roma-outdoor/incr@1024` | 990 | 0.079 | 0.084 | 0.803 | 0.825 | 0.819 | 0.865 |
+| ETH/meadow | `roma-outdoor/incr@1024` | 105 | 0.136 | 0.083 | 0.952 | 0.992 | 0.961 | 0.994 |
+| ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1600` | 946 | 0.048 | 0.085 | 0.972 | 0.995 | 0.990 | 0.998 |
+| ETH/facade | `sift+lightglue/global@1600` | 1225 | 0.061 | 0.080 | 0.964 | 0.993 | 0.983 | 0.997 |
+| ETH/kicker | `sift-clahe+lightglue/global@1600` | 465 | 0.040 | 0.078 | 0.968 | 0.995 | 0.984 | 0.997 |
+| ETH/office | `superpoint+lightglue/global@1024` | 325 | 0.090 | 0.448 | 0.816 | 0.966 | 0.975 | 0.996 |
+| ETH/playground | `sift-clahe+lightglue/global@1600` | 703 | 0.088 | 0.196 | 0.944 | 0.991 | 0.982 | 0.997 |
+| ETH/relief | `sift+nn/incr@1600` | 465 | 3.068 | 0.962 | 0.508 | 0.802 | 0.562 | 0.926 |
 
 | over 16 scenes | AUC@5 pose | AUC@30 pose | AUC@5 rot | AUC@30 rot |
 | --- | --- | --- | --- | --- |
@@ -308,6 +317,8 @@ Twelve of the sixteen shipped models run through `PoseEssentialToPnP`, and all t
 
 **10 of 12 came back bit-identical.** The 2 that moved did so by around a percent of their points, with their error against reference geometry moving in the fourth decimal.
 
+**Read that as 10 of 12 matching on ONE repeat each, which is not the same as 10 being deterministic.** A single repeat that matches shows one repeat matched. The two that moved moved on their first repeat, so nothing here rules out the other 10 moving on a second or a tenth. Only the capture with several repeats below has enough observations to describe a spread at all.
+
 **The cause is the in-loop local bundle adjustment, and it is not RANSAC sampling.** The obvious suspect was the unseeded RANSAC in the incremental pose module and it was wrong: probed directly and inside that module's own image, `findEssentialMat(USAC_MAGSAC)` and `solvePnPRansac(SQPNP)` both return identical results over repeated unseeded calls on a heavily outlier-contaminated problem, and both ignore `cv2.setRNGSeed`. A seed parameter written against that hypothesis was withdrawn when the probe falsified it.
 
 **How it was isolated.** One capture was run end to end in two separate artifact stores under identical parameters, so both executed rather than one being served from cache. `scene`, `features`, `matches` and `tracks` came back with **bit-identical payloads**; `poses` diverged. Re-running only the pose module from that identical tracks payload with `local_ba: false` gave bit-identical poses in both stores, and with it on gave different ones. The local bundle adjustment is a multithreaded Ceres solve: the same residuals summed in a different order across threads differ in the last bits, and an incremental method feeds that back into its next registration until it changes a consensus set. Untested next step: that solve does not set `solver_options.num_threads`.
@@ -326,6 +337,38 @@ Twelve of the sixteen shipped models run through `PoseEssentialToPnP`, and all t
 | 27927 | repeat |
 
 They span 408 points, 1.44% of the largest, with a standard deviation of 194. **The shipped value is the highest of the 6.** So the recompute reading lower is the expected consequence of having recorded the best of several draws, and the honest summary of that capture's point count is the spread rather than any one of these numbers. The other capture that moved has only two observations, so nothing of the kind can be said about it — it is lower by under a percent, and that is all the evidence supports.
+
+### The other capture that moved, repeated seven times
+
+**Its detector-free GPU matcher is not reproducible either, and that is a second source with nothing to do with the first.** Re-running it on **45 of 45 byte-identical working images** — every image hashed and compared, calibration included — produced 2,944,357 correspondences against 2,942,229, a difference of 0.072%.
+
+| run | correspondences | registered | GT rot° | GT trn° | AUC@5 |
+| --- | --- | --- | --- | --- | --- |
+| shipped | as shipped | 45/45 | 0.079 | 0.084 | 0.803 |
+| E0 | re-matched | 45/45 | 7.143 | 11.672 | 0.393 |
+| E1 | as shipped | 44/45 | 0.075 | 0.079 | 0.801 |
+| E2 | as shipped | 44/45 | 0.073 | 0.080 | 0.802 |
+| E3 | as shipped | 44/45 | 0.077 | 0.079 | 0.805 |
+| B1 | re-matched (same set as E0) | 45/45 | 7.119 | 8.986 | 0.395 |
+| B2 | re-matched (same set as E0) | 45/45 | 0.664 | 0.680 | 0.696 |
+
+**Read the two groups separately, because they say opposite things.** On the shipped correspondences, three independent solves land within 0.005° of each other and of the shipped model, and the only thing that moves is the point count and one frame's registration. On the re-matched correspondences, three solves land at 7.1°, 7.1° and 0.66° — an order of magnitude apart, from identical input. **This capture's solve has more than one stable answer**, and which one a run finds is not determined by anything the recipe records.
+
+**The variation here is not cosmetic, and calling it small would be wrong.** The worst of these runs is roughly ninety times further from truth than the shipped model on median rotation. A 0.072% change in correspondences is enough to reach it.
+
+**And the badly wrong models look healthy — better than the good ones on the rung a reader is most likely to trust.**
+
+| | shipped | E0 | B1 | E1 |
+| --- | --- | --- | --- | --- |
+| **error against truth, rot°** | **0.079** | **7.143** | **7.119** | **0.075** |
+| mean reprojection error, px | 0.228 | 0.196 | 0.192 | 0.234 |
+| p95 reprojection error, px | 0.830 | 0.845 | 0.836 | 0.823 |
+| p05 triangulation angle° | 2.630 | 2.710 | 2.680 | 2.640 |
+| registered images | 45 | 45 | 45 | 44 |
+| min frame points | 103 | 104 | 232 | 195 |
+| points | 69,803 | 67,876 | 67,004 | 69,097 |
+
+Both wrong models register every frame, and both report **lower** mean reprojection error than either correct one. Their triangulation angles are marginally better and one has more than twice the minimum frame support. Judged on the health profile alone the selection rule would prefer them. `health/ladder.md` has always said a model can satisfy every rung and be globally wrong in a way no metric there can see; this is that, measured, with a correct model built from the same recipe standing beside it for comparison.
 
 **Nothing shipped was replaced.** These runs produced new artifacts beside the originals, which still exist unchanged with the point counts in the shipped table above.
 

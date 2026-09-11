@@ -24,7 +24,7 @@ rows that support it.
 | [detection-phase-2026-08](detection-phase-2026-08.md) | 5 captures, detection stage driven cold | `plan/detection.md` §3 and §5; the coverage-denominator finding |
 | [reference-pipeline-2026-09](reference-pipeline-2026-09.md) | every corpus capture through one fixed pipeline at full frame count | the reference distribution the health digest scores against; two rung definitions it falsified; what ground truth cannot measure |
 | [alternate-legs-2026-09](alternate-legs-2026-09.md) | every module the reference never ran, each as a single-stage swap against it | which rungs track ground truth and which invert; that the reference's collapses were reachable by three different swaps; the preconditions and refusals of the untried modules |
-| [agentic-campaign-2026-09](agentic-campaign-2026-09.md) | the whole tool loop driven over every capture at full frame count, planning only from context | the connectivity rule refitted and demoted to a ranking heuristic; coverage as a detector selection effect; the global reconstructor's five-for-five rescue; the reference recipe's two protocol defects; [the recompute check, and why an artifact id cannot tell you two runs agreed](agentic-campaign-2026-09.md#are-these-models-reproducible); [pose accuracy as AUC@5 and AUC@30](agentic-campaign-2026-09.md#pose-accuracy-auc); [what the leg names actually mean](agentic-campaign-2026-09.md#what-the-leg-names-mean) |
+| [agentic-campaign-2026-09](agentic-campaign-2026-09.md) | the whole tool loop driven over every capture at full frame count, planning only from context | the connectivity rule refitted and demoted to a ranking heuristic; coverage as a detector selection effect; the global reconstructor's five-for-five rescue; the reference recipe's two protocol defects; [the recompute check, and why an artifact id cannot tell you two runs agreed](agentic-campaign-2026-09.md#are-these-models-reproducible); [pose accuracy as AUC@5 and AUC@30](agentic-campaign-2026-09.md#pose-accuracy-auc); [what the leg names actually mean](agentic-campaign-2026-09.md#what-the-leg-names-mean); **[one capture solved seven times, where every rung preferred the model that was ninety times further from truth](agentic-campaign-2026-09.md#are-these-models-reproducible)** |
 
 [CORPUS.txt](CORPUS.txt) lists the captures every quoted range in
 `plan/scene_to_pipeline.md` was fitted on. [INDEX.md](INDEX.md) is the precedent
@@ -156,6 +156,18 @@ claims and definitional ones**, and the corrections made after measurement:
 **The pattern to carry:** this corpus is reliable about *what a number means* and
 *why a mechanism behaves as it does*, and unreliable about *what will happen if
 you swap a module*. Weight it accordingly.
+
+**One caution that sits above all of the above, because it limits what a single
+reading is worth at all.** Every entry in this tier is a number produced by a
+run, and a run is not guaranteed to repeat. One capture solved seven times from
+the same recipe produced models an order of magnitude apart in error against
+reference geometry, and the badly wrong ones scored *better* on every internal
+rung than the correct ones. So a row here is one draw from a process that
+sometimes has more than one answer, not a measurement of a pipeline. Where a
+claim rests on a single capture's single run, that is the weakest kind of
+evidence in this corpus, and it is the kind most of these rows are. Re-running
+is the only way to find out which rows are which, and it has been done for two
+captures out of sixteen.
 
 ## A standing caution about recall
 

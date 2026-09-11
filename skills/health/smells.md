@@ -229,6 +229,49 @@ own. That spread is the floor. A difference smaller than it is not a result.
 
 ---
 
+## The same recipe, twice, and one of them is badly wrong
+
+**The smell:** a model registers every frame, reports the best reprojection
+error you have seen on the capture, and is wrong.
+
+**Measured, and this is the clearest case in the corpus.** One capture was solved
+seven times from the same recipe. On one set of correspondences, three
+independent solves agreed to three decimal places on their error against
+reference geometry. On another set — differing by well under a tenth of a
+percent — three solves landed an **order of magnitude apart from each other**,
+two of them roughly ninety times further from truth than the good model.
+
+**The part that matters is what the rungs said about the wrong ones.** They
+registered every frame. They reported *lower* mean reprojection error than
+either correct model. Their triangulation angles were marginally better, one had
+more than twice the minimum frame support, and their point counts and two-view
+fractions were ordinary. **Judged on the health profile alone, the wrong models
+would have been preferred.**
+
+**Why this happens, in a form that transfers:** a capture's solve can have more
+than one stable answer. Seed-and-grow picks an initial pair and grows, and where
+the geometry admits a second self-consistent configuration, a tiny difference
+early — a handful of correspondences, a last-bit difference in a refinement —
+decides which one the run walks into. Both are *internally* consistent, which is
+exactly why every internal metric is happy in both. Reprojection error measures
+agreement between a model and the observations it kept; it cannot see a model
+that is coherently wrong.
+
+**What to do:**
+
+- **Stop reading a low reprojection error as evidence of correctness.** It is
+  evidence of self-consistency, and the wrong model here won on it.
+- **Where a capture matters, solve it twice** and compare the two models to each
+  other by the procedure in [ladder.md](ladder.md#comparing-two-finished-models).
+  Two runs that agree are worth far more than one run that looks good. Two runs
+  that disagree by more than the noise floor are telling you the capture has more
+  than one answer, which is a fact about the capture and not a defect of the run.
+- **Suspect this most where a capture is a wander with weak connections** rather
+  than a tight orbit — somewhere the graph could plausibly fold a different way.
+  It is not predicted by any rung; repetition is the only test.
+
+---
+
 ## A band exceeded on a capture where nothing is wrong
 
 **The smell:** a reading sits just outside a published range, and the run stops to

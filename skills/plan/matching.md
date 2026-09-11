@@ -29,6 +29,25 @@ So choosing a detector-free matcher commits you to tuning a tolerance in a
 different module. That is a real cost, and it is invisible if you only look at this
 stage.
 
+**A second cost, measured: a dense detector-free matcher need not return the same
+correspondences twice.** Re-run on byte-identical images — every image hashed and
+compared, calibration included — one produced a correspondence count differing by
+under a tenth of a percent from the previous run. The classical detector and the
+joint matcher on another capture reproduced exactly under the same test, so this
+is not a property of running on a GPU in general; it is a property of that model.
+
+**A tenth of a percent is not a rounding error here.** On the capture where it
+was measured, the re-matched correspondences led to a reconstruction roughly
+ninety times further from reference geometry than the original, and that model
+registered every frame and reported *better* reprojection error than the good
+one. The correspondences are the input every later stage trusts completely, so
+the stage with the least tolerance for irreproducibility is this one.
+
+Two things follow. **Do not attribute a difference between two pipelines to the
+thing you changed** until you know this matcher returns the same answer twice on
+your capture. And where a capture matters, **solve it twice** — `health/smells.md`
+carries what to compare and why one good-looking run is not enough.
+
 ### 2. Independent or joint
 
 `FeatureMatchNN` and `FeatureMatchFLANN` decide each match on its own descriptor

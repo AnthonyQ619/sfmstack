@@ -155,43 +155,63 @@ def main(argv=None) -> int:
         w("## What the leg names mean")
         w("")
         n_names = len({r["leg"] for r in leg["rows"]})
-        n_amb = len(leg.get("ambiguous", []))
-        w(f"**A leg name is a label from the driving script, not a description "
-          f"of the pipeline, and {n_amb} of the {n_names} names do not mean one "
-          f"thing.** The table below is the authority; read a leg name through "
-          f"it rather than through what it looks like it says. Every row is "
-          f"read back out of the artifacts themselves — each one records the "
-          f"module, the version and the resolved parameters that produced it — "
-          f"so this is what ran, not a transcription of what a script says "
-          f"should have run.")
+        w("**A leg is one end-to-end pipeline attempt on one capture.** Several "
+          "were tried per capture and compared, so each needed a short label for "
+          "the tables above. That label is all a leg name is: bookkeeping for "
+          "this record. Nothing in the orchestrator, the module system or the "
+          "skills tier reads one, and leg names appear nowhere outside this "
+          "file.")
         w("")
-        w("The worst case, and the reason this table exists: `sup@1600` and "
-          "`sup@1024` abbreviate *superseded path* — the pipeline a capture had "
-          "been solved with before this campaign — and that path is not the "
-          "same pipeline on every capture. On one capture it is SuperPoint into "
-          "the global reconstructor; on another it is SIFT with contrast "
-          "normalisation into the incremental chain with n-view triangulation. "
-          "A reader who expands `sup` to SuperPoint is right about one of them "
-          "and wrong about the other. This was caught when a precedent row in "
-          "`evidence/INDEX.md` was written from the name and had to be "
-          "corrected against the recorded chain.")
+        w(f"The {n_names} names below are built from the chain itself, in the "
+          f"order that decides a plan:")
         w("")
-        w("`loftr` and `roma` each cover two legs that differ only in the "
-          "`setting` parameter, which is not a detail: it selects between two "
-          "separately trained weight sets, and each module's own tuning notes "
-          "say the wrong one costs `inlier_ratio` outright. `mine@1600` covers "
-          "two legs that differ in whether contrast normalisation was on.")
+        w("```")
+        w("<detector>+<matcher>/<reconstructor>@<working resolution>")
+        w("```")
         w("")
-        w("| leg | on these captures | the chain that actually ran |")
-        w("| --- | --- | --- |")
-        for r in sorted(leg["rows"], key=lambda x: (x["leg"], x["captures"])):
-            star = " ⚠" if r["leg"] in leg.get("ambiguous", []) else ""
+        w("A detector-free matcher consumes the scene directly and so has no "
+          "detector half. `incr` is seed-and-grow registration, `global` is the "
+          "global mapper, and `incr+gtsam` is seed-and-grow with the n-view "
+          "triangulator in place of the pairwise one. Where a matcher takes an "
+          "indoor/outdoor `setting`, it is in the name, because that selects "
+          "between two separately trained weight sets and each module's tuning "
+          "notes say the wrong one costs `inlier_ratio` outright.")
+        w("")
+        was_any = any(r.get("was") for r in leg["rows"])
+        if was_any:
+            w("**These names were changed, and the old ones are kept beside them "
+              "because they are wrong in a way worth remembering.** The first "
+              "version of this record used labels from the driving script. Five "
+              "of twelve covered more than one chain, and one pair — `sup@1600` "
+              "and `sup@1024`, short for *superseded path* — meant SuperPoint "
+              "into the global mapper on one capture and SIFT with contrast "
+              "normalisation into the incremental chain with n-view "
+              "triangulation on another. A precedent row in "
+              "`evidence/INDEX.md` was written from the name and had to be "
+              "corrected against the recorded chain. Every name here now maps "
+              "to exactly one chain.")
+            w("")
+        w("Every row is read back out of the artifacts — each one records the "
+          "module, the version and the resolved parameters that produced it — so "
+          "this is what ran, not a transcription of what a script says should "
+          "have run.")
+        w("")
+        w("| leg | was called | on these captures | the chain that ran |")
+        w("| --- | --- | --- | --- |")
+        for r in sorted(leg["rows"], key=lambda x: x["leg"]):
             caps = ", ".join(r["captures"])
             chain = " → ".join(f"`{s}`" for s in r["chain"])
-            w(f"| `{r['leg']}`{star} | {caps} | {chain} |")
+            was = f"`{r['was']}`" if r.get("was") else "—"
+            w(f"| `{r['leg']}` | {was} | {caps} | {chain} |")
         w("")
-        w("⚠ marks a name that covers more than one chain. Working resolution "
-          "is in the `px` column of the tables above and is not repeated here.")
+        amb = leg.get("ambiguous") or []
+        if amb:
+            w(f"**Still ambiguous: {', '.join('`'+a+'`' for a in amb)}.** Treat "
+              f"those rows as unresolved.")
+        else:
+            w("Each name above resolves to exactly one chain. The triangulator "
+              "control further down names `gtsam` and `pairwise`, which are "
+              "triangulators inside one comparison rather than pipelines.")
         w("")
     w("## The connectivity rule, refitted on full captures")
     w("")
@@ -365,6 +385,13 @@ def main(argv=None) -> int:
         w(f"**{same} of {len(rec)} came back bit-identical.** The {len(rec) - same} "
           "that moved did so by around a percent of their points, with their "
           "error against reference geometry moving in the fourth decimal.")
+        w("")
+        w(f"**Read that as {same} of {len(rec)} matching on ONE repeat each, "
+          f"which is not the same as {same} being deterministic.** A single "
+          f"repeat that matches shows one repeat matched. The two that moved "
+          f"moved on their first repeat, so nothing here rules out the other "
+          f"{same} moving on a second or a tenth. Only the capture with several "
+          f"repeats below has enough observations to describe a spread at all.")
     w("")
     w("**The cause is the in-loop local bundle adjustment, and it is not RANSAC "
       "sampling.** The obvious suspect was the unseeded RANSAC in the "
@@ -421,6 +448,67 @@ def main(argv=None) -> int:
           f"capture that moved has only two observations, so nothing of the "
           f"kind can be said about it — it is lower by under a percent, and "
           f"that is all the evidence supports.")
+        w("")
+    er = load(d, "electro_repeat.json")
+    if er:
+        w("### The other capture that moved, repeated seven times")
+        w("")
+        m = er["matcher"]
+        w(f"**Its detector-free GPU matcher is not reproducible either, and that "
+          f"is a second source with nothing to do with the first.** Re-running "
+          f"it on **{m['images_identical']} of {m['of']} byte-identical working "
+          f"images** — every image hashed and compared, calibration included — "
+          f"produced {m['matches_fresh']:,} correspondences against "
+          f"{m['matches_main']:,}, a difference of {m['pct']:.3f}%.")
+        w("")
+        w("| run | correspondences | registered | GT rot° | GT trn° | AUC@5 |")
+        w("| --- | --- | --- | --- | --- | --- |")
+        for r in er["rows"]:
+            w(f"| {r['run']} | {r['matches']} | {r['registered']}/45 | "
+              f"{num(r['rot'])} | {num(r['trn'])} | {num(r['auc5'])} |")
+        w("")
+        w("**Read the two groups separately, because they say opposite things.** "
+          "On the shipped correspondences, three independent solves land within "
+          "0.005° of each other and of the shipped model, and the only thing "
+          "that moves is the point count and one frame's registration. On the "
+          "re-matched correspondences, three solves land at 7.1°, 7.1° and "
+          "0.66° — an order of magnitude apart, from identical input. **This "
+          "capture's solve has more than one stable answer**, and which one a "
+          "run finds is not determined by anything the recipe records.")
+        w("")
+        w("**The variation here is not cosmetic, and calling it small would be "
+          "wrong.** The worst of these runs is roughly ninety times further from "
+          "truth than the shipped model on median rotation. A 0.072% change in "
+          "correspondences is enough to reach it.")
+        w("")
+        h = er["health"]
+        w("**And the badly wrong models look healthy — better than the good "
+          "ones on the rung a reader is most likely to trust.**")
+        w("")
+        w("| | shipped | E0 | B1 | E1 |")
+        w("| --- | --- | --- | --- | --- |")
+        w("| **error against truth, rot°** | **" + "** | **".join(
+            num(h[k]["gt_rot"]) for k in ("shipped", "E0", "B1", "E1")) + "** |")
+        for key, label in (("mean_reproj", "mean reprojection error, px"),
+                           ("p95_reproj", "p95 reprojection error, px"),
+                           ("p05_angle", "p05 triangulation angle°"),
+                           ("registered", "registered images"),
+                           ("min_frame_points", "min frame points"),
+                           ("points", "points")):
+            vals = []
+            for k in ("shipped", "E0", "B1", "E1"):
+                v = h[k][key]
+                vals.append(f"{v:,}" if isinstance(v, int) else num(v))
+            w(f"| {label} | " + " | ".join(vals) + " |")
+        w("")
+        w("Both wrong models register every frame, and both report **lower** "
+          "mean reprojection error than either correct one. Their triangulation "
+          "angles are marginally better and one has more than twice the minimum "
+          "frame support. Judged on the health profile alone the selection rule "
+          "would prefer them. `health/ladder.md` has always said a model can "
+          "satisfy every rung and be globally wrong in a way no metric there can "
+          "see; this is that, measured, with a correct model built from the same "
+          "recipe standing beside it for comparison.")
         w("")
     w("**Nothing shipped was replaced.** These runs produced new artifacts "
       "beside the originals, which still exist unchanged with the point counts "

@@ -514,3 +514,19 @@ can satisfy every rung above and be globally wrong in a way no metric here can
 see. Where accuracy
 against reference geometry actually matters, that requires a dataset with
 reference structure, and the answer does not live in this pipeline.
+
+**That sentence has now been measured, and it is sharper than it sounds.** One
+capture, solved repeatedly from the same recipe, produced models an order of
+magnitude apart in error against reference geometry. The badly wrong ones
+registered every frame and reported a **lower** mean reprojection error than the
+correct ones, with marginally better triangulation angles and more minimum frame
+support. Every rung on this ladder preferred the wrong model. The mechanism is
+that a capture's solve can have more than one self-consistent answer, and
+internal metrics measure self-consistency — so both satisfy them, by
+construction.
+
+**The consequence is a habit rather than a new rung.** Where a capture matters,
+**solve it twice and compare the two models to each other** by the procedure
+above. Two runs that agree are worth much more than one run that scores well,
+and two that disagree by more than the noise floor have told you something no
+single run could. `health/smells.md` carries the full case.
