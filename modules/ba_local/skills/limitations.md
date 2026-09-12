@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentLocal
-module_version: 1.1.0
+module_version: 1.2.0
 curated_at: 2026-08-08
 ---
 
@@ -48,6 +48,33 @@ worth chasing upstream, in the matcher's `min_matches_per_pair` and the tracker'
 
 Raising `window_size` is the direct fix. Lowering `min_track_length` to 2 admits
 points the solve cannot use, so it raises the count without helping.
+
+## An escaped point is not a diverged solve
+
+*Symptom:* `points_escaped` fired and `escaped_points` is above zero, while every
+other reading looks ordinary.
+
+A point the window cannot constrain — seen on near-parallel rays, or mostly by
+cameras held fixed — can wander along its ray during the solve, and under the
+robust loss its cost flattens as it goes. It ends with a reprojection error larger
+than the image itself, which is not a measurement of anything.
+
+This module and the global adjuster used to judge divergence on the *mean*
+error, and a mean is owned by its largest value: one such point among tens of
+thousands was measured making the global adjuster call the most accurate of
+several models unusable. Divergence is now judged on the tail, in the whole model
+and in the window: escapees must reach the published tail percentile, or the
+tail of what stayed must grow by orders of magnitude.
+
+*What it means for the model:* under the robust loss an escapee's pull on the
+cameras is bounded, so it says nothing about the poses in either direction. The
+error readings, window readings included, are published over the points that
+stayed.
+
+*What to do:* nothing, to judge the model. The escapees remain in the artifact,
+with their values in `points/error`. Here they usually mean the window left
+points it cannot constrain: widen `window_size`, or use `BundleAdjustmentGlobal`,
+which holds nothing out.
 
 ## At least two cameras must be fixed
 

@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentGlobal
-module_version: 1.1.0
+module_version: 1.2.0
 curated_at: 2026-08-07
 ---
 
@@ -21,6 +21,39 @@ different loss, and a looser tolerance all descend into the same basin.
 
 *What to do:* fix the poses. Check `PoseEssentialToPnP`'s `init_pair_angle` and
 `median_triangulation_angle`, and the matcher's `planarity`.
+
+## An escaped point is not a diverged solve
+
+*Symptom:* `points_escaped` fired and `escaped_points` is above zero, while every
+other reading looks ordinary.
+
+A point triangulated from near-parallel rays has a depth the data barely
+constrains. During the solve it can wander along its ray, and under the robust
+loss its cost flattens as it goes, so nothing brings it back. It ends with a
+reprojection error larger than the image itself, which is not a measurement of
+anything.
+
+This module used to judge divergence on the *mean* error, and a mean is owned by
+its largest value. One such point, among tens of thousands, was enough for it to
+declare its model unusable and suppress every error reading — on the most
+accurate of several models solved from the same correspondences, while the models
+it passed as healthy were far worse against reference geometry. Divergence is now
+judged on the tail: escapees must be numerous enough to reach the published tail
+percentile, or the tail of the points that stayed must grow by orders of
+magnitude. A real divergence moves the whole distribution; one escapee moves only
+the mean.
+
+*What it means for the model:* under the robust loss an escapee's pull on the
+cameras is bounded, so it says nothing about the poses in either direction. The
+error readings are published over the points that stayed, and compare with any
+other model's.
+
+*What to do:* nothing, to judge the model. The escapees remain in the artifact,
+with their values in `points/error`; filter on that array before measuring
+anything else from the cloud. To stop them forming, bound the escape at the
+triangulator with `max_landmark_distance`, which removes a localised escaping
+tail, rather than raising the global angle filter, which charges the whole cloud
+for it.
 
 ## It cannot fix wrong correspondences
 

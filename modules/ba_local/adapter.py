@@ -141,31 +141,79 @@ def choose_window(rec, image_id_of, anchor: str, size: int) -> list[int]:
     return frames[-size:]  # "last"
 
 
-def diverged(before: float, after: float) -> bool:
-    """Did the solve blow up rather than refine?
+# The share of escaped points at which the solve counts as diverged. Tied to the
+# tail percentile every sparse_model/v1 producer publishes: once escapees reach
+# into the 95th percentile, no error reading on the artifact describes the model.
+DIVERGED_SHARE = 0.05
 
-    A Ceres solve that loses its trust region does not return a large-but-real
-    number; it returns something with no physical meaning at all -- 1e151 px was
-    observed on a model built from a learned depth prior. That value was then
-    published as `mean_reprojection_error` with `direction: lower_better` and a
-    `still_high_error` warning suggesting more iterations, which is advice that
-    cannot help and a metric a downstream reader would try to compare.
 
-    The pose estimator grew the same guard for its in-loop solve; this is the
-    same check on the module that does the whole model at once. Bounded well above
-    any real reprojection error at any working resolution, so a genuinely bad
-    model still reports its bad number.
+def image_extent(scene) -> float:
+    """The largest working-resolution image dimension, in pixels.
+
+    A point whose reprojection error exceeds this cannot be a measurement: it no
+    longer projects anywhere near the image it was observed in. That makes the
+    bound scale-free -- it moves with the working resolution -- where a fixed
+    pixel constant would be loose on a small image and tight on a large one.
     """
-    return not np.isfinite(after) or after > 1e4 or after > 1e3 * max(before, 1e-6)
+    sizes = np.asarray(scene.load("images", "size_current"), dtype=np.float64)
+    return float(sizes.max()) if sizes.size else float("inf")
 
 
-def window_error(rec, image_ids: set[int]) -> float:
-    """Mean reprojection error over the given cameras only.
+def error_readings(before, after, extent: float) -> dict:
+    """Per-point (or per-observation) errors -> what the artifact can publish.
+
+    The same function as BundleAdjustmentGlobal's, and for the same measured
+    reason. The divergence guard used to trip on the MEAN, and a mean is owned by
+    its largest value: one point in tens of thousands, left behind along
+    near-parallel rays, put the mean at 1e149 while the median and the p95 did not
+    move, and the guard called the most accurate of three models unusable.
+
+    So each value is judged on its own. One larger than the image extent has
+    ESCAPED: counted, and excluded from every error statistic. The solve is
+    DIVERGED only when escapees reach the published tail (DIVERGED_SHARE), or the
+    tail of what stayed grew a thousandfold. A real divergence moves the whole
+    distribution and trips both; a single escapee trips neither.
+    """
+    before = np.asarray(before, dtype=np.float64)
+    after = np.asarray(after, dtype=np.float64)
+    escaped = ~np.isfinite(after) | (after > extent)
+    kept_after = after[~escaped]
+    kept_before = before[np.isfinite(before) & (before <= extent)]
+    n_escaped = int(escaped.sum())
+    share = n_escaped / len(after) if len(after) else 0.0
+
+    def mean(a):
+        return float(a.mean()) if a.size else float("nan")
+
+    def p95(a):
+        return float(np.percentile(a, 95)) if a.size else float("nan")
+
+    p95_before, p95_after = p95(kept_before), p95(kept_after)
+    blew_up = (
+        kept_after.size == 0
+        or share >= DIVERGED_SHARE
+        or (np.isfinite(p95_before) and p95_after > 1e3 * max(p95_before, 1e-6))
+    )
+    return {
+        "escaped": n_escaped,
+        "escaped_share": share,
+        "escaped_mask": escaped,
+        "mean_before": mean(kept_before),
+        "mean_after": mean(kept_after),
+        "p95_before": p95_before,
+        "p95_after": p95_after,
+        "diverged": bool(blew_up),
+    }
+
+
+def window_errors(rec, image_ids: set[int]) -> np.ndarray:
+    """Per-observation reprojection error over the given cameras only.
 
     The global figure dilutes a local solve with cameras that were held fixed, so
-    it understates what this module actually did.
+    it understates what this module actually did. Returned as the array rather
+    than its mean, so the escape test can judge each observation on its own.
     """
-    total, count = 0.0, 0
+    errors = []
     for image_id in image_ids:
         image = rec.image(image_id)
         for p2d in image.points2D:
@@ -175,9 +223,8 @@ def window_error(rec, image_ids: set[int]) -> float:
             projected = image.project_point(point.xyz)
             if projected is None:
                 continue
-            total += float(np.linalg.norm(np.asarray(projected) - np.asarray(p2d.xy)))
-            count += 1
-    return total / count if count else float("nan")
+            errors.append(float(np.linalg.norm(np.asarray(projected) - np.asarray(p2d.xy))))
+    return np.asarray(errors, dtype=np.float64)
 
 
 def read_summary(summary) -> tuple[int, bool]:
@@ -297,12 +344,19 @@ def run(ctx: Ctx):
         )
 
     rec.update_point_3d_errors()  # COLMAP leaves per-point error unset until asked
-    error_before = float(rec.compute_mean_reprojection_error())
+    # Per point, not the scalar mean: the escape test judges each point on its
+    # own, and the published means are taken over the points that stayed.
+    extent = image_extent(scene)
+    before_errors = np.array(
+        [rec.point3D(pid).error for pid in kept.values()], dtype=np.float64
+    )
+    error_before = error_readings(before_errors, before_errors, extent)["mean_before"]
 
     window = choose_window(rec, image_id_of, p.anchor, p.window_size)
     window_ids = {image_id_of[f] for f in window}
     fixed_ids = [i for i in image_id_of.values() if i not in window_ids]
-    win_before = window_error(rec, window_ids)
+    win_before_errors = window_errors(rec, window_ids)
+    win_before = error_readings(win_before_errors, win_before_errors, extent)["mean_before"]
 
     if len(fixed_ids) < MIN_FIXED:
         # Not an error: the model is simply smaller than the window. Refine
@@ -339,8 +393,13 @@ def run(ctx: Ctx):
     summary = pycolmap.create_default_bundle_adjuster(options, config, rec).solve()
 
     rec.update_point_3d_errors()
-    error_after = float(rec.compute_mean_reprojection_error())
-    win_after = window_error(rec, window_ids)
+    after_errors = np.array(
+        [rec.point3D(pid).error for pid in kept.values()], dtype=np.float64
+    )
+    readings = error_readings(before_errors, after_errors, extent)
+    win_readings = error_readings(win_before_errors, window_errors(rec, window_ids), extent)
+    error_after = readings["mean_after"]
+    win_after = win_readings["mean_after"]
     iterations, converged = read_summary(summary)
 
     ctx.progress(0.8, f"window {win_before:.3f} -> {win_after:.3f} px")
@@ -400,7 +459,10 @@ def run(ctx: Ctx):
     )
     rec.write_binary(str(out.sidecar_dir("colmap")))
 
-    blew_up = diverged(error_before, error_after) or diverged(win_before, win_after)
+    # An ESCAPED point is not a diverged solve: it is counted in escaped_points and
+    # left out of the means. Only a solve whose escapees reach the published tail,
+    # in the whole model or in the window, is suppressed.
+    blew_up = readings["diverged"] or win_readings["diverged"]
 
     out.metric("reprojection_error_before", round(error_before, 4),
                direction="lower_better", healthy=(None, 2.0))
@@ -423,7 +485,11 @@ def run(ctx: Ctx):
     # reconstructor. The before/after pair above describes the PROCESS and is
     # comparable only against another bundle adjustment.
     _obs = np.array(obs_rows, dtype=np.float64)
-    _s = structure_readings(out_xyz, _obs, out_error, refined, valid, None, n_images)
+    # The tail reading is taken over the points that stayed in the image. An
+    # escaped point's error is not a measurement, so it cannot be ranked; it is
+    # counted in escaped_points instead.
+    stayed = np.isfinite(out_error) & (out_error <= extent)
+    _s = structure_readings(out_xyz, _obs, out_error[stayed], refined, valid, None, n_images)
     out.metric("min_frame_points", _s["min_frame_points"],
                direction="higher_better", healthy=(50, None))
     out.metric("two_view_fraction", _s["two_view_fraction"],
@@ -445,6 +511,8 @@ def run(ctx: Ctx):
                direction="lower_better", healthy=(None, 1.0))
     out.metric("registered_images", int(np.asarray(valid, dtype=bool).sum()),
                direction="higher_better", healthy=(3, None))
+    out.metric("escaped_points", readings["escaped"],
+               direction="lower_better", healthy=(None, 0))
 
     if len(fixed_ids) <= MIN_FIXED and len(image_id_of) > p.window_size:
         out.diagnostic(
@@ -486,9 +554,11 @@ def run(ctx: Ctx):
             "bundle_adjustment_diverged",
             severity="error",
             message=(
-                f"The solve diverged: window error went {win_before:.3f}px -> "
-                f"{win_after:.3g}px. Every error metric on this artifact is "
-                f"suppressed; the model it contains is not usable."
+                f"The solve diverged: {readings['escaped']} of {len(after_errors)} "
+                f"points left the image, or the window's tail error grew by orders "
+                f"of magnitude (p95 {win_readings['p95_before']:.3f}px -> "
+                f"{win_readings['p95_after']:.3g}px). Every error metric on this "
+                f"artifact is suppressed; the model it contains is not usable."
             ),
             suggested_actions=[
                 "Do NOT raise max_iterations. More iterations of a diverging solve "
@@ -500,6 +570,36 @@ def run(ctx: Ctx):
                 "near-parallel rays is where this starts.",
             ],
             see_also="limitations.md#thin-windows",
+        )
+
+    if readings["escaped"] and not blew_up:
+        out.diagnostic(
+            "points_escaped",
+            severity="warn",
+            message=(
+                f"{readings['escaped']} of {len(after_errors)} points ended the solve "
+                f"with an error larger than the image ({extent:.0f}px). They are "
+                f"counted in escaped_points and left out of every error reading, "
+                f"the window's included; the tail of what stayed is intact, so the "
+                f"solve did not diverge."
+            ),
+            suggested_actions=[
+                "Judge the model on the readings that ARE published. An escaped "
+                "point moves only a mean; a diverged solve moves the whole "
+                "distribution, and this one did not.",
+                ("Under the robust loss an escapee's pull on the cameras is bounded, "
+                 "so it says nothing about the poses either way."
+                 if p.robust_loss else
+                 "robust_loss is OFF on this run, so nothing bounded the escapee's "
+                 "pull on the cameras; read the pose-side readings with that in mind."),
+                "The escapees are still in the artifact, with their values in "
+                "points/error. Filter on that array before measuring anything else "
+                "from the cloud.",
+                "Here they usually mean the window left points it cannot constrain: "
+                "widen window_size, or use BundleAdjustmentGlobal, which holds "
+                "nothing out.",
+            ],
+            see_also="limitations.md#an-escaped-point-is-not-a-diverged-solve",
         )
 
     if not blew_up and win_before > 0 and abs(win_before - win_after) / win_before < 0.01:
@@ -554,15 +654,19 @@ def run(ctx: Ctx):
         )
 
     if blew_up:
-        outcome = (f"Window error {win_before:.3f}px -> DIVERGED ({win_after:.3g}px) "
-                   f"in {iterations} iterations. Error metrics are suppressed; this "
-                   f"model is not usable.")
+        outcome = (f"Window error {win_before:.3f}px -> DIVERGED: "
+                   f"{readings['escaped']} points left the image or the tail grew by "
+                   f"orders of magnitude, in {iterations} iterations. Error metrics "
+                   f"are suppressed; this model is not usable.")
     else:
         outcome = (f"Window error {win_before:.3f} -> {win_after:.3f}px; whole model "
                    f"{error_before:.3f} -> {error_after:.3f}px in {iterations} "
                    f"iterations, {'converged' if converged else 'DID NOT converge'}. "
                    f"The global figure is diluted by the cameras that were held "
                    f"fixed -- judge this on the window.")
+        if readings["escaped"]:
+            outcome += (f" {readings['escaped']} point(s) escaped the image and are "
+                        f"left out of the error readings; the solve did not diverge.")
     out.note(
         f"Local bundle adjustment, anchor '{p.anchor}': {len(window_ids)} cameras "
         f"refined, {len(fixed_ids)} held fixed, {len(point_ids)} points. " + outcome

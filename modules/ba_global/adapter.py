@@ -14,22 +14,78 @@ import pycolmap
 from sfmkit import Ctx, module
 
 
-def diverged(before: float, after: float) -> bool:
-    """Did the solve blow up rather than refine?
+# The share of escaped points at which the solve counts as diverged. Tied to the
+# tail percentile every sparse_model/v1 producer publishes: once escapees reach
+# into the 95th percentile, no error reading on the artifact describes the model.
+DIVERGED_SHARE = 0.05
+
+
+def image_extent(scene) -> float:
+    """The largest working-resolution image dimension, in pixels.
+
+    A point whose reprojection error exceeds this cannot be a measurement: it no
+    longer projects anywhere near the image it was observed in. That makes the
+    bound scale-free -- it moves with the working resolution -- where a fixed
+    pixel constant would be loose on a small image and tight on a large one.
+    """
+    sizes = np.asarray(scene.load("images", "size_current"), dtype=np.float64)
+    return float(sizes.max()) if sizes.size else float("inf")
+
+
+def error_readings(before, after, extent: float) -> dict:
+    """Per-point errors -> what the artifact can honestly publish.
 
     A Ceres solve that loses its trust region does not return a large-but-real
     number; it returns something with no physical meaning at all -- 1e151 px was
-    observed on a model built from a learned depth prior. That value was then
-    published as `mean_reprojection_error` with `direction: lower_better` and a
-    `still_high_error` warning suggesting more iterations, which is advice that
-    cannot help and a metric a downstream reader would try to compare.
+    observed on a model built from a learned depth prior, and was published as
+    `mean_reprojection_error` with advice to raise the iteration cap. Hence a
+    divergence guard, and the pose estimator grew the same one in-loop.
 
-    The pose estimator grew the same guard for its in-loop solve; this is the
-    same check on the module that does the whole model at once. Bounded well above
-    any real reprojection error at any working resolution, so a genuinely bad
-    model still reports its bad number.
+    That guard tripped on the MEAN, and a mean is owned by its largest value. It
+    was measured doing the opposite of its job: ONE point in tens of thousands,
+    left behind along near-parallel rays, put the mean at 1e149 while the median
+    and the p95 did not move, and the guard raised an error calling the model
+    unusable and suppressed every error reading on it. That model was the most
+    accurate of three solved from identical correspondences; the two that
+    reported clean were an order of magnitude further from reference geometry.
+
+    So each point is judged on its own. A point whose error exceeds the image
+    extent has ESCAPED: it is counted, and excluded from every error statistic,
+    because an error it cannot have is not one it can contribute. The solve is
+    DIVERGED only when escapees reach the published tail (DIVERGED_SHARE), or the
+    tail of the points that stayed grew a thousandfold. A real divergence moves
+    the whole distribution and trips both; a single escapee trips neither.
     """
-    return not np.isfinite(after) or after > 1e4 or after > 1e3 * max(before, 1e-6)
+    before = np.asarray(before, dtype=np.float64)
+    after = np.asarray(after, dtype=np.float64)
+    escaped = ~np.isfinite(after) | (after > extent)
+    kept_after = after[~escaped]
+    kept_before = before[np.isfinite(before) & (before <= extent)]
+    n_escaped = int(escaped.sum())
+    share = n_escaped / len(after) if len(after) else 0.0
+
+    def mean(a):
+        return float(a.mean()) if a.size else float("nan")
+
+    def p95(a):
+        return float(np.percentile(a, 95)) if a.size else float("nan")
+
+    p95_before, p95_after = p95(kept_before), p95(kept_after)
+    blew_up = (
+        kept_after.size == 0
+        or share >= DIVERGED_SHARE
+        or (np.isfinite(p95_before) and p95_after > 1e3 * max(p95_before, 1e-6))
+    )
+    return {
+        "escaped": n_escaped,
+        "escaped_share": share,
+        "escaped_mask": escaped,
+        "mean_before": mean(kept_before),
+        "mean_after": mean(kept_after),
+        "p95_before": p95_before,
+        "p95_after": p95_after,
+        "diverged": bool(blew_up),
+    }
 
 
 def build_reconstruction(scene, sparse, n_images, min_track_length, ctx):
@@ -241,7 +297,13 @@ def run(ctx: Ctx):
     # freshly built reconstruction, which reads as a perfect model rather than an
     # unmeasured one -- and then "improves" to a nonzero number after the solve.
     rec.update_point_3d_errors()
-    error_before = float(rec.compute_mean_reprojection_error())
+    # Per point, not the scalar mean: the escape test below judges each point on
+    # its own, and the published means are taken over the points that stayed.
+    extent = image_extent(scene)
+    before_errors = np.array(
+        [rec.point3D(pid).error for pid in kept_point_ids.values()], dtype=np.float64
+    )
+    error_before = error_readings(before_errors, before_errors, extent)["mean_before"]
     n_obs = int(rec.compute_num_observations())
 
     options = pycolmap.BundleAdjustmentOptions()
@@ -275,7 +337,11 @@ def run(ctx: Ctx):
     summary = adjuster.solve()
 
     rec.update_point_3d_errors()
-    error_after = float(rec.compute_mean_reprojection_error())
+    after_errors = np.array(
+        [rec.point3D(pid).error for pid in kept_point_ids.values()], dtype=np.float64
+    )
+    readings = error_readings(before_errors, after_errors, extent)
+    error_after = readings["mean_after"]
     ctx.progress(0.8, f"{error_before:.3f}px -> {error_after:.3f}px")
 
     iterations, converged = read_summary(summary)
@@ -345,12 +411,13 @@ def run(ctx: Ctx):
     # Native rendering beside the authoritative npz.
     rec.write_binary(str(out.sidecar_dir("colmap")))
 
-    blew_up = diverged(error_before, error_after)
+    blew_up = readings["diverged"]
     reduction = (error_before - error_after) / error_before if error_before > 0 else 0.0
     if blew_up:
         # Suppress rather than publish. A diverged solve has no reprojection error
         # to report, and a number with no meaning is worse than a null because a
-        # reader will compare it.
+        # reader will compare it. An ESCAPED point is a different case and is not
+        # suppressed: it is counted in escaped_points and left out of the means.
         reduction = None
 
     out.metric("reprojection_error_before", round(error_before, 4),
@@ -372,7 +439,11 @@ def run(ctx: Ctx):
     # reconstructor. The before/after pair above describes the PROCESS and is
     # comparable only against another bundle adjustment.
     _obs = np.array(obs_rows, dtype=np.float64)
-    _s = structure_readings(xyz, _obs, error, refined_poses, valid, None, n_images)
+    # The tail reading is taken over the points that stayed in the image. An
+    # escaped point's error is not a measurement, so it cannot be ranked; it is
+    # counted in escaped_points instead.
+    stayed = np.isfinite(error) & (error <= extent)
+    _s = structure_readings(xyz, _obs, error[stayed], refined_poses, valid, None, n_images)
     out.metric("min_frame_points", _s["min_frame_points"],
                direction="higher_better", healthy=(50, None))
     out.metric("two_view_fraction", _s["two_view_fraction"],
@@ -394,6 +465,8 @@ def run(ctx: Ctx):
                direction="lower_better", healthy=(None, 1.0))
     out.metric("registered_images", int(np.asarray(valid, dtype=bool).sum()),
                direction="higher_better", healthy=(3, None))
+    out.metric("escaped_points", readings["escaped"],
+               direction="lower_better", healthy=(None, 0))
 
     # This module WRITES intrinsics that every downstream consumer prefers over the
     # scene's, and until now it published nothing about them -- so a refinement that
@@ -471,9 +544,12 @@ def run(ctx: Ctx):
             "bundle_adjustment_diverged",
             severity="error",
             message=(
-                f"The solve diverged: reprojection error went {error_before:.3f}px "
-                f"-> {error_after:.3g}px. Every error metric on this artifact is "
-                f"suppressed; the model it contains is not usable."
+                f"The solve diverged: {readings['escaped']} of {len(after_errors)} "
+                f"points ({readings['escaped_share']:.1%}) ended with an error larger "
+                f"than the image, or the tail error grew by orders of magnitude "
+                f"(p95 {readings['p95_before']:.3f}px -> {readings['p95_after']:.3g}px). "
+                f"Every error metric on this artifact is suppressed; the model it "
+                f"contains is not usable."
             ),
             suggested_actions=[
                 "Do NOT raise max_iterations. More iterations of a diverging solve "
@@ -490,6 +566,37 @@ def run(ctx: Ctx):
                 "geometrically and bundle-adjust that instead.",
             ],
             see_also="limitations.md#what-bundle-adjustment-cannot-fix",
+        )
+
+    if readings["escaped"] and not blew_up:
+        out.diagnostic(
+            "points_escaped",
+            severity="warn",
+            message=(
+                f"{readings['escaped']} of {len(after_errors)} points ended the solve "
+                f"with an error larger than the image ({extent:.0f}px). They are "
+                f"counted in escaped_points and left out of every error reading; the "
+                f"tail of the points that stayed is intact, so the solve did not "
+                f"diverge."
+            ),
+            suggested_actions=[
+                "Judge the model on the readings that ARE published. An escaped "
+                "point moves only a mean; a diverged solve moves the whole "
+                "distribution, and this one did not.",
+                ("Under the robust loss an escapee's pull on the cameras is bounded, "
+                 "so it says nothing about the poses either way."
+                 if p.robust_loss else
+                 "robust_loss is OFF on this run, so nothing bounded the escapee's "
+                 "pull on the cameras; read the pose-side readings with that in mind."),
+                "The escapees are still in the artifact, with their values in "
+                "points/error. Filter on that array before measuring anything else "
+                "from the cloud.",
+                "To stop them forming, bound the escape where it starts: the "
+                "triangulator's max_landmark_distance removes a localised escaping "
+                "tail, where raising the global angle filter charges the whole "
+                "cloud for it.",
+            ],
+            see_also="limitations.md#an-escaped-point-is-not-a-diverged-solve",
         )
 
     if not converged and not blew_up:
@@ -545,13 +652,17 @@ def run(ctx: Ctx):
         )
 
     if blew_up:
-        outcome = (f"Reprojection error {error_before:.3f}px -> DIVERGED "
-                   f"({error_after:.3g}px) in {iterations} iterations. "
+        outcome = (f"Reprojection error {error_before:.3f}px -> DIVERGED: "
+                   f"{readings['escaped']} points left the image or the tail grew "
+                   f"by orders of magnitude, in {iterations} iterations. "
                    f"Error metrics are suppressed; this model is not usable. ")
     else:
         outcome = (f"Reprojection error {error_before:.3f}px -> {error_after:.3f}px "
                    f"({reduction:+.1%}) in {iterations} iterations, "
                    f"{'converged' if converged else 'DID NOT converge'}. ")
+        if readings["escaped"]:
+            outcome += (f"{readings['escaped']} point(s) escaped the image and are "
+                        f"left out of the error readings; the solve did not diverge. ")
     out.note(
         f"Global bundle adjustment over {len(image_id_of)} cameras, "
         f"{len(point_ids)} points and {len(obs_rows)} observations. "

@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentGlobal
-module_version: 1.1.0
+module_version: 1.2.0
 upstream: pycolmap 4.1.1 / Ceres
 curated_at: 2026-08-07
 sources: 3
@@ -21,7 +21,7 @@ them.
 
 **First readings on this module's output:** `min_frame_points`, `two_view_fraction`, `p95_reprojection_error`.
 
-**Diagnostics it can raise:** `bundle_adjustment_diverged`, `points_dropped_by_min_track_length`, `refined_focal_disagrees_across_cameras`, `did_not_converge`, `no_improvement`, `still_high_error`.
+**Diagnostics it can raise:** `bundle_adjustment_diverged`, `points_escaped`, `points_dropped_by_min_track_length`, `refined_focal_disagrees_across_cameras`, `did_not_converge`, `no_improvement`, `still_high_error`.
 
 ## What this module is for
 

@@ -1,5 +1,5 @@
 name: BundleAdjustmentGlobal
-version: 1.1.0
+version: 1.2.0
 kind: optimization
 summary: >
   Ceres bundle adjustment over the whole reconstruction, refining every pose and
@@ -27,7 +27,7 @@ description: |
   authoritative; the sidecar is a convenience, and a consumer without pycolmap
   loses nothing but the convenience.
 
-image: sfmstack/ba-global:1.1.0
+image: sfmstack/ba-global:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -134,8 +134,10 @@ metrics:
     healthy: [null, 0.6]
   p95_reprojection_error:
     meaning: >
-      The tail of the per-point error distribution, suppressed if the solve
-      diverged. The mean runs about 1.5x the median here; a mean close to p95 is a
+      The tail of the per-point error distribution, taken over the points that
+      stayed in the image -- an escaped point's error is not a measurement and is
+      counted in escaped_points instead -- and suppressed if the solve diverged.
+      The mean runs about 1.5x the median here; a mean close to p95 is a
       uniformly mediocre model, a mean far below it is a good model with a few bad
       points. Those two want different responses and the mean alone cannot separate
       them.
@@ -234,8 +236,10 @@ metrics:
     direction: lower_better
     healthy: [null, 1.0]
     meaning: >
-      Mean pixel error after the solve, at working resolution. The same number as
-      reprojection_error_after, under the name every sparse_model/v1 producer uses.
+      Mean pixel error after the solve, at working resolution, over the points
+      that stayed in the image; escaped points are counted in escaped_points. The
+      same number as reprojection_error_after, under the name every
+      sparse_model/v1 producer uses.
 
   registered_images:
     direction: higher_better
@@ -245,16 +249,40 @@ metrics:
       point_count and reprojection error are not comparable between models with
       different camera counts, and this is what says whether they are.
 
+  escaped_points:
+    meaning: >
+      Points that ended the solve with a reprojection error larger than the image
+      itself -- an error no point can have and still project into the image it was
+      observed in. They are counted here and left out of every error reading on
+      this artifact, because one of them is enough to own a mean: a single escapee
+      once made this module call its most accurate model unusable. A point on
+      near-parallel rays has a barely constrained depth and can wander during the
+      solve; under the robust loss its cost flattens as it leaves, so its pull on
+      the cameras stays bounded, and an escapee says nothing about the poses either
+      way. Escapees numerous enough to reach the published tail percentile are what
+      this module calls a diverged solve.
+    direction: lower_better
+    healthy: [null, 0]
+
 diagnostics:
   - code: bundle_adjustment_diverged
     severity: error
-    message: The solve left its trust region; every error metric is suppressed.
+    message: Escaped points reached the published tail, or the tail error grew by orders of magnitude; every error metric is suppressed.
     suggested_actions:
       - "Do NOT raise max_iterations -- a diverging solve diverges further."
       - "The cause is under-constrained structure: two-view points, near-parallel rays, or points placed by a depth prior and never verified."
       - "Read the input model's two_view_fraction and p05_triangulation_angle."
       - "If the input came from a learned prior, triangulate the same tracks geometrically and refine that instead."
     see_also: limitations.md#it-cannot-escape-a-bad-local-minimum
+  - code: points_escaped
+    severity: warn
+    message: Some points left the image during the solve; they are counted in escaped_points and left out of every error reading, and the solve did not diverge.
+    suggested_actions:
+      - "Judge the model on the readings that ARE published. The median and the tail did not move, which is exactly what separates an escaped point from a diverged solve."
+      - "Under the robust loss an escapee's pull on the cameras is bounded, so it says nothing about the poses either way. With robust_loss off, nothing bounds it."
+      - "The escapees are still in the artifact, with their values in points/error. Filter on that array before measuring anything else from the cloud."
+      - "To stop them forming, bound the escape where it starts: the triangulator's max_landmark_distance removes a localised escaping tail, where raising the global angle filter charges the whole cloud for it."
+    see_also: limitations.md#an-escaped-point-is-not-a-diverged-solve
   - code: points_dropped_by_min_track_length
     severity: warn
     message: min_track_length removed points from the output model, not just from the solve.

@@ -328,6 +328,75 @@ def test_global_bundle_adjustment_lowers_reprojection_error(orch):
     assert ba.metric("reprojection_error_after") < ba.metric("reprojection_error_before")
     assert ba.metric("error_reduction") > 0.0
     assert ba.metric("converged") == 1
+    assert ba.metric("escaped_points") == 0
+
+
+def _adapter(module_dir):
+    """Import a module's adapter directly, for its pure functions."""
+    import importlib.util
+
+    from dataset_paths import MODULES
+
+    path = MODULES / module_dir / "adapter.py"
+    spec = importlib.util.spec_from_file_location(f"{module_dir}_adapter_under_test", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@needs_pycolmap
+@pytest.mark.parametrize("module_dir", ["ba_global", "ba_local"])
+def test_one_escaped_point_is_counted_not_called_a_divergence(module_dir):
+    """Measured: one point in tens of thousands, left behind along near-parallel
+    rays, put the MEAN at 1e149 with the median and p95 untouched, and the old
+    guard called the most accurate of three models unusable. Judged per point,
+    it is one escapee on a sound solve, and the means describe the rest."""
+    ad = _adapter(module_dir)
+    before = np.random.default_rng(0).gamma(2.0, 0.18, 60000)
+    after = before * 0.6
+    after[123] = 1.3e154
+    r = ad.error_readings(before, after, extent=1024.0)
+
+    assert not r["diverged"]
+    assert r["escaped"] == 1
+    assert r["mean_after"] == pytest.approx(np.delete(after, 123).mean())
+
+
+@needs_pycolmap
+@pytest.mark.parametrize("module_dir", ["ba_global", "ba_local"])
+def test_a_solve_whose_escapees_reach_the_tail_is_still_diverged(module_dir):
+    """The guard exists for a real failure -- 1e151px from a solve that lost its
+    trust region -- and the fix must not stop it firing on one."""
+    ad = _adapter(module_dir)
+    before = np.full(1000, 0.4)
+    after = np.full(1000, 0.3)
+    after[:80] = 1e151
+    assert ad.error_readings(before, after, extent=1024.0)["diverged"]
+    assert ad.error_readings(before, np.full(1000, np.nan), extent=1024.0)["diverged"]
+
+
+@needs_pycolmap
+@pytest.mark.parametrize("module_dir", ["ba_global", "ba_local"])
+def test_a_tail_grown_by_orders_of_magnitude_is_diverged_inside_the_image(module_dir):
+    ad = _adapter(module_dir)
+    before = np.full(1000, 0.2)
+    after = np.full(1000, 0.2)
+    after[900:] = 500.0
+    r = ad.error_readings(before, after, extent=1024.0)
+    assert r["escaped"] == 0
+    assert r["diverged"]
+
+
+@needs_pycolmap
+@pytest.mark.parametrize("module_dir", ["ba_global", "ba_local"])
+def test_the_escape_bound_is_the_image_not_a_pixel_constant(module_dir):
+    """A fixed constant is loose on a small image and tight on a large one."""
+    ad = _adapter(module_dir)
+    before = np.full(1000, 0.3)
+    after = np.full(1000, 0.3)
+    after[0] = 800.0
+    assert ad.error_readings(before, after, extent=640.0)["escaped"] == 1
+    assert ad.error_readings(before, after, extent=1600.0)["escaped"] == 0
 
 
 @needs_pycolmap
