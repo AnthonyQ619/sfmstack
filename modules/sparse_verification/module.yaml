@@ -1,0 +1,194 @@
+name: SparseVerification
+version: 1.0.0
+kind: analysis
+summary: >
+  Checks a finished sparse model against the matcher's correspondences it never
+  used -- the one reading in the stack a wrong but self-consistent model cannot
+  satisfy by construction. CPU-only; seconds.
+
+description: |
+  Runs after the final bundle adjustment, on every model, as a fixed step: the
+  service runs it automatically whenever an optimization module produces a sparse
+  model, and delivers the result beside the health profile.
+
+  **Why it exists.** Every error reading a sparse model carries is computed over
+  the observations the model kept, and bundle adjustment minimised exactly those.
+  A model that settled into a wrong but self-consistent configuration therefore
+  scores well on all of them. That was measured, not supposed: one capture solved
+  several times from identical correspondences produced models an order of
+  magnitude apart against reference geometry, and the badly wrong ones reported
+  lower reprojection error, registered every frame, and satisfied the health
+  profile better than the correct ones. Nothing a model publishes about itself
+  could have chosen between them.
+
+  **What it measures.** The matcher produces more correspondences than any model
+  keeps, and the ones a model did not keep were never in its objective. For each
+  matched pair this takes the correspondences that do not coincide with an
+  observation of one model point in both images, measures their epipolar distance
+  under the model's own relative pose, and takes the pair's median. The reading is
+  the median over pairs, each weighted by how many held-out correspondences it
+  has. No ground truth, no frame order, no second fit.
+
+  **What it cannot see.** An error that every pair's correspondences allow. Two
+  models of a shallow subject, one a few degrees wrong and one nearly exact, read
+  the same -- on their own matches and on each other's. A clean reading means the
+  model does not contradict the evidence. It does not mean the model is accurate.
+
+  Any `pairwise_matches/v1` of the same scene is valid evidence: the model's own
+  ancestor, which the service wires automatically, or another matcher's output,
+  which was never in the model's objective at all.
+
+image: sfmstack/sparse-verification:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 4
+  # Dominated by reading the matches. Under a second on a detector pipeline;
+  # a few seconds on a dense matcher's millions of correspondences.
+  expected_duration_s: 15
+  timeout_s: 1800
+
+types:
+  - type: custom/verification/v1
+    summary: A sparse model's agreement with pairwise evidence it was not fit on.
+    description: |
+      One row per matched pair whose two images are both registered, plus three
+      scalar metrics. Written by SparseVerification. The per-pair array is the
+      point when a model is contradicted: a contradiction confined to the pairs
+      across one part of the capture says where the solve went wrong.
+    files:
+      pairs:
+        required: true
+        description: One row per scored pair.
+        arrays:
+          image_pair:
+            required: true
+            shape: [null, 2]
+            dtype: [int32, int64]
+            columns: [image_i, image_j]
+            description: Scene frame indices of the pair.
+          matches:
+            required: true
+            shape: [null]
+            dtype: [int32, int64]
+            description: The matcher's correspondences on this pair.
+          held_out:
+            required: true
+            shape: [null]
+            dtype: [int32, int64]
+            description: >
+              Of those, how many do not coincide with an observation of one model
+              point in both images -- the correspondences the model was not fit on.
+          residual_px:
+            required: true
+            shape: [null]
+            dtype: [float32, float64]
+            description: >
+              Median epipolar (Sampson) distance of the held-out correspondences
+              under the model's relative pose, in undistorted working-resolution
+              pixels. NaN where the pair had too few held-out correspondences to
+              give a stable median.
+    invariants:
+      - check: same_length
+        args: {file: pairs, arrays: [image_pair, matches, held_out, residual_px]}
+    metrics:
+      heldout_residual_px:
+        direction: lower_better
+        nullable: true
+        meaning: >
+          The median over pairs of each pair's held-out epipolar residual, weighted
+          by held-out count. Null when nothing was held out.
+      held_out_share:
+        direction: neutral
+        meaning: Share of the matcher's correspondences on scored pairs the model did not use.
+      pairs_verified:
+        direction: neutral
+        meaning: Pairs with enough held-out correspondences to contribute to the reading.
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  sparse: {type: sparse_model/v1, required: true}
+  matches: {type: pairwise_matches/v1, required: true}
+
+produces:
+  verification: {type: custom/verification/v1}
+
+params:
+  inlier_threshold_px:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Held-out residual above which the model is called contradicted, in working-resolution pixels.
+    tuning: >
+      Defaults to the pose estimator's own inlier threshold, so "agrees with the
+      evidence" means what the pipeline already means when it accepts a
+      correspondence. Scale it with the working resolution the way that threshold
+      scales. It is not a fine dial: every model read so far sat either well under
+      it or many times over it, and the one intermediate model -- a solve off by a
+      fraction of a degree -- read under it. This catches a model that has drifted,
+      not one that is slightly imprecise.
+
+  min_held_out_per_pair:
+    type: integer
+    default: 20
+    minimum: 5
+    maximum: 1000
+    description: Held-out correspondences a pair needs before its median counts.
+    tuning: >
+      A median over a handful of correspondences is one or two matches deciding a
+      pair. Lower it only when `nothing_held_out` fires on a capture whose pairs
+      are genuinely thin, and read the per-pair array before trusting the result.
+
+metrics:
+  heldout_residual_px:
+    direction: lower_better
+    healthy: [null, 3.0]
+    meaning: >
+      How far the correspondences this model was never fit on sit from its
+      epipolar lines: each pair's median, then the median over pairs weighted by
+      how many held-out correspondences each has. A correct model reads a fraction
+      of a pixel; a model that drifted into a wrong but self-consistent
+      configuration has been measured reading many times the pipeline's own inlier
+      threshold while every self-reported rung called it healthy. The band's
+      ceiling is inlier_threshold_px at its default. Null when nothing was held
+      out, which means unverified, not verified.
+
+      It measures CONSISTENCY WITH EVIDENCE, not accuracy. An error that every
+      pair's correspondences allow -- measured on a shallow subject, where a model
+      a few degrees wrong read the same as a nearly exact one -- is invisible here.
+
+  held_out_share:
+    direction: neutral
+    meaning: >
+      Of the matcher's correspondences on pairs whose images are both registered,
+      the share that do not coincide with an observation of one model point in
+      both images. This is the test set's size. A dense detector-free matcher
+      leaves nearly all of its output unused; a detector pipeline leaves a smaller
+      but substantial share. The held-out correspondences include ones the
+      pipeline rejected, so they are not a clean sample -- the reading takes a
+      median per pair for that reason.
+
+  pairs_verified:
+    direction: neutral
+    meaning: >
+      Pairs with at least min_held_out_per_pair held-out correspondences, which
+      are the pairs the reading is made of. Read it beside the capture's pair
+      count: a reading resting on a few pairs describes those pairs.
+
+diagnostics:
+  - code: contradicted_by_held_out_evidence
+    severity: error
+    message: Correspondences the model was never fit on sit beyond the inlier threshold from its epipolar lines.
+    suggested_actions:
+      - "Solve again from the same inputs before changing anything. A capture can have more than one stable answer, and a second solve that reads clean here is the model to keep."
+      - "Do not choose between models on reprojection error or registration. A wrong model that is self-consistent satisfies both, and has been measured satisfying them better than the correct one."
+      - "Read the per-pair residual_px array: a contradiction confined to the pairs across one part of the capture says where the solve went wrong."
+    see_also: limitations.md#what-a-contradiction-means
+  - code: nothing_held_out
+    severity: warn
+    message: No pair had enough correspondences the model did not already use; the model is unverified, not verified.
+    suggested_actions:
+      - "Supply another matcher's pairwise_matches of the same scene as `matches`. A different matcher's evidence was never in this model's objective."
+      - "Lowering min_held_out_per_pair admits pairs whose median rests on a handful of correspondences; read the per-pair array before trusting it."
+    see_also: limitations.md#when-nothing-is-held-out

@@ -399,6 +399,112 @@ def test_the_escape_bound_is_the_image_not_a_pixel_constant(module_dir):
     assert ad.error_readings(before, after, extent=1600.0)["escaped"] == 0
 
 
+# --------------------------------------------------------------------------- #
+# SparseVerification -- the fixed end step
+# --------------------------------------------------------------------------- #
+
+
+def _two_views(rotation_error_deg=0.0):
+    """500 points seen by two calibrated cameras; optionally a wrong second pose."""
+    rng = np.random.default_rng(1)
+    K = np.array([[800.0, 0.0, 512.0], [0.0, 800.0, 384.0], [0.0, 0.0, 1.0]])
+    X = rng.uniform([-1, -1, 4], [1, 1, 6], (500, 3))
+
+    def rot(axis, deg):
+        a = np.radians(deg)
+        c, s = np.cos(a), np.sin(a)
+        return {"x": np.array([[1, 0, 0], [0, c, -s], [0, s, c]]),
+                "y": np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])}[axis]
+
+    cam_i = np.hstack([np.eye(3), np.zeros((3, 1))])
+    cam_j = np.hstack([rot("y", 10.0), np.array([[-0.5], [0.0], [0.0]])])
+
+    def project(cam):
+        x = (K @ (cam[:, :3] @ X.T + cam[:, 3:])).T
+        return x[:, :2] / x[:, 2:]
+
+    xy = np.c_[project(cam_i), project(cam_j)]
+    believed = cam_j.copy()
+    believed[:, :3] = rot("x", rotation_error_deg) @ cam_j[:, :3]
+    return K, cam_i, believed, xy
+
+
+@needs_pycolmap
+def test_a_wrong_relative_pose_is_contradicted_by_the_correspondences():
+    ad = _adapter("sparse_verification")
+    K, ci, cj, xy = _two_views()
+    assert np.median(ad.sampson(ad.fundamental(K, K, ci, cj), xy)) < 1e-6
+    K, ci, cj, xy = _two_views(rotation_error_deg=3.0)
+    assert np.median(ad.sampson(ad.fundamental(K, K, ci, cj), xy)) > 3.0
+
+
+@needs_pycolmap
+def test_a_match_is_used_only_when_both_ends_land_on_one_model_point():
+    """Used means the model was fit on it; everything else is the test set."""
+    ad = _adapter("sparse_verification")
+
+    class Model:
+        def load(self, file, array):
+            return np.array([[0, 7, 100.0, 100.0], [1, 7, 300.0, 120.0],
+                             [1, 9, 500.0, 500.0]])
+
+    index = ad.observation_index(Model())
+    left = ad.nearest_point(index.get(0), np.array([[100.5, 100.4], [100.5, 100.4]]))
+    right = ad.nearest_point(index.get(1), np.array([[300.3, 119.8], [310.0, 120.0]]))
+    assert list(left) == [7, 7]
+    assert list(right) == [7, -1]  # ten pixels away is a different correspondence
+
+
+@needs_pycolmap
+def test_a_refined_model_is_consistent_with_matches_it_never_used(orch):
+    built = build(orch)
+    ba = orch.run("BundleAdjustmentGlobal", run_id="rc",
+                  inputs={"scene": built["scene"].id, "sparse": built["sparse"].id}).primary
+    v = orch.run("SparseVerification", run_id="rc",
+                 inputs={"scene": built["scene"].id, "sparse": ba.id,
+                         "matches": built["matches"].id}).primary
+
+    assert v.type == "custom/verification/v1"
+    assert v.metric("pairs_verified") > 0
+    assert 0.0 < v.metric("held_out_share") < 1.0
+    assert v.metric("heldout_residual_px") < 3.0
+    assert not [d for d in v.manifest.diagnostics if d.severity == "error"]
+
+
+@needs_pycolmap
+def test_the_service_verifies_every_refined_model_without_being_asked(tmp_path, registry):
+    """The fixed step: an optimization module's run comes back already verified,
+    against the matches in the model's own lineage, and the model stays a leaf."""
+    from dataset_paths import REPO
+
+    from sfmkit import ArtifactStore
+    from sfmorch import Orchestrator
+    from sfmorch.service import ServiceConfig, SfmService
+
+    store = ArtifactStore(tmp_path / "store")
+    orch = Orchestrator(store=store, registry=registry)
+    svc = SfmService(
+        config=ServiceConfig(modules_dir=REPO / "modules", store_root=store.root,
+                             skills_dir=REPO / "skills", inline_wait_s=600.0),
+        orchestrator=orch, registry=registry,
+    )
+    try:
+        built = build(orch)
+        out = svc.run("BundleAdjustmentGlobal", run_id="rc", wait_s=600.0,
+                      inputs={"scene": built["scene"].id, "sparse": built["sparse"].id})
+        v = out["verification"]
+        assert v["status"] == "ran"
+        assert v["evidence"] == built["matches"].id
+        assert v["metrics"]["heldout_residual_px"] < 3.0
+
+        summary = svc.run_summary("rc")
+        model = out["outputs"]["sparse"]
+        assert model in summary["leaves"]
+        assert summary["verification"][model]["status"] == "ran"
+    finally:
+        svc.jobs.shutdown()
+
+
 @needs_pycolmap
 def test_colmaps_error_agrees_with_our_own_triangulator(orch):
     """Two independent implementations measuring the same thing. A disagreement

@@ -127,9 +127,19 @@ class Run:
                 tainted |= set(step.outputs.values())
         return out
 
-    def leaves(self) -> list[str]:
-        """Artifacts nothing else in this run consumed."""
-        consumed = {a for s in self.steps for a in s.inputs.values()}
+    def leaves(self, ignore_consumers: set[str] | frozenset[str] = frozenset()) -> list[str]:
+        """Artifacts nothing else in this run consumed.
+
+        `ignore_consumers` names modules whose reading an artifact does not stop it
+        being a result. An analysis that reads a model -- the verification the
+        service runs after every refinement -- does not supersede that model, and
+        without this the run's final model would vanish from its own leaves the
+        moment it was checked.
+        """
+        consumed = {
+            a for s in self.steps if s.module not in ignore_consumers
+            for a in s.inputs.values()
+        }
         produced = [a for s in self.steps for a in s.outputs.values()]
         return [a for a in produced if a not in consumed]
 

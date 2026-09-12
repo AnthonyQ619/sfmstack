@@ -149,6 +149,17 @@ class ModuleService:
             slot: doc["type"] for slot, doc in (self.manifest.get("produces") or {}).items()
         }
 
+        # A module may declare its own payload types in its manifest's `types:`
+        # block. The host registry has always registered them; this process did
+        # not, so a custom type sealed in-process and was an unknown type at seal
+        # inside a container -- a contract the orchestrator advertised and the
+        # container could not keep. Registered here, before the adapter loads.
+        from .schema import registry as _type_registry
+
+        for tdoc in self.manifest.get("types") or ():
+            if tdoc.get("type") not in _type_registry():
+                _type_registry().register_doc(tdoc, origin=f"{self.name}:module.yaml")
+
         self._jobs: dict[str, JobRecord] = {}
         self._lock = threading.Lock()
         self._queue: queue.Queue[str] = queue.Queue()

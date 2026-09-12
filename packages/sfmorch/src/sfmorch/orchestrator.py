@@ -420,5 +420,10 @@ class Orchestrator:
             "scene": run.scene,
             "goal": run.goal,
             "steps": [s.to_doc() for s in run.steps],
-            "leaves": run.leaves(),
+            # An analysis reading an artifact does not supersede it: a model the
+            # service verified is still the run's result.
+            "leaves": run.leaves(ignore_consumers={
+                n for n in self.registry.names()
+                if self.registry.get(n).kind == "analysis"
+            }),
         }

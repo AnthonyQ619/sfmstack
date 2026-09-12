@@ -431,7 +431,7 @@ class SfmService:
             )
             if not result.cached and result.step.duration_s:
                 self.durations.observe(module, result.step.duration_s)
-            return self._run_payload(result)
+            return self._run_payload(result, run_id)
 
         handle = self.jobs.submit_and_wait(
             work,
@@ -476,7 +476,7 @@ class SfmService:
                 run_id=run_id, from_artifact=from_artifact, overrides=overrides
             )
             return {
-                "replayed": [self._run_payload(r) for r in results],
+                "replayed": [self._run_payload(r, run_id) for r in results],
                 "leaf": results[-1].step.outputs if results else {},
             }
 
@@ -510,7 +510,7 @@ class SfmService:
             )]
         }
 
-    def _run_payload(self, result) -> dict[str, Any]:
+    def _run_payload(self, result, run_id: str | None = None) -> dict[str, Any]:
         step = result.step
         notes = {
             slot: art.manifest.body.strip()
@@ -533,7 +533,65 @@ class SfmService:
         digest = self._health_digest(result.outputs)
         if digest is not None:
             payload["health_profile"] = digest
+        verification = self._verify(result, run_id)
+        if verification is not None:
+            payload["verification"] = verification
         return payload
+
+    # The fixed end step. SparseVerification tests a refined model against the
+    # matcher's correspondences it never used -- the one reading a wrong but
+    # self-consistent model cannot pass by construction. It runs HERE rather than
+    # being left to the agent, because the agent's only other grounds for deciding
+    # to run it are the self-reported readings a self-consistent wrong model
+    # satisfies: one capture's wrong models were measured satisfying them better
+    # than its correct model did. The same compelled delivery the health digest
+    # gets, at the same moment.
+    VERIFIER = "SparseVerification"
+
+    def _verify(self, result, run_id: str | None) -> dict[str, Any] | None:
+        step = result.step
+        try:
+            kind = self.registry.get(step.module).kind
+        except Exception:
+            return None
+        models = [a for a in result.outputs.values() if a.type == self.SPARSE_MODEL_TYPE]
+        # After refinement only. Before the final adjustment every model reads
+        # badly on held-out evidence, correct or not, so a reading there would be
+        # an alarm on every capture.
+        if kind != "optimization" or not models:
+            return None
+        model = models[0]
+        if self.VERIFIER not in self.registry.names():
+            return {"status": "unavailable", "model": model.id,
+                    "note": f"{self.VERIFIER} is not registered; this model is "
+                            f"unverified, not verified."}
+        matches = self._ancestor_of_type(model, self.MATCHES_TYPE)
+        if matches is None or not model.manifest.scene:
+            return {"status": "unverified", "model": model.id,
+                    "note": ("No pairwise_matches/v1 in this model's lineage: it came "
+                             "from a pipeline that never matched pairs. Run "
+                             f"{self.VERIFIER} yourself with any matcher's output for "
+                             "this scene as `matches`.")}
+        try:
+            res = self.orch.run(
+                self.VERIFIER, run_id=run_id or model.manifest.run,
+                inputs={"scene": model.manifest.scene, "sparse": model.id,
+                        "matches": matches.id},
+            )
+        except Exception as e:  # the check must never take the step down with it
+            return {"status": "failed", "model": model.id, "error": str(e)}
+        art = res.primary
+        return {
+            "status": "ran",
+            "module": self.VERIFIER,
+            "model": model.id,
+            "evidence": matches.id,
+            "artifact": art.id,
+            "cached": res.cached,
+            "metrics": {n: m.value for n, m in art.manifest.metrics.items()},
+            "diagnostics": [d.to_doc() for d in art.manifest.diagnostics],
+            "note": art.manifest.body.strip(),
+        }
 
     # The rungs of the reconstruction health profile, in ladder order. Defined
     # and argued in skills/health/ladder.md -- the run payload carries the
@@ -1114,7 +1172,48 @@ class SfmService:
     def run_summary(self, run_id: str) -> dict[str, Any]:
         summary = self.orch.summary(run_id)
         summary["run_md"] = str(self.orch.runs_dir / run_id / "run.md")
+        summary["verification"] = self._leaf_verification(summary)
         return summary
+
+    def _leaf_verification(self, summary: dict[str, Any]) -> dict[str, Any]:
+        """The fixed step's verdict for every final sparse model in the run.
+
+        A final model that no SparseVerification step read is reported as
+        unverified rather than left out, so its absence is visible the way
+        `analysis_missing` makes a skipped triage visible in the plan brief.
+        """
+        verdicts: dict[str, Any] = {}
+        steps = summary.get("steps") or []
+        for leaf in summary.get("leaves") or []:
+            try:
+                art = self.store.open(leaf)
+            except Exception:
+                continue
+            if art.type != self.SPARSE_MODEL_TYPE:
+                continue
+            reads = [
+                s for s in steps
+                if s.get("module") == self.VERIFIER
+                and (s.get("inputs") or {}).get("sparse") == leaf
+            ]
+            if not reads:
+                verdicts[leaf] = {
+                    "status": "unverified",
+                    "note": f"No {self.VERIFIER} step read this model in this run.",
+                }
+                continue
+            out_id = next(iter((reads[-1].get("outputs") or {}).values()), None)
+            try:
+                v = self.store.open(out_id) if out_id else None
+            except Exception:
+                v = None
+            verdicts[leaf] = {
+                "status": "ran",
+                "artifact": out_id,
+                "metrics": {n: m.value for n, m in v.manifest.metrics.items()} if v else {},
+                "diagnostics": [d.code for d in v.manifest.diagnostics] if v else [],
+            }
+        return verdicts
 
     def compare(self, artifact_ids: list[str]) -> dict[str, Any]:
         if len(artifact_ids) < 2:
