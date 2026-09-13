@@ -1,5 +1,5 @@
 name: PoseEssentialToPnP
-version: 1.2.1
+version: 1.3.0
 kind: pose
 summary: >
   Incremental SfM: essential-matrix bootstrap on a chosen initial pair, then
@@ -39,10 +39,16 @@ description: |
   happen while the model is being built, because by the time the model exists the
   drift is already baked into the structure.
 
+  Points that leave the image during a window solve are counted
+  (`escaped_points`) and never used to call the run diverged. Above zero they
+  start a second solve: once a model built on these poses has been refined, the
+  service re-solves the chain at a wider window and keeps that solve unless it
+  fails or the verifier vetoes it.
+
   Scale is arbitrary and unrecoverable from images alone. The initial pair's
   baseline is fixed to unit length, so every distance downstream is in that unit.
 
-image: sfmstack/pose-incremental:1.2.1
+image: sfmstack/pose-incremental:1.3.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -198,46 +204,37 @@ params:
       image count; that was fitted on captures whose utilization happened to be
       high, and it is wrong as a law.
 
-      WIDENING ALSO REMOVES A CAUSE OF DIVERGENCE rather than merely improving
-      an average. An under-constrained point inside a narrow window is what makes
-      the local BA gain blow up; admitting the cameras that see it is the fix. A
-      run that diverges at the default is worth widening before it is worth
-      anything else.
+      WHEN POINTS ESCAPE, THE PIPELINE WIDENS IT FOR YOU. A point that leaves
+      the image during a window solve (escaped_points above zero) is the
+      reading that a wider window is likely to give a better finished model:
+      on the captures where it happened, re-solving wider improved most
+      finished models against reference geometry and made very few worse.
+      Where nothing escaped, widening changed nothing on most captures. So
+      once the model is refined, the service re-solves the chain at 28, or
+      the image count if smaller, and keeps that solve unless it fails or the
+      verifier vetoes it. 40 is the last resort, run only when the solve at
+      28 fails or is vetoed. The rule and its reasons are in limitations.md,
+      "Escaped points start a second solve".
 
-      ON A SEQUENCE LONGER THAN THE WINDOW, a cost/benefit dial -- but the cost
-      half of that sentence was doing damage and has been corrected. Cost does
-      grow faster than linearly and below 5 there is almost no freedom left after
-      the two fixed cameras. What was WRONG was the implication that a wide window
-      is an extravagance: "above ~20 you are paying global-BA prices ... widen
-      only when local_ba_gain_px stays high".
+      WHY A FIXED WIDTH, AND WHY NOT KEEP WIDENING. The benefit rose with
+      width and levelled off. Small steps up from the default were worth
+      little on average, and they were where a capture with more than one
+      stable answer was pushed into a wrong one -- which the verifier vetoed
+      every time. The escape count cannot say when to stop: it does not fall
+      as the window grows, and widening until nothing escaped chose worse
+      models than a fixed width did.
 
-      Measured across a seventeen-capture sweep, setting this to the FULL IMAGE
-      COUNT was the single largest improvement on three captures -- one gained
-      about 40% in track_utilization, another 42% lower mean reprojection error
-      with more structure at equal registration -- and it cleared a
-      local_ba_diverged error that no point-exclusion setting could. On one of
-      those captures local_ba_gain_px was FALLING while every other metric
-      improved, so the trigger this field used to name moves opposite to the
-      benefit and must not be gated on.
+      THE WHOLE CAPTURE IS NOT THE HAZARD IT WAS WRITTEN AS. An earlier
+      version of this note warned that a window equal to the capture throws
+      away the drift control that motivates in-loop refinement. At the capture
+      sizes measured, a capture-wide window was not worse than 40, though it
+      was rarely better. The second solve still caps the window, because cost
+      grows with it and no capture much larger than those has been measured.
+      40 beat 28 on a few configurations and lost on none; it is held back as
+      a last resort for cost, not because it was found harmful.
 
-      BUT DO NOT READ THAT AS "SET IT TO THE IMAGE COUNT". This is LOCAL bundle
-      adjustment: a sliding window over recently registered cameras, re-solved
-      every window-size registrations. A window equal to the capture is not a
-      wide local BA, it is a global BA run once per window with the drift-control
-      property that motivates in-loop refinement thrown away -- and if that is
-      what the capture needs, the honest move is BundleAdjustmentGlobal at the
-      end, which is cheaper and says what it is.
-
-      What the evidence actually supports is that the OLD CEILING WAS TOO LOW,
-      not that there is no ceiling. Stay in window territory -- powers of two from
-      8 upward are a reasonable sweep -- and widen while the model improves. Where
-      widening only stops helping at the full image count, treat that as a signal
-      about the capture (its drift is not local) rather than as the setting to
-      ship: reach for the global adjuster instead.
-
-      The artifact publishes only the MEAN gain over all solves, so "late in the
-      sequence" was never readable here anyway, and local_ba_gain_px must not be
-      used as the widening trigger in either direction.
+      local_ba_gain_px must not be used to choose this in either direction: it
+      is not comparable across window settings (see its meaning).
 
   local_ba_interval:
     type: integer
@@ -428,7 +425,10 @@ metrics:
       off cost 14% of the mean error. Use it to see that in-loop refinement is
       doing something; use median_reprojection_error to choose between settings.
 
-      Suppressed to null when a solve diverges, which raises local_ba_diverged.
+      Measured over the points that stayed in the image before and after each
+      solve; escaped points are counted in escaped_points instead. It used to be
+      averaged over every point, where one escapee could make it absurd and a
+      guard on it called good runs diverged.
 
   median_reprojection_error:
     direction: lower_better
@@ -437,6 +437,27 @@ metrics:
       Median pixel error beside the mean. Mean well above median means a few bad
       observations; the two together means a systematic problem. Null when
       local_ba never ran and no observations were measured.
+
+  escaped_points:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: >
+      Points that ended at least one in-loop window solve with a reprojection
+      error larger than the image -- an error no point can have and still
+      project into the image it was observed in. A point on near-parallel rays
+      has a barely constrained depth, and a solve that holds only part of the
+      capture can let it wander. They are left out of local_ba_gain_px, and the
+      final reprojection filter removes most of them.
+
+      NOT A DIVERGENCE READING. Nothing on this artifact is called
+      untrustworthy on it, because both guards tried here mislabelled good
+      runs: one on the mean window gain, which a single escapee owns, and the
+      tail rule the adjusters use, which applied to every window solve flagged
+      runs whose finished models were accurate and passed the verifier.
+
+      WHAT IT IS: the trigger for a second solve at a wider window, which the
+      service runs once the model is refined. It is not a stopping rule for
+      widening -- the count does not fall as the window grows.
 
 diagnostics:
   - code: uncalibrated_scene
@@ -495,15 +516,15 @@ diagnostics:
       - Run bundle adjustment; this module does not refine globally.
     see_also: tuning.md#mean_reprojection_error-above-2
 
-  - code: local_ba_diverged
-    severity: error
-    message: A local bundle-adjustment solve diverged; the poses are not trustworthy.
+  - code: points_escaped
+    severity: warn
+    metric: escaped_points
+    message: Some points left the image during the in-loop window solves; they are counted, not judged, and a wider window is likely to give a better finished model.
     suggested_actions:
-      - "FIRST widen local_ba_window -- sweep upward through window sizes, do NOT jump to the image count. Across a seventeen-capture sweep widening cleared the divergence where point exclusion did not, and improved every other metric at once. If only a full-capture window helps, the drift is not local: use BundleAdjustmentGlobal instead."
-      - "Then exclude under-constrained points: raise min_triangulation_angle_deg, or min_track_len to 3. These worked on the two captures the original account was fitted on and have since failed on several others, so they are no longer the first move."
-      - "Do NOT read local_ba_gain_px on this run; it is suppressed."
-      - "If it persists, set local_ba: false. On more than one capture that produced the BEST model on every axis, not merely a usable one, so it is a legitimate configuration rather than a defeat."
-    see_also: tuning.md#local-ba-diverged
+      - "Nothing, when the service is driving. After a bundle adjustment refines a model built on these poses, it re-solves that chain with a wider local_ba_window and keeps the wider solve unless it fails or the verifier vetoes it. The decision is in that step's `second_solve`."
+      - "Driving by hand: re-solve this stage at local_ba_window 28, or the image count if that is smaller, carry it through the same refinement, and keep it unless it fails or is vetoed. Go to 40 only if that solve fails or is vetoed. Never choose between the solves on reprojection error."
+      - "Do not remove the escaped points, raise min_track_len, or set local_ba false instead. Each was tried against widening on the same captures, and none improved the finished model as consistently."
+    see_also: limitations.md#escaped-points-start-a-second-solve
 
   - code: local_ba_not_converging
     severity: warn

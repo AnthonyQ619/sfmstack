@@ -1,7 +1,7 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.2.1
-curated_at: 2026-08-07
+module_version: 1.3.0
+curated_at: 2026-09-13
 ---
 
 # When to stop tuning PoseEssentialToPnP and switch
@@ -86,6 +86,68 @@ already running did not exist.
 across a sequence much longer than the window. On a set at or below the window
 size there is no drift to bound at all, and the parameter guidance changes shape
 accordingly — see `tuning.md` and the `local_ba_window` note in the manifest.
+
+## Escaped points start a second solve
+
+*Symptom:* `points_escaped`, with `escaped_points` above zero — and, on the
+bundle adjustment that follows, a `second_solve` block naming the model to keep.
+
+**Why one solve is not enough here.** The in-loop window holds only the most
+recently registered cameras. A point whose depth those cameras barely constrain
+can leave the image during a solve, and the next image is registered against
+structure fitted beside it. Admitting the cameras that see the point — a wider
+window — is what constrains it. Nothing on the first model says how much that
+mattered: its reprojection error can read better than the wider solve's, because
+it kept an easier set of points. So the pipeline solves again rather than asking
+the first model's numbers.
+
+**What the service does**, once a bundle adjustment has refined a model built on
+these poses:
+
+1. Re-solves the chain from this stage to that refined model with
+   `local_ba_window` at 28, or the image count if smaller. Every other setting,
+   and every step in between, is repeated as it was.
+2. Keeps that solve unless it failed or the verifier vetoed it.
+3. Only if it failed or was vetoed, tries 40 — or the image count, if smaller —
+   as a last resort, under the same rule.
+4. Otherwise keeps the first model, unless it was vetoed too; then nothing is
+   kept, and the result says so.
+
+If the first solve already ran at 28 or wider, it stands in for step 1, and the
+last resort runs only if it was vetoed. If the window already spans the capture
+there is nothing wider, and the escapes are only reported.
+
+**Why each part is there.**
+
+- *It triggers on escaped points and nothing else.* Where nothing escaped,
+  re-solving wider changed nothing on most captures and still cost the runtime.
+- *The wider solve is kept by default, not chosen on its numbers.* On the
+  captures where points escaped it was the better model far more often than the
+  worse one. Keeping whichever solve reported the lower reprojection error
+  instead gave back most of that benefit, because an easier model reports less
+  error.
+- *The width is fixed, not searched.* The benefit rose with width and levelled
+  off. Widening until nothing escapes chose worse models than a fixed width: the
+  count does not fall as the window grows, since a wider solve holds more points
+  that can wander.
+- *The veto is the safeguard.* Small steps up from the default width were worth
+  little on average, and they were where a capture whose correspondences support
+  more than one stable model landed in a wrong one — many degrees off, with every
+  self-reported reading accepting it. The verifier vetoed each of those, and the
+  width the pipeline uses did not produce one. Without the veto, a wrong second
+  solve would silently replace a right first one.
+- *40 is a last resort for cost, not for risk.* It beat 28 on a few
+  configurations and lost on none, and it costs more. A window spanning the whole
+  capture was no worse at the capture sizes measured, but rarely better, and
+  larger captures have not been measured.
+
+**Cost.** The chain from this stage to the refined model, run again at a wider
+window: typically under twice the time of the first run of that chain, more on
+long captures.
+
+**What to do with the result.** Continue from the model `second_solve` names as
+`kept`. `sfm_run_summary` lists both models, marks which was kept, and repeats
+each one's verification. Do not re-solve by hand when the service is driving.
 
 ## When a global method is simply better
 

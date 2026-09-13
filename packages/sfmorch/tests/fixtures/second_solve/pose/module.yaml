@@ -1,0 +1,43 @@
+name: FakePose
+version: 1.0.0
+kind: pose
+summary: Poses every image at identity and reports escaped points below a window. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  tracks: {type: tracks/v1, required: true}
+produces:
+  poses: {type: poses/v1}
+
+params:
+  local_ba_window:
+    type: integer
+    default: 8
+    minimum: 3
+    maximum: 100
+    description: The in-loop window, which is what the service widens on a second solve.
+  escape_below:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 100
+    description: Report escaped points while the window is narrower than this.
+  fail_at:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 100
+    description: Raise at exactly this window, to stage a re-solve that cannot finish.
+
+metrics:
+  registered_fraction: {direction: higher_better, meaning: Every image is posed.}
+  registered_images: {direction: higher_better, meaning: Images posed.}
+  mean_reprojection_error: {direction: lower_better, nullable: true, meaning: A fixed value.}
+  median_reprojection_error: {direction: lower_better, nullable: true, meaning: A fixed value.}
+  escaped_points:
+    direction: lower_better
+    healthy: [null, 0]
+    meaning: Staged by escape_below.

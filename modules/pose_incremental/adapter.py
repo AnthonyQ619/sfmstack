@@ -36,6 +36,22 @@ DEG = 180.0 / np.pi
 # into, which is a drift source rather than a drift fix.
 MIN_FIXED = 2
 
+# What `points_escaped` tells the reader to do. One list, because the manifest
+# declares the same actions and the smoke test holds the two to the same knobs.
+ESCAPE_ACTIONS = [
+    "Nothing, when the service is driving. After a bundle adjustment refines a "
+    "model built on these poses, it re-solves that chain with a wider "
+    "local_ba_window and keeps the wider solve unless it fails or the verifier "
+    "vetoes it. The decision is in that step's `second_solve`.",
+    "Driving by hand: re-solve this stage at local_ba_window 28, or the image "
+    "count if that is smaller, carry it through the same refinement, and keep it "
+    "unless it fails or is vetoed. Go to 40 only if that solve fails or is "
+    "vetoed. Never choose between the solves on reprojection error.",
+    "Do not remove the escaped points, raise min_track_len, or set local_ba false "
+    "instead. Each was tried against widening on the same captures, and none "
+    "improved the finished model as consistently.",
+]
+
 
 def per_image_intrinsics(scene, n_images: int):
     """K and distortion for every image, whatever shape the calibration took."""
@@ -178,9 +194,40 @@ def read_summary(summary) -> tuple[int, bool]:
     return iterations, converged
 
 
+def window_readings(before, after, extent: float) -> dict:
+    """Per-point errors of one window solve -> what can be published about it.
+
+    A point whose error after the solve exceeds the image extent has ESCAPED: it
+    no longer projects anywhere near the image it was observed in, so its error is
+    not a measurement. Inside the loop that is a point on near-parallel rays whose
+    depth the cameras in the window barely constrain, and it wanders while the
+    rest of the solve improves.
+
+    Escapes are counted and never used to call the run diverged. Two guards were
+    tried and both mislabelled good runs. The first judged the MEAN window gain,
+    which one escapee owns: it raised an error on solves whose median and tail
+    had improved. The second was the tail rule the adjusters use, applied to every
+    window solve: inside the loop, where each solve holds only part of the
+    capture, it flagged runs whose finished models were accurate and passed the
+    verifier. The finished model is judged downstream -- by the adjuster's own
+    tail rule and the verifier's veto -- and the escape count's job here is to
+    start a second solve at a wider window, which the service runs.
+
+    The gain is taken over the points measurable on both sides of the solve, so
+    it describes the same points before and after and is bounded by the image.
+    """
+    before = np.asarray(before, dtype=np.float64)
+    after = np.asarray(after, dtype=np.float64)
+    escaped = ~np.isfinite(after) | (after > extent)
+    measured = ~escaped & np.isfinite(before) & (before <= extent)
+    gain = (float(before[measured].mean() - after[measured].mean())
+            if measured.any() else None)
+    return {"escaped_mask": escaped, "escaped": int(escaped.sum()), "gain": gain}
+
+
 def bundle_adjust_window(rec, window, *, K_all, undist_in, tracks_in, row_of,
                          sizes, names, min_track_len, max_iterations, robust_loss,
-                         loss_scale):
+                         loss_scale, extent=float("inf")):
     """Refine the cameras in `window` and the structure they see, in place.
 
     `window` is in REGISTRATION order and its first MIN_FIXED entries are held
@@ -190,8 +237,9 @@ def bundle_adjust_window(rec, window, *, K_all, undist_in, tracks_in, row_of,
     points better, but the whole point of a local solve is that its cost does not
     grow with the model.
 
-    Returns (error_before, error_after, iterations, converged) in pixels, or None
-    if the window carried too little structure to solve.
+    Returns (readings, iterations, converged) -- `readings` as `window_readings`
+    describes, plus the track ids that escaped -- or None if the window carried
+    too little structure to solve.
     """
     if len(window) <= MIN_FIXED:
         return None
@@ -243,7 +291,8 @@ def bundle_adjust_window(rec, window, *, K_all, undist_in, tracks_in, row_of,
         return None
 
     sub.update_point_3d_errors()  # COLMAP leaves per-point error unset until asked
-    before = float(sub.compute_mean_reprojection_error())
+    tracks = list(point_id_of)
+    before = np.array([sub.point3D(point_id_of[t]).error for t in tracks], dtype=np.float64)
 
     config = pycolmap.BundleAdjustmentConfig()
     for image_id in image_id_of.values():
@@ -267,8 +316,10 @@ def bundle_adjust_window(rec, window, *, K_all, undist_in, tracks_in, row_of,
     summary = pycolmap.create_default_bundle_adjuster(options, config, sub).solve()
 
     sub.update_point_3d_errors()
-    after = float(sub.compute_mean_reprojection_error())
+    after = np.array([sub.point3D(point_id_of[t]).error for t in tracks], dtype=np.float64)
     iterations, converged = read_summary(summary)
+    readings = window_readings(before, after, extent)
+    readings["escaped_tracks"] = [t for t, e in zip(tracks, readings["escaped_mask"]) if e]
 
     # Write back. The fixed cameras did not move, so skipping them is not an
     # optimisation -- reading their pose back would round-trip a float for nothing.
@@ -282,7 +333,7 @@ def bundle_adjust_window(rec, window, *, K_all, undist_in, tracks_in, row_of,
     for track, point_id in point_id_of.items():
         rec.points[track] = np.asarray(sub.point3D(point_id).xyz, dtype=np.float64)
 
-    return before, after, iterations, converged
+    return readings, iterations, converged
 
 
 @module
@@ -294,6 +345,9 @@ def run(ctx: Ctx):
     names = scene.load("images", "names")
     sizes = scene.load("images", "size_current")
     n_images = len(names)
+    # The escape bound for the in-loop solves: an error larger than the image is
+    # not a measurement. Scale-free, the same bound the adjusters use.
+    extent = float(np.asarray(sizes, dtype=np.float64).max()) if len(sizes) else float("inf")
 
     if p.local_ba and pycolmap is None:
         raise ValueError(
@@ -493,9 +547,13 @@ def run(ctx: Ctx):
     # just moved.
     order: list[int] = [i0, j0]
     ba_runs, ba_gains, ba_iterations, ba_failures = 0, [], 0, 0
+    # Points that left the image in at least one window solve, and how many solves
+    # lost any. Counted, never judged -- see `window_readings`.
+    escaped_tracks: set[int] = set()
+    escape_solves = 0
 
     def refine():
-        nonlocal ba_runs, ba_iterations, ba_failures
+        nonlocal ba_runs, ba_iterations, ba_failures, escape_solves
         if not p.local_ba:
             return
         n = len(order)
@@ -510,12 +568,16 @@ def run(ctx: Ctx):
             sizes=sizes, names=names, min_track_len=p.min_track_len,
             max_iterations=p.local_ba_max_iterations,
             robust_loss=p.local_ba_robust_loss, loss_scale=p.local_ba_loss_scale,
+            extent=extent,
         )
         if result is None:
             return
-        before, after, iterations, converged = result
+        readings, iterations, converged = result
         ba_runs += 1
-        ba_gains.append(before - after)
+        if readings["gain"] is not None:
+            ba_gains.append(readings["gain"])
+        escaped_tracks.update(readings["escaped_tracks"])
+        escape_solves += bool(readings["escaped"])
         ba_iterations += iterations
         if not converged:
             ba_failures += 1
@@ -662,18 +724,16 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(4.0, None))
 
     mean_gain = float(np.mean(ba_gains)) if ba_gains else None
-    # A window solve that diverges produces a gain of ~1e150, which is not a
-    # measurement. Publishing it as one put a 150-digit float into an artifact
-    # note and an info-severity diagnostic whose first action was "nothing"; six
-    # captures hit it through five unrelated parameters. The bound is deliberately
-    # loose -- anything past a thousand pixels on a scene whose images are ~1e3 px
-    # across is a solver failure, not a bad model.
-    ba_diverged = mean_gain is not None and not (abs(mean_gain) < 1e3)
-    if ba_diverged:
-        mean_gain = None
+    # Over the points measurable on both sides of each solve. It used to be the
+    # mean over every point, which one escapee put near 1e150, and a guard on that
+    # value called the run diverged -- on solves whose median and tail had
+    # improved. With escapees counted apart the gain is bounded by the image and
+    # needs no guard.
     out.metric("local_ba_runs", ba_runs, direction="neutral")
     out.metric("local_ba_gain_px", round(mean_gain, 4) if mean_gain is not None else None,
                direction="higher_better", healthy=(0.0, None))
+    out.metric("escaped_points", len(escaped_tracks),
+               direction="lower_better", healthy=(None, 0))
 
     if frac < 1.0:
         missing = [int(f) for f in range(n_images) if not valid[f]]
@@ -721,27 +781,24 @@ def run(ctx: Ctx):
             see_also="limitations.md#degenerate-captures",
         )
 
-    if ba_diverged:
+    if escaped_tracks:
         out.diagnostic(
-            "local_ba_diverged",
-            severity="error",
+            "points_escaped",
+            severity="warn",
             message=(
-                f"A local bundle-adjustment solve diverged: window error moved by "
-                f"a non-finite or absurd amount over {ba_runs} solves. The poses "
-                f"above are not trustworthy."
+                f"{len(escaped_tracks)} points left the image during "
+                f"{escape_solves} of {ba_runs} in-loop window solves: each ended a "
+                f"solve with an error larger than the image ({extent:.0f}px). They "
+                f"are counted in escaped_points and left out of local_ba_gain_px. "
+                f"This is not a divergence and does not make these poses "
+                f"untrustworthy; it is the reading that says a wider window is "
+                f"likely to give a better finished model."
             ),
-            suggested_actions=[
-                "Exclude under-constrained points from the window: raise "
-                "min_triangulation_angle_deg, or min_track_len to 3. A two-view "
-                "track and a near-parallel point are the same defect here and "
-                "both were measured causing this.",
-                "Do NOT read local_ba_gain_px on this run; it is suppressed.",
-                "If it persists, set local_ba: false to get a usable model and "
-                "report the configuration.",
-            ],
-            see_also="tuning.md#local-ba-diverged",
+            suggested_actions=ESCAPE_ACTIONS,
+            see_also="limitations.md#escaped-points-start-a-second-solve",
         )
-    elif ba_failures:
+
+    if ba_failures:
         # Gated on whether non-convergence is CONSEQUENTIAL. Hitting the cap is a
         # Ceres termination condition, not a statement about the model: forcing
         # convergence by raising the cap eightfold converted solves and moved no
@@ -807,15 +864,14 @@ def run(ctx: Ctx):
     ba_note = (
         (
             f"Local BA ran {ba_runs} times over a {p.local_ba_window}-camera "
-            f"window ({ba_iterations} Ceres iterations total), moving window "
-            f"reprojection error by {mean_gain:+.3f}px per solve on average. "
-            if mean_gain is not None else
-            # A diverged solve: the gain is suppressed rather than printed, which
-            # is the whole point of the guard -- an earlier version rendered the
-            # raw value into this sentence as a 150-digit float.
-            f"Local BA ran {ba_runs} times over a {p.local_ba_window}-camera "
-            f"window ({ba_iterations} Ceres iterations total) and DIVERGED; the "
-            f"per-solve gain is suppressed and these poses are not trustworthy. "
+            f"window ({ba_iterations} Ceres iterations total)"
+            + (f", moving window reprojection error by {mean_gain:+.3f}px per "
+               f"solve on average over the points that stayed in the image. "
+               if mean_gain is not None else ". ")
+            + (f"{len(escaped_tracks)} points escaped the image in "
+               f"{escape_solves} of those solves; they are counted, not judged, "
+               f"and they are what starts a second solve at a wider window. "
+               if escaped_tracks else "")
         )
         if ba_runs else
         ("Local BA was enabled but never had a window with enough structure to solve. "

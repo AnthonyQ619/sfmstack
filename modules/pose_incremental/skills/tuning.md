@@ -1,7 +1,7 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.2.1
-curated_at: 2026-08-07
+module_version: 1.3.0
+curated_at: 2026-09-13
 ---
 
 # Tuning PoseEssentialToPnP
@@ -186,11 +186,11 @@ sweep of twelve-image sets:
    reverses exactly where the *point count* moves, and the rule that survives is
    the pair, not the error alone.
 
-   **Widening also removes a cause of divergence**, which is a different kind of
+   **Widening also settles the points that escape**, which is a different kind of
    win from a better average: an under-constrained point inside a narrow window is
-   what makes the gain blow up, and admitting the cameras that see it is the fix.
-   A run that reports `local_ba_diverged` at the default is worth widening before
-   it is worth anything else.
+   what leaves the image during a solve, and admitting the cameras that see it is
+   the fix. When `escaped_points` is above zero the pipeline widens for you — see
+   [limitations](limitations.md#escaped-points-start-a-second-solve).
 2. **The ablation can run the other way.** On one exhaustively-matched short set,
    `local_ba: false` gave a *better* raw mean and a worse median. That is the
    robust-loss signature, not a reason to switch it off — the median is the
@@ -238,73 +238,46 @@ improvement under a robust loss could be the loss reshaping residuals it is
 directly downweighting; an interior minimum cannot be. Finding the turn is one
 extra run and it is what makes the result credible.
 
-## Local BA diverged
+## `escaped_points` above zero
 
-`local_ba_diverged` is an **error**, and unlike the warning below it means the run
-is not usable: a window solve blew up and the poses above it are not trustworthy.
-It is raised when the mean window gain comes back non-finite or absurdly large, and
-`local_ba_gain_px` is suppressed to null on that run so the number cannot be read
-as a measurement.
+**It is not a divergence, and the run is usable.** A point whose error after a
+window solve exceeds the image has escaped: a point on near-parallel rays, whose
+depth the cameras in the window barely constrain, wandered while the rest of the
+solve improved. It is counted in `escaped_points` and left out of
+`local_ba_gain_px`, and the final reprojection filter removes most such points.
 
-**The point-exclusion account above was the whole explanation and it is not
-sufficient.** It was fitted on two captures where an exclusion happened to work.
-Across a seventeen-capture sweep the diagnostic fired on seven, and on those the
-exclusion ladder failed outright: one reader ran both exclusions alone, both
-combined, a widened window and a residual-matched loss scale — seven
-configurations — and every one still diverged. Where an exclusion did clear it,
-it was not always the one the account predicts: on one capture `min_track_len: 3`
-worked while raising the triangulation angle, offered as equivalent, did not.
+**Correction, because this section said the opposite.** It described a
+`local_ba_diverged` error, raised when the mean window gain came back absurd, and
+called the poses untrustworthy. A mean is owned by its largest value, and the
+firings examined were escaped points on solves whose median and tail had
+improved. The remedy ladder it offered — exclude points, raise `min_track_len`,
+turn `local_ba` off — was measured against widening on the same captures, and
+none improved the finished model as consistently. The tail rule the adjusters now
+use was tried as a replacement and also mislabelled runs: inside the loop, where
+each solve holds part of the capture, it flagged runs whose finished models were
+accurate and passed the verifier. So this stage counts escapes and judges
+nothing; the finished model is judged downstream, by the adjuster's own tail rule
+and the verifier's veto.
 
-**What actually cleared it, repeatedly, was WIDENING THE WINDOW.** On three
-captures a substantially wider `local_ba_window` removed the divergence and
-improved every other metric at once — one measured +40% `track_utilization`,
-another −42% mean reprojection error with more structure at equal registration.
-The old ceiling ("above ~20 you are paying global-BA prices") was too low and was
-discouraging the move that works.
+**What the count is for: it starts a second solve.** Where points escaped, a
+wider window gave a better finished model far more often than a worse one; where
+nothing escaped, widening changed nothing on most captures. The service acts on
+it: once the model is refined, it re-solves the chain from this stage at
+`local_ba_window` 28 (or the image count, if smaller) and keeps that solve unless
+it fails or the verifier vetoes it; 40 runs only as a last resort. The rule, and
+why each part of it is there:
+[limitations](limitations.md#escaped-points-start-a-second-solve).
 
-**It does not follow that the window should be the capture.** This is a sliding
-window re-solved every window-size registrations, and setting it to the image
-count discards the drift control that is the whole reason for refining in the
-loop — at which point a global adjuster at the end is cheaper and more honest.
-Sweep upward through window sizes; if nothing short of the full capture helps,
-that is evidence the drift is not local, and the answer is
-`BundleAdjustmentGlobal`, not a degenerate window.
+**Driving by hand, do the same.** One re-solve at that width, carried through the
+same refinement, kept unless it fails or is vetoed. Do not choose between the two
+on reprojection error, and do not keep widening until the count reaches zero — it
+does not fall as the window grows, and chasing it chose worse models than a fixed
+width.
 
-The honest current account is that this is a CONDITIONING failure of the window
-solve, and the window itself is the first-order variable — a window too small to
-constrain the cameras in it is under-determined however you filter the points.
-Point exclusion helps where it happens to make the remaining problem
-well-conditioned, which is why it worked twice and then stopped working.
-
-**So, in order:**
-
-1. **Widen `local_ba_window`** — a real sweep upward through window sizes, not a
-   jump to the image count. This is the move with the most evidence behind it and
-   it repeatedly improved the model beyond just clearing the flag. If only a
-   window spanning the whole capture helps, stop and use a global adjuster.
-2. **Then try `min_triangulation_angle_deg`**, checking it binds at all first: on
-   several captures the entire 3–5 range recommended elsewhere is inert because
-   no surviving point sits in it (see below).
-3. **Or `min_track_len` to 3**, which excludes two-view tracks. It costs a large
-   fraction of the model and has been measured *raising* reprojection error, so
-   prefer the other two.
-4. **If none works, set `local_ba: false`** and record the configuration. On more
-   than one capture this produced not merely a usable model but the BEST model on
-   every axis — so treat it as a legitimate configuration rather than a defeat,
-   and read the note below about what that implies.
-
-**What it implies that the escape hatch keeps winning.** In-loop local BA is
-presented across this stack as the default worth having. On the captures where it
-diverged, disabling it was sometimes strictly better. Either the default is wrong
-for this class of capture, or in-loop refinement is buying less than the drift
-argument for it claims. That is not settled here, and it is recorded as an open
-question rather than resolved by a sentence.
-
-**It was previously reported as `info` with a first action of "nothing".** Six
-captures reached it through five unrelated parameters — a loosened reprojection
-filter, a raised seed angle, a matcher swap, default settings, and a *narrowed*
-window — and the guidance told all of them to ignore it. There is no safe
-direction; the guard is on the value now.
+**What stays open.** The earlier account recorded that `local_ba: false` was
+sometimes the best configuration where the old guard fired. Against a wider window
+on the same captures it was not reliably better than the first solve. When in-loop
+refinement pays, and by how much, is still not settled here.
 
 ## `min_triangulation_angle_deg` — check that it binds before tuning it
 
@@ -341,9 +314,10 @@ The solves are running and not lowering window reprojection error.
 - **If it is strongly negative** (worse than about -0.05 px consistently), suspect
   the window: `local_ba_window` below ~5 leaves almost no freedom after the two
   fixed cameras, so the solve can only move structure. Note this band is for
-  *small* negatives. A value orders of magnitude outside it is a diverged solve,
-  not a robust-loss artefact, and now raises `local_ba_diverged` as an error with
-  the metric suppressed — see that section.
+  *small* negatives. The gain is measured over the points that stayed in the
+  image, so an escaped point can no longer push it orders of magnitude out —
+  escapes are counted instead; see
+  [`escaped_points` above zero](#escaped_points-above-zero).
 - **It does not rank settings, and two sweeps proved it.** Across `local_ba_window`
   it rises as the window narrows and the model gets worse; across
   `local_ba_loss_scale` it rises monotonically through the point where the median

@@ -1,7 +1,7 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.2.1
-curated_at: 2026-09-07
+module_version: 1.3.0
+curated_at: 2026-09-13
 ---
 
 # Where PoseEssentialToPnP's claims come from
@@ -20,4 +20,7 @@ in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
 | essential via `USAC_MAGSAC` in normalised coordinates with `K = I` — what lets per-image intrinsics differ within one scene | Barath et al., CVPR 2020 |
 | consumes `tracks/v1` (predecessor rebuilt tracks inside the pose estimator); no hardcoded seed index; no nested optimizer instance; predecessor's `triangulate_track_best_pair` was reimplemented, not ported — it references undefined names (`NameError` if reached) and its baseline loop skips the last observation | predecessor `sfmcore/camerapose.py`, `CamPoseEstimatorEssentialToPnP` |
 | every measured band and episode | **109 runs** at 1.2.0 in the seventeen-capture sweep — the most-run module in the registry; scope pinned by `evidence/CORPUS.txt` |
+| escaped points counted and never judged; the mean-gain guard and the adjusters' tail rule both mislabelled runs whose finished models were accurate | a pose-stage experiment over every configuration in the campaign store where the old guard fired, each solved through refinement and scored against reference geometry (2026-09); not yet recorded in the evidence tier |
+| the second solve — escaped points as the trigger, a fixed width rather than a search, kept unless it fails or is vetoed, never chosen on reprojection error | the same experiment, plus an upward window sweep over the configurations where points escaped; the trigger was tested on configurations where nothing escaped, and the stopping rules against reference geometry |
+| 28 as the default width, 40 as the last resort | the sweep favoured 40 by a small margin and found no harm in it; 28 is the default as a cost trade-off, not a finding |
 | 5 healthy bands; numeric values in 7 parameters' advice | **nothing** — see the audit section in `tuning.md` |

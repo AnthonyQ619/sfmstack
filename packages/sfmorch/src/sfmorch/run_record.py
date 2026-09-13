@@ -89,6 +89,10 @@ class Run:
     goal: str = ""
     steps: list[Step] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    # The service's second-solve decisions: which chain was solved again, at what
+    # window, and which model it kept. Kept in the record rather than recomputed,
+    # because the decision rests on verdicts the steps alone do not carry.
+    second_solves: list[dict[str, Any]] = field(default_factory=list)
 
     # -------------------------------------------------------------- mutation
 
@@ -150,13 +154,16 @@ class Run:
         return self.root / "run.md"
 
     def to_doc(self) -> dict[str, Any]:
-        return {
+        doc = {
             "run": self.id,
             "scene": self.scene,
             "dataset": self.dataset,
             "goal": self.goal,
             "steps": [s.to_doc() for s in self.steps],
         }
+        if self.second_solves:
+            doc["second_solves"] = self.second_solves
+        return doc
 
     def save(self) -> None:
         """Write the record atomically: temp file in the same directory, then rename.
@@ -180,7 +187,10 @@ class Run:
             default_flow_style=None,
             width=100,
         )
-        body = "\n\n".join([self._table(), *self.notes]).strip()
+        body = "\n\n".join(
+            part for part in [self._table(), self._second_solve_lines(), *self.notes]
+            if part
+        ).strip()
         text = f"---\n{front}---\n\n{body}\n"
 
         tmp = self.path.with_name(f".{self.path.name}.{os.getpid()}.tmp")
@@ -206,6 +216,18 @@ class Run:
             status = s.status + (" (cached)" if s.cached else "")
             lines.append(
                 f"| {s.index} | {s.module} | {params} | {status} | {metrics} |"
+            )
+        return "\n".join(lines)
+
+    def _second_solve_lines(self) -> str:
+        if not self.second_solves:
+            return ""
+        lines = ["**Second solves**", ""]
+        for d in self.second_solves:
+            first = d.get("first") or {}
+            lines.append(
+                f"- `{first.get('model')}` (window {first.get('window')}): "
+                f"{d.get('status')}, kept `{d.get('kept')}`. {d.get('reason', '')}"
             )
         return "\n".join(lines)
 
@@ -253,4 +275,5 @@ class Run:
             dataset=str(doc.get("dataset", "")),
             goal=str(doc.get("goal", "")),
             steps=[Step.from_doc(s) for s in (doc.get("steps") or [])],
+            second_solves=list(doc.get("second_solves") or []),
         )

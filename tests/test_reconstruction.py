@@ -201,6 +201,44 @@ def test_local_ba_reports_nothing_when_it_did_not_run(orch):
 
     assert off.metric("local_ba_runs") == 0
     assert off.metric("local_ba_gain_px") is None
+    assert off.metric("escaped_points") == 0
+
+
+@needs_pycolmap
+def test_escaped_points_are_reported_and_never_called_a_divergence(orch):
+    """The pose stage counts escapes and judges nothing: the diagnostic appears
+    exactly when the count is above zero, and no divergence error exists."""
+    poses = build(orch, n=16, upto="poses")["poses"]
+    codes = {d.code for d in poses.manifest.diagnostics}
+    assert ("points_escaped" in codes) == (poses.metric("escaped_points") > 0)
+    assert "local_ba_diverged" not in codes
+
+
+@needs_pycolmap
+def test_an_escaped_point_is_counted_and_left_out_of_the_window_gain():
+    """One escapee put the old mean gain near 1e150; counted apart, the gain
+    describes the points that stayed and is bounded by the image."""
+    ad = _adapter("pose_incremental")
+    before = np.full(500, 0.5)
+    after = np.full(500, 0.3)
+    after[7] = 1e150
+    after[9] = np.nan
+    r = ad.window_readings(before, after, extent=1024.0)
+
+    assert r["escaped"] == 2
+    assert r["gain"] == pytest.approx(0.2)
+
+
+@needs_pycolmap
+def test_a_point_that_escaped_in_an_earlier_solve_does_not_own_the_next_gain():
+    ad = _adapter("pose_incremental")
+    before = np.full(500, 0.5)
+    before[3] = 5e3  # left behind by the previous solve, back inside after this one
+    after = np.full(500, 0.3)
+    r = ad.window_readings(before, after, extent=1024.0)
+
+    assert r["escaped"] == 0
+    assert r["gain"] == pytest.approx(0.2)
 
 
 @needs_pycolmap

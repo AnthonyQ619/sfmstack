@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.0.1
+module_version: 1.0.2
 upstream: none -- numpy, and OpenCV for undistortion only
 curated_at: 2026-09-13
 sources: 0
@@ -44,9 +44,11 @@ check would be deciding from those same readings.
 **How to use the verdict:**
 
 - **Contradicted** — veto. Do not keep this model. If another solve of the same
-  capture exists and passes, keep that one; if not, solve again with a
-  deliberately different setting before tuning anything. Never rescue a vetoed
-  model on its reprojection error or registration.
+  capture exists and passes, keep that one — when the pose stage reported
+  escaped points the service has already run one, and `second_solve` says which
+  it kept. If not, solve again with a deliberately different setting before
+  tuning anything. Never rescue a vetoed model on its reprojection error or
+  registration.
 - **Consistent** — no veto. The model does not contradict evidence it was not fit
   on. That is **not** a certificate of accuracy and **not** a ranking: see below.
 - **Unverified** — nothing was held out, so nothing was tested. Supply other
@@ -58,10 +60,11 @@ one with the lower reading. Picking by the lower reading was measured keeping th
 worse model more often than that. The reading separates models that drifted from
 models that did not; below that, it is not fine enough to rank.
 
-**Its job is the case that should not happen.** A second solve with a
-deliberately different setting is usually the better model, and the pipeline
-keeps it. The veto is what stops that preference when the second solve itself
-went somewhere wrong — the one failure nothing else in the stack would catch.
+**Its job is the case that should not happen.** When the pose stage reports
+escaped points, the service solves the chain again at a wider window and keeps
+that solve by default, because it is usually the better model. The veto is what
+stops that preference when the second solve itself went somewhere wrong — the
+one failure nothing else in the stack would catch.
 
 ## Provenance
 

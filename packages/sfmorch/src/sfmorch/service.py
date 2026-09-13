@@ -116,6 +116,35 @@ PLAN_SHAPE = {
 }
 
 
+# The second solve's windows, and what triggers it. The default width is where
+# the benefit of widening had levelled off on the captures measured. The last
+# resort bought a little more on a few and costs more, so it runs only when the
+# solve at the default failed or was vetoed.
+WINDOW_PARAM = "local_ba_window"
+ESCAPE_METRIC = "escaped_points"
+SECOND_SOLVE_WINDOW = 28
+LAST_RESORT_WINDOW = 40
+
+
+def second_solve_rungs(first_window: int, n_images: int) -> list[tuple[int, str]]:
+    """The windows a second solve may use, narrowest first, each capped at the
+    capture.
+
+    A rung no wider than what already ran is dropped -- it would re-solve the same
+    window -- so a first solve at or above the default leaves only the last
+    resort, and a window already spanning the capture leaves nothing.
+    """
+    rungs: list[tuple[int, str]] = []
+    floor = first_window
+    for width, role in ((SECOND_SOLVE_WINDOW, "default"),
+                        (LAST_RESORT_WINDOW, "last_resort")):
+        width = min(width, n_images)
+        if width > floor:
+            rungs.append((width, role))
+            floor = width
+    return rungs
+
+
 def _percentile(value: float, reference: list, *, lower_better: bool):
     """Where a reading sits within the reference corpus, in [0, 100].
 
@@ -536,6 +565,13 @@ class SfmService:
         verification = self._verify(result, run_id)
         if verification is not None:
             payload["verification"] = verification
+        try:
+            second = (self._second_solve(result, run_id, verification)
+                      if verification is not None else self._second_solve_notice(result))
+        except Exception as e:  # like the verifier: never take the step down with it
+            second = {"status": "failed", "error": f"{type(e).__name__}: {e}"}
+        if second is not None:
+            payload["second_solve"] = second
         return payload
 
     # The fixed end step, and a VETO: SparseVerification rejects a refined model
@@ -549,6 +585,7 @@ class SfmService:
     # than its correct model did. The same compelled delivery the health digest
     # gets, at the same moment.
     VERIFIER = "SparseVerification"
+    VETO_CODE = "contradicted_by_held_out_evidence"
 
     def _verify(self, result, run_id: str | None) -> dict[str, Any] | None:
         step = result.step
@@ -562,7 +599,11 @@ class SfmService:
         # an alarm on every capture.
         if kind != "optimization" or not models:
             return None
-        model = models[0]
+        return self._verify_model(models[0], run_id)
+
+    def _verify_model(self, model, run_id: str | None) -> dict[str, Any]:
+        """The verifier's verdict on one refined model, against its lineage's
+        matches."""
         if self.VERIFIER not in self.registry.names():
             return {"status": "unavailable", "model": model.id,
                     "note": f"{self.VERIFIER} is not registered; this model is "
@@ -595,6 +636,204 @@ class SfmService:
             "note": art.manifest.body.strip(),
         }
 
+    # The second solve. When the pose stage reports points that left the image
+    # during its in-loop window solves, one solve is not enough: on the captures
+    # where that happened, a wider window gave a better finished model far more
+    # often than a worse one, and where nothing escaped, widening changed nothing
+    # on most. So once a model built on those poses is refined, the chain from the
+    # pose step to that model is solved again at a wider window, and the wider
+    # solve is kept unless it failed or the verifier vetoed it.
+    #
+    # Never chosen on reprojection error: keeping whichever solve reported the
+    # lower error gave back most of the benefit. And the width is fixed rather
+    # than searched: widening until nothing escaped chose worse models, because the
+    # count does not fall as the window grows. Argued in PoseEssentialToPnP's
+    # limitations, "Escaped points start a second solve".
+
+    def _second_solve(self, result, run_id: str | None,
+                      verification: dict[str, Any]) -> dict[str, Any] | None:
+        model = next((a for a in result.outputs.values()
+                      if a.type == self.SPARSE_MODEL_TYPE), None)
+        if model is None:
+            return None
+        pose = self._ancestor_of_type(model, self.POSES_TYPE)
+        spec = self._windowed_spec(pose)
+        escaped = pose.metric(ESCAPE_METRIC) if spec else None
+        if not escaped:
+            return None
+
+        run_id = run_id or model.manifest.run
+        run = self.orch.open_run(run_id)
+        first_window = int(pose.manifest.produced_by.params[WINDOW_PARAM])
+        n_images = self._capture_size(model.manifest.scene)
+        first = {"window": first_window, "pose": pose.id, "model": model.id,
+                 "status": "ok", "vetoed": self._vetoed(verification)}
+        doc: dict[str, Any] = {
+            "trigger": {"pose": pose.id, "module": spec.name, "escaped_points": escaped,
+                        "window": first_window, "capture_images": n_images},
+            "first": first,
+            "attempts": [],
+            "read": (f"sfm_module_skill('{spec.name}', 'limitations') -- "
+                     f"'Escaped points start a second solve'"),
+        }
+        kept_first = model.id if self._acceptable(first) else None
+
+        rungs = second_solve_rungs(first_window, n_images)
+        if not rungs:
+            return self._decide(
+                run, doc, "no_wider_window", kept_first, first_window,
+                f"The first solve's window ({first_window}) already spans the "
+                f"capture's {n_images} images, so there is no wider solve to run; "
+                f"the escapes are reported only.")
+        if run.producer_of(pose.id) is None or run.producer_of(model.id) is None:
+            return self._decide(
+                run, doc, "unavailable", kept_first, first_window,
+                f"The steps that built this model are not all recorded in run "
+                f"'{run_id}', so its chain cannot be re-solved here. By hand: "
+                f"sfm_replay from {pose.id} with {WINDOW_PARAM}={rungs[0][0]}, "
+                f"carried through the same refinement.")
+
+        for width, role in rungs:
+            below = doc["attempts"][-1] if doc["attempts"] else first
+            if role == "last_resort" and self._acceptable(below):
+                break
+            attempt = self._solve_again(run_id, pose, model, width, role)
+            doc["attempts"].append(attempt)
+            if self._acceptable(attempt):
+                break
+
+        kept = next((a for a in doc["attempts"] if self._acceptable(a)), None)
+        if kept is not None:
+            detour = ""
+            if kept["role"] == "last_resort" and len(doc["attempts"]) > 1:
+                d = doc["attempts"][0]
+                detour = (f"; the solve at {d['window']} "
+                          f"{'failed' if d['status'] != 'ok' else 'was vetoed'}, "
+                          f"so the last resort ran")
+            return self._decide(
+                run, doc, "kept_second", kept["model"], kept["window"],
+                f"Points escaped the first solve at {WINDOW_PARAM}={first_window}. "
+                f"Kept the re-solve at {kept['window']}{detour}: it completed and "
+                f"the verifier did not veto it. Continue from it. The choice was "
+                f"not made on reprojection error.")
+        if kept_first is not None:
+            reason = (
+                "Every wider solve failed or was vetoed, so the first model -- which "
+                "the verifier did not veto -- is kept."
+                if doc["attempts"] else
+                f"The first solve already ran at {first_window}, at or above the "
+                f"default second-solve width, and the verifier did not veto it. The "
+                f"last resort ({rungs[0][0]}) runs only when that model is vetoed.")
+            return self._decide(run, doc, "kept_first", kept_first, first_window, reason)
+        return self._decide(
+            run, doc, "none_kept", None, None,
+            f"Every solve of this chain failed or was vetoed, the first included. "
+            f"None of them is a model to keep. If each was vetoed, the evidence may "
+            f"be inconsistent with any single geometry: "
+            f"sfm_module_skill('{self.VERIFIER}', 'limitations') -- 'What a "
+            f"contradiction means'.")
+
+    def _second_solve_notice(self, result) -> dict[str, Any] | None:
+        """On the pose step itself: say that a second solve is coming, and when."""
+        pose = next((a for a in result.outputs.values()
+                     if a.type == self.POSES_TYPE), None)
+        spec = self._windowed_spec(pose)
+        escaped = pose.metric(ESCAPE_METRIC) if spec else None
+        if not escaped:
+            return None
+        first_window = int(pose.manifest.produced_by.params[WINDOW_PARAM])
+        rungs = second_solve_rungs(first_window, self._capture_size(pose.manifest.scene))
+        if not rungs:
+            note = ("The window already spans the capture, so there is no wider "
+                    "solve; the escapes are reported only.")
+        elif rungs[0][1] == "default":
+            note = (f"Once a bundle adjustment refines a model built on these poses, "
+                    f"the service re-solves that chain at {WINDOW_PARAM}={rungs[0][0]} "
+                    f"and keeps it unless it fails or the verifier vetoes it"
+                    + (f"; only then does it try {rungs[1][0]} as a last resort"
+                       if len(rungs) > 1 else "")
+                    + ". Continue the pipeline as planned -- do not re-solve by hand.")
+        else:
+            note = (f"This solve already ran at or above the default second-solve "
+                    f"width. The service re-solves at {WINDOW_PARAM}={rungs[0][0]} "
+                    f"only if the refined model fails or is vetoed.")
+        return {"status": "pending", "escaped_points": escaped,
+                "window": first_window, "note": note}
+
+    def _solve_again(self, run_id: str, pose, model, width: int,
+                     role: str) -> dict[str, Any]:
+        """Re-solve the chain from `pose` to `model` at one window, and verify it."""
+        entry: dict[str, Any] = {"window": width, "role": role}
+        try:
+            results = self.orch.replay(
+                run_id=run_id, from_artifact=pose.id,
+                overrides={WINDOW_PARAM: width}, toward=model.id,
+            )
+        except Exception as e:  # a re-solve that cannot finish is an outcome
+            return entry | {"status": "failed", "error": f"{type(e).__name__}: {e}"[:500]}
+        new_pose = next((a for a in results[0].outputs.values()
+                         if a.type == self.POSES_TYPE), None)
+        new_model = next((a for a in results[-1].outputs.values()
+                          if a.type == self.SPARSE_MODEL_TYPE), None)
+        if new_model is None:
+            return entry | {"status": "failed",
+                            "error": "the re-solved chain ended without a sparse model"}
+        verdict = self._verify_model(new_model, run_id)
+        return entry | {
+            "status": "ok",
+            "pose": new_pose.id if new_pose is not None else None,
+            "model": new_model.id,
+            "escaped_points": new_pose.metric(ESCAPE_METRIC) if new_pose is not None else None,
+            "cached": all(r.cached for r in results),
+            "verification": {
+                "status": verdict.get("status"),
+                "artifact": verdict.get("artifact"),
+                "metrics": verdict.get("metrics") or {},
+                "diagnostics": [d.get("code") for d in verdict.get("diagnostics") or []],
+            },
+            "vetoed": self._vetoed(verdict),
+        }
+
+    def _decide(self, run, doc: dict[str, Any], status: str, kept: str | None,
+                kept_window: int | None, reason: str) -> dict[str, Any]:
+        """Record a second-solve decision in the run, replacing any earlier one
+        about the same first model, and return it."""
+        doc |= {"status": status, "kept": kept, "kept_window": kept_window,
+                "reason": reason}
+        first = doc["first"]["model"]
+        run.second_solves = [d for d in run.second_solves
+                             if (d.get("first") or {}).get("model") != first] + [doc]
+        run.save()
+        return doc
+
+    def _windowed_spec(self, pose):
+        """The pose artifact's module, if it is one a wider window can re-solve."""
+        if pose is None:
+            return None
+        made = pose.manifest.produced_by
+        try:
+            spec = self.registry.get(made.module)
+        except Exception:
+            return None
+        if WINDOW_PARAM not in spec.params.specs or WINDOW_PARAM not in made.params:
+            return None
+        return spec
+
+    def _capture_size(self, scene_id: str) -> int:
+        scene = self.store.open(scene_id)
+        n = scene.metric("n_images")
+        if isinstance(n, (int, float)) and n > 0:
+            return int(n)
+        return len(scene.load("images", "names"))
+
+    def _vetoed(self, verdict: dict[str, Any] | None) -> bool:
+        return bool(verdict) and any(
+            d.get("code") == self.VETO_CODE for d in verdict.get("diagnostics") or [])
+
+    @staticmethod
+    def _acceptable(entry: dict[str, Any]) -> bool:
+        return entry.get("status") == "ok" and not entry.get("vetoed")
+
     # The rungs of the reconstruction health profile, in ladder order. Defined
     # and argued in skills/health/ladder.md -- the run payload carries the
     # digest because a file nothing delivers is a file nothing reads: the health
@@ -619,6 +858,7 @@ class SfmService:
     SPARSE_MODEL_TYPE = "sparse_model/v1"
     TRACKS_TYPE = "tracks/v1"
     MATCHES_TYPE = "pairwise_matches/v1"
+    POSES_TYPE = "poses/v1"
 
     def _ancestor_of_type(self, art, wanted: str, *, depth: int = 8):
         """The nearest artifact of `wanted` upstream of `art`, or None.
@@ -1215,6 +1455,18 @@ class SfmService:
                 "metrics": {n: m.value for n, m in v.manifest.metrics.items()} if v else {},
                 "diagnostics": [d.code for d in v.manifest.diagnostics] if v else [],
             }
+        # Two solves of one chain are both leaves. Say which one the service kept,
+        # so they do not read as two answers.
+        for decision in summary.get("second_solves") or []:
+            kept = decision.get("kept")
+            solved = [(decision.get("first") or {}).get("model")] + [
+                a.get("model") for a in decision.get("attempts") or []]
+            for m in solved:
+                if m in verdicts:
+                    verdicts[m]["second_solve"] = (
+                        "kept" if m == kept else
+                        f"not kept: {kept} was kept instead" if kept else
+                        "not kept: every solve of this chain failed or was vetoed")
         return verdicts
 
     def compare(self, artifact_ids: list[str]) -> dict[str, Any]:

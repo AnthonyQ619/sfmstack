@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.0.1
+module_version: 1.0.2
 curated_at: 2026-09-12
 ---
 
@@ -27,8 +27,11 @@ one a single solve lands in is not under the agent's control.
 
 *What to do:*
 
-1. **Solve again from the same inputs** before changing anything. A second solve
-   that reads clean here is the model to keep.
+1. **If the pose stage reported escaped points, it has already been solved
+   again.** The service re-solves such a chain at a wider window and reports the
+   outcome as `second_solve` on the same result; read that before doing
+   anything. Otherwise, **solve again from the same inputs** before changing
+   anything. A second solve that reads clean here is the model to keep.
 2. **Do not choose between the two solves on reprojection error, registration or
    the health profile.** A self-consistent wrong model satisfies all of them.
 3. **Read the per-pair array.** A contradiction confined to the pairs that span

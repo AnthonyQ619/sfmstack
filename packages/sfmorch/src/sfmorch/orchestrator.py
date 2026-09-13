@@ -355,6 +355,7 @@ class Orchestrator:
         from_artifact: str,
         overrides: dict[str, Any] | None = None,
         device: str | None = None,
+        toward: str | None = None,
     ) -> list[RunResult]:
         """Re-run the step that produced `from_artifact`, then every recorded
         step downstream of it, substituting the regenerated inputs.
@@ -363,6 +364,12 @@ class Orchestrator:
         matcher is at fault -- and without this it costs the agent one call per
         remaining stage plus the bookkeeping to rewire them. The DAG branches;
         the original chain is untouched and still comparable.
+
+        `toward` narrows the replay to the steps that built one artifact: only
+        its lineage between `from_artifact` and it is re-run, and sibling
+        branches that also consumed the replayed output are left alone. That is
+        what the service's second solve needs -- the chain behind the one model
+        it is re-solving, not every experiment hung off the same poses.
         """
         run = self.open_run(run_id)
         origin = run.producer_of(from_artifact)
@@ -370,6 +377,20 @@ class Orchestrator:
             raise WiringError(
                 f"run '{run_id}' has no step producing artifact '{from_artifact}'"
             )
+
+        keep: set[int] | None = None
+        if toward is not None:
+            target = run.producer_of(toward)
+            if target is None:
+                raise WiringError(
+                    f"run '{run_id}' has no step producing artifact '{toward}'"
+                )
+            keep = self._lineage_steps(run, target)
+            if origin.index not in keep:
+                raise WiringError(
+                    f"artifact '{toward}' was not built from '{from_artifact}' "
+                    f"in run '{run_id}'"
+                )
 
         results: list[RunResult] = []
         remap: dict[str, str] = {}
@@ -391,6 +412,8 @@ class Orchestrator:
         for step in run.downstream_of(set(origin.outputs.values())):
             if step.index >= first.step.index:
                 continue  # already part of this replay
+            if keep is not None and step.index not in keep:
+                continue  # a sibling branch, not the lineage asked for
             rewired = {s: remap.get(a, a) for s, a in step.inputs.items()}
             result = self.run(
                 step.module,
@@ -407,6 +430,22 @@ class Orchestrator:
                     remap[old_id] = new_id
 
         return results
+
+    @staticmethod
+    def _lineage_steps(run: Run, step: Step) -> set[int]:
+        """Indices of `step` and every step in this run that built its inputs."""
+        keep: set[int] = set()
+        frontier = [step]
+        while frontier:
+            s = frontier.pop()
+            if s.index in keep:
+                continue
+            keep.add(s.index)
+            for aid in s.inputs.values():
+                up = run.producer_of(aid)
+                if up is not None:
+                    frontier.append(up)
+        return keep
 
     # ------------------------------------------------------------- inspection
 
@@ -426,4 +465,7 @@ class Orchestrator:
                 n for n in self.registry.names()
                 if self.registry.get(n).kind == "analysis"
             }),
+            # Which of two solves of one chain the service kept, and why. Both
+            # models are leaves; this is what says they are not two answers.
+            "second_solves": list(run.second_solves),
         }

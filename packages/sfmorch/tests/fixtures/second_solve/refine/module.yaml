@@ -1,0 +1,19 @@
+name: FakeRefiner
+version: 1.0.0
+kind: optimization
+summary: Passes a sparse model through unchanged, standing in for bundle adjustment. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  sparse: {type: sparse_model/v1, required: true}
+produces:
+  sparse: {type: sparse_model/v1}
+
+metrics:
+  point_count: {direction: higher_better, meaning: Points.}
+  observation_count: {direction: higher_better, meaning: Observations.}
+  mean_reprojection_error: {direction: lower_better, nullable: true, meaning: A fixed value.}
+  registered_images: {direction: higher_better, meaning: Posed cameras.}

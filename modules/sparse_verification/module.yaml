@@ -1,5 +1,5 @@
 name: SparseVerification
-version: 1.0.1
+version: 1.0.2
 kind: analysis
 summary: >
   A veto on finished sparse models: rejects one that contradicts the matcher's
@@ -16,7 +16,8 @@ description: |
   capture, keeping the one with the lower reading kept the worse model more often
   than simply preferring the solve the pipeline prefers. Use it to throw a model
   out, never to pick between two it accepts. Its job is the case where the solve
-  the pipeline prefers still led somewhere wrong.
+  the pipeline prefers -- the wider second solve the service runs when points
+  escape in the pose stage -- still led somewhere wrong.
 
   **Why it exists.** Every error reading a sparse model carries is computed over
   the observations the model kept, and bundle adjustment minimised exactly those.
@@ -45,7 +46,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.0.1
+image: sfmstack/sparse-verification:1.0.2
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -188,7 +189,7 @@ diagnostics:
     severity: error
     message: Correspondences the model was never fit on sit beyond the inlier threshold from its epipolar lines.
     suggested_actions:
-      - "Solve again from the same inputs before changing anything. A capture can have more than one stable answer, and a second solve that reads clean here is the model to keep."
+      - "If the pose stage reported escaped points, the service has already re-solved this chain at a wider window: read `second_solve` on the same result before doing anything else. Otherwise solve again from the same inputs before changing anything. A capture can have more than one stable answer, and a second solve that reads clean here is the model to keep."
       - "Do not choose between models on reprojection error or registration. A wrong model that is self-consistent satisfies both, and has been measured satisfying them better than the correct one."
       - "Read the per-pair residual_px array: a contradiction confined to the pairs across one part of the capture says where the solve went wrong."
     see_also: limitations.md#what-a-contradiction-means

@@ -1,8 +1,8 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.2.1
+module_version: 1.3.0
 upstream: OpenCV essential matrix + SQPnP, the COLMAP incremental strategy
-curated_at: 2026-08-07
+curated_at: 2026-09-13
 sources: 4
 ---
 
@@ -21,7 +21,7 @@ them.
 
 **First readings on this module's output:** `registered_fraction`, `registered_images`, `points_triangulated`.
 
-**Diagnostics it can raise:** `uncalibrated_scene`, `no_viable_initial_pair`, `partial_registration`, `high_reprojection_error`, `local_ba_diverged`, `local_ba_not_converging`, and 2 more.
+**Diagnostics it can raise:** `uncalibrated_scene`, `no_viable_initial_pair`, `partial_registration`, `high_reprojection_error`, `points_escaped`, `local_ba_not_converging`, and 2 more.
 
 ## What this module is for
 
@@ -53,6 +53,12 @@ difference between **34 and 48 images registered** — drift compounded until Pn
 out of correspondences and registration stalled. On the classical stack, where
 nothing stalls, it lowers pose error ~10% and the final post-BA number not at all.
 The [tuning file](tuning.md#local-ba--what-it-buys-measured) has the full table.
+
+**When points escape, the pipeline solves twice.** A point that leaves the image
+during a window solve is counted in `escaped_points`, never judged. Above zero it
+is the trigger for a second solve at a wider window, which the service runs once
+the model is refined and keeps unless it fails or the verifier vetoes it — see
+[limitations](limitations.md#escaped-points-start-a-second-solve).
 
 This does not replace [BundleAdjustmentLocal](../../ba_local/skills/SKILL.md).
 That module repairs an existing `sparse_model/v1` at a window you choose; this

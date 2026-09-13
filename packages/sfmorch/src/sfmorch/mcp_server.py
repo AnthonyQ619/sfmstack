@@ -172,6 +172,11 @@ def build_server(service: SfmService):
         with a job_id to poll via `sfm_job`. Identical work is not repeated --
         pass force=True to override. Different parameters always produce a new
         artifact and keep the old one.
+
+        After an optimization step the result also carries `verification`, a veto
+        on the refined model, and -- when the pose stage reported escaped points --
+        `second_solve`: the service re-solved that chain at a wider window and
+        names the model to continue from as `kept`.
         """
         return service.run(
             module, run_id=run_id, inputs=inputs, params=params,
@@ -284,7 +289,9 @@ def build_server(service: SfmService):
     @mcp.tool()
     def sfm_run_summary(run_id: str) -> dict[str, Any]:
         """Every step attempted in a run, with parameters and metrics, plus the
-        leaf artifacts nothing consumed."""
+        leaf artifacts nothing consumed, each final model's verification, and
+        every second-solve decision: which of two solves of one chain was kept,
+        and why."""
         return service.run_summary(run_id)
 
     @mcp.tool()

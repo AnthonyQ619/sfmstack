@@ -183,7 +183,9 @@ parallax.
 **Raising `init_min_angle_deg` is worth one run and rarely more.** Measured across
 the corpus it moved the seed on some captures and left every downstream metric
 unchanged on most of them; on one it improved every metric at once, and on one it
-pushed the seed so wide the local solve diverged. Treat it as a probe with a
+pushed the seed so wide the in-loop solve raised a divergence alarm — one since
+found to fire on escaped points rather than failed solves, and retired. Treat it
+as a probe with a
 known-cheap cost, not as a fix with a known payoff.
 
 **What the global solver costs, measured.** Run on the same matches, on captures

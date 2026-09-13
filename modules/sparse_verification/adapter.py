@@ -301,9 +301,12 @@ def run(ctx: Ctx):
                   "minimised on the other evidence."
             ),
             suggested_actions=[
-                "Solve again from the same inputs before changing anything. A "
-                "capture can have more than one stable answer, and a second solve "
-                "that reads clean here is the model to keep.",
+                "If the pose stage reported escaped points, the service has already "
+                "re-solved this chain at a wider window: read `second_solve` on the "
+                "same result before doing anything else. Otherwise solve again from "
+                "the same inputs before changing anything. A capture can have more "
+                "than one stable answer, and a second solve that reads clean here "
+                "is the model to keep.",
                 "Do not choose between models on reprojection error or registration: "
                 "a wrong model that is self-consistent satisfies both, and has been "
                 "measured satisfying them BETTER than the correct one.",

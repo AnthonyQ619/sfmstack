@@ -65,6 +65,27 @@ def test_replay_rewires_downstream_inputs_to_the_new_artifacts(orch, scene):
     assert tracks.id not in [r.primary.id for r in results]
 
 
+def test_replay_toward_one_artifact_leaves_sibling_branches_alone(orch, scene):
+    """The second solve re-runs the chain behind one model, not every experiment
+    hung off the same upstream artifact."""
+    _, pairs, tracks, sparse = build(orch, scene, keep_ratio=0.2)
+    orch.run("FakeReconstructor", run_id="run_test",
+             inputs={"scene": scene.id, "tracks": tracks.id}, params={"min_observe": 3})
+
+    results = orch.replay(run_id="run_test", from_artifact=pairs.id,
+                          overrides={"keep_ratio": 1.0}, toward=sparse.id)
+
+    assert [r.step.module for r in results] == [
+        "FakeMatcher", "FakeTracker", "FakeReconstructor"]
+    assert results[-1].step.params["min_observe"] == 2
+
+
+def test_replay_toward_an_artifact_not_built_from_the_origin_is_refused(orch, scene):
+    feats, _, tracks, _ = build(orch, scene)
+    with pytest.raises(WiringError):
+        orch.replay(run_id="run_test", from_artifact=tracks.id, toward=feats.id)
+
+
 def test_replay_leaves_the_original_branch_intact(orch, scene):
     """Nothing is superseded. Both branches stay comparable."""
     _, pairs, tracks, sparse = build(orch, scene, keep_ratio=0.2)

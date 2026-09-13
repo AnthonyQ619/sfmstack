@@ -510,7 +510,7 @@ def run(ctx: Ctx):
                         "pull across all cameras is a calibration error; a scatter "
                         "is over-fitting.",
                     ],
-                    see_also="tuning.md#refine_focal_length",
+                    see_also="tuning.md#refining-intrinsics",
                 )
 
     dropped = points_in - len(point_ids)
