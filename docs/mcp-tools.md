@@ -307,8 +307,9 @@ session to a first reconstruction, with the files each step opens.
    detect -> match -> track -> pose -> triangulate -> bundle adjust
    -> after any optimization step the service runs SparseVerification
       itself, against the matches in the model's lineage, and returns
-      `verification` beside `health_profile`: the one reading a wrong but
-      self-consistent model cannot pass. A fixed step, mirroring triage at
+      `verification` beside `health_profile`: a VETO, the one reading a
+      wrong but self-consistent model cannot pass. It rejects models; it
+      does not rank the ones it accepts. A fixed step, mirroring triage at
       the start -- not left to the agent, whose only grounds for skipping it
       would be the self-reported readings such a model satisfies.
       sfm_run_summary(run) repeats the verdict for every final model.

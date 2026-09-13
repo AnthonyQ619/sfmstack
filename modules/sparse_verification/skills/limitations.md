@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.0.0
+module_version: 1.0.1
 curated_at: 2026-09-12
 ---
 
@@ -73,6 +73,22 @@ It measures consistency with evidence. There is no ground truth anywhere in the
 pipeline, and this does not supply one. Its value is narrower and real: it is the
 one reading a wrong but self-consistent model cannot pass by construction,
 because the evidence it uses was never in that model's objective.
+
+## It is a veto, not a judge
+
+Its one decision is whether to reject a model. It does not rank two models that
+both pass.
+
+The reading separates models that drifted — many times the threshold — from
+models that did not, which sit a fraction of a pixel apart from one another.
+Below that line the differences are not about accuracy. When two consistent
+solves of one capture were compared, keeping the one with the lower reading kept
+the worse model more often than keeping the solve the pipeline prefers for its
+own reasons.
+
+So: a contradicted model is thrown out, and a consistent one is kept or not on
+other grounds. The veto exists for the case where the preferred solve itself
+went somewhere wrong, which nothing else in the stack would catch.
 
 ## Held-out is not the same as clean
 

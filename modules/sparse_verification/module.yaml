@@ -1,15 +1,22 @@
 name: SparseVerification
-version: 1.0.0
+version: 1.0.1
 kind: analysis
 summary: >
-  Checks a finished sparse model against the matcher's correspondences it never
-  used -- the one reading in the stack a wrong but self-consistent model cannot
-  satisfy by construction. CPU-only; seconds.
+  A veto on finished sparse models: rejects one that contradicts the matcher's
+  correspondences it never used -- the one reading in the stack a wrong but
+  self-consistent model cannot satisfy by construction. CPU-only; seconds.
 
 description: |
   Runs after the final bundle adjustment, on every model, as a fixed step: the
   service runs it automatically whenever an optimization module produces a sparse
   model, and delivers the result beside the health profile.
+
+  **It is a veto, not a judge.** Its one decision is whether to reject a model.
+  It does not rank models that both pass: between two consistent solves of one
+  capture, keeping the one with the lower reading kept the worse model more often
+  than simply preferring the solve the pipeline prefers. Use it to throw a model
+  out, never to pick between two it accepts. Its job is the case where the solve
+  the pipeline prefers still led somewhere wrong.
 
   **Why it exists.** Every error reading a sparse model carries is computed over
   the observations the model kept, and bundle adjustment minimised exactly those.
@@ -38,7 +45,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.0.0
+image: sfmstack/sparse-verification:1.0.1
 entrypoint: adapter:run
 resources:
   gpu: false

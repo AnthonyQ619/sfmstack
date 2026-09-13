@@ -538,9 +538,11 @@ class SfmService:
             payload["verification"] = verification
         return payload
 
-    # The fixed end step. SparseVerification tests a refined model against the
-    # matcher's correspondences it never used -- the one reading a wrong but
-    # self-consistent model cannot pass by construction. It runs HERE rather than
+    # The fixed end step, and a VETO: SparseVerification rejects a refined model
+    # that contradicts the matcher's correspondences it never used -- the one
+    # reading a wrong but self-consistent model cannot pass by construction. It
+    # does not rank models it accepts; choosing the lower of two passing readings
+    # kept the worse model more often than keeping the pipeline's preferred solve. It runs HERE rather than
     # being left to the agent, because the agent's only other grounds for deciding
     # to run it are the self-reported readings a self-consistent wrong model
     # satisfies: one capture's wrong models were measured satisfying them better
