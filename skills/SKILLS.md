@@ -119,6 +119,9 @@ SKILLS.md (this file)
         ├─ sfm_replay(...)        suspect upstream? branch the DAG
         ├─ judge/swap_or_build    tuning stopped — now what?
         ├─ limitations.md         stuck? what this module cannot do
+        ├─ after a bundle adjustment: `verification` (a veto, not a ranking), and
+        │    `second_solve` if the pose stage reported escaped points →
+        │    continue from the model it names as `kept`
         └─ produces sparse_model/v1 →
               health digest in the run summary (seven rungs vs the reference corpus)
                 ├─ health/ladder   good enough? stop the sweep?

@@ -38,7 +38,11 @@ from the ones before it, so errors compound along the chain, and the compounding
 worse with learned features whose positions are less precise. **In-loop local
 bundle adjustment** — a window refined as registration proceeds — exists for
 exactly this, and it is a parameter of the geometric estimator rather than a
-separate module.
+separate module. When points escape that window during a solve, the service
+solves the chain again at a wider window once the model is refined, and names the
+model to continue from — see
+[PoseEssentialToPnP's limitations](../../modules/pose_incremental/skills/limitations.md#escaped-points-start-a-second-solve).
+Do not plan a window sweep of your own for it.
 
 Feed-forward has no order and therefore no drift. It has a different problem:
 whatever the model gets wrong, it gets wrong everywhere at once, and there is no
@@ -177,12 +181,18 @@ easier one, and error will flatter the run that gave up. Three separate
 configurations in one sweep produced better mean error by dropping cameras or
 deleting a third of the structure, and each looked like an improvement until the
 count was read beside it. If `registered_images` differs, the comparison is void;
-say so and stop.
+say so and stop. The service's second solve is not such a comparison: it keeps the
+wider solve by default rather than on its error, and when that solve registers
+fewer cameras it records which, and what they cost, as a trade-off for you to
+weigh — see the same
+[limitations section](../../modules/pose_incremental/skills/limitations.md#escaped-points-start-a-second-solve).
 
 **But `registered_fraction` is itself a configured quantity, so the rung above
 only ranks two runs that obtained their poses the same way.** This module counts
-frames it placed against structure that existed *at the moment of placement*,
-and that structure is gated by its own triangulation parameters. Measured on a
+frames it placed against structure that existed *at the moment of placement* — a
+frame PnP refused gets one more try against the finished structure, but a frame
+that never reached enough links to it is never tried — and that structure is gated
+by its own triangulation parameters. Measured on a
 capture that reconstructs perfectly, with byte-identical input tracks: tightening
 the minimum triangulation angle alone took `registered_fraction` from **1.00 to
 the seed pair**. Nothing about the data changed.

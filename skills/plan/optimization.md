@@ -58,6 +58,18 @@ not consistent with an older K. Mixing them is a silent error.
 
 ---
 
+### 4. Two checks run after every step of this family, unasked
+
+The service runs `SparseVerification` on the refined model, against the matches it
+was never fitted on, and returns the verdict on the same result as `verification`.
+It is a veto, not a ranking: it rejects a model that contradicts that evidence and
+says nothing about which of two accepted models is better. And when the pose stage
+behind the model reported escaped points, the service re-solves the chain from that
+stage at a wider window and returns `second_solve`, naming the model to continue
+from and any cameras the re-solve gave up. Read both before planning the next step.
+See [SparseVerification](../../modules/sparse_verification/skills/SKILL.md) and
+[PoseEssentialToPnP's limitations](../../modules/pose_incremental/skills/limitations.md#escaped-points-start-a-second-solve).
+
 ## Reading the output — the trap that defines this family
 
 **Error is never comparable across differing camera or point counts** — and, until

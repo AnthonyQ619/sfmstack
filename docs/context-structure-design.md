@@ -145,7 +145,7 @@ contradict — is the **reliability ladder** at the top of `evidence/EVIDENCE.md
 because doubt about the corpus is resolved by looking at how the corpus was
 measured, and that is the evidence tier's question.
 
-### 3.1b The health profile — the one designed-in push channel
+### 3.1b The health profile — the first designed-in push channel
 
 `health/ladder.md` defines a **seven-rung health profile**: registration
 fraction, conditioning (median triangulation angle), composition (support per
@@ -174,6 +174,11 @@ frontier of attempts: a rung that is low says unhealthy; a rung that is low
 **and immobile** across the swaps and bracketed sweeps already tried says the
 registry has been given its chance and declined — take the failing rung's
 capability gap to `judge/swap_or_build.md` §BUILD.
+
+**It is no longer the only push at that instant.** After a refinement step the
+same payload carries the verifier's veto and, when the pose stage reported
+escaped points, the second solve's decision; §4 says why neither is left to a
+pointer.
 
 ### 3.2 The per-module five, and why they are five
 
@@ -302,6 +307,14 @@ Three current design decisions are this finding, applied:
   compelled delivery at all: nothing fires a diagnostic for "your finished model
   is worse than it looks". The run payload pushing the profile at the instant a
   sparse model exists is mechanism 3, built for the one moment that had none.
+- **The verifier's veto and the second solve run inside the service.** After a
+  refinement step, `SparseVerification` checks the model against the matches it
+  was never fitted on, and when the pose stage reported escaped points the chain
+  is re-solved at a wider window; both verdicts arrive in that step's own result.
+  Left to the agent, the only grounds for skipping either would be the
+  self-reported readings a coherently wrong model satisfies, so neither rides a
+  pointer. Added after the logged sweep: their read rate is designed, not
+  measured.
 - **The resolver never searches a path that has no files behind it.** Measured:
   a search path pointing at nothing manufactured 24 errored fetches in the
   sweep, and readers who followed a pointer into the miss concluded the whole
