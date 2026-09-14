@@ -163,6 +163,29 @@ def campaign_md(rows, digests=None) -> str:
     failed = [r for r in rows if r.get("failed")]
     gt_rows = [r for r in ok if r.get("gt", {}).get("gt_pairs")]
     digests = digests or {}
+    second = [r for r in ok if "second_solve" in r]
+    kept_second = sum(1 for r in second
+                      if (r["second_solve"] or {}).get("status") == "kept_second")
+    second_lines = ([
+        "Driven through the service, so where points escaped the pose stage the",
+        "chain was re-solved at a wider window and the model recorded is the one",
+        f"the service kept: the second solve on {kept_second} of {len(ok)} captures.",
+        "",
+    ] if second else [])
+    # The digest is what separates a row produced before a rebuild from one
+    # produced after; a tag does not. Collected, so written.
+    image_lines = ([
+        "## Images that produced these rows",
+        "",
+        "The campaign refuses to start unless every module image matches its",
+        "source (`tools/image_drift.py`).",
+        "",
+        "| module | image | digest |",
+        "| --- | --- | --- |",
+        *[f"| {m} | `{img}` | `{(dg or '—')[:19]}` |"
+          for m, (img, dg) in sorted(digests.items())],
+        "",
+    ] if digests else [])
 
     out = ["# Campaign: reference-pipeline-2026-09 — one pipeline, every corpus capture",
            "",
@@ -190,9 +213,11 @@ def campaign_md(rows, digests=None) -> str:
            "capture**: a reference corpus has to be fixed, or a percentile computed",
            "against it says which pipeline ran rather than how healthy a model is.",
            "",
+           *second_lines,
            f"{len(ok)} captures reconstructed"
            + (f", {len(failed)} failed" if failed else "") + ".",
            "",
+           *image_lines,
            "## The health profile, per capture",
            "",
            "`reg` = registered fraction. `cond` = median widest triangulation angle (deg).",

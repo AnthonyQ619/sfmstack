@@ -288,6 +288,8 @@ def main(argv=None) -> int:
             capture_output=True, text=True)
         if drift.returncode != 0:
             print(drift.stdout)
+            if drift.stderr.strip():
+                print(drift.stderr[-2000:])
             print("REFUSING to run: rebuild the drifted images first. Artifact "
                   "ids do not cover the image, so a store that already holds a "
                   "stale module's output will hand it back.")

@@ -102,6 +102,18 @@ def run_capture(svc, entry: str, frames: int | None) -> dict:
             raise RuntimeError(f"{module}: {out.get('error')}")
         ids[slot] = next(iter(out["outputs"].values()))
         stage_metrics[module] = out["metrics"]
+        # After a refinement the service may solve the chain a second time
+        # (escaped points at the pose stage). The model the pipeline delivers
+        # is the one it kept, so that is the one the reference records.
+        second = out.get("second_solve")
+        if second and second.get("status") not in (None, "pending"):
+            row["second_solve"] = {k: second.get(k)
+                                   for k in ("status", "kept_window", "kept")}
+            if second.get("kept"):
+                ids[slot] = second["kept"]
+                stage_metrics[module] = {
+                    n: m.value for n, m in
+                    svc.store.open(second["kept"]).manifest.metrics.items()}
     row["stages"] = stage_metrics
     row["runtime_s"] = round(time.time() - t0, 1)
 
@@ -143,6 +155,9 @@ def main(argv=None) -> int:
                     help="substring of a corpus entry; repeatable")
     ap.add_argument("--results", default=None, type=Path)
     ap.add_argument("--no-docker", action="store_true")
+    ap.add_argument("--gpus", default="0,1,2,3",
+                    help="comma-separated GPU indices for the containers; pick idle "
+                         "ones on a shared machine")
     ap.add_argument("--skip-drift-check", action="store_true",
                     help="do not verify images match source (never for a "
                          "campaign whose rows will be recorded)")
@@ -164,6 +179,8 @@ def main(argv=None) -> int:
             capture_output=True, text=True)
         if drift.returncode != 0:
             print(drift.stdout)
+            if drift.stderr.strip():
+                print(drift.stderr[-2000:])
             print("REFUSING to run: rebuild the drifted images first, and use a "
                   "FRESH store -- artifact ids do not cover the image, so an "
                   "existing store hands back what the stale code produced.")
@@ -176,7 +193,7 @@ def main(argv=None) -> int:
         skills_dir=REPO / "skills",
         use_docker=not args.no_docker,
         mounts=[str(DATASETS)],
-        gpus=list(range(4)),
+        gpus=[int(g) for g in args.gpus.split(",")],
     )
 
     results_path = args.results or (args.out.resolve() / "phase_a_results.json")

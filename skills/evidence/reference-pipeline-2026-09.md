@@ -48,7 +48,26 @@ against it says which pipeline ran rather than how healthy a model is.
 > model scoring at the top of it is being compared against something short of
 > the best this registry can do.
 
+Driven through the service, so where points escaped the pose stage the
+chain was re-solved at a wider window and the model recorded is the one
+the service kept: the second solve on 6 of 16 captures.
+
 16 captures reconstructed.
+
+## Images that produced these rows
+
+The campaign refuses to start unless every module image matches its
+source (`tools/image_drift.py`).
+
+| module | image | digest |
+| --- | --- | --- |
+| BundleAdjustmentGlobal | `sfmstack/ba-global:1.2.0` | `sha256:73a6133bb4aa` |
+| FeatureDetectionSIFT | `sfmstack/feature-sift:1.1.0` | `sha256:df4026a5a31d` |
+| FeatureMatchLightGlue | `sfmstack/match-lightglue:1.6.0` | `sha256:98b783e16686` |
+| FeatureTrackUnionFind | `sfmstack/track-union-find:1.4.0` | `sha256:db9cc0e8fb2e` |
+| PoseEssentialToPnP | `sfmstack/pose-incremental:1.4.0` | `sha256:224423a8a876` |
+| SceneLoader | `sfmstack/scene-loader:1.1.0` | `sha256:a7bf9fffc583` |
+| SparseTriangulation | `sfmstack/sparse-triangulation:1.1.0` | `sha256:921fc13bb2fe` |
 
 ## The health profile, per capture
 
@@ -62,21 +81,21 @@ rotations and the two-view estimates (deg).
 | capture | imgs | reg | cond | comp | cov | err | y_obs | y_trk | pose | points |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DTU/scan1 | 49 | 1 | 13.4 | 0.36 | 0.59 | 0.395 | 0.816 | 0.894 | 0.17 | 5273 |
-| DTU/scan10 | 49 | 0.9 | 11.6 | 0.32 | 0.38 | 0.34 | 0.496 | 0.605 | 0.39 | 1902 |
+| DTU/scan10 | 49 | 0.92 | 11.8 | 0.32 | 0.39 | 0.338 | 0.504 | 0.616 | 0.4 | 1936 |
 | DTU/scan15 | 49 | 1 | 12.3 | 0.29 | 0.61 | 0.446 | 0.785 | 0.872 | 0.21 | 3984 |
 | DTU/scan23 | 49 | 1 | 12.7 | 0.33 | 0.62 | 0.387 | 0.812 | 0.89 | 0.42 | 5283 |
 | DTU/scan33 | 49 | 1 | 20 | 0.41 | 0.42 | 0.18 | 0.767 | 0.846 | 0.21 | 3031 |
 | DTU/scan4 | 49 | 1 | 12.9 | 0.33 | 0.56 | 0.395 | 0.824 | 0.899 | 0.21 | 4826 |
 | DTU/scan9 | 49 | 1 | 13.1 | 0.26 | 0.58 | 0.445 | 0.748 | 0.849 | 0.17 | 4247 |
-| ETH/courtyard | 38 | 1 | 8.8 | 0.41 | 0.87 | 0.196 | 0.817 | 0.853 | 0.18 | 11768 |
-| ETH/delivery_area | 44 | 1 | 9.8 | 0.48 | 0.63 | 0.241 | 0.752 | 0.783 | 0.19 | 5856 |
+| ETH/courtyard | 38 | 1 | 8.7 | 0.41 | 0.86 | 0.2 | 0.831 | 0.867 | 0.18 | 11966 |
+| ETH/delivery_area | 44 | 1 | 9.7 | 0.5 | 0.65 | 0.244 | 0.836 | 0.85 | 0.17 | 6355 |
 | ETH/electro | 45 | 0.04 | 39.6 | 0 | 0.21 | — | 0.009 | 0.013 | 0.15 | 79 |
-| ETH/facade | 50 | 0.88 | 6.8 | 0.39 | 0.73 | 0.202 | 0.475 | 0.494 | 0.07 | 7103 |
-| ETH/kicker | 31 | 0.77 | 11.3 | 0.38 | 0.5 | 0.274 | 0.495 | 0.557 | 0.41 | 1852 |
+| ETH/facade | 50 | 0.9 | 7.8 | 0.44 | 0.83 | 0.221 | 0.605 | 0.588 | 0.05 | 8441 |
+| ETH/kicker | 31 | 0.84 | 12.4 | 0.44 | 0.54 | 0.309 | 0.664 | 0.68 | 0.35 | 2259 |
 | ETH/meadow | 15 | 0.13 | 42.7 | 0 | 0.12 | — | 0.032 | 0.038 | 43.49 | 72 |
 | ETH/office | 26 | 0.08 | 9.5 | 0 | 0.45 | — | 0.109 | 0.15 | 0.06 | 168 |
-| ETH/playground | 38 | 0.5 | 4.3 | 0.27 | 0.77 | 0.51 | 0.267 | 0.3 | 0.15 | 3677 |
-| ETH/relief | 31 | 0.71 | 13.7 | 0.44 | 0.59 | 0.217 | 0.52 | 0.506 | 0.37 | 1746 |
+| ETH/playground | 38 | 0.5 | 4.4 | 0.31 | 0.78 | 0.559 | 0.309 | 0.331 | 0.15 | 4061 |
+| ETH/relief | 31 | 0.71 | 13.7 | 0.44 | 0.59 | 0.226 | 0.529 | 0.511 | 0.37 | 1765 |
 
 ## Ground truth, beside the internal readings
 
@@ -94,21 +113,21 @@ an alignment whose residual is itself a free parameter.
 | capture | GT rot (deg) | GT transl (deg) | pairs | pose rung (deg) |
 | --- | --- | --- | --- | --- |
 | DTU/scan1 | 0.572 | 0.825 | 1176 | 0.175 |
-| DTU/scan10 | 0.53 | 0.867 | 946 | 0.394 |
+| DTU/scan10 | 0.539 | 0.877 | 990 | 0.396 |
 | DTU/scan15 | 0.539 | 0.766 | 1176 | 0.209 |
 | DTU/scan23 | 0.553 | 0.823 | 1176 | 0.415 |
 | DTU/scan33 | 0.608 | 0.695 | 1176 | 0.213 |
 | DTU/scan4 | 0.622 | 0.856 | 1176 | 0.206 |
 | DTU/scan9 | 0.552 | 0.746 | 1176 | 0.169 |
-| ETH/courtyard | 0.072 | 0.122 | 703 | 0.181 |
-| ETH/delivery_area | 0.107 | 0.252 | 946 | 0.187 |
+| ETH/courtyard | 0.074 | 0.107 | 703 | 0.178 |
+| ETH/delivery_area | 0.079 | 0.142 | 946 | 0.172 |
 | ETH/electro | 0.203 | 0.249 | 1 | 0.148 |
-| ETH/facade | 0.261 | 0.213 | 946 | 0.069 |
-| ETH/kicker | 0.105 | 0.237 | 276 | 0.408 |
+| ETH/facade | 0.064 | 0.076 | 990 | 0.047 |
+| ETH/kicker | 0.072 | 0.126 | 325 | 0.354 |
 | ETH/meadow | 43.435 | 77.806 | 1 | 43.495 |
 | ETH/office | 0.071 | 0.344 | 1 | 0.058 |
-| ETH/playground | 0.137 | 0.327 | 171 | 0.15 |
-| ETH/relief | 0.135 | 0.133 | 231 | 0.373 |
+| ETH/playground | 0.108 | 0.25 | 171 | 0.154 |
+| ETH/relief | 0.128 | 0.134 | 231 | 0.372 |
 
 ### What the ground truth actually established
 
@@ -129,7 +148,7 @@ form:
 | ETH/office | 0.08 | 0.07° | 1 |
 | ETH/meadow | 0.13 | 43.43° | 1 |
 | ETH/courtyard | 1 | 0.07° | 703 |
-| ETH/delivery_area | 1 | 0.11° | 946 |
+| ETH/delivery_area | 1 | 0.08° | 946 |
 | DTU/scan1 | 1 | 0.57° | 1176 |
 
 **Two of the three models that abandoned most of their capture score at least as well on ground truth as all 8 fully-registered reconstructions here.** Each kept two images, got the one surviving pair nearly right, and is rewarded for it by a measure that never asks what happened to the other forty.
