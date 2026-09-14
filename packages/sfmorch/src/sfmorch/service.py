@@ -1555,8 +1555,11 @@ class SfmService:
             return {"known": False, "note": "no corpus record available"}
         entries = [ln.strip() for ln in marker.read_text(encoding="utf-8").splitlines()
                    if ln.strip() and not ln.startswith("#")]
-        source = str(scene.manifest.produced_by.params.get("image_dir", ""))
-        hit = next((e for e in entries if e and e in source), None)
+        # Whole path segments only: as a bare substring, a capture named like a
+        # prefix of another (a scan numbered 1 and one numbered 11, a subject and
+        # its second session) would claim captures it was never fitted on.
+        source = str(scene.manifest.produced_by.params.get("image_dir", "")).rstrip("/") + "/"
+        hit = next((e for e in entries if e and e.rstrip("/") + "/" in source), None)
         return {
             "known": True,
             "is_member": hit is not None,
