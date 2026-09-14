@@ -1,5 +1,5 @@
 name: PoseEssentialToPnP
-version: 1.3.0
+version: 1.4.0
 kind: pose
 summary: >
   Incremental SfM: essential-matrix bootstrap on a chosen initial pair, then
@@ -19,6 +19,8 @@ description: |
   truncated everything after it. Here the tracks already exist as a multi-view
   table, so registration is driven by evidence: the best-connected image goes
   next, and a frame that cannot be registered is skipped without ending the run.
+  A frame PnP refused is tried once more when growth stops, against the finished
+  structure, before it is left unregistered.
 
   Registration is interleaved with LOCAL bundle adjustment over a sliding window of
   the most recently registered cameras. This is not an optimisation -- it is what
@@ -43,12 +45,13 @@ description: |
   (`escaped_points`) and never used to call the run diverged. Above zero they
   start a second solve: once a model built on these poses has been refined, the
   service re-solves the chain at a wider window and keeps that solve unless it
-  fails or the verifier vetoes it.
+  fails, the verifier vetoes it, or it gives up more cameras than the
+  registered_fraction band allows against an accepted first solve.
 
   Scale is arbitrary and unrecoverable from images alone. The initial pair's
   baseline is fixed to unit length, so every distance downstream is in that unit.
 
-image: sfmstack/pose-incremental:1.3.0
+image: sfmstack/pose-incremental:1.4.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -211,10 +214,11 @@ params:
       finished models against reference geometry and made very few worse.
       Where nothing escaped, widening changed nothing on most captures. So
       once the model is refined, the service re-solves the chain at 28, or
-      the image count if smaller, and keeps that solve unless it fails or the
-      verifier vetoes it. 40 is the last resort, run only when the solve at
-      28 fails or is vetoed. The rule and its reasons are in limitations.md,
-      "Escaped points start a second solve".
+      the image count if smaller, and keeps that solve unless it fails, the
+      verifier vetoes it, or it gives up more cameras than the
+      registered_fraction band allows against an accepted first solve. 40 is
+      the last resort, run only when the solve at 28 is not kept. The rule and
+      its reasons are in limitations.md, "Escaped points start a second solve".
 
       WHY A FIXED WIDTH, AND WHY NOT KEEP WIDENING. The benefit rose with
       width and levelled off. Small steps up from the default were worth
@@ -300,7 +304,28 @@ metrics:
     meaning: >
       Fraction of scene images given a pose. Below 1.0 some images could not be
       registered; the artifact's `valid` array says which, and every consumer must
-      honour it.
+      honour it. An image PnP refused during growth has already been tried once
+      more against the finished structure, at the same min_pnp_inliers, so what
+      is still missing could not be placed against everything this stage built
+      (registered_on_retry counts what the retry placed).
+
+      THE BAND IS ALSO THE SECOND SOLVE'S TOLERANCE. A second solve that
+      registers fewer images than a first solve the verifier accepted is kept
+      only while its fraction stays inside this band. The band bounds what may
+      be given up for a correction; where exactly the loss outweighs the
+      correction was not measured, so it is a cost trade-off, and the second
+      solve records what was lost for the reader to weigh.
+
+  registered_on_retry:
+    direction: neutral
+    meaning: >
+      Images PnP refused during growth and placed by the one retry against the
+      finished structure, at the same min_pnp_inliers. Structure triangulated
+      after an image was refused is what can make it registrable. A camera
+      placed this way was placed late, after most window solves had run, so it
+      can be less accurate than its neighbours; the global adjustment downstream
+      is what corrects it. Images that never reached min_pnp_inliers links are
+      not retried.
 
   registered_images:
     direction: higher_better
@@ -521,8 +546,8 @@ diagnostics:
     metric: escaped_points
     message: Some points left the image during the in-loop window solves; they are counted, not judged, and a wider window is likely to give a better finished model.
     suggested_actions:
-      - "Nothing, when the service is driving. After a bundle adjustment refines a model built on these poses, it re-solves that chain with a wider local_ba_window and keeps the wider solve unless it fails or the verifier vetoes it. The decision is in that step's `second_solve`."
-      - "Driving by hand: re-solve this stage at local_ba_window 28, or the image count if that is smaller, carry it through the same refinement, and keep it unless it fails or is vetoed. Go to 40 only if that solve fails or is vetoed. Never choose between the solves on reprojection error."
+      - "Nothing, when the service is driving. After a bundle adjustment refines a model built on these poses, it re-solves that chain with a wider local_ba_window and keeps the wider solve unless it fails, the verifier vetoes it, or it gives up more cameras than the registered_fraction band allows against an accepted first solve. The decision, and any cameras given up, are in that step's `second_solve`."
+      - "Driving by hand: re-solve this stage at local_ba_window 28, or the image count if that is smaller, carry it through the same refinement, and keep it unless it fails, is vetoed, or registers fewer cameras than an accepted first solve and falls below the registered_fraction band. Go to 40 only if that solve is not kept. Never choose between the solves on reprojection error."
       - "Do not remove the escaped points, raise min_track_len, or set local_ba false instead. Each was tried against widening on the same captures, and none improved the finished model as consistently."
     see_also: limitations.md#escaped-points-start-a-second-solve
 

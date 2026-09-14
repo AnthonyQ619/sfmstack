@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.3.0
+module_version: 1.4.0
 curated_at: 2026-09-13
 ---
 
@@ -107,11 +107,16 @@ these poses:
 1. Re-solves the chain from this stage to that refined model with
    `local_ba_window` at 28, or the image count if smaller. Every other setting,
    and every step in between, is repeated as it was.
-2. Keeps that solve unless it failed or the verifier vetoed it.
-3. Only if it failed or was vetoed, tries 40 — or the image count, if smaller —
-   as a last resort, under the same rule.
+2. Keeps that solve unless it failed, the verifier vetoed it, or it registers
+   fewer cameras than a first solve the verifier accepted and its
+   `registered_fraction` falls below the band this stage publishes.
+3. Only if it was not kept, tries 40 — or the image count, if smaller — as a
+   last resort, under the same rule.
 4. Otherwise keeps the first model, unless it was vetoed too; then nothing is
    kept, and the result says so.
+
+Any camera a re-solve gave up is named in its `registration`, kept or not, with
+what the loss cost in its `trade_off`.
 
 If the first solve already ran at 28 or wider, it stands in for step 1, and the
 last resort runs only if it was vetoed. If the window already spans the capture
@@ -140,6 +145,24 @@ there is nothing wider, and the escapes are only reported.
   configurations and lost on none, and it costs more. A window spanning the whole
   capture was no worse at the capture sizes measured, but rarely better, and
   larger captures have not been measured.
+- *Registration counts, but only against an accepted first solve.* A wider solve
+  can leave a camera out that the first placed. Refusing any loss threw away
+  corrections worth far more than the few cameras given up; ignoring losses would
+  let a solve drop cameras unseen. So a loss is tolerated while the registered
+  fraction stays inside the band this stage already publishes: no new number,
+  and it scales with the capture — a large capture may give up a few cameras, a
+  small one perhaps none. Against a vetoed first solve no loss disqualifies,
+  because a vetoed model is no alternative.
+- *The band is a bound on cost, not a measured turning point.* Every loss
+  observed was a small share of the capture, and the solve that gave it up was
+  the better model. Nothing near the band's edge was tested, so where the
+  correction stops outweighing the cameras is the reader's call, made on the
+  `trade_off` below.
+- *Refused cameras are retried before any of this.* An image PnP refused during
+  growth is tried again against the finished structure. In the experiments
+  behind this rule, that removed every loss against an accepted first solve; the
+  one loss left was against a vetoed first solve, which is no alternative. Most
+  cameras still missing after the retry never had enough links to be tried.
 
 **Cost.** The chain from this stage to the refined model, run again at a wider
 window: typically under twice the time of the first run of that chain, more on
@@ -148,6 +171,22 @@ long captures.
 **What to do with the result.** Continue from the model `second_solve` names as
 `kept`. `sfm_run_summary` lists both models, marks which was kept, and repeats
 each one's verification. Do not re-solve by hand when the service is driving.
+
+**When the kept solve gave up cameras**, read its `trade_off` before moving on.
+None of it needs reference geometry:
+
+- `rotation_change_deg` — how far the relative rotations between the cameras
+  both solves registered moved. Large, with the veto passed: the second solve
+  corrected something, and it is the one to keep. Near zero: the wider window
+  bought little, so the first solve's extra cameras may be worth more; choosing
+  the first is legitimate when those cameras matter.
+- `lost_structure_still_covered` beside `typical_for_registered` — per lost
+  camera, the share of what it sees that at least two other cameras still see.
+  Near the typical share, it was a redundant viewpoint. Well below it, a region
+  lost support; if that region matters, link those cameras better upstream
+  rather than giving up the correction.
+- `verdicts` — a vetoed first solve is not an alternative, whatever the other
+  two readings say.
 
 ## When a global method is simply better
 

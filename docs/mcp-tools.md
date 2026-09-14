@@ -316,9 +316,14 @@ session to a first reconstruction, with the files each step opens.
    -> when the pose stage reported escaped points, the same result carries
       `second_solve`: the service re-solved the chain from the pose step to
       this model at a wider window -- 28, or the capture if smaller; 40 only
-      as a last resort, when that solve fails or is vetoed -- and names the
-      model to continue from. The wider solve is kept unless it failed or was
-      vetoed, never chosen on reprojection error. The pose step's own result
+      as a last resort, when that solve is not kept -- and names the model
+      to continue from. The wider solve is kept unless it failed, was
+      vetoed, or gave up more cameras than the pose stage's
+      registered_fraction band allows against a first solve the verifier
+      accepted; never chosen on reprojection error. Every camera a re-solve
+      gave up is named in its `registration`, with what the loss cost in
+      `trade_off`: how far the shared cameras' geometry moved, and how much
+      of what the lost cameras saw is still covered. The pose step's own result
       says the second solve is coming; sfm_run_summary(run) records the
       decision and marks which of the two models was kept.
 

@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.3.0
+module_version: 1.4.0
 curated_at: 2026-09-13
 ---
 
@@ -61,6 +61,17 @@ See `plan/matching.md` on that precondition.
 
 Some image had fewer than `min_pnp_inliers` 2D-3D correspondences, or PnP RANSAC
 could not find a consistent pose.
+
+**A refused image has already been retried.** An image PnP refuses during growth
+is tried once more when growth stops, against the finished structure and at the
+same `min_pnp_inliers`: by then later images have triangulated more of what it
+sees. `registered_on_retry` counts what that placed, and the `partial_registration`
+message says which missing images PnP refused and which never had enough links to
+be tried. Either way, an image still missing could not be placed against
+everything this stage built, so the fix is more links upstream, not a looser
+threshold here. A camera the retry placed was placed late, after most window
+solves had run, and can be a little less accurate than its neighbours; the global
+adjustment downstream is what corrects it.
 
 Check, in this order:
 
@@ -264,15 +275,18 @@ wider window gave a better finished model far more often than a worse one; where
 nothing escaped, widening changed nothing on most captures. The service acts on
 it: once the model is refined, it re-solves the chain from this stage at
 `local_ba_window` 28 (or the image count, if smaller) and keeps that solve unless
-it fails or the verifier vetoes it; 40 runs only as a last resort. The rule, and
-why each part of it is there:
+it fails, the verifier vetoes it, or it gives up more cameras than the
+`registered_fraction` band allows against a first solve the verifier accepted; 40
+runs only as a last resort. The rule, and why each part of it is there:
 [limitations](limitations.md#escaped-points-start-a-second-solve).
 
 **Driving by hand, do the same.** One re-solve at that width, carried through the
-same refinement, kept unless it fails or is vetoed. Do not choose between the two
-on reprojection error, and do not keep widening until the count reaches zero — it
-does not fall as the window grows, and chasing it chose worse models than a fixed
-width.
+same refinement, kept unless it fails, is vetoed, or registers fewer cameras than
+an accepted first solve and falls below the `registered_fraction` band. Compare
+which cameras each solve registered before deciding: a loss inside the band is a
+trade to weigh, not a failure. Do not choose between the two on reprojection
+error, and do not keep widening until the count reaches zero — it does not fall
+as the window grows, and chasing it chose worse models than a fixed width.
 
 **What stays open.** The earlier account recorded that `local_ba: false` was
 sometimes the best configuration where the old guard fired. Against a wider window

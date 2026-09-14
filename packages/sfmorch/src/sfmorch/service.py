@@ -119,11 +119,15 @@ PLAN_SHAPE = {
 # The second solve's windows, and what triggers it. The default width is where
 # the benefit of widening had levelled off on the captures measured. The last
 # resort bought a little more on a few and costs more, so it runs only when the
-# solve at the default failed or was vetoed.
+# solve at the default was not kept.
 WINDOW_PARAM = "local_ba_window"
 ESCAPE_METRIC = "escaped_points"
 SECOND_SOLVE_WINDOW = 28
 LAST_RESORT_WINDOW = 40
+# The tolerance for a second solve that registers fewer cameras is the pose
+# stage's own healthy band on this metric, read off the artifact: no number of
+# the service's own, and it moves if the module revises its band.
+REGISTRATION_METRIC = "registered_fraction"
 
 
 def second_solve_rungs(first_window: int, n_images: int) -> list[tuple[int, str]]:
@@ -642,13 +646,22 @@ class SfmService:
     # often than a worse one, and where nothing escaped, widening changed nothing
     # on most. So once a model built on those poses is refined, the chain from the
     # pose step to that model is solved again at a wider window, and the wider
-    # solve is kept unless it failed or the verifier vetoed it.
+    # solve is kept unless it failed, the verifier vetoed it, or it gave up too
+    # many cameras (below).
     #
     # Never chosen on reprojection error: keeping whichever solve reported the
     # lower error gave back most of the benefit. And the width is fixed rather
     # than searched: widening until nothing escaped chose worse models, because the
     # count does not fall as the window grows. Argued in PoseEssentialToPnP's
     # limitations, "Escaped points start a second solve".
+    #
+    # Registration is part of the decision, but only against a first solve the
+    # verifier accepted -- a vetoed one is no alternative. A wider solve that
+    # registers fewer cameras than an accepted first solve is kept while its
+    # registered fraction stays inside the pose stage's healthy band, and counts
+    # as failed below it. Every loss is recorded by name with what it cost
+    # (`trade_off`), because where the correction stops outweighing the lost
+    # cameras was never measured.
 
     def _second_solve(self, result, run_id: str | None,
                       verification: dict[str, Any]) -> dict[str, Any] | None:
@@ -693,11 +706,15 @@ class SfmService:
                 f"sfm_replay from {pose.id} with {WINDOW_PARAM}={rungs[0][0]}, "
                 f"carried through the same refinement.")
 
+        floor = self._band_floor(pose)
         for width, role in rungs:
             below = doc["attempts"][-1] if doc["attempts"] else first
             if role == "last_resort" and self._acceptable(below):
                 break
             attempt = self._solve_again(run_id, pose, model, width, role)
+            if attempt["status"] == "ok":
+                self._weigh_registration(attempt, model, n_images, floor,
+                                         first_accepted=kept_first is not None)
             doc["attempts"].append(attempt)
             if self._acceptable(attempt):
                 break
@@ -707,19 +724,22 @@ class SfmService:
             detour = ""
             if kept["role"] == "last_resort" and len(doc["attempts"]) > 1:
                 d = doc["attempts"][0]
-                detour = (f"; the solve at {d['window']} "
-                          f"{'failed' if d['status'] != 'ok' else 'was vetoed'}, "
+                detour = (f"; the solve at {d['window']} {self._outcome(d)}, "
                           f"so the last resort ran")
             return self._decide(
                 run, doc, "kept_second", kept["model"], kept["window"],
                 f"Points escaped the first solve at {WINDOW_PARAM}={first_window}. "
                 f"Kept the re-solve at {kept['window']}{detour}: it completed and "
                 f"the verifier did not veto it. Continue from it. The choice was "
-                f"not made on reprojection error.")
+                f"not made on reprojection error."
+                + self._loss_sentence(kept, first))
         if kept_first is not None:
             reason = (
-                "Every wider solve failed or was vetoed, so the first model -- which "
-                "the verifier did not veto -- is kept."
+                "No wider solve was kept: "
+                + "; ".join(f"the one at {a['window']} {self._outcome(a)}"
+                            for a in doc["attempts"])
+                + ". So the first model -- which the verifier did not veto -- is "
+                  "kept."
                 if doc["attempts"] else
                 f"The first solve already ran at {first_window}, at or above the "
                 f"default second-solve width, and the verifier did not veto it. The "
@@ -749,7 +769,9 @@ class SfmService:
         elif rungs[0][1] == "default":
             note = (f"Once a bundle adjustment refines a model built on these poses, "
                     f"the service re-solves that chain at {WINDOW_PARAM}={rungs[0][0]} "
-                    f"and keeps it unless it fails or the verifier vetoes it"
+                    f"and keeps it unless it fails, the verifier vetoes it, or it "
+                    f"gives up more cameras than this stage's {REGISTRATION_METRIC} "
+                    f"band allows against an accepted first solve"
                     + (f"; only then does it try {rungs[1][0]} as a last resort"
                        if len(rungs) > 1 else "")
                     + ". Continue the pipeline as planned -- do not re-solve by hand.")
@@ -832,7 +854,145 @@ class SfmService:
 
     @staticmethod
     def _acceptable(entry: dict[str, Any]) -> bool:
-        return entry.get("status") == "ok" and not entry.get("vetoed")
+        return (entry.get("status") == "ok" and not entry.get("vetoed")
+                and not entry.get("rejected_on_registration"))
+
+    @staticmethod
+    def _outcome(entry: dict[str, Any]) -> str:
+        """Why a solve was not kept, as a clause."""
+        if entry.get("status") != "ok":
+            return "failed"
+        if entry.get("vetoed"):
+            return "was vetoed"
+        if entry.get("rejected_on_registration"):
+            r = entry.get("registration") or {}
+            return (f"registered {len(r.get('lost') or [])} fewer camera(s) than the "
+                    f"accepted first solve, leaving {r.get('fraction')} of the "
+                    f"capture, below the pose stage's {REGISTRATION_METRIC} band")
+        return "was kept"
+
+    @staticmethod
+    def _loss_sentence(kept: dict[str, Any], first: dict[str, Any]) -> str:
+        lost = (kept.get("registration") or {}).get("lost") or []
+        if not lost:
+            return ""
+        why = ("the first solve was vetoed, so it is no alternative"
+               if first.get("vetoed") else
+               f"its {REGISTRATION_METRIC} stays inside the pose stage's band")
+        return (f" It does not register {len(lost)} camera(s) the first solve had "
+                f"({', '.join(lost)}); kept because {why}. What those cameras saw "
+                f"and how far the geometry moved are in this attempt's `trade_off`: "
+                f"weigh them if those cameras matter.")
+
+    def _band_floor(self, pose) -> float | None:
+        """The lower edge of the pose artifact's own registered-fraction band."""
+        m = pose.manifest.metrics.get(REGISTRATION_METRIC)
+        band = getattr(m, "healthy", None)
+        return float(band[0]) if band and band[0] is not None else None
+
+    def _weigh_registration(self, attempt: dict[str, Any], first_model, n_images: int,
+                            floor: float | None, *, first_accepted: bool) -> None:
+        """Compare a re-solve's cameras with the first model's; record any loss,
+        and what it cost."""
+        try:
+            new_model = self.store.open(attempt["model"])
+            before, after = self._rotations(first_model), self._rotations(new_model)
+            names = [str(n) for n in
+                     self.store.open(first_model.manifest.scene).load("images", "names")]
+        except Exception as e:  # a reading, never a reason to fail the step
+            attempt["registration"] = {"status": "unavailable",
+                                       "error": f"{type(e).__name__}: {e}"[:300]}
+            return
+        name = lambda i: names[i] if i < len(names) else str(i)  # noqa: E731
+        lost = sorted(set(before) - set(after))
+        gained = sorted(set(after) - set(before))
+        fraction = len(after) / n_images if n_images else 0.0
+        # A pose artifact that publishes no band tolerates no loss.
+        within = fraction >= floor if floor is not None else not lost
+        attempt["registration"] = {
+            "registered": len(after), "first_registered": len(before),
+            "capture_images": n_images, "fraction": round(fraction, 3),
+            "band_floor": floor, "within_band": within,
+            "lost": [name(i) for i in lost], "gained": [name(i) for i in gained],
+        }
+        attempt["rejected_on_registration"] = bool(lost) and first_accepted and not within
+        if not lost:
+            return
+        covered = self._still_covered(new_model, set(after), n_images)
+        typical = None
+        if covered is not None:
+            kept_shares = covered[sorted(after)]
+            kept_shares = kept_shares[np.isfinite(kept_shares)]
+            typical = round(float(np.median(kept_shares)), 3) if len(kept_shares) else None
+        attempt["trade_off"] = {
+            "cameras_lost": len(lost),
+            "share_of_capture_lost": round(len(lost) / n_images, 3) if n_images else None,
+            # Per lost camera: the share of the tracks it observes that at least two
+            # OTHER cameras of this solve still see. Low beside the typical share
+            # means part of the scene lost support, not just a redundant viewpoint.
+            "lost_structure_still_covered": (
+                {name(i): (round(float(covered[i]), 3) if np.isfinite(covered[i]) else None)
+                 for i in lost} if covered is not None else None),
+            "typical_for_registered": typical,
+            # On the cameras both solves registered: how far the relative rotations
+            # between them moved. Large means the second solve corrected something;
+            # near zero means the wider window bought little.
+            "rotation_change_deg": self._rotation_change(before, after),
+            "verdicts": {"first": "accepted" if first_accepted else "vetoed",
+                         "second": "vetoed" if attempt.get("vetoed") else "accepted"},
+        }
+
+    @staticmethod
+    def _rotations(model) -> dict[int, np.ndarray]:
+        """Scene image index -> world-to-camera rotation, registered cameras only."""
+        cams = np.asarray(model.load("poses", "cam_from_world"))
+        valid = np.asarray(model.load("poses", "valid"), dtype=bool)
+        idx = np.asarray(model.load("poses", "image_index")).astype(np.int64)
+        return {int(i): cams[r][:, :3] for r, (i, v) in enumerate(zip(idx, valid)) if v}
+
+    def _still_covered(self, model, registered: set[int], n_images: int):
+        """Per scene image, the share of the tracks it observes that at least two
+        other registered cameras see; NaN where it observes none. None without a
+        tracks artifact in the lineage."""
+        tracks = self._ancestor_of_type(model, self.TRACKS_TYPE)
+        if tracks is None:
+            return None
+        obs = np.asarray(tracks.load("observations", "obs"))
+        if not len(obs):
+            return None
+        t, f = obs[:, 0].astype(np.int64), obs[:, 1].astype(np.int64)
+        size = max(n_images, int(f.max()) + 1)
+        reg = np.zeros(size, dtype=np.int64)
+        reg[sorted(registered)] = 1
+        views = np.bincount(t, weights=reg[f])        # registered views per track
+        covered = (views[t] - reg[f]) >= 2            # excluding the image itself
+        seen = np.bincount(f, minlength=size)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            share = np.bincount(f, weights=covered, minlength=size) / seen
+        return share
+
+    @staticmethod
+    def _rotation_change(a: dict[int, np.ndarray], b: dict[int, np.ndarray],
+                         cap: int = 400) -> dict[str, Any] | None:
+        """Median and p90 change, in degrees, of the relative rotation between
+        every pair of cameras both solves registered. Relative rotations need no
+        alignment: each solve's own world frame cancels."""
+        shared = sorted(set(a) & set(b))
+        if len(shared) < 2:
+            return None
+        n_shared = len(shared)
+        if n_shared > cap:  # pairs grow with the square; an even subset suffices
+            shared = [shared[i] for i in np.linspace(0, n_shared - 1, cap).round().astype(int)]
+        A = np.stack([a[i] for i in shared])
+        B = np.stack([b[i] for i in shared])
+        i, j = np.triu_indices(len(shared), k=1)
+        rel_a = A[j] @ np.swapaxes(A[i], 1, 2)
+        rel_b = B[j] @ np.swapaxes(B[i], 1, 2)
+        d = rel_a @ np.swapaxes(rel_b, 1, 2)
+        ang = np.degrees(np.arccos(np.clip((np.trace(d, axis1=1, axis2=2) - 1) / 2, -1, 1)))
+        return {"median": round(float(np.median(ang)), 3),
+                "p90": round(float(np.percentile(ang, 90)), 3),
+                "shared_cameras": n_shared}
 
     # The rungs of the reconstruction health profile, in ladder order. Defined
     # and argued in skills/health/ladder.md -- the run payload carries the

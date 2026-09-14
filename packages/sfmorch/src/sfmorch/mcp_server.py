@@ -176,7 +176,9 @@ def build_server(service: SfmService):
         After an optimization step the result also carries `verification`, a veto
         on the refined model, and -- when the pose stage reported escaped points --
         `second_solve`: the service re-solved that chain at a wider window and
-        names the model to continue from as `kept`.
+        names the model to continue from as `kept`. Any camera a re-solve gave
+        up is named in its `registration`, with what the loss cost in
+        `trade_off`.
         """
         return service.run(
             module, run_id=run_id, inputs=inputs, params=params,

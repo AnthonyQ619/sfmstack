@@ -241,6 +241,53 @@ def test_a_point_that_escaped_in_an_earlier_solve_does_not_own_the_next_gain():
     assert r["gain"] == pytest.approx(0.2)
 
 
+def _staged_growth(refuse_until_registered=None, always_refuse=()):
+    """Images 0 and 1 are the seed; 2 and 3 have links; 4 never has enough."""
+    registered = {0: None, 1: None}
+    links = {2: 50, 3: 40, 4: 5}
+    tried = []
+
+    def attempt(f):
+        tried.append(f)
+        if f in always_refuse or (f == 2 and refuse_until_registered is not None
+                                  and refuse_until_registered not in registered):
+            return False
+        registered[f] = None
+        return True
+
+    return registered, (lambda f: links[f]), attempt, tried
+
+
+@needs_pycolmap
+def test_an_image_refused_early_is_retried_once_against_the_finished_structure():
+    """Image 2 is refused until image 3 has triangulated more of what it sees."""
+    ad = _adapter("pose_incremental")
+    registered, links, attempt, tried = _staged_growth(refuse_until_registered=3)
+    refused, recovered, unplaced = ad.grow(5, registered, links, attempt, 20)
+
+    assert (refused, recovered, unplaced) == ([2], [2], [])
+    assert sorted(registered) == [0, 1, 2, 3]
+    assert tried == [2, 3, 2]  # image 4 never reached the requirement, so never tried
+
+
+@needs_pycolmap
+def test_an_image_refused_again_on_the_retry_stays_out_and_growth_ends():
+    ad = _adapter("pose_incremental")
+    registered, links, attempt, tried = _staged_growth(always_refuse={2})
+    refused, recovered, unplaced = ad.grow(5, registered, links, attempt, 20)
+
+    assert (refused, recovered, unplaced) == ([2], [], [2])
+    assert tried == [2, 3, 2]
+
+
+@needs_pycolmap
+def test_nothing_refused_means_no_retry():
+    ad = _adapter("pose_incremental")
+    registered, links, attempt, tried = _staged_growth()
+    assert ad.grow(5, registered, links, attempt, 20) == ([], [], [])
+    assert tried == [2, 3]
+
+
 @needs_pycolmap
 def test_the_local_ba_schedule_is_what_the_parameters_say(orch):
     """warmup solves after every registration, then every interval-th one. Getting

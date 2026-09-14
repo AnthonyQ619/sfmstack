@@ -31,9 +31,24 @@ params:
     minimum: 0
     maximum: 100
     description: Raise at exactly this window, to stage a re-solve that cannot finish.
+  drop_from:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 100
+    description: At this window and wider, leave the last `drop` images unposed. 0 never drops.
+  drop:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 100
+    description: How many images a window at or above drop_from leaves unposed.
 
 metrics:
-  registered_fraction: {direction: higher_better, meaning: Every image is posed.}
+  registered_fraction:
+    direction: higher_better
+    healthy: [0.9, null]
+    meaning: Images posed over scene images.
   registered_images: {direction: higher_better, meaning: Images posed.}
   mean_reprojection_error: {direction: lower_better, nullable: true, meaning: A fixed value.}
   median_reprojection_error: {direction: lower_better, nullable: true, meaning: A fixed value.}

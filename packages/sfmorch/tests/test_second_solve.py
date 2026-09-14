@@ -2,8 +2,10 @@
 
 When the pose stage reports points that left the image during its in-loop window
 solves, the service re-solves the chain behind the refined model at a wider window
-and keeps the wider solve unless it failed or the verifier vetoed it. The wider
-last-resort window runs only when the default one failed or was vetoed.
+and keeps the wider solve unless it failed, the verifier vetoed it, or it gave up
+more cameras than the pose stage's registered-fraction band allows against a first
+solve the verifier accepted. The wider last-resort window runs only when the
+default one was not kept.
 
 The verifier is stood in for here: which models it vetoes is what each test
 stages, and the real one needs real geometry.
@@ -48,7 +50,7 @@ def veto_windows(svc, windows):
     svc._verify_model = verify
 
 
-def chain(svc, *, n_images=45, window=8, escape_below=20, fail_at=0):
+def chain(svc, *, n_images=45, window=8, escape_below=20, fail_at=0, drop_from=0, drop=0):
     def run(module, **kw):
         out = svc.run(module, run_id="r", wait_s=60.0, **kw)
         assert out["status"] == "ok", out
@@ -60,7 +62,7 @@ def chain(svc, *, n_images=45, window=8, escape_below=20, fail_at=0):
     tracks = run("FakeTracker", inputs={"scene": scene, "pairs": pairs})["outputs"]["tracks"]
     pose = run("FakePose", inputs={"scene": scene, "tracks": tracks},
                params={"local_ba_window": window, "escape_below": escape_below,
-                       "fail_at": fail_at})
+                       "fail_at": fail_at, "drop_from": drop_from, "drop": drop})
     sparse = run("FakeTriangulator", inputs={
         "scene": scene, "tracks": tracks, "poses": pose["outputs"]["poses"]})
     refined = run("FakeRefiner", inputs={
@@ -168,6 +170,51 @@ def test_a_vetoed_first_solve_at_the_default_goes_to_the_last_resort(service):
     s = refined["second_solve"]
     assert [a["window"] for a in s["attempts"]] == [40]
     assert s["status"] == "kept_second"
+
+
+def test_a_second_solve_that_loses_cameras_inside_the_band_is_kept_and_names_them(service):
+    veto_windows(service, set())
+    _, refined = chain(service, drop_from=28, drop=2)  # 43 of 45, inside 0.9
+    s = refined["second_solve"]
+    assert s["status"] == "kept_second" and s["kept_window"] == 28
+    r = s["attempts"][0]["registration"]
+    assert (r["first_registered"], r["registered"], r["within_band"]) == (45, 43, True)
+    assert len(r["lost"]) == 2 and r["lost"][0] in s["reason"]
+    t = s["attempts"][0]["trade_off"]
+    assert t["cameras_lost"] == 2
+    assert set(t["lost_structure_still_covered"]) == set(r["lost"])
+    assert t["rotation_change_deg"]["shared_cameras"] == 43
+    assert t["verdicts"] == {"first": "accepted", "second": "accepted"}
+
+
+def test_losing_more_than_the_band_allows_against_an_accepted_first_is_not_kept(service):
+    veto_windows(service, set())
+    _, refined = chain(service, drop_from=28, drop=6)  # 39 of 45, below 0.9, at 28 and 40
+    s = refined["second_solve"]
+    assert [a["rejected_on_registration"] for a in s["attempts"]] == [True, True]
+    assert s["status"] == "kept_first" and s["kept"] == refined["outputs"]["sparse"]
+    assert "below the pose stage's registered_fraction band" in s["reason"]
+    assert s["attempts"][0]["trade_off"]["cameras_lost"] == 6
+
+
+def test_a_default_solve_below_the_band_moves_to_the_last_resort(service):
+    veto_windows(service, set())
+    _, refined = chain(service, drop_from=28, drop=6)
+    first_rung = refined["second_solve"]["attempts"][0]
+    assert first_rung["window"] == 28 and first_rung["rejected_on_registration"]
+    assert [a["window"] for a in refined["second_solve"]["attempts"]] == [28, 40]
+
+
+def test_against_a_vetoed_first_solve_fewer_cameras_do_not_disqualify(service):
+    veto_windows(service, {8})
+    _, refined = chain(service, drop_from=28, drop=6)
+    s = refined["second_solve"]
+    assert s["status"] == "kept_second" and s["kept_window"] == 28
+    a = s["attempts"][0]
+    assert a["registration"]["within_band"] is False
+    assert a["rejected_on_registration"] is False
+    assert a["trade_off"]["verdicts"]["first"] == "vetoed"
+    assert "no alternative" in s["reason"]
 
 
 def test_a_window_that_already_spans_the_capture_has_nothing_wider(service):

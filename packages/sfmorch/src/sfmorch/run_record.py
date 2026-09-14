@@ -229,6 +229,15 @@ class Run:
                 f"- `{first.get('model')}` (window {first.get('window')}): "
                 f"{d.get('status')}, kept `{d.get('kept')}`. {d.get('reason', '')}"
             )
+            for a in d.get("attempts") or []:
+                r = a.get("registration") or {}
+                if r.get("lost"):
+                    lines.append(
+                        f"  - the solve at window {a.get('window')} lost "
+                        f"{len(r['lost'])} camera(s): {', '.join(r['lost'])} "
+                        f"(registered fraction {r.get('fraction')}, "
+                        f"{'inside' if r.get('within_band') else 'below'} the band)"
+                    )
         return "\n".join(lines)
 
     @classmethod

@@ -1,8 +1,8 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.3.0
+module_version: 1.4.0
 produces: poses/v1
-curated_at: 2026-08-07
+curated_at: 2026-09-13
 ---
 
 # Reading a PoseEssentialToPnP artifact

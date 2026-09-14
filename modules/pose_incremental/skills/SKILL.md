@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.3.0
+module_version: 1.4.0
 upstream: OpenCV essential matrix + SQPnP, the COLMAP incremental strategy
 curated_at: 2026-09-13
 sources: 4
@@ -42,7 +42,8 @@ degenerate — planar, pure rotation, or too sparsely sampled to have parallax. 
 **It consumes `tracks/v1`, not pairs.** That is the main departure from the
 predecessor and it changes the failure mode: this module cannot be run without a
 tracker, but a single unregisterable frame no longer truncates everything after
-it. It gets `valid=False` and the run continues.
+it. It gets `valid=False` and the run continues, after one more try against
+the finished structure if PnP was what refused it.
 
 **Local BA runs during registration, not after it** (`local_ba`, on by default).
 A sliding window of the last 8 registered cameras is refined with the two oldest
@@ -57,8 +58,10 @@ The [tuning file](tuning.md#local-ba--what-it-buys-measured) has the full table.
 **When points escape, the pipeline solves twice.** A point that leaves the image
 during a window solve is counted in `escaped_points`, never judged. Above zero it
 is the trigger for a second solve at a wider window, which the service runs once
-the model is refined and keeps unless it fails or the verifier vetoes it — see
-[limitations](limitations.md#escaped-points-start-a-second-solve).
+the model is refined and keeps unless it fails, the verifier vetoes it, or it
+gives up more cameras than the `registered_fraction` band allows against an
+accepted first solve. Cameras a re-solve gives up are named, with what they cost —
+see [limitations](limitations.md#escaped-points-start-a-second-solve).
 
 This does not replace [BundleAdjustmentLocal](../../ba_local/skills/SKILL.md).
 That module repairs an existing `sparse_model/v1` at a window you choose; this

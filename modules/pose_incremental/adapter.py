@@ -41,12 +41,16 @@ MIN_FIXED = 2
 ESCAPE_ACTIONS = [
     "Nothing, when the service is driving. After a bundle adjustment refines a "
     "model built on these poses, it re-solves that chain with a wider "
-    "local_ba_window and keeps the wider solve unless it fails or the verifier "
-    "vetoes it. The decision is in that step's `second_solve`.",
+    "local_ba_window and keeps the wider solve unless it fails, the verifier "
+    "vetoes it, or it gives up more cameras than the registered_fraction band "
+    "allows against an accepted first solve. The decision, and any cameras "
+    "given up, are in that step's `second_solve`.",
     "Driving by hand: re-solve this stage at local_ba_window 28, or the image "
     "count if that is smaller, carry it through the same refinement, and keep it "
-    "unless it fails or is vetoed. Go to 40 only if that solve fails or is "
-    "vetoed. Never choose between the solves on reprojection error.",
+    "unless it fails, is vetoed, or registers fewer cameras than an accepted "
+    "first solve and falls below the registered_fraction band. Go to 40 only if "
+    "that solve is not kept. Never choose between the solves on reprojection "
+    "error.",
     "Do not remove the escaped points, raise min_track_len, or set local_ba false "
     "instead. Each was tried against widening on the same captures, and none "
     "improved the finished model as consistently.",
@@ -336,6 +340,51 @@ def bundle_adjust_window(rec, window, *, K_all, undist_in, tracks_in, row_of,
     return readings, iterations, converged
 
 
+def grow(n_images: int, registered, links, attempt, min_links: int):
+    """Register images one at a time, best-linked first, until none can be.
+
+    `registered` holds the posed images and grows as `attempt` succeeds;
+    `links(f)` counts image f's 2D-3D correspondences against the structure so
+    far; `attempt(f)` tries to pose f and says whether it did. An image `attempt`
+    refuses is set aside, or the loop would re-pick it forever.
+
+    Once growth stops, every refused image is tried once more against the
+    finished structure, at the same requirement. An image refused early was
+    measured against the structure that existed then; by the end, later images
+    have triangulated more of what it sees. Images that never reached
+    `min_links` are not retried -- nothing the retry does gives them more links.
+
+    Returns (refused, recovered, unplaced): the images refused before the retry,
+    the ones the retry placed, and every image PnP refused at any point that
+    ended unregistered.
+    """
+    refused: set[int] = set()
+    ever: set[int] = set()
+
+    def one_pass():
+        while len(registered) + len(refused) < n_images:
+            candidate, best = None, 0
+            for f in range(n_images):
+                if f in registered or f in refused:
+                    continue
+                count = links(f)
+                if count > best:
+                    candidate, best = f, count
+            if candidate is None or best < min_links:
+                return
+            if not attempt(candidate):
+                refused.add(candidate)
+                ever.add(candidate)
+
+    one_pass()
+    first_refused = sorted(refused)
+    if refused:
+        refused.clear()
+        one_pass()
+    return (first_refused, [f for f in first_refused if f in registered],
+            sorted(f for f in ever if f not in registered))
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -584,25 +633,14 @@ def run(ctx: Ctx):
 
     refine()
 
-    # Images PnP has already refused. Kept separate from `rec.poses` rather than
-    # parked there as a None: everything that walks the pose dict -- triangulation,
-    # camera centres, reprojection -- assumes every entry is a real 3x4.
-    refused: set[int] = set()
+    # Refused images are kept apart from `rec.poses` (inside `grow`) rather than
+    # parked there as a None: everything that walks the pose dict --
+    # triangulation, camera centres, reprojection -- assumes every entry is a
+    # real 3x4.
+    def links(f: int) -> int:
+        return sum(1 for t in tracks_in[f] if int(t) in rec.points)
 
-    while len(rec.poses) + len(refused) < n_images:
-        # Register whichever unregistered image has the most 2D-3D links.
-        candidate, best_count = None, 0
-        for f in range(n_images):
-            if f in rec.poses or f in refused:
-                continue
-            count = sum(1 for t in tracks_in[f] if int(t) in rec.points)
-            if count > best_count:
-                candidate, best_count = f, count
-
-        if candidate is None or best_count < p.min_pnp_inliers:
-            break
-
-        f = candidate
+    def attempt(f: int) -> bool:
         ids = [int(t) for t in tracks_in[f] if int(t) in rec.points]
         object_points = np.array([rec.points[t] for t in ids], dtype=np.float64)
         image_points = np.array(
@@ -620,9 +658,7 @@ def run(ctx: Ctx):
             flags=cv2.SOLVEPNP_SQPNP,
         )
         if not ok or inliers is None or len(inliers) < p.min_pnp_inliers:
-            # Refuse it permanently, or the loop re-picks the same image forever.
-            refused.add(f)
-            continue
+            return False
 
         idx = inliers.ravel()
         rvec, tvec = cv2.solvePnPRefineLM(
@@ -640,6 +676,10 @@ def run(ctx: Ctx):
         # once accepted; local BA is what revises them.
         triangulate_new()
         refine()
+        return True
+
+    refused, recovered, unplaced = grow(n_images, rec.poses, links, attempt,
+                                        p.min_pnp_inliers)
 
     # ------------------------------------------------------------- finalise
     ctx.progress(0.92, "filtering structure")
@@ -734,6 +774,9 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(0.0, None))
     out.metric("escaped_points", len(escaped_tracks),
                direction="lower_better", healthy=(None, 0))
+    # Placed late, so less corrected than their neighbours; read the count
+    # before reading a recovered camera's accuracy against the rest.
+    out.metric("registered_on_retry", len(recovered), direction="neutral")
 
     if frac < 1.0:
         missing = [int(f) for f in range(n_images) if not valid[f]]
@@ -742,7 +785,13 @@ def run(ctx: Ctx):
             severity="warn",
             message=(
                 f"{len(missing)} of {n_images} images could not be registered: "
-                f"{[str(names[m]) for m in missing[:5]]}."
+                f"{[str(names[m]) for m in missing[:5]]}. "
+                + (f"{len(unplaced)} of them PnP refused, and the retry against "
+                   f"the finished structure did not place them; the rest never "
+                   f"reached min_pnp_inliers links to it."
+                   if unplaced else
+                   f"None was refused by PnP: they never reached "
+                   f"min_pnp_inliers links to the structure.")
             ),
             suggested_actions=[
                 "Read min_frame_long_tracks, NOT the tracker's "
@@ -885,7 +934,10 @@ def run(ctx: Ctx):
         f"Seeded on images ({i0}, {j0}) at {init_angle:.1f} degrees median parallax. "
         f"Registered {len(registered)}/{n_images} images and kept {len(rec.points)} "
         f"of {n_tracks_in} tracks as 3D points ({utilisation:.0%}). "
-        f"Mean reprojection error {mean_err:.2f}px, median triangulation angle "
+        + (f"PnP refused {len(refused)} image(s) during growth; the retry against "
+           f"the finished structure placed {len(recovered)} of them. "
+           if refused else "")
+        + f"Mean reprojection error {mean_err:.2f}px, median triangulation angle "
         f"{median_angle:.2f} degrees. Scale is arbitrary: the seed pair's baseline "
         f"is unit length."
     )
