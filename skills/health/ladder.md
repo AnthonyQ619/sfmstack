@@ -44,7 +44,8 @@ this.
 
 If two candidates register the same frames, go on. If they do not, prefer the one
 that registers more, and only look further if you are choosing between how they
-got there.
+got there. The service's second solve is the one exception — see
+[Comparing two finished models](#comparing-two-finished-models).
 
 **A precondition is not a guarantee, and the other half of that has now been
 measured too.** A configuration has registered **every frame of a capture** and
@@ -422,6 +423,17 @@ A comparison that skips step 3 has been measured producing the *wrong ranking*,
 so it is not optional care — it is the difference between a result and a coin
 flip.
 
+**The service's second solve is not a comparison to run through this
+procedure.** When points escape the pose stage, the service re-solves the chain
+at a wider window and keeps that solve by its own rule, never on reprojection
+error. It keeps it even when it registers a few fewer cameras than a first solve
+the verifier accepted, as long as the registered fraction stays inside the pose
+stage's band. Step 1 would reject that model on the camera count alone; do not.
+The lost cameras are named in the kept attempt's `trade_off`, with how much of
+what they saw is still covered and how far the shared cameras' geometry moved.
+Overrule the service only on that trade-off — see
+[PoseEssentialToPnP's limitations](../../modules/pose_incremental/skills/limitations.md#escaped-points-start-a-second-solve).
+
 ---
 
 ## When to stop turning a dial
@@ -525,8 +537,13 @@ that a capture's solve can have more than one self-consistent answer, and
 internal metrics measure self-consistency — so both satisfy them, by
 construction.
 
-**The consequence is a habit rather than a new rung.** Where a capture matters,
-**solve it twice and compare the two models to each other** by the procedure
-above. Two runs that agree are worth much more than one run that scores well,
-and two that disagree by more than the noise floor have told you something no
-single run could. `health/smells.md` carries the full case.
+**What catches it is outside this ladder.** After every refinement the service
+checks the model against the matcher's correspondences it was never fitted on,
+and vetoes a model that contradicts them: the wrong models in that case failed
+the check and every correct one passed. It has a blind spot — an error that
+every pair's matches allow, which a shallow subject can produce, reads clean.
+And where points escaped the pose stage, the service has already solved the
+chain a second time along a deliberately different path, a wider window, which
+landed consistently where blind repeats did not. A blind repeat of the same
+recipe mostly returns the same model, or a different answer at random; run one
+only to measure run-to-run noise. `health/smells.md` carries the case.

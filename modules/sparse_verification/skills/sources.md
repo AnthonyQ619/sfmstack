@@ -1,7 +1,7 @@
 ---
 module: SparseVerification
 module_version: 1.0.2
-curated_at: 2026-09-12
+curated_at: 2026-09-14
 ---
 
 # Where the claims in these files come from
@@ -10,6 +10,9 @@ There is no upstream library to cite. The epipolar (Sampson) distance is textboo
 two-view geometry; everything else here is measured in this stack.
 
 ## Measured
+
+The readings behind each point are in
+[evidence/second-solve-2026-09](../../../skills/evidence/second-solve-2026-09.md#the-veto).
 
 - **That self-consistent wrong models pass every self-reported reading.** A
   capture solved several times from identical correspondences, with the solves in

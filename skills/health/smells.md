@@ -261,14 +261,20 @@ that is coherently wrong.
 
 - **Stop reading a low reprojection error as evidence of correctness.** It is
   evidence of self-consistency, and the wrong model here won on it.
-- **Where a capture matters, solve it twice** and compare the two models to each
-  other by the procedure in [ladder.md](ladder.md#comparing-two-finished-models).
-  Two runs that agree are worth far more than one run that looks good. Two runs
-  that disagree by more than the noise floor are telling you the capture has more
-  than one answer, which is a fact about the capture and not a defect of the run.
+- **Read the verifier's verdict, not the rungs.** After every refinement the
+  service checks the model against the correspondences it was never fitted on.
+  Both wrong models in this case were vetoed there, and every correct one passed.
+  A veto means discard the model, however good its rungs look. A clean verdict is
+  not proof: an error that every pair's matches allow — a shallow subject can
+  produce one — passes it.
+- **Do not spend runs on blind repeats.** A second run of the same recipe mostly
+  returns the same model, or lands in a different answer at random. The second
+  solve the service runs when points escape the pose stage takes a deliberately
+  different path, a wider window, and that is what landed consistently here.
+  Repeat a recipe only to measure run-to-run noise.
 - **Suspect this most where a capture is a wander with weak connections** rather
   than a tight orbit — somewhere the graph could plausibly fold a different way.
-  It is not predicted by any rung; repetition is the only test.
+  It is not predicted by any rung.
 
 ---
 

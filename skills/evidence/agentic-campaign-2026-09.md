@@ -10,30 +10,30 @@ Steps 0–6 of the tool loop over every capture in [CORPUS.txt](CORPUS.txt), at 
 
 ## The model shipped for each capture
 
-Selected on registration first and the accounting rungs second, which is the rule in `health/ladder.md`. Where that rule and ground truth disagree the disagreement is recorded below rather than hidden by the selection.
+The branch for each capture was selected on registration first and the accounting rungs second, the rule in `health/ladder.md`. Each row is the model the current service keeps on that branch; where points escaped the pose stage, that is the second solve ([second-solve-2026-09](second-solve-2026-09.md#the-final-re-run)).
 
-| capture | pipeline | px | reg | points | GT rot° | GT trn° |
-| --- | --- | --- | --- | --- | --- | --- |
-| <a id="cap-dtu-scan1"></a>DTU/scan1 | `sift+nn/incr@1024` | 1024 | 1.00 | 19235 | 0.108 | 0.709 |
-| <a id="cap-dtu-scan10"></a>DTU/scan10 | `sift+nn/incr@1024` | 1024 | 1.00 | 15707 | 0.116 | 0.759 |
-| <a id="cap-dtu-scan15"></a>DTU/scan15 | `sift+nn/incr@1024` | 1024 | 1.00 | 15837 | 0.078 | 0.745 |
-| <a id="cap-dtu-scan23"></a>DTU/scan23 | `sift+nn/incr@1024` | 1024 | 1.00 | 18411 | 0.118 | 0.807 |
-| <a id="cap-dtu-scan33"></a>DTU/scan33 | `sift+nn/incr@1024` | 1024 | 1.00 | 19824 | 0.090 | 0.715 |
-| <a id="cap-dtu-scan4"></a>DTU/scan4 | `sift+nn/incr@1024` | 1024 | 1.00 | 22744 | 0.092 | 0.725 |
-| <a id="cap-dtu-scan9"></a>DTU/scan9 | `sift+nn/incr@1024` | 1024 | 1.00 | 16391 | 0.094 | 0.736 |
-| <a id="cap-eth-courtyard"></a>ETH/courtyard | `sift+lightglue/incr@1024` | 1024 | 1.00 | 11768 | 0.072 | 0.122 |
-| <a id="cap-eth-delivery-area"></a>ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1600` | 1600 | 1.00 | 28335 | 0.048 | 0.085 |
-| <a id="cap-eth-electro"></a>ETH/electro | `roma-outdoor/incr@1024` | 1024 | 1.00 | 69803 | 0.079 | 0.084 |
-| <a id="cap-eth-facade"></a>ETH/facade | `sift+lightglue/global@1600` | 1600 | 1.00 | 32609 | 0.061 | 0.080 |
-| <a id="cap-eth-kicker"></a>ETH/kicker | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 6405 | 0.040 | 0.078 |
-| <a id="cap-eth-meadow"></a>ETH/meadow | `roma-outdoor/incr@1024` | 1024 | 1.00 | 33854 | 0.136 | 0.083 |
-| <a id="cap-eth-office"></a>ETH/office | `superpoint+lightglue/global@1024` | 1024 | 1.00 | 2382 | 0.090 | 0.448 |
-| <a id="cap-eth-playground"></a>ETH/playground | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 9307 | 0.088 | 0.196 |
-| <a id="cap-eth-relief"></a>ETH/relief | `sift+nn/incr@1600` | 1600 | 1.00 | 9606 | 3.068 | 0.962 |
+| capture | pipeline | px | reg | points | GT rot° | GT trn° | solve |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="cap-dtu-scan1"></a>DTU/scan1 | `sift+nn/incr@1024` | 1024 | 1.00 | 19235 | 0.108 | 0.709 | first |
+| <a id="cap-dtu-scan10"></a>DTU/scan10 | `sift+nn/incr@1024` | 1024 | 1.00 | 15731 | 0.115 | 0.758 | second, window 28 |
+| <a id="cap-dtu-scan15"></a>DTU/scan15 | `sift+nn/incr@1024` | 1024 | 1.00 | 15851 | 0.080 | 0.747 | second, window 28 |
+| <a id="cap-dtu-scan23"></a>DTU/scan23 | `sift+nn/incr@1024` | 1024 | 1.00 | 18418 | 0.117 | 0.810 | second, window 28 |
+| <a id="cap-dtu-scan33"></a>DTU/scan33 | `sift+nn/incr@1024` | 1024 | 1.00 | 19756 | 0.081 | 0.713 | second, window 28 |
+| <a id="cap-dtu-scan4"></a>DTU/scan4 | `sift+nn/incr@1024` | 1024 | 1.00 | 22744 | 0.092 | 0.725 | first |
+| <a id="cap-dtu-scan9"></a>DTU/scan9 | `sift+nn/incr@1024` | 1024 | 1.00 | 16387 | 0.093 | 0.734 | second, window 28 |
+| <a id="cap-eth-courtyard"></a>ETH/courtyard | `sift+lightglue/incr@1024` | 1024 | 1.00 | 11966 | 0.074 | 0.107 | second, window 28 |
+| <a id="cap-eth-delivery-area"></a>ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1600` | 1600 | 1.00 | 28149 | 0.052 | 0.082 | first |
+| <a id="cap-eth-electro"></a>ETH/electro | `roma-outdoor/incr@1024` | 1024 | 1.00 | 77563 | 0.051 | 0.093 | second, window 28 |
+| <a id="cap-eth-facade"></a>ETH/facade | `sift+lightglue/global@1600` | 1600 | 1.00 | 32598 | 0.062 | 0.080 | first |
+| <a id="cap-eth-kicker"></a>ETH/kicker | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 6386 | 0.039 | 0.072 | first |
+| <a id="cap-eth-meadow"></a>ETH/meadow | `roma-outdoor/incr@1024` | 1024 | 1.00 | 33868 | 0.139 | 0.084 | second, window 15 |
+| <a id="cap-eth-office"></a>ETH/office | `superpoint+lightglue/global@1024` | 1024 | 1.00 | 2352 | 0.081 | 0.448 | first |
+| <a id="cap-eth-playground"></a>ETH/playground | `sift-clahe+lightglue/global@1600` | 1600 | 1.00 | 9312 | 0.086 | 0.171 | first |
+| <a id="cap-eth-relief"></a>ETH/relief | `sift+nn/incr@1600` | 1600 | 1.00 | 10059 | 0.049 | 0.047 | second, window 28 |
 
 **DTU rotations are corrected**; translations are not. See [the ground-truth section](#the-ground-truth-these-were-scored-against).
 
-**Two captures where that selection rule and ground truth disagree, and the rule loses.** On a shallow-relief subject two models both registered the whole capture and the rule preferred the one truth ranks roughly sixty times worse. On a dim built interior the rule preferred a model with more points and better coverage that is worse against truth on both axes. In both cases the branch the rule declined was the one whose poses came from a global reconstructor, on which the yield rungs cannot be computed at all — so the tiebreak fell to coverage and point count alone. This is the hazard `health/ladder.md` now records.
+**Two captures where that selection rule and ground truth disagree, and the rule loses.** On a shallow-relief subject two branches both registered the whole capture and the rule preferred the one whose first solve truth ranked roughly sixty times worse; that branch's second solve, shown above, closes the gap. On a dim built interior the rule preferred a model with more points and better coverage that is worse against truth on both axes. In both cases the branch the rule declined was the one whose poses came from a global reconstructor, on which the yield rungs cannot be computed at all — so the tiebreak fell to coverage and point count alone. This is the hazard `health/ladder.md` now records.
 
 ## Every leg
 
@@ -266,33 +266,29 @@ Every leg below ran at `saturation: 0.0`, so the cap is not what is being measur
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DTU/scan1 | `sift+nn/incr@1024` | 1176 | 0.108 | 0.709 | 0.856 | 0.976 | 0.977 | 0.996 |
 | DTU/scan4 | `sift+nn/incr@1024` | 1176 | 0.092 | 0.725 | 0.847 | 0.975 | 0.980 | 0.997 |
-| DTU/scan9 | `sift+nn/incr@1024` | 1176 | 0.094 | 0.736 | 0.852 | 0.975 | 0.980 | 0.997 |
-| DTU/scan10 | `sift+nn/incr@1024` | 1176 | 0.116 | 0.759 | 0.845 | 0.974 | 0.976 | 0.996 |
-| DTU/scan15 | `sift+nn/incr@1024` | 1176 | 0.078 | 0.745 | 0.849 | 0.975 | 0.983 | 0.997 |
-| DTU/scan23 | `sift+nn/incr@1024` | 1176 | 0.118 | 0.807 | 0.838 | 0.973 | 0.974 | 0.996 |
-| DTU/scan33 | `sift+nn/incr@1024` | 1176 | 0.090 | 0.715 | 0.856 | 0.976 | 0.982 | 0.997 |
-| ETH/courtyard | `sift+lightglue/incr@1024` | 703 | 0.072 | 0.122 | 0.962 | 0.994 | 0.984 | 0.997 |
-| ETH/electro | `roma-outdoor/incr@1024` | 990 | 0.079 | 0.084 | 0.803 | 0.825 | 0.819 | 0.865 |
-| ETH/meadow | `roma-outdoor/incr@1024` | 105 | 0.136 | 0.083 | 0.952 | 0.992 | 0.961 | 0.994 |
-| ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1600` | 946 | 0.048 | 0.085 | 0.972 | 0.995 | 0.990 | 0.998 |
-| ETH/facade | `sift+lightglue/global@1600` | 1225 | 0.061 | 0.080 | 0.964 | 0.993 | 0.983 | 0.997 |
-| ETH/kicker | `sift-clahe+lightglue/global@1600` | 465 | 0.040 | 0.078 | 0.968 | 0.995 | 0.984 | 0.997 |
-| ETH/office | `superpoint+lightglue/global@1024` | 325 | 0.090 | 0.448 | 0.816 | 0.966 | 0.975 | 0.996 |
-| ETH/playground | `sift-clahe+lightglue/global@1600` | 703 | 0.088 | 0.196 | 0.944 | 0.991 | 0.982 | 0.997 |
-| ETH/relief | `sift+nn/incr@1600` | 465 | 3.068 | 0.962 | 0.508 | 0.802 | 0.562 | 0.926 |
+| DTU/scan9 | `sift+nn/incr@1024` | 1176 | 0.093 | 0.734 | 0.852 | 0.975 | 0.980 | 0.997 |
+| DTU/scan10 | `sift+nn/incr@1024` | 1176 | 0.115 | 0.758 | 0.845 | 0.974 | 0.977 | 0.996 |
+| DTU/scan15 | `sift+nn/incr@1024` | 1176 | 0.080 | 0.747 | 0.848 | 0.975 | 0.983 | 0.997 |
+| DTU/scan23 | `sift+nn/incr@1024` | 1176 | 0.117 | 0.810 | 0.837 | 0.973 | 0.975 | 0.996 |
+| DTU/scan33 | `sift+nn/incr@1024` | 1176 | 0.081 | 0.713 | 0.856 | 0.976 | 0.984 | 0.997 |
+| ETH/courtyard | `sift+lightglue/incr@1024` | 703 | 0.074 | 0.107 | 0.968 | 0.995 | 0.985 | 0.998 |
+| ETH/electro | `roma-outdoor/incr@1024` | 990 | 0.051 | 0.093 | 0.910 | 0.981 | 0.966 | 0.994 |
+| ETH/meadow | `roma-outdoor/incr@1024` | 105 | 0.139 | 0.084 | 0.952 | 0.992 | 0.961 | 0.994 |
+| ETH/delivery_area | `sift-clahe+lightglue/incr+gtsam@1600` | 946 | 0.052 | 0.082 | 0.971 | 0.995 | 0.989 | 0.998 |
+| ETH/facade | `sift+lightglue/global@1600` | 1225 | 0.062 | 0.080 | 0.963 | 0.993 | 0.982 | 0.997 |
+| ETH/kicker | `sift-clahe+lightglue/global@1600` | 465 | 0.039 | 0.072 | 0.968 | 0.995 | 0.982 | 0.997 |
+| ETH/office | `superpoint+lightglue/global@1024` | 325 | 0.081 | 0.448 | 0.819 | 0.966 | 0.974 | 0.996 |
+| ETH/playground | `sift-clahe+lightglue/global@1600` | 703 | 0.086 | 0.171 | 0.949 | 0.991 | 0.983 | 0.997 |
+| ETH/relief | `sift+nn/incr@1600` | 465 | 0.049 | 0.047 | 0.981 | 0.997 | 0.989 | 0.998 |
 
 | over 16 scenes | AUC@5 pose | AUC@30 pose | AUC@5 rot | AUC@30 rot |
 | --- | --- | --- | --- | --- |
-| pooled over all 14159 pairs | 0.867 | 0.964 | 0.956 | 0.985 |
-| mean over scenes, each weighted equally | 0.865 | 0.961 | 0.943 | 0.984 |
+| pooled over all 14159 pairs | 0.890 | 0.981 | 0.980 | 0.997 |
+| mean over scenes, each weighted equally | 0.901 | 0.983 | 0.979 | 0.997 |
 
 **Read the two summary rows as different questions.** The pooled row is dominated by whichever scenes contributed the most pairs, and pair count grows with the square of the images; the mean over scenes gives a fifteen-image capture the same weight as a fifty-image one. They agree closely here, which is itself worth knowing — it says no single scene is carrying the corpus figure.
 
-**Two readings the medians elsewhere in this file cannot give you.**
-
-First, one capture is not like the others: the shallow-relief interior sits near half on AUC@5 where every other model is above 0.8, and it is the same model the selection rule preferred over a branch truth ranks far better. The rung table said the two were close; the error distribution says they are not.
-
-Second, **a median can be excellent while the distribution has a tail, and AUC is where that shows.** One outdoor site reports one of the best median rotations in the corpus and one of the worst AUC@30 figures, which can only mean a subset of its cameras is badly placed while most are near-exact. Every rung in `health/ladder.md` is a median, a p75 or a fraction, so none of them can see this; it is the clearest case in the corpus for reading a distribution rather than a summary statistic.
+**What a median cannot show.** A first solve can hold a subset of badly placed cameras while its median rotation is near-exact, or sit near half on AUC@5, and no rung in `health/ladder.md` sees either: every rung is a median, a p75 or a fraction. On this corpus both shapes appeared only where points had escaped the pose stage, and the second solve removed them ([second-solve-2026-09](second-solve-2026-09.md)).
 
 <a id="are-these-models-reproducible"></a>
 
