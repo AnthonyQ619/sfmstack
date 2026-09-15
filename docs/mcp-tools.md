@@ -171,7 +171,7 @@ No second call is needed to see how a step went.
 | `sfm_artifact` | **D** — `artifact.md` frontmatter, the array inventory, the sidecar list, and (with `full`) the narrative body | — |
 | `sfm_artifact_image` | **D** — one image sidecar's bytes, returned as an `ImageContent` block beside its provenance | — |
 | `sfm_run_summary` | **D** — `run.md`: every step attempted with params and metrics, the leaf artifacts nothing consumed, each final model's verification, and every second-solve decision | — |
-| `sfm_compare` | **D** — the manifests of the named artifacts, plus their ancestry walked back through `inputs` | — |
+| `sfm_compare` | **D** — the manifests of the named artifacts, plus their ancestry walked back through `inputs`; for sparse models, their points and poses (error split by views per point, paired error on shared tracks, relative-rotation agreement) | — |
 | `sfm_plan_brief` | **A + C + D** — every `scene_analysis/v1` in the store whose `scene` is this one, `skills/plan/scene_to_pipeline.md`, six `skills/plan/<stage>.md`, and the 27 manifests that consume `scene/v1` | — |
 
 **`sfm_plan_brief` is the only tool that reads three stores at once**, and that is

@@ -304,6 +304,12 @@ def build_server(service: SfmService):
         The divergence report matters: without it, two results differing because
         of a change three stages upstream look like evidence about the parameter
         under test.
+
+        For two or more sparse models it also returns `sparse_models`: each
+        model's reprojection error split by how many views see a point, the
+        paired difference on shared tracks when both came from one track table,
+        and how far their relative camera rotations disagree -- the readings
+        health/ladder's model comparison and health/bounce's pose check ask for.
         """
         return service.compare(artifact_ids)
 

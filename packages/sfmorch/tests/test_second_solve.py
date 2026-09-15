@@ -246,3 +246,14 @@ def test_without_a_second_solve_the_profile_is_the_step_s_own(service):
 def test_the_composition_rung_is_labelled_as_what_it_measures():
     label = dict(SfmService._HEALTH_RUNGS)["composition"]
     assert label == "share of points seen in more than two views"
+
+
+def test_compare_on_two_solves_of_one_chain_pairs_them_on_their_shared_tracks(service):
+    veto_windows(service, set())
+    _, refined = chain(service)
+    first, kept = refined["outputs"]["sparse"], refined["second_solve"]["kept"]
+    sm = service.compare([first, kept])["sparse_models"]
+    assert set(sm["error_by_support"]) == {first, kept}
+    pair = sm["pairs"][f"{first} vs {kept}"]
+    assert pair["same_track_table"] is True
+    assert "paired_error_by_support" in pair and "rotation_agreement" in pair

@@ -129,8 +129,71 @@ def compare(store: ArtifactStore, artifact_ids: list[str]) -> dict[str, Any]:
             if found:
                 divergences[f"{a} vs {b}"] = [d.describe() for d in found]
 
-    return {
+    out = {
         "artifacts": rows,
         "metrics": sorted(metric_names),
         "lineage_divergence": divergences,
+    }
+    sparse = [aid for aid in artifact_ids if rows[aid]["type"] == SPARSE_MODEL]
+    if len(sparse) >= 2:
+        out["sparse_models"] = _sparse_comparison(store, sparse)
+    return out
+
+
+SPARSE_MODEL = "sparse_model/v1"
+TRACKS = "tracks/v1"
+
+SPARSE_HOW_TO_READ = (
+    "error_by_support splits each model's per-point reprojection error by how "
+    "many views see the point; compare bucket medians together with bucket "
+    "sizes, never a pooled mean, because a model with more two-view points reads "
+    "better by arithmetic. A pair built from ONE track table also gets "
+    "paired_error_by_support: the difference on the same tracks (first model "
+    "minus second), bucketed by the first model's observation count. Two models "
+    "from different track tables (a detector, matcher or tracker changed) have "
+    "nothing to join, so there is no paired entry. rotation_agreement is how far "
+    "the two models' relative camera rotations disagree over the cameras both "
+    "registered -- no reference needed; it is the check health/bounce asks for "
+    "before a stuck pose-agreement rung is read as a capability gap."
+)
+
+
+def _ancestor(store: ArtifactStore, art, wanted: str, depth: int = 8):
+    """The nearest artifact of type `wanted` upstream of `art`, or None."""
+    frontier = [art]
+    for _ in range(depth):
+        nxt = []
+        for a in frontier:
+            for pid in a.manifest.inputs:
+                try:
+                    parent = store.open(pid)
+                except Exception:
+                    continue
+                if parent.type == wanted:
+                    return parent
+                nxt.append(parent)
+        frontier = nxt
+    return None
+
+
+def _sparse_comparison(store: ArtifactStore, ids: list[str]) -> dict[str, Any]:
+    from .health import error_by_support, paired_error_by_support, rotation_agreement
+
+    arts = {aid: store.open(aid) for aid in ids}
+    tracks = {aid: _ancestor(store, a, TRACKS) for aid, a in arts.items()}
+    pairs: dict[str, Any] = {}
+    for i, a in enumerate(ids):
+        for b in ids[i + 1:]:
+            ta, tb = tracks[a], tracks[b]
+            same = ta is not None and tb is not None and ta.id == tb.id
+            entry: dict[str, Any] = {"same_track_table": same}
+            if same:
+                entry["paired_error_by_support"] = paired_error_by_support(arts[a], arts[b])
+            if arts[a].manifest.scene and arts[a].manifest.scene == arts[b].manifest.scene:
+                entry["rotation_agreement"] = rotation_agreement(arts[a], arts[b])
+            pairs[f"{a} vs {b}"] = entry
+    return {
+        "error_by_support": {aid: error_by_support(a) for aid, a in arts.items()},
+        "pairs": pairs,
+        "how_to_read": SPARSE_HOW_TO_READ,
     }

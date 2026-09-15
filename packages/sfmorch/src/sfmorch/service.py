@@ -1022,7 +1022,8 @@ class SfmService:
         ("composition", "share of points seen in more than two views"),
         ("coverage", "median per-frame fraction of image grid cells holding "
                      "an observation"),
-        ("error", "median reprojection error among well-supported points only"),
+        ("error", "median reprojection error among well-supported points, in "
+                  "milliradians (pixels over focal length)"),
         ("yield_obs", "model observations / track observations"),
         ("yield_track", "model points / input tracks"),
         ("pose_agreement", "median angular discrepancy between final relative "

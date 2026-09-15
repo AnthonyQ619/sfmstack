@@ -74,28 +74,28 @@ source (`tools/image_drift.py`).
 `reg` = registered fraction. `cond` = median widest triangulation angle (deg).
 `comp` = share of points seen in more than two views. `cov` = median
 per-frame occupied fraction of an 8x8 grid. `err` = median reprojection
-error among well-supported points (px). `y_obs` / `y_trk` = observation-
+error among well-supported points (mrad: px over focal length). `y_obs` / `y_trk` = observation-
 and track-yield. `pose` = median disagreement between the final relative
 rotations and the two-view estimates (deg).
 
 | capture | imgs | reg | cond | comp | cov | err | y_obs | y_trk | pose | points |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| DTU/scan1 | 49 | 1 | 13.4 | 0.36 | 0.59 | 0.395 | 0.816 | 0.894 | 0.17 | 5273 |
-| DTU/scan10 | 49 | 0.92 | 11.8 | 0.32 | 0.39 | 0.338 | 0.504 | 0.616 | 0.4 | 1936 |
-| DTU/scan15 | 49 | 1 | 12.3 | 0.29 | 0.61 | 0.446 | 0.785 | 0.872 | 0.21 | 3984 |
-| DTU/scan23 | 49 | 1 | 12.7 | 0.33 | 0.62 | 0.387 | 0.812 | 0.89 | 0.42 | 5283 |
-| DTU/scan33 | 49 | 1 | 20 | 0.41 | 0.42 | 0.18 | 0.767 | 0.846 | 0.21 | 3031 |
-| DTU/scan4 | 49 | 1 | 12.9 | 0.33 | 0.56 | 0.395 | 0.824 | 0.899 | 0.21 | 4826 |
-| DTU/scan9 | 49 | 1 | 13.1 | 0.26 | 0.58 | 0.445 | 0.748 | 0.849 | 0.17 | 4247 |
-| ETH/courtyard | 38 | 1 | 8.7 | 0.41 | 0.86 | 0.2 | 0.831 | 0.867 | 0.18 | 11966 |
-| ETH/delivery_area | 44 | 1 | 9.7 | 0.5 | 0.65 | 0.244 | 0.836 | 0.85 | 0.17 | 6355 |
+| DTU/scan1 | 49 | 1 | 13.4 | 0.36 | 0.59 | 0.213 | 0.816 | 0.894 | 0.17 | 5273 |
+| DTU/scan10 | 49 | 0.92 | 11.8 | 0.32 | 0.39 | 0.183 | 0.504 | 0.616 | 0.4 | 1936 |
+| DTU/scan15 | 49 | 1 | 12.3 | 0.29 | 0.61 | 0.241 | 0.785 | 0.872 | 0.21 | 3984 |
+| DTU/scan23 | 49 | 1 | 12.7 | 0.33 | 0.62 | 0.209 | 0.812 | 0.89 | 0.42 | 5283 |
+| DTU/scan33 | 49 | 1 | 20 | 0.41 | 0.42 | 0.097 | 0.767 | 0.846 | 0.21 | 3031 |
+| DTU/scan4 | 49 | 1 | 12.9 | 0.33 | 0.56 | 0.213 | 0.824 | 0.899 | 0.21 | 4826 |
+| DTU/scan9 | 49 | 1 | 13.1 | 0.26 | 0.58 | 0.24 | 0.748 | 0.849 | 0.17 | 4247 |
+| ETH/courtyard | 38 | 1 | 8.7 | 0.41 | 0.86 | 0.356 | 0.831 | 0.867 | 0.18 | 11966 |
+| ETH/delivery_area | 44 | 1 | 9.7 | 0.5 | 0.65 | 0.435 | 0.836 | 0.85 | 0.17 | 6355 |
 | ETH/electro | 45 | 0.04 | 39.6 | 0 | 0.21 | — | 0.009 | 0.013 | 0.15 | 79 |
-| ETH/facade | 50 | 0.9 | 7.8 | 0.44 | 0.83 | 0.221 | 0.605 | 0.588 | 0.05 | 8441 |
-| ETH/kicker | 31 | 0.84 | 12.4 | 0.44 | 0.54 | 0.309 | 0.664 | 0.68 | 0.35 | 2259 |
+| ETH/facade | 50 | 0.9 | 7.8 | 0.44 | 0.83 | 0.393 | 0.605 | 0.588 | 0.05 | 8441 |
+| ETH/kicker | 31 | 0.84 | 12.4 | 0.44 | 0.54 | 0.55 | 0.664 | 0.68 | 0.35 | 2259 |
 | ETH/meadow | 15 | 0.13 | 42.7 | 0 | 0.12 | — | 0.032 | 0.038 | 43.49 | 72 |
 | ETH/office | 26 | 0.08 | 9.5 | 0 | 0.45 | — | 0.109 | 0.15 | 0.06 | 168 |
-| ETH/playground | 38 | 0.5 | 4.4 | 0.31 | 0.78 | 0.559 | 0.309 | 0.331 | 0.15 | 4061 |
-| ETH/relief | 31 | 0.71 | 13.7 | 0.44 | 0.59 | 0.226 | 0.529 | 0.511 | 0.37 | 1765 |
+| ETH/playground | 38 | 0.5 | 4.4 | 0.31 | 0.78 | 0.989 | 0.309 | 0.331 | 0.15 | 4061 |
+| ETH/relief | 31 | 0.71 | 13.7 | 0.44 | 0.59 | 0.401 | 0.529 | 0.511 | 0.37 | 1765 |
 
 ## Ground truth, beside the internal readings
 

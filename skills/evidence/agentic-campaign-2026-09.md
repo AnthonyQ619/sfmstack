@@ -37,7 +37,7 @@ The branch for each capture was selected on registration first and the accountin
 
 ## Every leg
 
-| capture | leg | px | reg | points | coverage | yield_obs | error | GT rot° | GT trn° |
+| capture | leg | px | reg | points | coverage | yield_obs | error px | GT rot° | GT trn° |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DTU/scan1 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 5273 | 0.594 | 0.816 | 0.395 | 0.094 | 0.775 |
 | DTU/scan1 | `sift+nn/incr@1024` | 1024 | 1.00 | 19235 | 0.750 | 0.867 | 0.266 | 0.108 | 0.709 |

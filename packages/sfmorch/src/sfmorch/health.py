@@ -43,6 +43,20 @@ def _load(art, group: str, name: str, default=None):
         return default
 
 
+def focal_px(scene) -> float | None:
+    """Median focal length in pixels at the working resolution, or None.
+
+    The scene's intrinsics are already rescaled to the size the pipeline works at,
+    so a residual in pixels divided by this is an angle, whatever that size was.
+    """
+    K = _load(scene, "calibration", "intrinsics") if scene is not None else None
+    if K is None or not len(K):
+        return None
+    K = np.asarray(K, dtype=float)
+    f = float(np.median((K[:, 0, 0] + K[:, 1, 1]) / 2.0))
+    return f if f > 0 else None
+
+
 def track_lengths(obs: np.ndarray, n_points: int) -> np.ndarray:
     """Observations per 3D point. `obs` columns: frame_idx, point_index, x, y."""
     return np.bincount(obs[:, 1].astype(np.int64), minlength=n_points)
@@ -229,6 +243,13 @@ def components(model, *, scene=None, tracks=None, matches=None,
         if len(vals):
             err_med = float(np.median(vals))
 
+    # The rung is an ANGLE: the median residual over the scene's focal length, in
+    # milliradians. In pixels it scaled with the working resolution, so a model
+    # built at a larger working size read worse against a reference built at a
+    # smaller one for no reason in the model -- and healthy models read this as
+    # their weakest rung. Unevaluable on a scene with no calibration.
+    focal = focal_px(scene)
+
     t_obs = _load(tracks, "observations", "obs") if tracks is not None else None
     t_count = _load(tracks, "observations", "track_count") if tracks is not None else None
 
@@ -259,7 +280,8 @@ def components(model, *, scene=None, tracks=None, matches=None,
         "composition_points_per_frame": (len(xyz) / n_valid) if n_valid else 0.0,
         "coverage": (coverage(obs, sizes, registered)
                      if sizes is not None else None),
-        "error": err_med if err_med == err_med else None,
+        "error": (err_med * 1000.0 / focal) if err_med == err_med and focal else None,
+        "error_px": err_med if err_med == err_med else None,
         "error_support_floor": floor,
         # Both yield forms, until the corpus decides between them.
         # Observation-yield is the stricter: it also punishes truncating long
@@ -278,3 +300,88 @@ def components(model, *, scene=None, tracks=None, matches=None,
         "registered_images": n_valid,
         "n_images": int(n_images),
     }
+
+
+# ------------------------------------------------------------- comparisons
+#
+# What `sfm_compare` reports for two or more finished models. The ladder's model
+# comparison splits error by how many views see each point; this is that split,
+# computed, so no caller has to write it.
+
+SUPPORT_BUCKETS = (("2", 2), ("3", 3), ("4", 4), ("5+", 5))
+
+
+def _support_bucket(lengths: np.ndarray) -> np.ndarray:
+    return np.where(lengths >= 5, 5, lengths)
+
+
+def error_by_support(model) -> dict | None:
+    """Per-point reprojection error split by observation count: size and median."""
+    xyz = model.load("points", "xyz")
+    err = _load(model, "points", "error")
+    if err is None or len(err) != len(xyz):
+        return None
+    buckets = _support_bucket(track_lengths(model.load("observations", "obs"), len(xyz)))
+    err = np.asarray(err, dtype=float)
+    out = {}
+    for label, b in SUPPORT_BUCKETS:
+        vals = err[buckets == b]
+        vals = vals[np.isfinite(vals)]
+        out[label] = {"points": int(len(vals)),
+                      "median_px": round(float(np.median(vals)), 4) if len(vals) else None}
+    return out
+
+
+def paired_error_by_support(a, b) -> dict | None:
+    """Error difference (a minus b) on the points both models built from one track.
+
+    Only meaningful when both models came from the same track table; bucketed by
+    the first model's observation count.
+    """
+    ta, tb = _load(a, "points", "track_id"), _load(b, "points", "track_id")
+    ea, eb = _load(a, "points", "error"), _load(b, "points", "error")
+    if ta is None or tb is None or ea is None or eb is None:
+        return None
+    index_b = {int(t): i for i, t in enumerate(tb) if int(t) >= 0}
+    pairs = [(i, index_b[int(t)]) for i, t in enumerate(ta) if int(t) in index_b]
+    if not pairs:
+        return {"shared_points": 0}
+    ia, ib = (np.array(x) for x in zip(*pairs))
+    diff = np.asarray(ea, dtype=float)[ia] - np.asarray(eb, dtype=float)[ib]
+    buckets = _support_bucket(track_lengths(a.load("observations", "obs"), len(ta)))[ia]
+    out = {"shared_points": int(len(pairs))}
+    for label, v in SUPPORT_BUCKETS:
+        d = diff[buckets == v]
+        d = d[np.isfinite(d)]
+        out[label] = {"points": int(len(d)),
+                      "median_diff_px": round(float(np.median(d)), 4) if len(d) else None}
+    return out
+
+
+def rotation_agreement(a, b, *, cap: int = 400) -> dict | None:
+    """How far two models' relative camera rotations disagree, over the cameras
+    both registered: median and 90th percentile, in degrees. Gauge-free, and it
+    needs no reference: it is how two pose paradigms are compared."""
+    def rotations(m):
+        cams = m.load("poses", "cam_from_world")
+        valid = np.asarray(m.load("poses", "valid"), dtype=bool)
+        idx = m.load("poses", "image_index")
+        return {int(i): np.asarray(cams[r])[:3, :3]
+                for r, (i, ok) in enumerate(zip(idx, valid)) if ok}
+
+    ra, rb = rotations(a), rotations(b)
+    shared = sorted(set(ra) & set(rb))
+    if len(shared) < 2:
+        return None
+    if len(shared) > cap:
+        shared = [shared[i] for i in np.linspace(0, len(shared) - 1, cap).round().astype(int)]
+    A = np.stack([ra[i] for i in shared])
+    B = np.stack([rb[i] for i in shared])
+    i, j = np.triu_indices(len(shared), k=1)
+    rel_a = A[j] @ np.swapaxes(A[i], 1, 2)
+    rel_b = B[j] @ np.swapaxes(B[i], 1, 2)
+    d = rel_a @ np.swapaxes(rel_b, 1, 2)
+    ang = np.degrees(np.arccos(np.clip((np.trace(d, axis1=1, axis2=2) - 1) / 2, -1, 1)))
+    return {"median_deg": round(float(np.median(ang)), 4),
+            "p90_deg": round(float(np.percentile(ang, 90)), 4),
+            "shared_cameras": len(shared)}

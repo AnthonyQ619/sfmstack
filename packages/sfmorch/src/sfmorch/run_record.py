@@ -93,6 +93,10 @@ class Run:
     # window, and which model it kept. Kept in the record rather than recomputed,
     # because the decision rests on verdicts the steps alone do not carry.
     second_solves: list[dict[str, Any]] = field(default_factory=list)
+    # How many of `steps` this object has read from disk or written to it. A step
+    # past it on disk was written by another process; a step past it here is new
+    # and ours. Everything before it is this object's own, updates included.
+    _synced: int = field(default=0, repr=False, compare=False)
 
     # -------------------------------------------------------------- mutation
 
@@ -180,6 +184,7 @@ class Run:
         an update is recoverable, losing the file is not.
         """
         self.root.mkdir(parents=True, exist_ok=True)
+        self._merge_from_disk()
         front = yaml.safe_dump(
             self.to_doc(),
             sort_keys=False,
@@ -197,9 +202,59 @@ class Run:
         try:
             tmp.write_text(text, encoding="utf-8")
             os.replace(tmp, self.path)
+            self._synced = len(self.steps)
         except BaseException:
             tmp.unlink(missing_ok=True)
             raise
+
+    def _merge_from_disk(self) -> None:
+        """Fold in whatever another process wrote since this record last synced.
+
+        Two processes that each opened the record, ran a step and saved used to
+        drop each other's steps: the later write replaced the earlier one whole,
+        and a verified model then read as unverified because its verification
+        step was gone. One server keeps one record per run id in memory and never
+        races itself; two processes on one store do.
+
+        Steps are not matched by content: a cache hit is legitimately identical to
+        the step before it, and a replay sets `replay_of` on a step after it was
+        first saved. They are split by what this object has already synced. Steps
+        on disk past that point are another writer's and are kept; steps here past
+        it are ours, and one that collides with theirs takes the next free index.
+        Second-solve decisions are kept per first model, ours winning.
+        """
+        if not self.path.exists():
+            return
+        try:
+            doc, _ = split_frontmatter(self.path.read_text(encoding="utf-8"),
+                                       origin=str(self.path))
+        except Exception:
+            return  # an unreadable record is open()'s business, not save()'s
+
+        disk = [Step.from_doc(d) for d in (doc.get("steps") or [])]
+        theirs = disk[self._synced:]
+        if theirs:
+            ours = self.steps[self._synced:]
+            merged = self.steps[:self._synced] + theirs
+            used = {s.index for s in merged}
+            renumbered: dict[int, int] = {}
+            for s in ours:
+                if s.index in used:
+                    renumbered[s.index] = max(used) + 1
+                    s.index = renumbered[s.index]
+                used.add(s.index)
+                merged.append(s)
+            for s in ours:
+                if s.replay_of in renumbered:
+                    s.replay_of = renumbered[s.replay_of]
+            self.steps = merged
+
+        def first(d: dict[str, Any]):
+            return (d.get("first") or {}).get("model")
+
+        ours_first = {first(d) for d in self.second_solves}
+        self.second_solves = [d for d in (doc.get("second_solves") or [])
+                              if first(d) not in ours_first] + self.second_solves
 
     def _table(self) -> str:
         if not self.steps:
@@ -277,7 +332,7 @@ class Run:
             )
             run.save()
             return run
-        return cls(
+        run = cls(
             id=str(doc.get("run", root.name)),
             root=root,
             scene=str(doc.get("scene", "")),
@@ -286,3 +341,5 @@ class Run:
             steps=[Step.from_doc(s) for s in (doc.get("steps") or [])],
             second_solves=list(doc.get("second_solves") or []),
         )
+        run._synced = len(run.steps)
+        return run

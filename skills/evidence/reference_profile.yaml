@@ -51,12 +51,12 @@ rungs:
     values: [0.117188, 0.210938, 0.390625, 0.421875, 0.453125, 0.539062, 0.5625, 0.578125, 0.585938, 0.59375, 0.609375, 0.625, 0.648438, 0.78125, 0.828125, 0.859375]
   error:
     direction: lower_better
-    meaning: median reprojection error among well-supported points, px
+    meaning: median reprojection error among well-supported points, mrad (px over focal length)
     n: 13
-    min: 0.180461
-    median: 0.338282
-    max: 0.559063
-    values: [0.180461, 0.200192, 0.221275, 0.225959, 0.244358, 0.308977, 0.338282, 0.386908, 0.3947, 0.395148, 0.445104, 0.446307, 0.559063]
+    min: 0.0973878
+    median: 0.240854
+    max: 0.988579
+    values: [0.0973878, 0.182557, 0.208799, 0.213004, 0.213245, 0.240205, 0.240854, 0.355894, 0.392682, 0.401282, 0.434616, 0.549583, 0.988579]
   yield_obs:
     direction: higher_better
     meaning: model observations / track observations
