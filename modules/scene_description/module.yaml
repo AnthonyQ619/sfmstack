@@ -1,5 +1,5 @@
 name: SceneDescription
-version: 0.7.0
+version: 0.7.1
 kind: analysis
 summary: >
   Renders a browsable contact sheet from the scene, then records what a viewer
@@ -85,7 +85,7 @@ description: |
   of `scene_analysis/v1`, which is marked as such in the schema. It can be wrong
   in ways a measurement cannot.
 
-image: sfmstack/scene-description:0.7.0
+image: sfmstack/scene-description:0.7.1
 entrypoint: adapter:run
 resources:
   gpu: false

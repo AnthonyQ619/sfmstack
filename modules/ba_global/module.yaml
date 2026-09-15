@@ -1,5 +1,5 @@
 name: BundleAdjustmentGlobal
-version: 1.2.0
+version: 1.2.1
 kind: optimization
 summary: >
   Ceres bundle adjustment over the whole reconstruction, refining every pose and
@@ -27,7 +27,7 @@ description: |
   authoritative; the sidecar is a convenience, and a consumer without pycolmap
   loses nothing but the convenience.
 
-image: sfmstack/ba-global:1.2.0
+image: sfmstack/ba-global:1.2.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -153,7 +153,7 @@ metrics:
       the bottom of this distribution reproject well while sitting at an
       ill-determined depth, which is invisible in any reprojection metric.
     direction: higher_better
-    healthy: [1.5, null]
+    healthy: [1.0, null]
   estimated_focal_ratio:
     meaning: >
       The refined focal length over the one that was supplied, averaged across

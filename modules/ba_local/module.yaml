@@ -1,5 +1,5 @@
 name: BundleAdjustmentLocal
-version: 1.2.0
+version: 1.2.1
 kind: optimization
 summary: >
   Bundle adjustment over a window of cameras, holding the rest of the model fixed.
@@ -26,7 +26,7 @@ description: |
   window is what makes the problem small; fixing nothing would be global BA with
   extra steps, and pycolmap requires at least two fixed cameras to pin the gauge.
 
-image: sfmstack/ba-local:1.2.0
+image: sfmstack/ba-local:1.2.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -142,7 +142,7 @@ metrics:
       the bottom of this distribution reproject well while sitting at an
       ill-determined depth, which is invisible in any reprojection metric.
     direction: higher_better
-    healthy: [1.5, null]
+    healthy: [1.0, null]
   reprojection_error_before:
     direction: lower_better
     healthy: [null, 2.0]

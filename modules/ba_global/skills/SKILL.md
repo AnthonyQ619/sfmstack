@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentGlobal
-module_version: 1.2.0
+module_version: 1.2.1
 upstream: pycolmap 4.1.1 / Ceres
 curated_at: 2026-08-07
 sources: 3

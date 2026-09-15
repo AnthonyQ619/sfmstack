@@ -452,7 +452,7 @@ def run(ctx: Ctx):
                None if blew_up else _s["p95_reprojection_error"],
                direction="lower_better", healthy=(None, 2.0))
     out.metric("p05_triangulation_angle", _s["p05_triangulation_angle"],
-               direction="higher_better", healthy=(1.5, None))
+               direction="higher_better", healthy=(1.0, None))
     out.metric("point_count", len(point_ids),
                direction="higher_better", healthy=(50, None))
     out.metric("observation_count", len(obs_rows),

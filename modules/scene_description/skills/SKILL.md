@@ -1,6 +1,6 @@
 ---
 module: SceneDescription
-module_version: 0.7.0
+module_version: 0.7.1
 upstream: none (in-house)
 curated_at: 2026-08-16
 sources: 1
@@ -127,7 +127,7 @@ defaults (12 images, uniform, 384px, 4 columns)
 No OpenCV, no torch, no weights.
 
 **Reading the output:** [artifact.md](artifact.md). The rubric itself:
-[rubric.md](rubric.md), which is **version 3** — it carries a revision log saying
+[rubric.md](rubric.md), which is **version 7** — it carries a revision log saying
 what each version learned. Two fields have been cut for failing the rule at the
 top of it: `expected_difficulty` (a grade where a reason belongs) and
 `capture_style` (already measured, by `rotation_median_deg`, `variability` and
@@ -137,5 +137,5 @@ top of it: `expected_difficulty` (a grade where a reason belongs) and
 
 Exercised across **48 runs at version 0.7.0** in the seventeen-capture sweep of
 two benchmark families (`evidence/CORPUS.txt`) — but note the `sources` skill:
-the rubric itself is a hypothesis at version 3, revised twice against three
+the rubric itself is a hypothesis at version 7, revised against a handful of
 scenes, and most of what it asserts is deliberately unmeasured.

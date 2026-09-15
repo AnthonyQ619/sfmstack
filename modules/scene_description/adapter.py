@@ -551,6 +551,24 @@ def run(ctx: Ctx):
         "throughout":
             "It is across most of the frame, so no part of the model is clear of it.",
     }.get(position, "")
+    # A glossy patch with no image in it plants no virtual point, so its position
+    # says where the model thins or drifts -- never where phantom structure lands.
+    # Sharing `lands` with the diffuse case told readers the opposite of this
+    # diagnostic's own first action.
+    thins = {
+        "between_camera_and_subject":
+            "It stands BETWEEN the camera and the subject, so the correspondences "
+            "seen through it drift or drop, and the model behind it thins.",
+        "on_subject":
+            "It is ON the subject, so expect that part of the surface to thin or "
+            "drift in the model - not to gain phantom points.",
+        "background":
+            "It is in the BACKGROUND, so expect thinning somewhere nobody is "
+            "looking. Usually ignorable.",
+        "throughout":
+            "It is across most of the frame, so expect thinning or drift wherever "
+            "it falls.",
+    }.get(position, "")
 
     if REFLECT[report["material_hazards"]] == 2:
         out.diagnostic(
@@ -597,7 +615,7 @@ def run(ctx: Ctx):
                 "Expect the opposite failure: a bright patch that moves with the "
                 "camera rather than the surface, so correspondences there drift or "
                 "drop out and that part of the model thins.",
-                lands,
+                thins,
             ],
             see_also="limitations.md#the-report-can-be-wrong",
         )

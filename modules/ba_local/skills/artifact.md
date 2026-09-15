@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentLocal
-module_version: 1.2.0
+module_version: 1.2.1
 produces: sparse_model/v1
 curated_at: 2026-08-31
 ---
