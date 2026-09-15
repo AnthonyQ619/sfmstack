@@ -21,9 +21,10 @@ description: |
   The opposite failure -- too much displacement between frames -- is reported as
   the raw `high_motion_tail` and `overall_magnitude` rather than as a risk
   fraction. **Read both. They are the most predictive numbers this module
-  produces.** Taken to a sparse model across fourteen captures, the highest
-  readings on either are exactly the captures whose view graph fragments under a
-  classical detector and ratio-test matcher, with a clean gap below them. The
+  produces.** Taken to a sparse model, the highest readings on either are the
+  captures whose view graph fragments under a classical detector and ratio-test
+  matcher -- but a refit at full frame count found no clean gap below them, so
+  read them as a ranking, not a cut point (the planning guide, section 3b). The
   reason is that these measure ADJACENT-frame overlap, and a capture that covers
   ground quickly between adjacent frames shares less between non-adjacent ones --
   which is what an exhaustive view graph is made of.
@@ -234,11 +235,11 @@ metrics:
       A previous version of this note declined to put a band here on the grounds
       that the benchmark captures measured spanned the range and "all of which
       reconstruct". That was an assumption, not an observation, and running the
-      pipeline refuted it: across fourteen captures taken to a sparse model, the
-      HIGHEST readings are exactly the captures whose view graph fragments under a
-      classical detector and ratio-test matcher, dropping between a quarter and
-      three quarters of the frames, with a clean gap separating them from the
-      captures that complete.
+      pipeline refuted it: across the captures taken to a sparse model, the
+      HIGHEST readings are the captures whose view graph fragments under a
+      classical detector and ratio-test matcher. A refit at full frame count found
+      no clean gap separating them from the captures that complete, so this is a
+      ranking to read beside the others, not a threshold.
 
       The mechanism is that this measures adjacent-frame overlap, and a capture
       that covers ground quickly between adjacent frames shares proportionally

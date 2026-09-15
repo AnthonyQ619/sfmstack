@@ -196,15 +196,14 @@ matrix yields a full, plausible, well-reprojecting cloud. On a degeneracy
 question more points is not better and the usual metrics cannot referee. Treat it
 as insurance with a known premium and an unmeasured payout.
 
-**The "third" is a defaults artefact, not a property of the solver.** Measured
-twice on different captures: the global solver defaults to `min_track_len: 3` and
-the triangulators default to `2`, so their raw point counts are not the same
-quantity. At a MATCHED track-length floor the ranking inverts — the global solver
-returned 7.5% and 8% MORE points than the incremental chain on the two captures
-where both were compared that way. So the premium is not "a third less structure";
-it is "no two-view structure", which is a different trade and one some downstream
-consumers would take. Compare at matched `min_track_len` or do not compare counts
-at all. (This is trap 10 of this same file — a module run at its defaults is not
+**Part of the "third" is a defaults artefact.** The global solver defaults to
+`min_track_len: 3` and the triangulators default to `2`, so their raw point counts
+are not the same quantity. Compare at a MATCHED track-length floor or do not
+compare counts at all — and expect the matched comparison to go either way: across
+the captures compared like that, the global solver has come out ahead on some and
+well behind on others, because its own filters keep almost no two-view points
+whatever the floor. What the defaults establish is that the raw counts are
+different quantities, not which solver wins once they are the same one. (This is trap 10 of this same file — a module run at its defaults is not
 the module the plan specified — applied to the comparison the paragraph above
 invites.)
 

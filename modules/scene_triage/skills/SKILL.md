@@ -60,7 +60,9 @@ defaults, plus source_dir when you have the original files
 ```
 
 `source_dir` costs nothing and is the only way to get capture timing: `SceneLoader`
-re-encodes images into the scene artifact and EXIF does not survive that. See
+re-encodes images into the scene artifact and EXIF does not survive that. It
+recovers timing only when the original files carry EXIF; undistorted or
+re-exported images usually do not. See
 [limitations.md](limitations.md#exif-does-not-survive-the-scene-artifact).
 
 **What it does not do:** derive traits. The `traits` group of `scene_analysis/v1`

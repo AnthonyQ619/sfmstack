@@ -284,7 +284,7 @@ that is coherently wrong.
 investigate.
 
 **Measured:** a capture read outside a published maximum on a metric described as
-"reliably quiet", while running at the exact protocol the corpus was fitted on.
+"reliably quiet" at the time, while running at the exact protocol the corpus was fitted on.
 
 **Why it happens:** a corpus maximum is an *order statistic* — the largest of N
 draws — not a bound. The next capture exceeding it is the expected outcome.

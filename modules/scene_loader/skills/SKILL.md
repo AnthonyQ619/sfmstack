@@ -50,9 +50,9 @@ better without a supplied K.
 resize: auto, max_edge: 1600, sampling: uniform
 ```
 
-plus `max_images` while exploring — a spread subset of 8–20 images tells you what
-the pipeline will do far faster than the full set, and `uniform` keeps it
-representative of the whole trajectory.
+and no `max_images`: a capped set is a different scene, and every reading taken on
+it describes that subset rather than the capture — see the parameter's tuning
+note, which is where the measured reasons are.
 
 **Reading the output:** [artifact.md](artifact.md). The per-image geometry
 arrays are the part worth understanding; see

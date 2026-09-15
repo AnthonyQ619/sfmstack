@@ -353,5 +353,5 @@ diagnostics:
     message: No EXIF was readable; capture timing and lens metadata are omitted.
     suggested_actions:
       - Expected when the scene was built with a resize policy, which re-encodes and drops EXIF.
-      - Pass source_dir pointing at the original images to recover it.
+      - Pass source_dir pointing at the original images to recover it. That works only when those files carry EXIF; undistorted or re-exported images usually do not, and then nothing recovers it.
     see_also: limitations.md#exif-does-not-survive-the-scene-artifact

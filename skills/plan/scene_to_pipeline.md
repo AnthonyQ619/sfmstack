@@ -38,7 +38,7 @@ failed once is the most useful kind.
 > correctly. The highest value seen in seventeen captures is the largest of
 > seventeen draws; the eighteenth exceeding it is the expected outcome, not an
 > anomaly. Measured: a capture read outside a published maximum on a metric
-> described as "reliably quiet" while running at the exact protocol the corpus
+> then described as "reliably quiet" while running at the exact protocol the corpus
 > was fitted on — nothing about that run was unusual and nothing was wrong.
 >
 > The failure mode this creates is worse than a false alarm: a reader who trips a
@@ -189,8 +189,8 @@ are different subsets, because a pair can fit a homography and no rotation, so d
 not zip one series against another's index.
 
 Above 200 elements a series arrives summarised (min / median / max and the eight
-extremes at each end) rather than whole. Every scene measured here is 12 images,
-so nothing has been truncated yet.
+extremes at each end) rather than whole. A pairwise series on a full capture under
+exhaustive pairing passes that size, so expect the summary form there.
 
 **That rule covers the ANALYSIS series described in this section, and nothing
 else.** A pipeline artifact's stored arrays come back whole however large they are —
@@ -546,12 +546,18 @@ So: let it nudge you, never let it decide. Where it and `repetition_notes`
 disagree, the description is describing the real hazard and this number is
 describing the wallpaper.
 
-### `combined_change` — reliably quiet
+### `combined_change` — quiet on adjacent pairs, not on full pairing
 
-Illumination, colour and exposure drift. 0.0325–0.1156 across everything, healthy
-ceiling 0.12, and **it has never fired**. Benchmark captures are photometrically
-stable. Expect it to matter on outdoor sequences shot over hours, which is not
-what has been measured.
+Illumination, colour and exposure drift. Measured with adjacent-frame pairing it
+stays inside its healthy band on every capture, and the lighting diagnostic has
+never fired there. **Read it against the pairing it was computed with.** Pairing
+every frame with every other compares frames from opposite ends of the trajectory,
+and on a studio orbit whose backdrop swings from bright to dark it reads well above
+the band — enough to fire `illumination_unstable` — while the subject's own
+lighting has not changed and the capture reconstructs fully. Under full pairing,
+open the worst pair it names and check whether the change sits on the backdrop
+before acting on it. Expect it to matter for real on outdoor sequences shot over
+hours, which is not what has been measured.
 
 ### `overall_magnitude`, `variability`, `rotation_median_deg` — what the camera did
 

@@ -53,7 +53,7 @@ A rung names the stage that owns it, which is what scopes the build:
 | Coverage | structure concentrates where the tools can see — a detector/matcher for the surfaces being skipped |
 | Error | residuals stay high on well-supported points — usually upstream, rule out calibration before building anything |
 | Yield | structure is found and then lost wholesale — the hand-off between stages is the defect, not either stage |
-| Pose agreement | the global solve cannot reconcile the local evidence — an optimizer or pose paradigm mismatch for this motion |
+| Pose agreement | the global solve cannot reconcile the local evidence — an optimizer or pose paradigm mismatch for this motion. **Rule out the reference first:** solve the capture with a second pose paradigm and read `sfm_compare`'s `rotation_agreement` between the two models. If they agree far more closely than this rung reports, the rung is measuring noise in the pairwise two-view estimates it compares against — common on near-planar subjects and narrow baselines — not a defect, and it is no bounce signal |
 
 These are directions, not verdicts; each one still owes the three-part signal
 above before it justifies a build.

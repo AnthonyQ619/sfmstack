@@ -146,7 +146,7 @@ comparison rather than a measure of which scene you are on:
 | Conditioning | median triangulation angle over points | angle is scale-free |
 | Composition | share of points seen in MORE than two views | support, not raw point count |
 | Coverage | median over frames of the fraction of image grid cells holding ≥1 observation | evenness, not totals |
-| Error | median reprojection error **among points seen in more than two views** | composition-adjusted; dropping long tracks cannot flatter it |
+| Error | median reprojection error **among points seen in more than two views**, as an angle: pixels over the scene's focal length, in milliradians | composition-adjusted, so dropping long tracks cannot flatter it; an angle, so the working resolution cannot move it. Unevaluable on a scene with no calibration |
 | Yield | structure surviving into the model / structure the pipeline had available | self-normalised by the capture's own upstream supply |
 | Pose agreement | median angular discrepancy between final relative poses and the pairwise two-view estimates (rotation angle, and translation *direction* angle) | never touches the points, so it sees the drift reprojection error cannot |
 
@@ -411,13 +411,29 @@ scrutiny:
 
 1. **Equalise registration first.** If the two models do not contain the same
    cameras, rung 1 has already answered you.
-2. **Join on `track_id`, never on row order.** Both models carry it and the rows
-   are not in the same order — differencing positionally gives an answer that is
-   wrong by roughly an order of magnitude and looks entirely plausible.
+2. **Pair points only when there is something to pair them on.** Two models
+   built from ONE track table — they differ only downstream of tracking — carry
+   the same `track_id`s: join on it, never on row order, which gives an answer
+   wrong by roughly an order of magnitude that looks entirely plausible. Two
+   models from DIFFERENT track tables — a detector, matcher or tracker changed —
+   share no ids, and there is nothing to join. Do not improvise one; compare the
+   two error distributions bucket by bucket instead (step 3). `sfm_compare` on the
+   two models returns both: each model's per-bucket split, and the paired
+   difference when the track tables are the same.
 3. **Split the error by observation count** before comparing. If one model holds
    more two-view points than the other, its mean is flattered by rung 3, and the
    split is what separates "genuinely better" from "differently composed".
 4. **Prefer more structure** once 1–3 are level. This is the objective.
+
+**"Level" means within this capture's own spread, not equal.** Two solves of one
+chain — the service's first and second solve, or any repeat — differ with nothing
+changed, and that difference is the capture's spread. A per-bucket error
+difference inside it is level. When registration is equal, every candidate passes
+the verifier and the per-bucket error is level, the candidates are the same answer
+to within noise: take the one with more structure, record any rung that disagreed
+(yield ranking the other way is the common one), and **stop spending runs on the
+comparison**. Checked against reference geometry afterwards, a choice made at this
+point rarely moved the result by more than the noise it was made inside.
 
 A comparison that skips step 3 has been measured producing the *wrong ranking*,
 so it is not optional care — it is the difference between a result and a coin
