@@ -395,10 +395,13 @@ the orchestrator binds each run to its scene on the first step that touches one
 **The health digest is the tier's one push channel.** When a run produces a
 `sparse_model/v1`, the run payload carries a `health_profile` block — the
 seven-rung profile defined in `health/ladder.md`, each rung a percentile against
-the reference corpus. Until the reference campaign has run, every rung honestly
-reports `cannot evaluate: no reference yet`. This exists because the sweep showed
-files are read when something compels them, not when something points at them —
-and nothing compelled the health moment.
+the reference corpus in `evidence/reference_profile.yaml`. The block names the
+`model` it describes. When the service keeps a second solve, the block describes
+the kept model, which is the one a caller delivers, and the first solve's profile
+moves into the `second_solve` decision as `first_solve_health_profile`. Without a
+reference file every rung reports `cannot evaluate: no reference yet`. This exists
+because the sweep showed files are read when something compels them, not when
+something points at them — and nothing compelled the health moment.
 
 ### Summary
 

@@ -576,6 +576,20 @@ class SfmService:
             second = {"status": "failed", "error": f"{type(e).__name__}: {e}"}
         if second is not None:
             payload["second_solve"] = second
+            kept = second.get("kept")
+            if second.get("status") == "kept_second" and kept and kept not in step.outputs.values():
+                # The digest above is the first solve's. The model the service keeps
+                # is the one a caller delivers, so it is the one the profile must
+                # describe; the first solve's moves into the decision beside it.
+                try:
+                    kept_digest = self._health_digest({"sparse": self.store.open(kept)})
+                except Exception as e:  # never take the step down over a profile
+                    kept_digest = {"status": f"cannot evaluate: {type(e).__name__}: {e}",
+                                   "model": kept}
+                if kept_digest is not None:
+                    if digest is not None:
+                        second["first_solve_health_profile"] = digest
+                    payload["health_profile"] = kept_digest
         return payload
 
     # The fixed end step, and a VETO: SparseVerification rejects a refined model
@@ -1005,7 +1019,7 @@ class SfmService:
     _HEALTH_RUNGS = (
         ("registration", "registered frames / capture frames"),
         ("conditioning", "median widest triangulation angle over points"),
-        ("composition", "median observations per surviving point"),
+        ("composition", "share of points seen in more than two views"),
         ("coverage", "median per-frame fraction of image grid cells holding "
                      "an observation"),
         ("error", "median reprojection error among well-supported points only"),
@@ -1064,6 +1078,10 @@ class SfmService:
                       if a.type == self.SPARSE_MODEL_TYPE), None)
         if model is None:
             return None
+        digest = self._health_digest_of(model)
+        return {"model": model.id, **digest} if digest is not None else None
+
+    def _health_digest_of(self, model) -> dict[str, Any] | None:
 
         root = self.config.skills_dir
         ref_path = (root / "evidence" / "reference_profile.yaml") if root else None

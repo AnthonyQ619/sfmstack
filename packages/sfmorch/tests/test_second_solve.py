@@ -223,3 +223,26 @@ def test_a_window_that_already_spans_the_capture_has_nothing_wider(service):
     assert "spans the capture" in pose["second_solve"]["note"]
     assert refined["second_solve"]["status"] == "no_wider_window"
     assert refined["second_solve"]["attempts"] == []
+
+
+def test_the_health_profile_describes_the_model_the_service_kept(service):
+    veto_windows(service, set())
+    _, refined = chain(service)
+    s = refined["second_solve"]
+    assert s["status"] == "kept_second"
+    # The model a caller delivers is the kept one, so that is what is profiled;
+    # the first solve's profile moves into the decision beside it.
+    assert refined["health_profile"]["model"] == s["kept"]
+    assert s["first_solve_health_profile"]["model"] == refined["outputs"]["sparse"]
+
+
+def test_without_a_second_solve_the_profile_is_the_step_s_own(service):
+    veto_windows(service, set())
+    _, refined = chain(service, escape_below=0)
+    assert "second_solve" not in refined or refined["second_solve"]["status"] != "kept_second"
+    assert refined["health_profile"]["model"] == refined["outputs"]["sparse"]
+
+
+def test_the_composition_rung_is_labelled_as_what_it_measures():
+    label = dict(SfmService._HEALTH_RUNGS)["composition"]
+    assert label == "share of points seen in more than two views"
