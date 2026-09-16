@@ -30,6 +30,7 @@ normal for a learned detector at default thresholds.
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -364,12 +365,21 @@ class TypeRegistry:
 
 
 _registry: TypeRegistry | None = None
+_registry_lock = threading.Lock()
 
 
 def registry() -> TypeRegistry:
-    """The process-wide registry, lazily populated with the core types."""
+    """The process-wide registry, lazily populated with the core types.
+
+    Published only once it is fully loaded. Publishing the empty registry first and
+    filling it afterwards let a second thread return it half-built, and the symptom
+    was a core type reported as unknown.
+    """
     global _registry
     if _registry is None:
-        _registry = TypeRegistry()
-        _registry.load_dir(_CORE_TYPES_DIR)
+        with _registry_lock:
+            if _registry is None:
+                built = TypeRegistry()
+                built.load_dir(_CORE_TYPES_DIR)
+                _registry = built
     return _registry
