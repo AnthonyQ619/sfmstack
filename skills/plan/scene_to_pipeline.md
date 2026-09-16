@@ -550,7 +550,10 @@ describing the wallpaper.
 
 Illumination, colour and exposure drift. Measured with adjacent-frame pairing it
 stays inside its healthy band on every capture, and the lighting diagnostic has
-never fired there. **Read it against the pairing it was computed with.** Pairing
+never fired there. **Read it against the pairing it was computed with** — that is
+`SceneTriage`'s own `pairing` parameter, which is the module that produces this
+reading. `SceneMotion` has no such parameter, and an agent has passed it there
+after reading this passage. Pairing
 every frame with every other compares frames from opposite ends of the trajectory,
 and on a studio orbit whose backdrop swings from bright to dark it reads well above
 the band — enough to fire `illumination_unstable` — while the subject's own

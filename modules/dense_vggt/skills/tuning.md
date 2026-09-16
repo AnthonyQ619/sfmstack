@@ -90,5 +90,6 @@ Audited against this module's own manifest. The `point_count`,
 have no diagnostic reading them — descriptions of the captures measured so far,
 not judgements on yours. The numbers in the `stride`, `min_confidence`,
 `depth_scale` and `write_ply` advice are settings that worked in isolated
-testing, not published results — and this module has run **zero times** in a
+testing, not published results — and this module has run in a real pipeline only
+as a comparison arm, never as a delivered dense stage; see `sources`. It has run zero times as the dense stage of a
 real pipeline.

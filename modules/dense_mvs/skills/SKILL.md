@@ -21,6 +21,12 @@ them.
 
 **First readings on this module's output:** `point_count`, `views_contributing`, `mean_depth_confidence`.
 
+**Two readings to take on the INPUT, before spending an hour here:** the sparse
+model's `min_frame_points` — the thinnest view, which is the one whose depth map
+comes back empty and which no whole-model total will show — and the capture's
+`highlight_clipped_fraction` from `SceneTriage`, which predicted this module's own
+coverage across a batch better than any parameter moved it.
+
 **Diagnostics it can raise:** `sparse_too_thin`, `low_completeness`, `views_dropped`, `no_points`.
 
 ## What this module is for
@@ -90,12 +96,19 @@ and `geom_consistency` doubles it by running the whole search twice.
 Scale linearly in views and quadratically in `max_image_size`. A 50-view set at
 2000 px is an hour or more, not a minute — `timeout_s` is 6 hours for that reason.
 
+**That rule was measured on one idle machine, and contention dominates it.** Across
+a batch run on shared devices it under-predicted by between about one-and-a-half and
+six times, and half the agents in that batch recorded the gap independently. Treat
+it as a floor for planning, not an estimate.
+
 **Reading the output:** [artifact.md](artifact.md) ·
 **Tuning:** [tuning.md](tuning.md) · **Limits:** [limitations.md](limitations.md)
 
 ## Provenance
 
-**Run zero times in any pipeline.** Every claim in these skills is from isolated
-testing or carried from the predecessor codebase; nothing here has been exercised
-end to end — and by the standing plan, dense modules run after the sparse
-holdout. Claim-by-claim citations: the `sources` skill.
+**Run over one full batch, and scored against reference geometry.** Every capture
+in that batch chose this module; the claims about its runtime under contention, its
+holes being photometric, and `fusion_min_num_pixels` come from it and are recorded
+in `skills/evidence/dense-batch-2026-09.md`. Everything else here is still isolated
+testing or carried from the predecessor codebase. Claim-by-claim citations: the
+`sources` skill.

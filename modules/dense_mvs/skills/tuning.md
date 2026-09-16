@@ -71,6 +71,23 @@ degrees. A drone or handheld sequence with small steps between frames may need
 That is the strictest filter in practice, and at 1 there is no multi-view
 verification left — the result is closer to monocular depth than to MVS.
 
+## `fusion_min_num_pixels` is the one filter measured to buy coverage
+
+**Measured on a dense batch against reference geometry**, on captures spanning the
+best and the worst coverage in that batch: lowering it from the default recovered
+rim and thin structure on **every capture tried**, emitting roughly two-thirds again
+as many points, improving completeness on all of them and paying a little of it back
+in accuracy — visible on well-covered captures, absent on starved ones. Net, it is
+a real gain of a few hundredths of a millimetre on the overall.
+
+So it is a default worth revisiting when completeness is the deliverable, and **not
+a fix for a starved capture** — the gain is modest and it does not reach a capture
+whose photometry denied the module evidence in the first place.
+
+Two neighbours were measured beside it and did not move: the correlation gate
+(`filter_min_ncc`) did nothing at all in either direction, and a wider correlation
+window helped one capture and hurt another.
+
 ## Fusion produced nothing but completeness is healthy
 
 Then the filters are fine and fusion is the problem: lower
@@ -130,5 +147,7 @@ Audited against this module's own manifest. The `point_count` and
 the captures measured so far, not judgements on yours. The specific numbers in
 the tuning advice for `max_image_size`, `window_radius`, `window_step`,
 `num_samples`, `num_iterations`, `filter_min_ncc` and six more parameters are
-settings that worked in isolated testing, not published results — and this
-module has run **zero times** in a real pipeline.
+settings that worked in isolated testing, not published results — and the numbers for
+`fusion_min_num_pixels` come from a dense batch measured against reference
+geometry, which is the one part of this file that does not rest on isolated
+testing.

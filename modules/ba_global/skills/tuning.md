@@ -110,6 +110,16 @@ the scene's calibration.
 weakly observable from a short sequence and trades off directly against
 translation; refining it on limited data moves error around rather than removing it.
 
+**Measured against reference geometry, and the cost is not subtle.** On calibrated
+studio orbits, re-refining finished models with `refine_focal_length` on cut
+reprojection error and moved the reconstruction several times further from the
+truth; adding `refine_principal_point` was far worse again with the error
+unchanged, and the recovered focal wandered by several percent either side of the
+shipped value across captures. Nothing inside the pipeline distinguishes that from
+an improvement — the error falls in both cases. On a capture whose calibration is
+trusted, a recovered focal departing from it by more than a fraction of a percent
+is a warning, not a result.
+
 ## Cost
 
 Scales with observations, not images. 22743 observations converged in 3.7s.

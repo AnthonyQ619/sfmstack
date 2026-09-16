@@ -18,9 +18,18 @@ only the pixels several views agree on. Where the evidence is absent it returns
 refined across views. Where the evidence is absent it predicts anyway.
 
 **A cloud with no holes is not more complete. It is less willing to say it does not
-know.** The holes in an MVS cloud are the honest part, and they sit exactly where a
-learned prior's output is least trustworthy — specular highlights, shadow, uniform
-paint, glass, anything that moved.
+know.** The holes in an MVS cloud are the honest part: they sit on specular
+highlights, shadow, uniform paint, glass, anything that moved.
+
+**A hole is a refusal, not an absence.** Measured against reference geometry on a
+studio orbit of a compact subject, with occlusion accounted for, nearly all of the
+surface the verified densifier missed was visible and unoccluded in several of that
+capture's own views. The pixels were there and the module declined to certify them.
+So the lever sits upstream — photometry and structure — and not in the filters.
+
+**What does not follow is that a learned prior fills those holes.** Measured on the
+same captures, most of its points land on the backdrop, the support surface and in
+empty space rather than in the holes; see the table at the end of this file.
 
 Two things follow:
 
@@ -100,11 +109,74 @@ cloud is then a mask over it.
 
 ---
 
+## Planning the sparse stage for a dense deliverable
+
+When the deliverable is a dense cloud, the sparse stage stops being an end in
+itself and becomes the supply. Choose its settings for what the densifier will
+consume, which is **coverage** — and accept that this is not the same model you
+would ship if the sparse model were the product.
+
+**Coverage is the requirement, not a tie-breaker.** Measured over a batch of
+studio orbits of compact subjects at tens of views: the captures whose dense clouds
+were most complete are the ones whose sparse models were broad and a little noisy,
+and models pruned to long clean tracks produced the sparsest depth maps at equal
+registration and equal reprojection error. A model that is clean and thin is worse
+input here than one that is broad and slightly self-contradictory.
+
+**The floor that matters is the thinnest view, not the model.** A model thin in
+*any* view starves that view's depth map, and a whole-model point count cannot show
+it — `min_frame_points` can sit near zero while `point_count` looks healthy. Raise
+the keypoint budget and lower the contrast threshold until the *worst* view clears
+a floor rather than until the mean looks well, and read
+[feature_sift tuning](../../modules/feature_sift/skills/tuning.md) for which knob
+moves which case.
+
+**Matching and tracking: lean towards keeping weak correspondences.** A
+correspondence only two cameras support still carries surface the densifier needs,
+and the batch found broad track tables feeding MVS better than clean thin ones.
+**This is a lean, not a licence.** Keeping everything also keeps the mismatches,
+the pose stage still has to survive what the matcher hands it, and on repeated
+structure a permissive matcher fails in the way [matching.md](matching.md)
+describes rather than in a way more points can fix. Where the two pages disagree
+about a capture, the matching page is about whether the capture solves at all and
+wins; this page is about what the dense stage is fed once it does.
+
+**Triangulation and refinement: treat `min_track_length` as a dense decision.**
+Raising it, or tightening a reprojection filter, buys a better-looking error rung
+by deleting the two-view structure that covers the parts of the subject only two
+cameras see well — which is exactly where the holes appear. Nothing downstream
+recovers those points. Decide it against the deliverable, not as hygiene.
+
+**Do not refine intrinsics on a calibrated capture to get there.** An orbit lets
+focal length trade against depth, so the optimiser can buy a lower reprojection
+error by resizing the scene; measured on this batch, freeing the focal improved the
+error and moved the cloud several times further out of place. See
+[optimization.md](optimization.md).
+
+**Two readings to take before spending an hour on MVS:** the per-view point floor
+above, and the capture's clipped-highlight reading from `SceneTriage`. The second
+predicted the dense stage's own coverage more strongly than any parameter moved it
+— a capture reading high on blown highlights loses dense coverage before the dense
+stage starts, and the honest response is to expect the loss, not to loosen filters
+afterwards.
+
+---
+
 ## What has NOT been measured
 
 | Question | Needs |
 | --- | --- |
-| **Accuracy against reference geometry** | A dataset with ground-truth surface. Everything measured so far compares one cloud against the triangulated points from the same pipeline, which is a consistency check and not an accuracy one. |
-| **What a learned prior buys where MVS fails** | A textureless or reflective scene. Measured so far only where MVS works well, which is the case it is best at. |
-| **Whether MVS holes are where the prior is wrong** | The two clouds and a reference surface. The claim that holes mark untrustworthy prediction is the argument for this whole family split, and it is an argument. |
+| **How far a dense stage's runtime model transfers** | Wall clock on shared hardware. The MVS scaling rule under-predicted by between about one-and-a-half and six times across a batch on a contended machine. |
+| **What a learned prior buys where MVS genuinely has nothing** | A capture whose target surface is textureless or reflective, with reference geometry. Both families have now been measured, but only on captures where MVS works well — which is the case MVS is best at and the case the prior is least needed in. |
 | **The runtime curve** | Wall clock against view count and resolution, on sets spanning both. "Minutes per view" is an order of magnitude, not a model. |
+
+## What HAS now been measured, against reference geometry
+
+A batch of studio orbits of compact subjects, each solved from raw frames to a
+dense cloud and scored against reference surface geometry.
+
+| Question | Answer |
+| --- | --- |
+| **Accuracy against reference geometry** | The verified densifier is accurate at the fine tolerance the reference geometry can resolve; what it loses is completeness, by a factor of roughly one and a half to two on the same captures. |
+| **Whether MVS holes are where the prior is wrong** | **No, and this was the argument for the family split.** Union of the two clouds was several times *worse* than MVS alone at fine tolerance, and filling only the verified holes was worse still: most predicted points sit far from any verified surface — on the backdrop, the support surface, in empty space — not in the holes. A predicted cloud is a coverage instrument, not a repair kit for a verified one. |
+| **What the two families cost each other on a capture MVS can solve** | Mirror images: the prior is several times less accurate on the surface it covers and meaningfully more complete. Choose on which error the deliverable can afford, not on which is better. |

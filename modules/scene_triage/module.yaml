@@ -255,6 +255,13 @@ metrics:
       region that is EMPTY from one that is BURNT, which are the same absence to
       a detector and different problems to fix. Was already being computed and
       consumed only as a pairwise difference inside `exposure_shift`.
+      IT ALSO PREDICTS DENSE COVERAGE. Across a batch of studio orbits scored
+      against reference geometry, this reading tracked the MVS stage's own
+      `depth_map_completeness` more strongly, and more negatively, than any dense
+      parameter moved it -- the strongest single predictor in that batch. A
+      photometric densifier cannot correlate a blown region, so the coverage is
+      lost before the dense stage starts. When the deliverable is dense, read this
+      BEFORE planning the dense stage: see skills/plan/dense.md.
 
   shadow_clipped_fraction:
     direction: lower_better

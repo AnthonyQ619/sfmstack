@@ -86,6 +86,20 @@ Bounded by what VGGT predicts, which is a learned monocular prior refined across
 views. It is smooth, complete, and locally plausible; it is not photometrically
 verified anywhere.
 
+**Now measured against reference geometry, on studio orbits of compact subjects.**
+Against MVS on the same captures and the same poses, this module is *several times*
+less accurate on the surface it does cover, and meaningfully more complete. The two
+are mirror images: choose on which error the deliverable can afford.
+
+**Its cloud does not repair an MVS cloud at fine tolerance**, which is the use this
+family split most invites. Measured three ways on the same capture: MVS alone was
+the best result; the union of the two clouds was several times worse; and adding
+predicted points only where MVS had nothing nearby was worse still. The reason is
+where the predicted points are — most of them sit far from any verified surface, on
+the backdrop, on the support surface and in empty space, not in the holes. As a
+*coverage instrument* — showing what a capture contains — it is doing its job. As a
+patch for a verified cloud at millimetre tolerance, it is not.
+
 ## Only posed views contribute
 
 A view with `valid=False` in the pose artifact is skipped entirely. That is

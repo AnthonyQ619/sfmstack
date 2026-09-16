@@ -1,5 +1,5 @@
 # Captures the ranges in skills/scene_to_pipeline.md were fitted on.
-# Matched as a substring of the scene's image_dir. One per line.
+# Matched against whole path segments of the scene's image_dir. One per line.
 
 /ETH/courtyard
 /ETH/delivery_area

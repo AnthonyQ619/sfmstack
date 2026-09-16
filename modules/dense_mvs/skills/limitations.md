@@ -35,6 +35,20 @@ exposures. No parameter fixes this; the evidence is not in the images. What
 changes with tuning is only whether the module admits noise in those regions or
 leaves them empty, and empty is the more useful answer.
 
+**The holes are photometric, not geometric, and that has now been measured.**
+Against reference geometry on studio orbits, with occlusion modelled, nearly all of
+the surface this module missed was visible and unoccluded in five or more of the
+capture's own views — on the worst capture, practically all of it. Geometry and
+visibility were not the constraint. The module declined to certify pixels it could
+see, which is the design working, and it means **no filter setting is the answer**:
+the recovery has to come from the photometry or from the structure upstream.
+
+**One reading predicts it before the run.** Across a batch, the fraction of blown
+highlights in the capture tracked this module's own `depth_map_completeness` more
+strongly than any parameter moved it, and in the expected direction. `SceneTriage`
+publishes it as `highlight_clipped_fraction`. A capture reading high there will
+lose dense coverage whatever this module is set to.
+
 **Escape:** a learned depth prior, which predicts through the gap instead.
 
 ```

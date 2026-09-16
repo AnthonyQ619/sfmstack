@@ -36,6 +36,14 @@ in 22 s, most of it model load — a second run against a warm server is 2 s.
 consistency check, no cross-view fusion. Every view contributes independently, so
 a surface seen from four views appears four times.
 
+**It cannot be run on a refined sparse model, and that is an API gap rather than a
+limitation of the method.** This module consumes `poses/v1`, and nothing in the
+registry converts a `sparse_model/v1` into one — so a pipeline that has refined its
+model cannot hand it here without going back to the pose stage's own output. An
+agent hit exactly this in a dense batch. Check with
+`find(produces="poses/v1", consumes="sparse_model/v1")` before planning a
+comparison that needs it.
+
 **The scale is the thing it cannot measure alone.** It has no correspondences.
 Pass the optional `tracks/v1` input and the scale is estimated and reported;
 without one it is the `depth_scale` parameter, whose default of 1.0 is correct
@@ -61,7 +69,9 @@ nothing at 0.9 and everything at, say, 0.99 of the wrong scale. Read
 
 ## Provenance
 
-**Run zero times in any pipeline.** Every claim in these skills is from isolated
-testing or carried from the predecessor codebase; nothing here has been exercised
-end to end — and by the standing plan, dense modules run after the sparse
-holdout. Claim-by-claim citations: the `sources` skill.
+**Run as a comparison arm in one dense batch, and measured against reference
+geometry for the first time** — see `limitations` and
+`skills/evidence/dense-batch-2026-09.md`. No capture in that batch shipped this
+module's cloud as its deliverable, so everything about its behaviour as a delivered
+dense stage is still isolated testing or carried from the predecessor codebase.
+Claim-by-claim citations: the `sources` skill.

@@ -439,6 +439,20 @@ A comparison that skips step 3 has been measured producing the *wrong ranking*,
 so it is not optional care — it is the difference between a result and a coin
 flip.
 
+**And the error rung cannot see whether the structure is in the right place.** It
+measures agreement with the observations the model was fitted to, which is not the
+same thing as correctness. Measured against reference geometry over a batch of
+studio orbits: models sitting at the same reprojection error differed several-fold
+in how far their structure was from the truth, and re-refining a calibrated capture
+with its focal length free *lowered* the rung while moving the reconstruction
+further out of place. Two models can agree with their own observations equally well
+and place their geometry very differently in the world.
+
+The consequence for this procedure: once registration and the verifier are level,
+further A/B between refined models buys very little, and **when a dense stage is
+downstream the tie breaks on structure and per-view coverage rather than on error**
+— see [plan/dense.md](../plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
+
 **The service's second solve is not a comparison to run through this
 procedure.** When points escape the pose stage, the service re-solves the chain
 at a wider window and keeps that solve by its own rule, never on reprojection

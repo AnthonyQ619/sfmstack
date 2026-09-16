@@ -116,6 +116,16 @@ deviation under `texture_floor`. Detection cannot happen there at any threshold.
    0.80 empty against essentially zero clipped is the surface being reconstructed
    — flat, not burnt, and therefore recoverable at higher working resolution or
    with exposure normalisation at detection.
+
+   **When the deliverable is a dense cloud, this pair predicts the dense result
+   itself.** Across a batch of studio orbits scored against reference geometry,
+   `highlight_clipped_fraction` tracked the MVS stage's own coverage more strongly
+   than any dense parameter moved it, and negatively: a burnt region is one a
+   photometric densifier cannot correlate, so it comes back as a hole. A capture
+   reading high here will lose dense completeness whatever the dense stage is set
+   to, and the recovery — if there is one — is exposure at capture or at detection,
+   not a looser filter downstream. See
+   [plan/dense.md](../../../skills/plan/dense.md).
 3. Watch `spatial_coverage` on `features/v1` rather than keypoint count. A
    detector can hit its cap entirely inside the textured third, and a thousand
    keypoints in one corner give a degenerate two-view geometry.

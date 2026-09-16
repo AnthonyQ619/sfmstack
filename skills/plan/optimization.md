@@ -56,6 +56,16 @@ A bundle adjuster that refines K writes `intrinsics` into its output, and every
 consumer that finds them prefers them — because a pose refined jointly with a K is
 not consistent with an older K. Mixing them is a silent error.
 
+**On a calibrated capture, do not refine them to lower the error.** Measured over a
+batch of studio orbits carrying a shipped calibration: freeing the focal length cut
+reprojection error and moved the reconstruction several times further from where
+reference geometry says it belongs, and freeing the principal point as well was far
+worse again at an unchanged error. An orbit lets focal length trade against depth,
+so the optimiser buys the objective by resizing the scene — and no reading inside
+the pipeline separates that from an improvement. Treat a refined focal that departs
+from the shipped value by more than a fraction of a percent as a warning rather
+than a result; `estimated_focal_ratio` and `focal_spread` are where it shows.
+
 ---
 
 ### 4. Two checks run after every step of this family, unasked
@@ -156,6 +166,14 @@ points — so the typical loss is nearer two-thirds than one-half, and the worst
 case is three-quarters. The loss tracks the input's `two_view_fraction`, which is
 the mechanism and which you can read before choosing.
 
+**When a dense stage is downstream, that deletion is not a hygiene choice.** The
+points `min_track_length` removes are the two-view ones, and those cover the parts
+of a subject only two cameras see well — which is where a verified densifier leaves
+its holes. Measured on a dense batch: at equal registration and equal error, the
+models that kept their weak structure produced the more complete dense clouds, and
+nothing downstream recovers what was deleted here. Decide it against the
+deliverable — [plan/dense.md](dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
+
 **And it drives the composition rung to a perfect score.** Every point below
 three views is gone, so the share of over-determined points is 1.000 by
 construction — on a model that is a strict subset of the one it is being compared
@@ -233,6 +251,6 @@ comparing two different modules, which is why this case kept catching people.
 | Question | Needs |
 | --- | --- |
 | **Where local stops reaching** | Sequence length against uncorrected drift. Nothing here establishes the point at which a window is no longer enough. |
-| **Whether refining intrinsics helps or hurts** | Still open on the boundary, but one side is now measured: on a well-calibrated rig, refinement improved reprojection error by up to 21% *by giving a single physical lens a different focal length per frame*. That is the fitting-noise case, and it is now detectable rather than inferred — `estimated_focal_ratio` and `focal_spread` on `BundleAdjustmentGlobal` publish it, and a diagnostic fires when a one-calibration scene comes back with many. What is untested is the other side: a genuinely bad calibration, where refinement should be the point. |
+| **Whether refining intrinsics helps or hurts** | Still open on the boundary, but one side is now measured: on a well-calibrated rig, refinement improved reprojection error by up to 21% *by giving a single physical lens a different focal length per frame*. That is the fitting-noise case, and it is now detectable rather than inferred — `estimated_focal_ratio` and `focal_spread` on `BundleAdjustmentGlobal` publish it, and a diagnostic fires when a one-calibration scene comes back with many. A dense batch has since measured the consequence rather than the symptom, and it is worse than fitting noise: on calibrated orbits, refinement lowered reprojection error while moving the reconstruction several times further from reference geometry. What is untested is still the other side: a genuinely bad calibration, where refinement should be the point. |
 | **The cost curve** | Runtime against camera and point count, on models spanning orders of magnitude. "Global does not fit" is currently a judgement with no numbers behind it. |
 | ~~**What a converged solve is worth**~~ | **ANSWERED, and see "Which end to reach for" above.** On these captures it is worth the flag and nothing else: capped and converged solves of one problem agreed to four decimals every time. What remains open is whether that holds on a model large enough for the cap to bind for real reasons. |
