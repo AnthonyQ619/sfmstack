@@ -30,6 +30,7 @@ truth about where the evidence ran out.
 from __future__ import annotations
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -393,6 +394,21 @@ def run(ctx: Ctx):
         # arrays are simply omitted rather than padded.
         shapes = {m.shape for m in maps}
         write_depth = p.write_depth_maps and len(shapes) == 1 and len(maps) > 0
+
+        # The workspace COLMAP fused from is complete at this point and is about to
+        # be deleted with the temp directory. Keeping it lets a separate module
+        # re-fuse at different settings without paying for the stereo pass again --
+        # the depth arrays alone cannot do that, because fusion needs the normal
+        # maps and consistency graphs too.
+        if p.keep_workspace:
+            ctx.progress(0.93, "keeping the COLMAP workspace")
+            dest = out.sidecar_dir("workspace")
+            for sub_dir in ("stereo", "sparse", "images"):
+                src = dense_dir / sub_dir
+                if src.exists():
+                    shutil.copytree(src, dest / sub_dir, dirs_exist_ok=True)
+            kept = sum(f.stat().st_size for f in dest.rglob("*") if f.is_file())
+            out.metric("workspace_megabytes", round(kept / 1e6, 1), direction="neutral")
 
         ctx.progress(0.95, f"{len(xyz)} points")
 

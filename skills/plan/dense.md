@@ -1,7 +1,9 @@
 # Dense reconstruction — choosing a densifier
 
-Everything that produces `dense_model/v1`. Two modules, and the difference between
-them is not degree.
+Everything that produces `dense_model/v1`. Two densifiers, and the difference between
+them is not degree. A third module, `DenseFusion`, also produces the type, but it is a
+tuning tool rather than a densifier: it re-fuses a `DenseMVS` stereo pass at other
+settings — see "Delivering the verified cloud" below.
 
 ---
 
@@ -25,7 +27,11 @@ highlights, shadow, uniform paint, glass, anything that moved.
 studio orbit of a compact subject, with occlusion accounted for, nearly all of the
 surface the verified densifier missed was visible and unoccluded in several of that
 capture's own views. The pixels were there and the module declined to certify them.
-So the lever sits upstream — photometry and structure — and not in the filters.
+None of the obvious levers reaches them. Changing the sparse model's density,
+normalising exposure, loosening the filters and widening the set of views compared all
+left the holes where they were. What recovered some was the dense stage's own fusion
+policy — see "Delivering the verified cloud". Expect the remainder, and use a learned
+densifier if it has to be filled.
 
 **What does not follow is that a learned prior fills those holes.** Measured on the
 same captures, most of its points land on the backdrop, the support surface and in
@@ -132,8 +138,7 @@ poor coverage without either causing the other.
 
 **What decides the dense result is the dense stage's own policy**, not its input:
 `fusion_min_num_pixels` and `geom_consistency` moved completeness by two orders of
-magnitude more than any of the above. See
-[modules/dense_mvs tuning](../../modules/dense_mvs/skills/tuning.md).
+magnitude more than any of the above. See "Delivering the verified cloud" below.
 
 **Thin models and poor dense coverage go together across captures — but do not
 assume the mechanism is per-view starvation.** Captures whose sparse models are thin
@@ -148,9 +153,10 @@ that view's holes.
 
 **What does track the holes is how many views see the surface *well*.** Surface the
 densifier missed was exposed and textured in far fewer views than surface it covered
-— single figures against twenty or thirty on the same capture. The lever that reaches
-that is which source views a densifier correlates against, not how many keypoints the
-sparse stage found.
+— single figures against twenty or thirty on the same capture. This describes why a
+region stays a hole; it is not a setting. Comparing each image against every other view
+— which gives any well-exposed view the chance to be used — recovered nothing and cost
+accuracy. Neither the keypoint budget nor the choice of source views reaches it.
 
 **Matching and tracking: choose for whether the capture solves, not for the
 densifier.** An earlier version of this page leaned towards keeping weak
@@ -183,6 +189,23 @@ stage starts, and the honest response is to expect the loss, not to loosen filte
 afterwards. **Neither is a lever you can pull to fill a specific hole**: blown
 highlights are a property of the capture, and per-view density does not predict which
 views come back empty.
+
+---
+
+## Delivering the verified cloud
+
+**Plan one `DenseMVS` run at the measured operating region, not at the defaults.** On
+a well-posed capture that is the geometric check off and fusion one step below its
+default: markedly more complete, accuracy still at the level classical MVS is
+published at, and about half the runtime. The region, and when to stay out of it —
+doubtful poses, and never the check off with the loosest fusion — are in
+[DenseMVS tuning, "Delivering a dense cloud"](../../modules/dense_mvs/skills/tuning.md#delivering-a-dense-cloud).
+
+**Plan a `DenseFusion` exploration only when the capture is unlike the ones
+measured.** It needs the stereo pass kept (`keep_workspace: true`), which is large on
+disk; after that each fusion setting costs seconds, and point counts alone say where
+to stop. The route from an output you already have is one replay:
+[DenseFusion SKILL, "Before you run it"](../../modules/dense_fusion/skills/SKILL.md#before-you-run-it).
 
 ---
 

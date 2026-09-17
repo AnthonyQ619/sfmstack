@@ -1,0 +1,151 @@
+name: DenseFusion
+version: 1.0.0
+kind: dense
+summary: >
+  Re-fuse a DenseMVS stereo pass at different fusion settings in seconds, without
+  re-running stereo. Needs a DenseMVS output made with keep_workspace: true -- if
+  yours was not, sfm_replay it with that one override first.
+
+description: >
+  The second half of `DenseMVS`, separated so it can be run on its own. PatchMatch
+  produces evidence -- a depth and a normal per pixel, plus which views agree -- and
+  fusion applies policy to it: how many pixels must agree before a point is emitted,
+  and how far they may disagree. The evidence costs minutes per view; the policy costs
+  seconds. Running them together means a policy change re-buys the evidence, so in
+  practice the policy is never revised.
+
+  Consumes a `dense_model/v1` produced with `keep_workspace: true` and emits a new
+  `dense_model/v1`. It changes nothing PatchMatch decided -- the filters, the
+  geometric check and the source views that shaped the depth maps are upstream and
+  are not reachable from here.
+
+  **The fixed first step.** A DenseMVS output without the workspace cannot be
+  re-fused. Replay the step that made it -- `sfm_replay(from_artifact=<that dense
+  artifact>, overrides={keep_workspace: true})` -- which re-buys the stereo pass once
+  at the same settings, then run this on the replay's output. Every fusion setting
+  after that is seconds. Details: the SKILL, "Before you run it".
+
+image: sfmstack/dense-fusion:1.0.0
+
+consumes:
+  dense: {type: dense_model/v1, required: true}
+
+produces:
+  dense: {type: dense_model/v1}
+
+resources:
+  gpu: false
+
+params:
+  min_num_pixels:
+    type: integer
+    default: 5
+    minimum: 1
+    maximum: 50
+    description: How many depth-map pixels must agree before a point is emitted.
+    tuning: >
+      The knob that buys coverage, and the only fusion setting measured. Lowering it
+      recovers rim and thin structure at an accuracy cost; raising it does the
+      reverse. Step it down one at a time and watch point_count: while each step
+      grows the cloud by a modest, steady factor it is adding surface, and the step
+      that roughly doubles the cloud or more is adding noise -- go back up one. The
+      measured band is a few pixels either side of the default; the loosest settings
+      collapsed accuracy on every capture measured. Full curve: tuning.md.
+
+  max_reproj_error:
+    type: number
+    default: 2.0
+    minimum: 0.1
+    maximum: 20.0
+    description: Maximum reprojection disagreement between fused pixels, in pixels.
+
+  max_depth_error:
+    type: number
+    default: 0.01
+    minimum: 0.0001
+    maximum: 1.0
+    description: Maximum relative depth disagreement between fused pixels.
+
+  max_normal_error:
+    type: number
+    default: 10.0
+    minimum: 1.0
+    maximum: 90.0
+    description: Maximum angle between fused pixels' normals, in degrees.
+
+  check_num_images:
+    type: integer
+    default: 50
+    minimum: 1
+    maximum: 200
+    description: How many neighbouring views each point is checked against.
+
+  max_image_size:
+    type: integer
+    default: -1
+    description: >
+      Working resolution for fusion. -1 keeps the workspace's own, which is almost
+      always what you want: it was fixed when the depth maps were computed.
+
+  input_type:
+    type: string
+    default: auto
+    enum: [auto, photometric, geometric]
+    description: >
+      Which depth maps to fuse. `auto` prefers geometric when the workspace holds
+      them, matching what the producing run computed.
+
+  write_ply:
+    type: boolean
+    default: true
+    description: Also write a .ply sidecar.
+
+metrics:
+  point_count:
+    direction: higher_better
+    healthy:
+    - 10000
+    - null
+    meaning: Points in the fused cloud.
+  views_contributing:
+    direction: higher_better
+    healthy:
+    - 2
+    - null
+    meaning: 'Views whose filtered depth map still held at least one valid pixel. Below the
+      sparse model''s registered_images means some views were photometrically rejected outright,
+      which is different from being unregistered.
+
+      '
+  mean_depth_confidence:
+    direction: higher_better
+    nullable: true
+    meaning: "Always null. PatchMatch expresses its confidence by deleting pixels rather than\
+      \ by scoring them, so there is no per-point number to report. Read depth_map_completeness\
+      \ instead \u2014 it is the same information, expressed as what survived.\n"
+
+  fusion_min_num_pixels:
+    direction: neutral
+    meaning: The setting this cloud was fused at, so two arms can be told apart.
+
+  ply_megabytes:
+    direction: neutral
+    meaning: Size of the `cloud.ply` sidecar, 0 when write_ply is off.
+
+  point_ratio_to_source:
+    direction: neutral
+    nullable: true
+    meaning: >
+      This cloud's point count over the input artifact's -- the fusion the stereo
+      pass was delivered with. Compare it across settings: a step that multiplies it
+      sharply is the signal that the new points are noise. Null when the input
+      reports no point count.
+
+diagnostics:
+  - code: no_points
+    severity: error
+    message: Re-fusing produced no points.
+    suggested_actions:
+      - Lower min_num_pixels.
+      - If the input's own cloud is empty too, the problem is upstream in PatchMatch, not here.
+    see_also: tuning.md#it-produced-nothing

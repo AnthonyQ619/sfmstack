@@ -50,13 +50,41 @@ pixels means finer detail per pixel and a harder consistency test, so the fracti
 kept goes down while the absolute count goes up 2.7x. Never compare completeness
 across different `max_image_size` values.
 
+## Delivering a dense cloud
+
+**On a well-posed capture, deliver with the geometric check off and
+`fusion_min_num_pixels` one step below the default.** That is one ordinary run, and
+it is the best measured trade: on a corpus of studio orbits scored against reference
+geometry it improved completeness substantially while keeping accuracy at the level
+classical MVS is published at, and it took about half the time of the default.
+
+The region around it, and which way to move within it:
+
+- **The good region is a few pixels either side of the default, with the check
+  off.** Across it the overall score is nearly flat — completeness and accuracy
+  trade almost evenly. Move down for coverage, up for accuracy.
+- **Do not combine the check off with the loosest fusion settings.** With neither
+  in force nothing verifies anything, and accuracy collapsed several-fold on every
+  capture measured.
+- **Keep the check on when the poses are in doubt.** It is also the diagnostic for
+  bad poses — see "Nothing survives the filters". The region above was measured on
+  captures whose poses were sound.
+
+**When the capture does not look like those** — an unusual subject or rig, or a
+first cloud that looks wrong in a way the region does not explain — keep the stereo
+pass and explore the fusion setting instead of re-running: `keep_workspace: true`,
+then `DenseFusion` at several settings, seconds each. Its SKILL gives the one-call
+route from an output you already have, and its tuning gives the rule for when to
+stop lowering the setting without reference geometry.
+
 ## The runtime knobs, in the order to reach for them
 
 1. **`max_image_size`** — quadratic in both directions. 600 px to answer "does this
    pipeline work at all" in half a minute, then the real value.
 2. **`geom_consistency: false`** — halves the time and is the only one of these
-   that changes what the result *means*. A structural check, not a delivery
-   setting.
+   that changes what the result *means*: nothing checks the depths against each
+   other across views. On a well-posed capture that is also the better delivery
+   setting — see "Delivering a dense cloud" — but not when the poses are in doubt.
 3. **`num_samples`** — linear. 15 → 8 is a real saving with visible noise cost.
 4. **`window_step: 2`** — roughly halves the correlation cost above ~1000 px, where
    neighbouring pixels are nearly redundant. Below that it just loses accuracy.
@@ -95,9 +123,11 @@ as many points, improving completeness on all of them and paying a little of it 
 in accuracy — visible on well-covered captures, absent on starved ones. Net, it is
 a real gain of a few hundredths of a millimetre on the overall.
 
-So it is a default worth revisiting when completeness is the deliverable, and **not
-a fix for a starved capture** — the gain is modest and it does not reach a capture
-whose photometry denied the module evidence in the first place.
+So it is a default worth revisiting when completeness is the deliverable — the
+region to use is under "Delivering a dense cloud", and `DenseFusion` explores it on
+one stereo pass. It is **not a fix for a starved capture**: the gain is modest and it
+does not reach a capture whose photometry denied the module evidence in the first
+place.
 
 Two neighbours were measured beside it and did not move: the correlation gate
 (`filter_min_ncc`) did nothing at all in either direction, and a wider correlation
@@ -125,8 +155,11 @@ uniformly, including good ones.
 
 Expected, and read the images before tuning: the holes will be on specular
 highlights, shadow, uniform paint, or glass. If they are somewhere textured and
-well-seen, `filter_min_num_consistent` or
-`filter_min_triangulation_angle` is the likely cause.
+well-seen, that is still the normal case, not a misconfigured filter: loosening
+`filter_min_ncc`, `filter_min_triangulation_angle` and `filter_min_num_consistent` did
+not recover such holes on any capture measured. What did recover part of them is the
+operating region under "Delivering a dense cloud". Beyond it, no setting tested reaches
+them.
 
 If the holes matter more than the verification does, `DenseVGGT` will fill them —
 with a prediction rather than a measurement, which

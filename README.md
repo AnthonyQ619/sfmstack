@@ -109,6 +109,7 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | | `SparseGlobalCOLMAP` | pycolmap global mapping (GLOMAP) | |
 | dense | `DenseVGGT` | VGGT depth, unprojected with supplied poses | ✓ |
 | | `DenseMVS` | COLMAP PatchMatch stereo + fusion | ✓ |
+| | `DenseFusion` | COLMAP fusion alone, re-run on a `DenseMVS` workspace kept with `keep_workspace: true` | |
 | optimization | `BundleAdjustmentGlobal` | pycolmap / Ceres | |
 | | `BundleAdjustmentLocal` | pycolmap / Ceres | |
 

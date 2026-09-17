@@ -14,7 +14,9 @@ them.
 
 | If | Fetch |
 | --- | --- |
-| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 14 parameters documented, starting with `max_image_size` |
+| choosing settings for a dense deliverable | **`tuning`**, "Delivering a dense cloud" — the measured operating region, in one run |
+| comparing several fusion settings without paying for stereo again | the **`DenseFusion`** module — set `keep_workspace: true` here first |
+| a number is out of band, or a diagnostic told you to tune | **`tuning`** — 17 parameters documented, starting with `max_image_size` |
 | you need to know whether this module can do the thing at all | **`limitations`** — e.g. "It cannot see what it cannot correlate" |
 | you are reading what it wrote | **`artifact`** — the layout of `dense_model/v1` |
 | you want to know where a claim came from, or what rests on nothing | **`sources`** — includes an audited list of what is asserted without a source |

@@ -123,12 +123,14 @@ params:
       Run a second PatchMatch pass that penalises forward-backward reprojection
       disagreement between views.
     tuning: >
-      Roughly doubles runtime and is the single biggest quality gain available
-      here — it is what removes the depth hypotheses that are photometrically
-      plausible in one view and geometrically impossible across the set. Turn it
-      off only for a fast structural check that the pipeline runs at all. With it
-      off, fusion reads the photometric maps instead, and both
-      `depth_map_completeness` and the noise go up.
+      Roughly doubles runtime. It removes depth hypotheses that are photometrically
+      plausible in one view and geometrically impossible across the set, which
+      makes it the test that catches bad poses -- keep it on when they are in
+      doubt. Measured against reference geometry on well-posed captures, though,
+      off is the better delivery setting when paired with fusion_min_num_pixels one
+      step below its default: more complete at matched accuracy, in half the time.
+      Never pair off with the loosest fusion settings. With it off, fusion reads
+      the photometric maps. tuning.md, "Delivering a dense cloud".
 
   geom_consistency_max_cost:
     type: number
@@ -188,10 +190,13 @@ params:
     maximum: 100
     description: Consistent pixels that must fuse before a point is emitted.
     tuning: >
-      Trades point count against reliability at the fusion stage rather than the
-      filtering stage. 5 is a good default; 3 recovers thin structure and rim
-      geometry at the cost of noise; 10 gives a markedly cleaner cloud on a dense
-      capture and erodes anything seen from few views.
+      Trades completeness against accuracy at the fusion stage, and measured to
+      buy coverage. One step below the default, with geom_consistency off, is the
+      best measured delivery trade on a well-posed capture; lower recovers more
+      thin structure and rim at an accuracy cost that grows quickly; higher gives a
+      cleaner cloud and erodes anything seen from few views. To compare several
+      settings on one stereo pass, set keep_workspace and use DenseFusion.
+      tuning.md, "Delivering a dense cloud".
 
   fusion_max_reproj_error:
     type: number
@@ -229,6 +234,23 @@ params:
       Off by default because the arrays are large — a 12-view set at 1600 px is
       roughly 120 MB of float32, several times the point cloud. Turn it on when a
       consumer wants depth rather than points, or to inspect where the filters bit.
+
+  keep_workspace:
+    type: boolean
+    default: false
+    description: >
+      Keep the COLMAP dense workspace -- depth maps, normal maps and consistency
+      graphs -- as a `workspace` sidecar on the artifact.
+    tuning: >
+      The prerequisite for `DenseFusion`, which re-fuses this stereo pass at other
+      fusion settings in seconds each. Off by default because it is LARGE: about a
+      gigabyte for a fifty-view capture at 600 px and several gigabytes at 1600 px,
+      many times the point cloud. Already have an output without it? Replay this
+      step with `keep_workspace: true` as the only override, then run DenseFusion
+      on the replay's output. Nothing available to an agent deletes it afterwards;
+      name the artifact in the run summary. `write_depth_maps` is the cheaper option
+      when a consumer wants depth rather than fusion inputs: fusion needs the normal
+      maps and consistency graphs that only this carries.
 
   write_ply:
     type: boolean
