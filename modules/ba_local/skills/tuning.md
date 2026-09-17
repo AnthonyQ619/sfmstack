@@ -91,11 +91,11 @@ two-view-dominated cloud deletes half the model.
 Lower it to 2 only if `points_optimized` is too small to constrain the window, and
 treat needing that as a signal about the cloud rather than about this parameter.
 
-**If a dense stage is downstream, lower it anyway.** The points this filter deletes
-are the ones covering surface only two cameras see well, which is where a verified
-densifier leaves its holes; measured on a dense batch, models that kept their weak
-structure produced more complete dense clouds at equal registration and equal
-error. The deletion is not recoverable later. See
+**A dense stage downstream is not a reason to lower it.** That was asserted here
+from a cross-capture correlation and has since been tested directly: deleting a third
+to three fifths of a model's points by raising this filter changed the dense stage's
+completeness by **+0.0000 mm** across a corpus of studio orbits. Choose it for the
+window's sake, not the densifier's. See
 [plan/dense.md](../../../skills/plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
 
 **The deletion is now announced rather than left to be noticed.**

@@ -32,6 +32,19 @@ is the ~5% of pixels that were photometrically plausible in one view and
 geometrically impossible across the set. It also cost 44 s and gained 610 points.
 The point count barely moves; the *quality* of the points does.
 
+**Measured against reference geometry, though, leaving it ON is the worse trade for a
+dense deliverable.** Across a corpus of studio orbits, scored on the published basis
+and swept over the whole fusion curve both ways: with the check off, the
+accuracy/completeness frontier shifts by roughly 0.015 mm in completeness **at matched
+accuracy**, all the way along it, and the best overall measured anywhere came from the
+check being off. It is also half the price, because the check runs the whole search
+twice.
+
+Two caveats that keep the paragraph above true. The frontier only holds in the sane
+region — with the check off AND fusion at its loosest, nothing is verifying anything
+and accuracy collapses several-fold. And this was measured on well-posed captures; the
+diagnostic value below is unaffected.
+
 **Completeness falls as resolution rises.** 0.717 → 0.650 from 600 to 1200 px. More
 pixels means finer detail per pixel and a harder consistency test, so the fraction
 kept goes down while the absolute count goes up 2.7x. Never compare completeness
@@ -55,8 +68,10 @@ across different `max_image_size` values.
 **The poses are wrong.** Check this first, and check it before touching any filter.
 Bad poses fail the *geometric* pass while sailing through the photometric one, so
 the symptom is completeness that collapses when `geom_consistency` is on and
-recovers when it is off. Turning it off is not a fix — it is switching off the
-test that caught the problem. Bundle-adjust and re-run.
+recovers when it is off. **Here** turning it off is not a fix — it is switching off the
+test that caught the problem. Bundle-adjust and re-run. (That is about this diagnostic.
+As a delivery setting on a capture whose poses are sound, the check off is the better
+measured trade — see above.)
 
 **The scene is low-texture.** Lower `filter_min_ncc` toward 0.05. Reflective,
 transparent and untextured surfaces are where PatchMatch has nothing to correlate,

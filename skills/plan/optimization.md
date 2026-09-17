@@ -166,13 +166,12 @@ points — so the typical loss is nearer two-thirds than one-half, and the worst
 case is three-quarters. The loss tracks the input's `two_view_fraction`, which is
 the mechanism and which you can read before choosing.
 
-**When a dense stage is downstream, that deletion is not a hygiene choice.** The
-points `min_track_length` removes are the two-view ones, and those cover the parts
-of a subject only two cameras see well — which is where a verified densifier leaves
-its holes. Measured on a dense batch: at equal registration and equal error, the
-models that kept their weak structure produced the more complete dense clouds, and
-nothing downstream recovers what was deleted here. Decide it against the
-deliverable — [plan/dense.md](dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
+**It is not, however, a dense-stage decision.** That was claimed here from a
+cross-capture correlation and the direct test refutes it: raising `min_track_length`
+to 3 deleted a third to three fifths of every model's points across a corpus of studio
+orbits and moved the dense stage's completeness by **+0.0000 mm**. Weigh this filter on
+the error rung and on composition, which is where its effects are measurable —
+[plan/dense.md](dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
 
 **And it drives the composition rung to a perfect score.** Every point below
 three views is gone, so the share of over-determined points is 1.000 by

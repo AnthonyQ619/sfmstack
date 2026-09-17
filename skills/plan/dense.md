@@ -111,54 +111,78 @@ cloud is then a mask over it.
 
 ## Planning the sparse stage for a dense deliverable
 
-When the deliverable is a dense cloud, the sparse stage stops being an end in
-itself and becomes the supply. Choose its settings for what the densifier will
-consume, which is **coverage** — and accept that this is not the same model you
-would ship if the sparse model were the product.
+When the deliverable is a dense cloud, it is tempting to treat the sparse stage as
+the supply and tune it for what the densifier will consume. That has been tested, and
+it is mostly the wrong place to spend effort.
 
-**Coverage is the requirement, not a tie-breaker.** Measured over a batch of
-studio orbits of compact subjects at tens of views: the captures whose dense clouds
-were most complete are the ones whose sparse models were broad and a little noisy,
-and models pruned to long clean tracks produced the sparsest depth maps at equal
-registration and equal reprojection error. A model that is clean and thin is worse
-input here than one that is broad and slightly self-contradictory.
+**Measured end to end, there is very little to plan here.** Four sparse-side changes
+were run through to a scored dense cloud on a corpus of studio orbits: the detector's
+budget, its contrast threshold, exposure normalisation at detection, and the refiner's
+minimum track length. Three of them changed the sparse model substantially — between
+three fifths smaller and half again larger — and **none moved dense completeness by as
+much as a thousandth of a millimetre.** The fourth changed nothing at all, for a reason
+worth knowing: the detector's `saturation` was 0.000 on every capture, so its budget
+was never the binding constraint and doubling it returned an identical model.
 
-**The floor that matters is the thinnest view, not the model.** A model thin in
-*any* view starves that view's depth map, and a whole-model point count cannot show
-it — `min_frame_points` can sit near zero while `point_count` looks healthy. Raise
-the keypoint budget and lower the contrast threshold until the *worst* view clears
-a floor rather than until the mean looks well, and read
-[feature_sift tuning](../../modules/feature_sift/skills/tuning.md) for which knob
-moves which case.
+**So do not spend runs tuning the sparse stage for dense coverage.** The association
+across captures is real — captures with thin models do have worse dense completeness —
+but it does not survive as a lever: change the density *within* a capture and the dense
+result does not move. Both fit one confound, that hard captures produce thin models and
+poor coverage without either causing the other.
 
-**Matching and tracking: lean towards keeping weak correspondences.** A
-correspondence only two cameras support still carries surface the densifier needs,
-and the batch found broad track tables feeding MVS better than clean thin ones.
-**This is a lean, not a licence.** Keeping everything also keeps the mismatches,
-the pose stage still has to survive what the matcher hands it, and on repeated
-structure a permissive matcher fails in the way [matching.md](matching.md)
-describes rather than in a way more points can fix. Where the two pages disagree
-about a capture, the matching page is about whether the capture solves at all and
-wins; this page is about what the dense stage is fed once it does.
+**What decides the dense result is the dense stage's own policy**, not its input:
+`fusion_min_num_pixels` and `geom_consistency` moved completeness by two orders of
+magnitude more than any of the above. See
+[modules/dense_mvs tuning](../../modules/dense_mvs/skills/tuning.md).
 
-**Triangulation and refinement: treat `min_track_length` as a dense decision.**
-Raising it, or tightening a reprojection filter, buys a better-looking error rung
-by deleting the two-view structure that covers the parts of the subject only two
-cameras see well — which is exactly where the holes appear. Nothing downstream
-recovers those points. Decide it against the deliverable, not as hygiene.
+**Thin models and poor dense coverage go together across captures — but do not
+assume the mechanism is per-view starvation.** Captures whose sparse models are thin
+overall do have worse dense completeness, and `min_frame_points` can sit near zero
+while `point_count` looks healthy, so it is still worth reading. What has been tested
+and did *not* hold is the causal story: measured inside a capture, a view's own sparse
+structure does not predict where that view's depth map comes back empty — the
+correlation is near zero and its sign flips between captures. So treat the association
+as a property of hard captures rather than as a lever, and **do not spend a run
+raising the keypoint budget to lift one starved view** in the belief that it will fill
+that view's holes.
 
-**Do not refine intrinsics on a calibrated capture to get there.** An orbit lets
+**What does track the holes is how many views see the surface *well*.** Surface the
+densifier missed was exposed and textured in far fewer views than surface it covered
+— single figures against twenty or thirty on the same capture. The lever that reaches
+that is which source views a densifier correlates against, not how many keypoints the
+sparse stage found.
+
+**Matching and tracking: choose for whether the capture solves, not for the
+densifier.** An earlier version of this page leaned towards keeping weak
+correspondences on the grounds that broad track tables fed MVS better than clean thin
+ones. That rested on the same cross-capture correlation as everything above, and adding
+a tenth to a half again more structure through the detector did not move dense
+completeness. So let [matching.md](matching.md) decide the matcher on its own terms —
+registration and whether the capture holds together — and do not loosen it in the hope
+of a better dense cloud.
+
+**Triangulation and refinement: `min_track_length` is NOT a dense decision.** This
+page said the opposite, on the strength of a cross-capture correlation, and the direct
+test refutes it: raising it to 3 deleted between a third and three fifths of every
+model's points and changed dense completeness by **+0.0000 mm**. Decide it on the error
+rung and on composition, which is where its effects are real — not on the dense
+deliverable.
+
+**Do not refine intrinsics on a calibrated capture.** This one does reach the dense
+cloud, through placement rather than coverage. An orbit lets
 focal length trade against depth, so the optimiser can buy a lower reprojection
 error by resizing the scene; measured on this batch, freeing the focal improved the
 error and moved the cloud several times further out of place. See
 [optimization.md](optimization.md).
 
-**Two readings to take before spending an hour on MVS:** the per-view point floor
-above, and the capture's clipped-highlight reading from `SceneTriage`. The second
+**Two readings to take before spending an hour on MVS:** the model's overall
+density, and the capture's clipped-highlight reading from `SceneTriage`. The second
 predicted the dense stage's own coverage more strongly than any parameter moved it
 — a capture reading high on blown highlights loses dense coverage before the dense
 stage starts, and the honest response is to expect the loss, not to loosen filters
-afterwards.
+afterwards. **Neither is a lever you can pull to fill a specific hole**: blown
+highlights are a property of the capture, and per-view density does not predict which
+views come back empty.
 
 ---
 

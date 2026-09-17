@@ -22,10 +22,15 @@ them.
 **First readings on this module's output:** `point_count`, `views_contributing`, `mean_depth_confidence`.
 
 **Two readings to take on the INPUT, before spending an hour here:** the sparse
-model's `min_frame_points` — the thinnest view, which is the one whose depth map
-comes back empty and which no whole-model total will show — and the capture's
-`highlight_clipped_fraction` from `SceneTriage`, which predicted this module's own
-coverage across a batch better than any parameter moved it.
+model's density, including `min_frame_points` which no whole-model total will show,
+and the capture's `highlight_clipped_fraction` from `SceneTriage`, which predicted
+this module's own coverage across a batch better than any parameter moved it.
+
+Read the first as a property of a hard capture, not as a lever. Measured inside a
+capture against reference geometry, a view's own sparse structure does **not** predict
+where that view's depth map comes back empty: the correlation is near zero and its
+sign flips between captures. Thin models and poor coverage travel together across
+captures; lifting one starved view has not been shown to fill that view's holes.
 
 **Diagnostics it can raise:** `sparse_too_thin`, `low_completeness`, `views_dropped`, `no_points`.
 
