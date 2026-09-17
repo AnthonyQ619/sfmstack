@@ -7,7 +7,7 @@ curated_at: 2026-08-07
 # Tuning BundleAdjustmentGlobal
 
 Very little to tune, and most of what looks tunable should be left alone. The
-interesting decisions are `robust_loss`, `min_track_length`, and whether to refine
+interesting decisions are `robust_loss`, `min_track_len`, and whether to refine
 intrinsics.
 
 ## Reference run
@@ -76,7 +76,7 @@ If the input is genuinely clean and you want the last fraction of accuracy, turn
 the robust loss off and compare — but check `error_reduction` did not go negative
 for the wrong reason.
 
-## `min_track_length`
+## `min_track_len`
 
 2 (default) includes two-view points. Such a point has exactly as many constraints
 as unknowns, so **BA cannot improve it** — it can only slide it along its ray. It
@@ -88,7 +88,7 @@ unknowns. What is true is that it carries no redundancy of its own, so it gains
 least. What is false is that it gains nothing — the cameras move during the solve
 and the point moves with them. Measured through a bundle adjustment on two separate
 captures, two-view points improved by 12.9% and 2.5%. That matters because this
-claim is the whole justification for `min_track_length: 3`, which on a
+claim is the whole justification for `min_track_len: 3`, which on a
 two-view-dominated cloud deletes half the model.
 
 3 is a defensible tightening, and on a cloud with a low `mean_track_length` it will
@@ -123,7 +123,7 @@ is a warning, not a result.
 ## Cost
 
 Scales with observations, not images. 22743 observations converged in 3.7s.
-A hundred thousand takes minutes. If a solve is genuinely slow, `min_track_length: 3`
+A hundred thousand takes minutes. If a solve is genuinely slow, `min_track_len: 3`
 is the cheapest real reduction, because it removes the residual blocks that carry
 the least information.
 
@@ -150,5 +150,5 @@ more) declare a range that no diagnostic reads: each is a description of the
 captures measured so far, not a judgement on yours, and a corpus maximum is the
 largest of N draws — the next capture exceeding it is expected, not anomalous.
 The specific numbers in the `max_iterations`, `loss_scale` and
-`min_track_length` advice above are settings that worked here, not results
+`min_track_len` advice above are settings that worked here, not results
 anyone has published.

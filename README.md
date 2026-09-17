@@ -112,6 +112,10 @@ environments pinned kornia 0.8.1 and 0.7.1 and could not be reconciled.
 | | `DenseFusion` | COLMAP fusion alone, re-run on a `DenseMVS` workspace kept with `keep_workspace: true` | |
 | optimization | `BundleAdjustmentGlobal` | pycolmap / Ceres | |
 | | `BundleAdjustmentLocal` | pycolmap / Ceres | |
+| analysis | `SceneTriage` | OpenCV, photometry and texture before reconstruction | |
+| | `SceneMotion` | RAFT optical flow, motion and degeneracy tests | ✓ |
+| | `SceneDescription` | Pillow contact sheet plus a viewer's recorded description | |
+| | `SparseVerification` | OpenCV, a veto on finished sparse models from unused correspondences | |
 
 `SparseGlobalCOLMAP` estimates poses itself and consumes `pairwise_matches/v1`
 directly, so the chain through it is scene → detect → match → reconstruct, with no

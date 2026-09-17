@@ -1,8 +1,7 @@
 # Artifact Specification v1
 
 The contract every module reads and writes. Implemented in
-[`packages/sfmkit`](../packages/sfmkit); rationale in
-[design/target-architecture.md](design/target-architecture.md).
+[`packages/sfmkit`](../packages/sfmkit).
 
 ## Store layout
 

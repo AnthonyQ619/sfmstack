@@ -167,7 +167,7 @@ completeness. So let [matching.md](matching.md) decide the matcher on its own te
 registration and whether the capture holds together — and do not loosen it in the hope
 of a better dense cloud.
 
-**Triangulation and refinement: `min_track_length` is NOT a dense decision.** This
+**Triangulation and refinement: `min_track_len` is NOT a dense decision.** This
 page said the opposite, on the strength of a cross-capture correlation, and the direct
 test refutes it: raising it to 3 deleted between a third and three fifths of every
 model's points and changed dense completeness by **+0.0000 mm**. Decide it on the error

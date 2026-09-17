@@ -158,8 +158,12 @@ def test_every_diagnostic_points_into_the_skills(registry):
 
 
 def _heading_slug(heading: str) -> str:
-    """GitHub's anchor rule: lowercase, drop punctuation, spaces to hyphens."""
-    return re.sub(r"\s+", "-", re.sub(r"[^\w\s-]", "", heading.lower()).strip())
+    """GitHub's anchor rule: lowercase, drop punctuation, each space to a hyphen.
+
+    Each space, not each run of spaces: "a — b" loses its dash and becomes "a--b".
+    Collapsing the run would pass anchors GitHub cannot resolve and fail ones it can.
+    """
+    return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
 
 
 def test_every_diagnostic_anchor_resolves_to_a_real_heading(registry):

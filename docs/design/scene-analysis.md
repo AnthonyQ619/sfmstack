@@ -26,8 +26,7 @@ status: partly built 2026-08-14 — SceneTriage and SceneMotion exist; trait der
 
 # Scene Analysis
 
-Part of [target-architecture.md](target-architecture.md). Feeds retrieval in
-[knowledge-system.md](knowledge-system.md).
+Feeds retrieval in [knowledge-system.md](knowledge-system.md).
 
 The agent should know what kind of scene it is facing **before** it runs anything.
 That is what turns "try a pipeline and see" into "scenes like this one have been
@@ -53,8 +52,7 @@ are not). Extensibility comes free from the framework rather than needing its ow
 plugin system.
 
 `scene_analysis/v1` has **all field groups optional** (per the additive-extension
-rule in
-[target-architecture.md](target-architecture.md#openness-without-fragmentation--four-guards)),
+rule for payload types),
 so partial producers compose without a merge step. The agent reads whichever
 groups are present.
 

@@ -33,7 +33,7 @@ second run on its own output is a legitimate no-op that should report
 
 ## `point_index` is renumbered
 
-Points that fell under `min_track_length` are dropped, so the output is renumbered
+Points that fell under `min_track_len` are dropped, so the output is renumbered
 densely from 0. **`point_index` in the output observations does not correspond to
 `point_index` in the input.**
 
@@ -70,7 +70,7 @@ artifact carries.
 ## What is NOT here
 
 **Removed outliers.** This module optimises and writes back; it does not delete
-points except by `min_track_length`. Filtering belongs to `SparseTriangulation`.
+points except by `min_track_len`. Filtering belongs to `SparseTriangulation`.
 
 **The Ceres residual history.** Only the summary reaches the metrics. If a solve
 needs debugging, `converged` and `iterations` are the signals; the full report goes

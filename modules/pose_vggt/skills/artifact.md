@@ -45,7 +45,8 @@ nothing to compare against.
 ## What is NOT here
 
 **Point maps and depth.** The same forward pass produces both; they belong to
-`SparseVGGT` and `DenseVGGT`. Each runs its own pass — see
-`docs/design/target-architecture.md` for why that recompute is accepted.
+`SparseVGGT` and `DenseVGGT`. Each runs its own pass, deliberately: they take
+tracks and poses from any upstream module, which a single module emitting all three
+types could not.
 
 **Any per-image confidence.** VGGT's camera head emits none this module exposes.

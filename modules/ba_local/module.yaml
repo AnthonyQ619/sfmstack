@@ -89,7 +89,7 @@ params:
     maximum: 100.0
     description: Cauchy loss scale, in pixels.
 
-  min_track_length:
+  min_track_len:
     type: integer
     default: 3
     minimum: 2
@@ -175,7 +175,7 @@ metrics:
   points_optimized:
     direction: higher_better
     healthy: [50, null]
-    meaning: Points visible in the window after min_track_length filtering.
+    meaning: Points visible in the window after min_track_len filtering.
   converged:
     direction: higher_better
     healthy: [1, null]
@@ -276,18 +276,18 @@ diagnostics:
       - "Try anchor: largest_error to refine somewhere that needs it."
     see_also: tuning.md#window_error-does-not-move
 
-  - code: points_dropped_by_min_track_length
+  - code: points_dropped_by_min_track_len
     severity: warn
-    message: min_track_length removed points from the output model, not just from the solve.
+    message: min_track_len removed points from the output model, not just from the solve.
     suggested_actions:
       - "Read point_count, not points_optimized -- points_optimized counts the window, so it cannot separate a dropped point from one outside the window."
       - "The deletion is correct: a point held out of the solve would keep the input's gauge while everything else moved."
       - "This module defaults to 3 where the global one defaults to 2, so it discards more of the same cloud by default. Read two_view_fraction on the input first."
-    see_also: tuning.md#min_track_length-defaults-to-3-here-not-2
+    see_also: tuning.md#min_track_len-defaults-to-3-here-not-2
   - code: too_few_points
     severity: warn
     message: The window contains very few points to optimise.
     suggested_actions:
       - Raise window_size so more shared structure is included.
-      - Lower min_track_length to 2.
+      - Lower min_track_len to 2.
     see_also: limitations.md#thin-windows

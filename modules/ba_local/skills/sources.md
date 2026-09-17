@@ -19,4 +19,4 @@ in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
 | `set_constant_rig_from_world_pose` is the 4.x API for pinning a camera (was `set_constant_pose`) | pycolmap 4.x rig/frame model |
 | `window_size=8` default | predecessor `sfmcore/optimization.py`, `BundleAdjustmentOptimizerLocal` — where this class was a constructor argument of the pose estimator, the coupling that made the predecessor impossible to containerise; the alternation now belongs to the orchestrator, and the pose estimator's limitations file records the cost |
 | **everything about behaviour in a real pipeline** | **nothing** — run zero times in the sweep; isolated testing and the predecessor only |
-| 7 healthy bands; numeric values in `window_size`, `min_track_length` advice | **nothing** — see the audit section in `tuning.md` |
+| 7 healthy bands; numeric values in `window_size`, `min_track_len` advice | **nothing** — see the audit section in `tuning.md` |

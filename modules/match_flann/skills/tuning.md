@@ -85,7 +85,7 @@ reaching for the exact matcher, separate the two things that can cause it here:
 
 1. **Search error.** Check `match_agreement` first. Below ~0.9 the approximation is
    returning genuinely different neighbours from the exact search, and those wrong
-   matches are exactly what RANSAC is rejecting. Raise `n_checks`, or `trees` for a
+   matches are exactly what RANSAC is rejecting. Raise `checks`, or `trees` for a
    KD-tree index — this is the cause specific to this module.
 2. **Everything else.** With `match_agreement` healthy, the approximation is not at
    fault and the [exact matcher's

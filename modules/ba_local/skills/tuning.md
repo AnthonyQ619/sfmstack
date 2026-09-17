@@ -72,7 +72,7 @@ Either the window was already at a local minimum — fine, if the error is low �
 you are refining a part of the model that did not need it. Try
 `anchor: largest_error`.
 
-## `min_track_length` defaults to 3 here, not 2
+## `min_track_len` defaults to 3 here, not 2
 
 Deliberately different from global BA. Inside a window most points are seen by few
 of the refined cameras, and a two-view point contributes nothing a local solve can
@@ -85,7 +85,7 @@ unknowns. What is true is that it carries no redundancy of its own, so it gains
 least. What is false is that it gains nothing — the cameras move during the solve
 and the point moves with them. Measured through a bundle adjustment on two separate
 captures, two-view points improved by 12.9% and 2.5%. That matters because this
-claim is the whole justification for `min_track_length: 3`, which on a
+claim is the whole justification for `min_track_len: 3`, which on a
 two-view-dominated cloud deletes half the model.
 
 Lower it to 2 only if `points_optimized` is too small to constrain the window, and
@@ -99,7 +99,7 @@ window's sake, not the densifier's. See
 [plan/dense.md](../../../skills/plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
 
 **The deletion is now announced rather than left to be noticed.**
-`points_dropped_by_min_track_length` fires whenever the filter takes points out,
+`points_dropped_by_min_track_len` fires whenever the filter takes points out,
 because nothing in the metrics could reveal it: `points_optimized` counts the
 window, so it cannot separate a point this filter deleted from one that merely lies
 outside the window, and `point_count` describes the output without a before to
@@ -136,6 +136,6 @@ Audited against this module's own manifest. **Seven healthy bands**
 `observation_count`, `mean_track_length`, `mean_reprojection_error`, and one
 more) declare a range no diagnostic reads — each is a description of the
 captures measured so far, not a judgement on yours. The numbers in the
-`window_size` and `min_track_length` advice are settings that worked here, not
+`window_size` and `min_track_len` advice are settings that worked here, not
 published results. And this module has run **zero times** in a real pipeline,
 so every band here comes from isolated testing.

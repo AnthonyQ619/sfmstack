@@ -21,7 +21,7 @@ them.
 
 **First readings on this module's output:** `min_frame_points`, `two_view_fraction`, `p95_reprojection_error`.
 
-**Diagnostics it can raise:** `bundle_adjustment_diverged`, `points_escaped`, `points_dropped_by_min_track_length`, `refined_focal_disagrees_across_cameras`, `did_not_converge`, `no_improvement`, `still_high_error`.
+**Diagnostics it can raise:** `bundle_adjustment_diverged`, `points_escaped`, `points_dropped_by_min_track_len`, `refined_focal_disagrees_across_cameras`, `did_not_converge`, `no_improvement`, `still_high_error`.
 
 ## What this module is for
 

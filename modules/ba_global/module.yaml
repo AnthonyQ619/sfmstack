@@ -100,7 +100,7 @@ params:
       observable from a short sequence and trades off directly against translation;
       refining it on limited data usually moves error around rather than removing it.
 
-  min_track_length:
+  min_track_len:
     type: integer
     default: 2
     minimum: 2
@@ -197,7 +197,7 @@ metrics:
   points_optimized:
     direction: higher_better
     healthy: [100, null]
-    meaning: Points included in the solve after min_track_length filtering.
+    meaning: Points included in the solve after min_track_len filtering.
 
   observations_optimized:
     direction: higher_better
@@ -283,14 +283,14 @@ diagnostics:
       - "The escapees are still in the artifact, with their values in points/error. Filter on that array before measuring anything else from the cloud."
       - "To stop them forming, bound the escape where it starts: the triangulator's max_landmark_distance removes a localised escaping tail, where raising the global angle filter charges the whole cloud for it."
     see_also: limitations.md#an-escaped-point-is-not-a-diverged-solve
-  - code: points_dropped_by_min_track_length
+  - code: points_dropped_by_min_track_len
     severity: warn
-    message: min_track_length removed points from the output model, not just from the solve.
+    message: min_track_len removed points from the output model, not just from the solve.
     suggested_actions:
       - "Read point_count, not points_optimized -- the two are equal here by construction."
       - "The deletion is correct: a point held out of the solve would keep the input's gauge while everything else moved."
-      - "min_track_length: 2 keeps everything, and two-view points do measurably improve through the solve."
-    see_also: tuning.md#min_track_length
+      - "min_track_len: 2 keeps everything, and two-view points do measurably improve through the solve."
+    see_also: tuning.md#min_track_len
   - code: refined_focal_disagrees_across_cameras
     severity: warn
     message: Intrinsic refinement gave a one-calibration scene a different focal length per camera.

@@ -21,7 +21,7 @@ them.
 
 **First readings on this module's output:** `min_frame_points`, `two_view_fraction`, `p95_reprojection_error`.
 
-**Diagnostics it can raise:** `bundle_adjustment_diverged`, `points_escaped`, `window_covers_model`, `did_not_converge`, `no_improvement`, `points_dropped_by_min_track_length`, `too_few_points`.
+**Diagnostics it can raise:** `bundle_adjustment_diverged`, `points_escaped`, `window_covers_model`, `did_not_converge`, `no_improvement`, `points_dropped_by_min_track_len`, `too_few_points`.
 
 ## What this module is for
 

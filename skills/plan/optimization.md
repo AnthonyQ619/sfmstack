@@ -116,7 +116,7 @@ the check working. The local adjuster's was **higher on every capture**, by a
 tenth to nearly a half.
 
 That is not a convention bug and the check should not be read as failing. The
-local module's `min_track_length` deletes points *before* the entry error is
+local module's `min_track_len` deletes points *before* the entry error is
 measured, so its "before" describes the cloud it kept and the triangulator's
 describes the cloud it was handed. **The direction is the tell, and it is the
 same mechanism as everything else on this page**: the points removed are the
@@ -124,7 +124,7 @@ two-view ones, whose residuals are near zero by construction, so removing them
 can only push the mean up.
 
 So the check applies to an adjuster that deleted nothing. Where a module's
-`min_track_length` bites, a "before" above the producer's mean is evidence that
+`min_track_len` bites, a "before" above the producer's mean is evidence that
 it bit — and the size of the gap is a free reading on how much of the cloud
 went.
 
@@ -154,9 +154,9 @@ type does, measured on the model they SHIP rather than the one they were handed:
   tell them apart.
 
 The two-view reading is also the one that decides between the adjusters, because
-`min_track_length` deletes rather than holds out: the local module defaults to 3
+`min_track_len` deletes rather than holds out: the local module defaults to 3
 and the global one to 2, so on a two-view-heavy cloud the local module ships half
-the points. Both now announce that with `points_dropped_by_min_track_length`
+the points. Both now announce that with `points_dropped_by_min_track_len`
 rather than leaving it to be noticed.
 
 **"Half" was measured on one capture and is optimistic.** Across every capture in
@@ -167,7 +167,7 @@ case is three-quarters. The loss tracks the input's `two_view_fraction`, which i
 the mechanism and which you can read before choosing.
 
 **It is not, however, a dense-stage decision.** That was claimed here from a
-cross-capture correlation and the direct test refutes it: raising `min_track_length`
+cross-capture correlation and the direct test refutes it: raising `min_track_len`
 to 3 deleted a third to three fifths of every model's points across a corpus of studio
 orbits and moved the dense stage's completeness by **+0.0000 mm**. Weigh this filter on
 the error rung and on composition, which is where its effects are measurable —

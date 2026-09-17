@@ -3,9 +3,7 @@
 What every module must provide, what the framework checks, and what each family
 owes on top of that.
 
-This is the reference for writing a module or reviewing one. For *why* the
-contract is shaped this way see
-[design/target-architecture.md](design/target-architecture.md); for the payload
+This is the reference for writing a module or reviewing one. For the payload
 types themselves see [artifact-spec.md](artifact-spec.md).
 
 ---
@@ -416,7 +414,12 @@ convention a `ply` sidecar.
   explicitly** and report it with its spread. Assuming it is 1.0 produces a cloud
   that is correctly shaped and wrongly placed, with no metric moving.
 
-*Members:* `DenseMVS`, `DenseVGGT`.
+*Members:* `DenseMVS`, `DenseVGGT`, `DenseFusion`.
+
+`DenseFusion` is the exception to the signature above: it consumes a
+`dense_model/v1` that carries `DenseMVS`'s kept `workspace` sidecar
+(`keep_workspace: true`) and re-fuses it at other settings. It is a tuning tool for
+the verified cloud, not a third densifier.
 
 ### Scene analysis
 
@@ -426,14 +429,14 @@ convention a `ply` sidecar.
 needs only the paths themselves. **No calibration** — the point is to characterise
 a scene before anything is known about it.
 
-*Members:* `SceneTriage` (CPU), `SceneMotion` (GPU).
+*Members:* `SceneTriage` (CPU), `SceneMotion` (GPU), `SceneDescription` (CPU).
 
 - Every file is optional: an analyser fills the facets it measures and omits the
   rest, so a triage module and a motion module both produce the type honestly.
   `SceneTriage` fills `metadata`, `photometric` and `texture`; `SceneMotion`
-  fills `motion` and `degeneracy`. They are two artifacts of one type with
-  disjoint groups, and nothing merges them — the agent reads whichever are
-  present.
+  fills `motion` and `degeneracy`; `SceneDescription` fills `description`. They
+  are separate artifacts of one type with disjoint groups, and nothing merges
+  them — the agent reads whichever are present.
 - **Absent is not zero.** A cue that could not be measured is omitted, and its
   metric is reported as null. `pure_rotation_risk` needs intrinsics; on an
   uncalibrated scene a zero would read as "no rotation detected" when the truth
@@ -452,6 +455,24 @@ a scene before anything is known about it.
   a pipeline stage.
 
 ---
+
+### Scene source
+
+a directory of images + optional calibration → `scene/v1`
+
+The start of every chain, and the only family that consumes nothing.
+
+*Members:* `SceneLoader`.
+
+### Model verification
+
+`scene/v1` + `sparse_model/v1` + `pairwise_matches/v1` → `custom/verification/v1`
+
+A veto on a finished sparse model, read against matcher correspondences the model
+never used. Its `kind` is `analysis`, but unlike scene analysis it runs after
+reconstruction and judges a model rather than characterising a capture.
+
+*Members:* `SparseVerification`.
 
 ## 7. Adding a module — the order that works
 

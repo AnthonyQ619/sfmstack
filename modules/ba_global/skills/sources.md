@@ -21,4 +21,4 @@ re-check rule is the one global rule in `SKILLS.md`.
 | the BA/retriangulate/filter alternation belongs at orchestrator level, not nested in the module | Schönberger & Frahm, CVPR 2016, §4.5 |
 | `refine_*` defaults (all False); `max_num_iterations` raised 50→100 (then 300 after the converged audit — see `BundleAdjustmentLocal`'s sources for the bug that found it) | predecessor `sfmcore/optimization.py`, `BundleAdjustmentOptimizerGlobal` |
 | every measured band and episode in these skills | 88 runs at 1.1.0 across the seventeen-capture sweep — scope pinned by `evidence/CORPUS.txt`; no out-of-corpus capture |
-| 7 healthy bands; numeric values in `max_iterations`, `loss_scale`, `min_track_length` advice | **nothing** — see the audit section in `tuning.md` |
+| 7 healthy bands; numeric values in `max_iterations`, `loss_scale`, `min_track_len` advice | **nothing** — see the audit section in `tuning.md` |

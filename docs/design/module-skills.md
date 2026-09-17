@@ -6,8 +6,6 @@ status: proposal / under discussion — not implemented
 
 # Module Skills
 
-Part of [target-architecture.md](target-architecture.md) (decision 7).
-
 A module that emits `avg_track_length: 4.21` has told the driving agent almost
 nothing. Is 4.21 good? If not, which knob moves it, in which direction, and by how
 much? And at what point is the honest answer "this method cannot do better on this
@@ -204,9 +202,7 @@ tracks through texture-poor regions [S3, §5.1].
 moment the module set changes; "switch to something producing `tracks/v1` that
 doesn't consume `pairwise_matches/v1`" is a query the orchestrator answers against
 the live registry. This is what keeps a module's knowledge valid as the framework
-grows — and it is the reason the payload types in
-[target-architecture.md](target-architecture.md#payload-types-open-registry-versioned-names)
-are worth having.
+grows — and it is the reason open, versioned payload types are worth having.
 
 ### `artifact.md` — reading this module's output
 

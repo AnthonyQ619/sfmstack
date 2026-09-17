@@ -36,7 +36,7 @@ def intrinsics_for(scene, sparse, n_images):
     return K[np.asarray(cam_index, dtype=int)]
 
 
-def build_reconstruction(scene, sparse, n_images, min_track_length, ctx):
+def build_reconstruction(scene, sparse, n_images, min_track_len, ctx):
     """Arrays -> pycolmap.Reconstruction. One camera per registered image."""
     poses = sparse.load("poses")
     cam_from_world = np.asarray(poses["cam_from_world"], dtype=np.float64)
@@ -98,7 +98,7 @@ def build_reconstruction(scene, sparse, n_images, min_track_length, ctx):
 
     kept: dict[int, int] = {}
     for point_index, elements in track_elements.items():
-        if len(elements) < min_track_length:
+        if len(elements) < min_track_len:
             continue
         track = pycolmap.Track([pycolmap.TrackElement(i, j) for i, j in elements])
         colour = (
@@ -332,12 +332,12 @@ def run(ctx: Ctx):
 
     ctx.progress(0.1, "building the reconstruction")
     rec, image_id_of, kept, cam_from_world, valid, image_index = build_reconstruction(
-        scene, sparse, n_images, p.min_track_length, ctx
+        scene, sparse, n_images, p.min_track_len, ctx
     )
 
     if rec.num_points3D() == 0:
         raise ValueError(
-            f"no point survived min_track_length={p.min_track_length}. This module "
+            f"no point survived min_track_len={p.min_track_len}. This module "
             f"defaults to 3 rather than 2, because a two-view point inside a window "
             f"contributes nothing a local solve can use -- lower it to 2 if the "
             f"cloud is genuinely two-view, or fix that upstream."
@@ -377,7 +377,7 @@ def run(ctx: Ctx):
     options.refine_extra_params = False
     options.refine_points3D = True
     options.refine_rig_from_world = True
-    options.min_track_length = p.min_track_length
+    options.min_track_length = p.min_track_len
     options.ceres.solver_options.max_num_iterations = p.max_iterations
     if p.robust_loss:
         options.ceres.loss_function_type = pycolmap.LossFunctionType.CAUCHY
@@ -433,7 +433,7 @@ def run(ctx: Ctx):
 
     # Named rather than inlined, because the artifact metrics below have to be
     # computed over the arrays this actually SHIPS. The input `xyz` from the top of
-    # run() indexes differently -- min_track_length may have dropped points -- so
+    # run() indexes differently -- min_track_len may have dropped points -- so
     # measuring against it would silently mismatch.
     out_xyz = np.array([rec.point3D(pid).xyz for pid in point_ids], dtype=np.float64)
     out_error = np.array([rec.point3D(pid).error for pid in point_ids], dtype=np.float64)
@@ -618,10 +618,10 @@ def run(ctx: Ctx):
     if dropped > 0:
         share = dropped / points_in if points_in else 0.0
         out.diagnostic(
-            "points_dropped_by_min_track_length",
+            "points_dropped_by_min_track_len",
             severity="warn" if share >= 0.10 else "info",
             message=(
-                f"min_track_length={p.min_track_length} removed {dropped} of "
+                f"min_track_len={p.min_track_len} removed {dropped} of "
                 f"{points_in} points ({share:.1%}). They are ABSENT FROM THIS "
                 f"ARTIFACT, not merely excluded from the solve."
             ),
@@ -638,7 +638,7 @@ def run(ctx: Ctx):
                 "dominated model that is most of it -- read two_view_fraction on "
                 "the input before choosing between the two adjusters.",
             ],
-            see_also="tuning.md#min_track_length-defaults-to-3-here-not-2",
+            see_also="tuning.md#min_track_len-defaults-to-3-here-not-2",
         )
 
     if len(point_ids) < 50:
@@ -648,7 +648,7 @@ def run(ctx: Ctx):
             message=f"Only {len(point_ids)} points survived into the solve.",
             suggested_actions=[
                 f"Raise window_size above {p.window_size}.",
-                "Lower min_track_length to 2.",
+                "Lower min_track_len to 2.",
             ],
             see_also="limitations.md#thin-windows",
         )

@@ -46,7 +46,7 @@ the part of the model it covers is weakly connected — which is itself a findin
 worth chasing upstream, in the matcher's `min_matches_per_pair` and the tracker's
 `min_frame_observations`.
 
-Raising `window_size` is the direct fix. Lowering `min_track_length` to 2 admits
+Raising `window_size` is the direct fix. Lowering `min_track_len` to 2 admits
 points the solve cannot use, so it raises the count without helping.
 
 ## An escaped point is not a diverged solve

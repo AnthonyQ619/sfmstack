@@ -88,7 +88,7 @@ def error_readings(before, after, extent: float) -> dict:
     }
 
 
-def build_reconstruction(scene, sparse, n_images, min_track_length, ctx):
+def build_reconstruction(scene, sparse, n_images, min_track_len, ctx):
     """Arrays -> pycolmap.Reconstruction.
 
     One COLMAP camera per registered image. That is wasteful when the whole set
@@ -173,7 +173,7 @@ def build_reconstruction(scene, sparse, n_images, min_track_length, ctx):
 
     kept_point_ids: dict[int, int] = {}
     for point_index, elements in track_elements.items():
-        if len(elements) < min_track_length:
+        if len(elements) < min_track_len:
             continue
         track = pycolmap.Track([pycolmap.TrackElement(i, j) for i, j in elements])
         colour = (
@@ -281,12 +281,12 @@ def run(ctx: Ctx):
 
     ctx.progress(0.1, "building the reconstruction")
     rec, image_id_of, kept_point_ids, cam_from_world, valid, image_index = (
-        build_reconstruction(scene, sparse, n_images, p.min_track_length, ctx)
+        build_reconstruction(scene, sparse, n_images, p.min_track_len, ctx)
     )
 
     if rec.num_points3D() == 0:
         raise ValueError(
-            f"no point survived min_track_length={p.min_track_length}; there is "
+            f"no point survived min_track_len={p.min_track_len}; there is "
             f"nothing to optimise. Lower it, or check the triangulator's "
             f"mean_track_length -- a purely two-view cloud has no redundancy for "
             f"bundle adjustment to exploit."
@@ -312,7 +312,7 @@ def run(ctx: Ctx):
     options.refine_extra_params = False  # PINHOLE has none; observations are undistorted
     options.refine_points3D = True
     options.refine_rig_from_world = True
-    options.min_track_length = p.min_track_length
+    options.min_track_length = p.min_track_len
     # Ceres solver knobs live one level down, on `ceres.solver_options`, and the
     # object rejects unknown attributes -- so a typo here is an AttributeError at
     # solve time rather than a silently ignored setting. That is the good case.
@@ -517,10 +517,10 @@ def run(ctx: Ctx):
     if dropped > 0:
         share = dropped / points_in if points_in else 0.0
         out.diagnostic(
-            "points_dropped_by_min_track_length",
+            "points_dropped_by_min_track_len",
             severity="warn" if share >= 0.10 else "info",
             message=(
-                f"min_track_length={p.min_track_length} removed {dropped} of "
+                f"min_track_len={p.min_track_len} removed {dropped} of "
                 f"{points_in} points ({share:.1%}). They are ABSENT FROM THIS "
                 f"ARTIFACT, not merely excluded from the solve."
             ),
@@ -531,12 +531,12 @@ def run(ctx: Ctx):
                 "would keep the INPUT's coordinate frame while every optimised "
                 "point and camera moves, and bundle adjustment does not preserve "
                 "the gauge. Dropping is the only consistent choice.",
-                "min_track_length: 2 keeps everything. On a two-view-dominated "
+                "min_track_len: 2 keeps everything. On a two-view-dominated "
                 "cloud that is usually right -- two-view points are measurably "
                 "improved by the solve, because the cameras move and they move "
                 "with them.",
             ],
-            see_also="tuning.md#min_track_length",
+            see_also="tuning.md#min_track_len",
         )
 
     if blew_up:
@@ -559,7 +559,7 @@ def run(ctx: Ctx):
                 "structure that is under-constrained rather than merely inaccurate "
                 "-- points on near-parallel rays, or placed by a depth prior and "
                 "never verified against a second view.",
-                "min_track_length: 3 drops points carried by two views, which is "
+                "min_track_len: 3 drops points carried by two views, which is "
                 "where under-constrained structure concentrates. Read point_count "
                 "afterwards: it will fall, and that is the trade.",
                 "If the input came from a learned prior, triangulate the same tracks "

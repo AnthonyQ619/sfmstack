@@ -32,12 +32,12 @@ visible in a refined camera moved, including points also seen by fixed cameras.
 
 ## `point_index` is renumbered
 
-Points under `min_track_length` (default 3 here, not 2) are dropped and the rest
+Points under `min_track_len` (default 3 here, not 2) are dropped and the rest
 renumbered densely from 0. `point_index` in the output does not correspond to
 `point_index` in the input; `track_id` is what survives.
 
 Note this means chaining local BA runs progressively discards short-track points at
-each step. Two runs at `min_track_length: 3` do not drop more than one does — the
+each step. Two runs at `min_track_len: 3` do not drop more than one does — the
 filter is idempotent — but a run at 3 following a run at 2 does.
 
 ## The window is not recorded as an array

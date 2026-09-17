@@ -6,9 +6,9 @@ status: partly built, partly retired — see STATUS, measured 2026-09-02
 
 # Knowledge System
 
-Part of [target-architecture.md](target-architecture.md). Per-module files are
-specified in [module-skills.md](module-skills.md); this document covers the tier
-above them, the worked-run corpus, and the distillation loop.
+Per-module files are specified in [module-skills.md](module-skills.md); this
+document covers the tier above them, the worked-run corpus, and the distillation
+loop.
 
 **For what is actually on disk today, read
 [`docs/context-structure-design.md`](../context-structure-design.md) instead.** It

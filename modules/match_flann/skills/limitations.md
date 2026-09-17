@@ -28,8 +28,9 @@ general and false here, and the general claim is what leads people to reach for 
 
 ## When the approximation is the problem
 
-*Symptom:* `no_pairs`, or `inlier_ratio` well below what `FeatureMatchNN` gets on
-the same features.
+*Symptom:* the run fails with "no image pair survived matching", the
+`low_inlier_ratio` diagnostic fires, or `inlier_ratio` sits well below what
+`FeatureMatchNN` gets on the same features.
 
 *The diagnostic:* run `FeatureMatchNN` on the same features artifact. It is the
 same pipeline after the search, so any difference is the search.

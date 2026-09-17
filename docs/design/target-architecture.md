@@ -1,13 +1,15 @@
 ---
 name: target-architecture
-description: PROPOSAL (under discussion) — target design for scene_agent: per-module containers exposing a uniform server contract, a generalized versioned artifact format, and an MCP surface that lets an agent drive the SfM pipeline end to end.
-status: proposal / under discussion — not implemented
+description: HISTORICAL — the original proposal this system grew from. Kept for reference only; it does not describe what is built, and nothing links to it.
+status: historical reference — superseded by the implementation
 ---
 
 # Target Architecture — Proposal
 
-Status: **draft for discussion.** Nothing here is built. Decisions still open are
-collected in [Open questions](#open-questions).
+> **Historical reference.** This is the original proposal, kept as a record of the
+> design's starting point. The system that was built differs from it in places — tool
+> names, scene loading, the job model among them. For what exists now, read
+> `docs/mcp-tools.md`, `docs/module-contract.md` and `docs/artifact-spec.md`.
 
 Current state was documented in the predecessor's `overview/` notes (that
 repository, not this one). Read

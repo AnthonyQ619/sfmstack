@@ -86,7 +86,7 @@ A two-view point is exactly determined. BA slides it along its ray to trade one
 view's residual against the other's, which changes the number without adding
 information.
 
-*What to do:* `min_track_length: 3` to stop paying for them, and fix the real
+*What to do:* `min_track_len: 3` to stop paying for them, and fix the real
 problem upstream — the matcher's `window` is what creates multi-view tracks.
 
 ## It does not remove outliers
