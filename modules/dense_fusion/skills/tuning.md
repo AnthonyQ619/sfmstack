@@ -1,6 +1,6 @@
 ---
 module: DenseFusion
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-09-16
 ---
 

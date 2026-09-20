@@ -1,5 +1,5 @@
 name: DenseMVS
-version: 1.0.0
+version: 1.1.0
 kind: dense
 summary: >
   COLMAP PatchMatch stereo and depth-map fusion. Photometric multi-view stereo
@@ -256,6 +256,20 @@ params:
       name the artifact in the run summary. `write_depth_maps` is the cheaper option
       when a consumer wants depth rather than fusion inputs: fusion needs the normal
       maps and consistency graphs that only this carries.
+
+  write_cloud_views:
+    type: boolean
+    default: true
+    description: >
+      Write `browse/cloud_views.png`: three orthographic views of the delivered
+      cloud, two from the cameras' own ring and the third down its axis.
+    tuning: >
+      On. Every other reading this module publishes is a scalar, and no scalar
+      separates a clean surface from a clean surface wrapped in floaters. The
+      third panel looks from a direction no input image had, which is where a
+      backdrop plane or a duplicated surface becomes visible. Costs a couple of
+      seconds on a million-point cloud and about 0.5 MB. Turn it off only when
+      the artifact's size is the binding constraint.
 
   write_ply:
     type: boolean

@@ -1,6 +1,6 @@
 ---
 module: DenseMVS
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: colmap/colmap PatchMatch stereo, via pycolmap-cuda12 4.1.1
 curated_at: 2026-08-11
 sources: 3

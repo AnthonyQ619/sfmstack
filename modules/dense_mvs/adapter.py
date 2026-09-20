@@ -36,7 +36,7 @@ from pathlib import Path
 
 import numpy as np
 import pycolmap
-from sfmkit import Ctx, module, write_ply
+from sfmkit import Ctx, camera_centres, module, render_points, write_ply
 
 
 def distort(xy: np.ndarray, K: np.ndarray, dist: np.ndarray) -> np.ndarray:
@@ -417,6 +417,18 @@ def run(ctx: Ctx):
         # A .ply sidecar beside the npz, the same one DenseVGGT writes and
         # byte-compatible with it because both go through sfmkit's writer. This
         # is what MeshLab, CloudCompare or an external evaluation script opens.
+        # Three orthographic views, one of them down the camera ring's own axis --
+        # a direction no input image had, which is where a backdrop plane or a shell
+        # of floaters becomes visible. Every other reading this module publishes is a
+        # scalar, and no scalar separates a clean surface from one wrapped in stray
+        # points. Reachable as sfm_artifact_image(<id>, 'browse/cloud_views.png').
+        outside = None
+        if p.write_cloud_views:
+            poses = sparse.load("poses")
+            _, outside = render_points(
+                out.sidecar_dir("browse") / "cloud_views.png", xyz, rgb,
+                centres=camera_centres(poses["cam_from_world"], poses["valid"]))
+
         ply_bytes = 0
         if p.write_ply:
             ply = write_ply(
@@ -513,4 +525,10 @@ def run(ctx: Ctx):
                if len(shapes) <= 1 else
                f"not written -- the {len(shapes)} distinct undistorted resolutions "
                f"cannot be expressed as one array.")
+            + ("" if outside is None else
+               f" browse/cloud_views.png holds three orthographic views of the cloud "
+               f"-- two from the cameras' own ring and the third down its axis, a "
+               f"direction no input image had. It is framed on the bulk of the cloud, "
+               f"so {outside} of {len(xyz)} points sit outside the frame and are not "
+               f"all visible in it.")
         )

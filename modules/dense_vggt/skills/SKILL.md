@@ -1,6 +1,6 @@
 ---
 module: DenseVGGT
-module_version: 1.1.0
+module_version: 1.2.0
 upstream: facebookresearch/vggt @ a288dd0, depth head
 curated_at: 2026-08-11
 sources: 2

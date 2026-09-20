@@ -37,7 +37,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from sfmkit import Ctx, module, write_ply
+from sfmkit import Ctx, camera_centres, module, render_points, write_ply
 from vggt.models.vggt import VGGT
 
 VGGT_SIZE = 518
@@ -382,6 +382,17 @@ def run(ctx: Ctx):
     # conventional: it is what a viewer, MeshLab, CloudCompare or an external
     # evaluation script opens without knowing anything about this repository. The
     # npz stays authoritative -- a consumer that ignores the sidecar loses nothing.
+    # Three orthographic views, one of them down the camera ring's own axis -- the
+    # same sidecar DenseMVS and DenseFusion write. This module unprojects every view
+    # independently with no cross-view check, so a surface seen from four views
+    # appears four times; that duplication is invisible in every scalar here and
+    # obvious in the off-ring panel.
+    # Reachable as sfm_artifact_image(<id>, 'browse/cloud_views.png').
+    if p.write_cloud_views:
+        render_points(
+            out.sidecar_dir("browse") / "cloud_views.png", xyz, rgb,
+            centres=camera_centres(cam_from_world, valid))
+
     ply_bytes = 0
     if p.write_ply:
         ply = write_ply(

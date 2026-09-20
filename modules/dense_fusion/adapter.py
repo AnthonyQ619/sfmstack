@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import pycolmap
-from sfmkit import Ctx, InputError, module, write_ply
+from sfmkit import Ctx, InputError, module, render_points, write_ply
 
 
 def fusion_options(p) -> pycolmap.StereoFusionOptions:
@@ -90,6 +90,17 @@ def run(ctx: Ctx):
 
     ctx.progress(0.9, f"{len(xyz)} points")
     out.save("points", xyz=xyz.astype(np.float32), rgb=rgb)
+    # Three orthographic views, one of them down the camera ring's own axis -- see
+    # DenseMVS, which writes the same sidecar. It matters more here: re-fusing exists
+    # to trade completeness against stray points, and that trade is exactly what a
+    # scalar hides and a picture shows.
+    # Reachable as sfm_artifact_image(<id>, 'browse/cloud_views.png').
+    if p.write_cloud_views:
+        centres = np.array([im.projection_center() for im in fused.images.values()])
+        render_points(
+            out.sidecar_dir("browse") / "cloud_views.png", xyz, rgb,
+            centres=centres if len(centres) >= 3 else None)
+
     # Same sidecar name and writer as DenseMVS and DenseVGGT, so whatever opened the
     # original cloud opens this one.
     ply_bytes = 0

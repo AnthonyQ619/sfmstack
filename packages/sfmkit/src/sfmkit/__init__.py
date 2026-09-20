@@ -23,6 +23,7 @@ from .manifest import Diagnostic, Manifest, Metric, Provenance, artifact_id
 from .module import Ctx, Params, module, run_module
 from .geometry import scene_intrinsics, trifocal_transfer
 from .ply import read_ply_header, write_ply
+from .render import camera_centres, render_points, write_png
 from .tracks import SPLIT_TOLERANCE_PX, split_rate
 from .cycles import MERGE_TOLERANCE_PX, cycle_rates
 from .schema import TypeRegistry, TypeSchema, parse_schema, registry
@@ -32,6 +33,9 @@ __version__ = "0.2.0"
 
 __all__ = [
     "write_ply",
+    "camera_centres",
+    "render_points",
+    "write_png",
     "trifocal_transfer",
     "scene_intrinsics",
     "split_rate",

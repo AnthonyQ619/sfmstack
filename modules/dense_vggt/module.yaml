@@ -1,5 +1,5 @@
 name: DenseVGGT
-version: 1.1.0
+version: 1.2.0
 kind: dense
 summary: >
   Dense point cloud from VGGT's per-pixel depth, unprojected with the SUPPLIED
@@ -119,6 +119,20 @@ params:
     tuning: >
       Safe here as in SparseVGGT: depth is per-view, so chunking changes what the
       model attends to but not the frame the output lands in.
+
+  write_cloud_views:
+    type: boolean
+    default: true
+    description: >
+      Write `browse/cloud_views.png`: three orthographic views of the delivered
+      cloud, two from the cameras' own ring and the third down its axis.
+    tuning: >
+      On. Every other reading this module publishes is a scalar, and no scalar
+      separates a clean surface from a clean surface wrapped in floaters. The
+      third panel looks from a direction no input image had, which is where a
+      backdrop plane or a duplicated surface becomes visible. Costs a couple of
+      seconds on a million-point cloud and about 0.5 MB. Turn it off only when
+      the artifact's size is the binding constraint.
 
   write_ply:
     type: boolean
