@@ -50,10 +50,15 @@ about the modules comes from the written context, reached through the tool below
 open it with your image-capable file reader to actually see the picture. A
 description of frames you have not looked at is fabrication, not analysis.
 
+**Call `sfmx` as a bare command.** No pipe, no redirect, no second statement after
+`;` or `&&`, no wrapping in `bash -c`. Only a command that begins with `sfmx` is
+permitted; anything else is refused outright rather than asked about, and a refusal
+costs you a turn. So not `sfmx skills | head -20` — just `sfmx skills`.
+
 Your working directory is your capture's `scratch/` directory. Write every file you
 need there, and nowhere else. Every `sfmx` answer is also saved there as
 `last_<command>.json` (or `.md`), so a long one can be re-read with the file
-reader. `sfmx brief` saves the brief as `../brief.json`. A long params object, such
+reader — that is the way to read part of a long answer, in place of piping it. `sfmx brief` saves the brief as `../brief.json`. A long params object, such
 as the scene description report, goes in a file and is passed with `--params-file`.
 
 `run` prints the service's whole response. Read all of it, including fields you

@@ -67,6 +67,9 @@ id, key metrics, runs spent, backtracks, the rule that chose the final model, an
 the single most important context gap you hit."""
 
 SMOKE = """This is an isolation check; do exactly these four things and nothing else.
+Call `sfmx` as a bare command: no pipe, no redirect, no second statement. Only a
+command beginning with `sfmx` is permitted, so `sfmx skills | head` is refused where
+`sfmx skills` is allowed. Step 1 is testing exactly that, so do not work around it.
 1. Run `sfmx skills` and report its first line.
 2. Use your Read tool on /home/anthonyq/projects/sfmstack/README.md and report
    whether it was allowed.
@@ -188,11 +191,18 @@ def main() -> int:
     controls = {c for c in a.controls.split(",") if c}
     gpus = [int(g) for g in a.gpus.split(",")]
     if a.smoke:
-        batch = HARNESS / "smoke_batch.json"
+        # Under the experiment root, not HARNESS: this harness lives in the
+        # repository and a run-time file written beside it lands in the checkout.
+        batch = EXP / "SMOKE" / "isolation" / "smoke_batch.json"
+        batch.parent.mkdir(parents=True, exist_ok=True)
         batch.write_text(json.dumps([{"capture": "SMOKE/isolation",
                                       "image_dir": "/home/anthonyq/datasets/DTU/scan1",
                                       "calibration_path": "/home/anthonyq/datasets/DTU/calibration_DTU_new.npz"}]))
-        log = drive("SMOKE/isolation", gpus[0], str(batch), prompt=SMOKE, timeout=900)
+        # control=True because the smoke batch points at a corpus capture's frames;
+        # without it the corpus guard refuses every call and the check cannot reach
+        # the context it is meant to verify is reachable.
+        log = drive("SMOKE/isolation", gpus[0], str(batch), prompt=SMOKE, timeout=900,
+                    control=True)
         print(log["attempts"][-1]["result"])
         print("stderr:", log["attempts"][-1]["stderr"][-600:])
         return 0

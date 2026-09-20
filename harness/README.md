@@ -61,3 +61,9 @@ repository. That root defaults to `~/sfm_experiments` and is overridden by `--ex
 `SFM_EXP_ROOT`. It used to be derived as `HARNESS.parent`, which was correct only while
 the harness lived inside the experiment record; here that would resolve to the repo
 root. If a run ever appears inside this repository, that default is what to check.
+
+`--smoke`'s batch file goes there too, under `SMOKE/isolation/`. It used to be written
+beside `launch.py`, which was harmless in the old location and drops an untracked file
+into the checkout in this one. **Nothing this harness writes belongs in the repository**
+— that is the rule these two defaults are instances of, and the one to apply to any
+path added here.
