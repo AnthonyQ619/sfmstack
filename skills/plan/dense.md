@@ -232,6 +232,18 @@ points a later stage cannot distinguish from real surface, which misplaces whate
 fitted to the cloud, while a tighter one only leaves holes. Where the two densifier
 families sit on that same trade is the axis above.
 
+**Look at the cloud before you accept it.** Every densifier's published readings are
+scalars, and none of them separates a clean surface from a clean surface wrapped in
+strays — a cloud can carry a healthy point count, a healthy view count and a plausible
+confidence while a support surface has been fused into the subject, or a face has been
+reconstructed twice at slightly different depths. Each dense module writes
+`browse/cloud_views.png`: three orthographic views, two from the plane the cameras
+occupy and one down its axis. Fetch it with `sfm_artifact_image`. The off-ring panel is
+the one that earns its place, because everything listed above sits behind the surface
+from every camera and is invisible until you leave the ring. Treat it as a check on the
+numbers, not as a measurement — it is framed on the bulk of the cloud and quantifies
+nothing.
+
 **Plan a `DenseFusion` exploration only when the capture is unlike the ones
 measured.** It needs the stereo pass kept (`keep_workspace: true`), which is large on
 disk; after that each fusion setting costs seconds, and point counts alone say where

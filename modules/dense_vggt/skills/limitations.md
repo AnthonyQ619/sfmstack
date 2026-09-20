@@ -66,6 +66,20 @@ predictions disagree about. `points_per_view` × `views_contributing` is
 `point_count` by construction — there is no fusion step that could make it
 otherwise.
 
+**Every reading this module publishes can look healthy while that is happening**, and
+it is worth knowing what it looks like. Driven over a studio orbit of a compact
+subject, this module returns a point count in the hundreds of thousands, a view count
+covering the whole orbit, a confidence near its usual level and a depth scale whose
+spread across tracks is a fraction of a percent — all of it inside the healthy band —
+for a cloud whose flat faces are visibly several surfaces at slightly different depths,
+fringed by a haze of points standing off the subject. The photometric module on the
+same capture returns one surface. Nothing in the numbers distinguishes the two.
+
+`browse/cloud_views.png` is what distinguishes them: its third panel looks down the
+camera ring's axis, and duplicated surfaces separate along exactly that direction
+because they differ in depth from the cameras. Look at it before shipping this
+module's cloud as a deliverable rather than as a coverage arm.
+
 **Escape:** a real MVS module.
 
 ```

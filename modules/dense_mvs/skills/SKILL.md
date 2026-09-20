@@ -23,6 +23,8 @@ them.
 
 **First readings on this module's output:** `point_count`, `views_contributing`, `mean_depth_confidence`.
 
+**And look at the cloud before you accept it.** `browse/cloud_views.png` is three orthographic views, one of them from off the camera ring. No scalar here separates a clean surface from a clean surface wrapped in strays — see [artifact](artifact.md#browsecloud_viewspng--the-one-reading-that-is-not-a-scalar).
+
 **Two readings to take on the INPUT, before spending an hour here:** the sparse
 model's density, including `min_frame_points` which no whole-model total will show,
 and the capture's `highlight_clipped_fraction` from `SceneTriage`, which predicted

@@ -21,6 +21,8 @@ them.
 
 **First readings on this module's output:** `point_count`, `views_contributing`, `mean_depth_confidence`.
 
+**And look at the cloud before you accept it.** `browse/cloud_views.png` is three orthographic views, one of them from off the camera ring. No scalar here separates a clean surface from a clean surface wrapped in strays — see [artifact](artifact.md#browsecloud_viewspng--the-one-reading-that-is-not-a-scalar).
+
 **Diagnostics it can raise:** `no_points`, `scale_unverified`, `depth_scale_inconsistent`.
 
 ## What this module is for
