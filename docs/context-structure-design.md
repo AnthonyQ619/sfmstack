@@ -109,6 +109,16 @@ volume the module tier is about 625 KB and the global tier about 270 KB.
 This document is reachable through `sfm_workflow_skill("context-structure-design")`
 like any other document beside `skills/`.
 
+**What is deliberately not in `skills/`.** `docs/` sits beside it, and since 2026-09-20
+so does `harness/`, the experiment driver. The line is whether an agent may be *handed*
+the document: everything under `skills/` is retrievable through `sfm_workflow_skill`,
+and that resolver reads `skills_dir / topic` directly, so anything placed there is
+reachable whether or not it was meant to be. The harness is operator tooling plus
+`PROCEDURE.md`, which `launch.py` injects as the agent's prompt rather than serving on
+request. Keeping it out also keeps a second rule enforceable: every capture named in
+the harness is a corpus member, because a holdout named in an example is a holdout
+written into the context. See [`harness/README.md`](../harness/README.md).
+
 **Nineteen MCP tools** reach the context, of which four are the ones that matter
 here: `sfm_describe_module`, `sfm_module_skill`, `sfm_workflow_skill`,
 `sfm_plan_brief`. The resolver takes a path-shaped topic (`plan/tracking`,

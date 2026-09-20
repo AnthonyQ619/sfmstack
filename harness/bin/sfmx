@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# The in-repo harness. The frozen predecessor is ~/sfm_experiments/harness.
+exec /home/anthonyq/projects/sfmstack/.venv/bin/python /home/anthonyq/projects/sfmstack/harness/sfmx.py "$@"

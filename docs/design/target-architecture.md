@@ -52,6 +52,25 @@ Three contracts hold it together, and **only three**:
 
 Everything else is implementation detail inside a container.
 
+### A fourth piece, outside the contracts: the harness
+
+`harness/` drives the experiments that produce the evidence the context is written
+from. It is not part of the pipeline: no module depends on it, it declares no
+artifacts, and it holds none of the three contracts. It launches one isolated
+`claude -p` per capture, hands each the procedure as its prompt, gates the GPUs, and
+writes run directories into the experiment record outside this repository.
+
+It is versioned here, rather than beside the run data where it began, for two reasons.
+A change to the procedure an agent is given is as much a change to the experiment as a
+change to a skill file, and it should be reviewed with one. And it is the one place
+outside `skills/` that can name a capture — in a usage example, a smoke test, an error
+message — so it is the one place that can quietly write a holdout into the repository
+and cost that capture its ability to measure whether the context generalises. Every
+capture it names is a corpus member. See [`harness/README.md`](../../harness/README.md).
+
+The predecessor at `~/sfm_experiments/harness` is frozen with its data so earlier
+batches stay reproducible.
+
 ---
 
 ## 1. Artifacts

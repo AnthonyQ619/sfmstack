@@ -243,6 +243,7 @@ packages/sfmkit/        the contract layer, installed into every module containe
 packages/sfmorch/       registry, type checking, run DAG, scheduling, MCP server
 modules/                one directory per module: module.yaml, Dockerfile, adapter.py, skills/
 skills/                 the knowledge base the driving agent reasons over
+harness/                the experiment driver: one isolated agent per capture, and its prompt
 docs/design/            the architecture, and why it is shaped this way
 ```
 
