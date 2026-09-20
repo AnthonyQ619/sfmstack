@@ -1,4 +1,5 @@
-"""DenseVGGT -- scene/v1 + poses/v1 (+ optional tracks/v1) -> dense_model/v1.
+"""DenseVGGT -- scene/v1 + poses/v1 OR sparse_model/v1 (+ optional tracks/v1)
+-> dense_model/v1.
 
 Every pixel's depth, unprojected with the SUPPLIED poses, filtered by VGGT's own
 confidence and by multi-view agreement.
@@ -6,13 +7,26 @@ confidence and by multi-view agreement.
 Same frame-agnostic design as SparseVGGT: depth is per-view, so unprojecting it
 with the supplied camera puts the point in the supplied world frame whatever
 produced that pose. The one scale relating VGGT's depth unit to the poses' unit is
-the problem this module cannot solve by itself -- it has no correspondences. So
-`tracks` is an OPTIONAL input used for exactly that, and without it the scale is a
+the problem this module cannot solve by itself -- it has no correspondences. A
+`sparse` model settles it, `tracks` estimates it, and with neither the scale is a
 parameter whose default is only correct when the poses came from VGGT too.
 
 Getting that wrong does not fail. It produces a cloud correctly shaped and wrongly
 sized, sitting in front of cameras that are the wrong distance away, so
 `depth_scale_source` is reported and the module says which case it is in.
+
+**Either pose-carrying type is accepted, and that is not a convenience.** Taking
+only `poses/v1` made this module unreachable from any refined model: `poses/v1` is
+produced by the pose stage alone, and triangulation, the global reconstructor and
+both bundle adjusters all produce `sparse_model/v1`. So the one densifier the
+context prescribes for specular and textureless surfaces could be run only on
+unrefined poses, and on a globally-reconstructed pipeline not at all. A capture was
+lost to that before it was noticed.
+
+A sparse model is also the BETTER input, because it answers the scale question
+outright. Its points are already triangulated in the poses' own frame, so their
+depth in a camera can be compared with VGGT's predicted depth at the same pixel
+directly -- no re-triangulation, and no `tracks` input needed.
 """
 
 from __future__ import annotations
@@ -95,6 +109,48 @@ def intrinsics_for(scene, poses_art, n_images):
     return K[np.asarray(cam_index, dtype=int)], source
 
 
+def scale_from_sparse(sparse, sizes, pose_of, depth_maps, min_samples):
+    """The depth scale from a sparse model's own triangulated points.
+
+    Simpler and better conditioned than the tracks route: the points are already in
+    the poses' frame, so each observation gives a ratio directly -- the point's depth
+    in that camera against VGGT's predicted depth at the pixel that saw it. Nothing
+    is re-triangulated, so nothing depends on the baseline of a chosen pair.
+
+    Returns (scale, spread, n_samples) or None when there is not enough evidence.
+    """
+    xyz = np.asarray(sparse.load("points", "xyz"), dtype=np.float64)
+    obs = np.asarray(sparse.load("observations", "obs"), dtype=np.float64)
+    frame = obs[:, 0].astype(np.int64)
+    point = obs[:, 1].astype(np.int64)
+    xy = obs[:, 2:4]
+
+    ratios = []
+    for r in range(len(obs)):
+        f = int(frame[r])
+        if f not in pose_of:
+            continue
+        pi = int(point[r])
+        if pi < 0 or pi >= len(xyz):
+            continue
+        triangulated = float(pose_of[f][2] @ np.append(xyz[pi], 1.0))
+        if triangulated <= 1e-9:
+            continue
+        s, _, _, pad_x, pad_y = letterbox(int(sizes[f, 0]), int(sizes[f, 1]))
+        px = int(np.clip(round(xy[r, 0] * s + pad_x), 0, VGGT_SIZE - 1))
+        py = int(np.clip(round(xy[r, 1] * s + pad_y), 0, VGGT_SIZE - 1))
+        predicted = float(depth_maps[f][py, px])
+        if predicted > 1e-9:
+            ratios.append(triangulated / predicted)
+
+    if len(ratios) < min_samples:
+        return None
+    ratios = np.asarray(ratios)
+    scale = float(np.median(ratios))
+    mad = float(np.median(np.abs(ratios - scale)))
+    return scale, (mad / abs(scale) if scale else float("inf")), len(ratios)
+
+
 def scale_from_tracks(tracks, sizes, K_all, pose_of, depth_maps, min_samples):
     """The same estimator SparseVGGT uses, on whatever tracks are supplied.
 
@@ -158,7 +214,17 @@ def scale_from_tracks(tracks, sizes, K_all, pose_of, depth_maps, min_samples):
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
-    poses_art = ctx.inputs["poses"]
+    # Either pose-carrying type. `sparse_model/v1` declares the same `poses` and
+    # `intrinsics` arrays as `poses/v1`, so everything below reads it unchanged;
+    # what it adds is triangulated structure, which resolves the scale.
+    sparse = ctx.inputs.get("sparse")
+    poses_art = ctx.inputs.get("poses") or sparse
+    if poses_art is None:
+        raise ValueError(
+            "DenseVGGT needs camera poses: pass `poses` (poses/v1) or `sparse` "
+            "(sparse_model/v1). A refined model is a sparse_model/v1 -- pass it as "
+            "`sparse`, which also resolves the depth scale from its own points."
+        )
     tracks = ctx.inputs.get("tracks")
     p = ctx.params
 
@@ -216,7 +282,16 @@ def run(ctx: Ctx):
     ctx.progress(0.55, "resolving the depth scale")
 
     scale, spread, samples, source = p.depth_scale, None, 0, "parameter"
-    if tracks is not None:
+    # The sparse model first when there is one: its points are already in the poses'
+    # frame, so the ratio needs no re-triangulation and no choice of pair.
+    if sparse is not None:
+        estimated = scale_from_sparse(
+            sparse, sizes, pose_of, depth_maps, p.min_scale_samples
+        )
+        if estimated is not None:
+            scale, spread, samples = estimated
+            source = "sparse model"
+    if source == "parameter" and tracks is not None:
         estimated = scale_from_tracks(
             tracks, sizes, K_all, pose_of, depth_maps, p.min_scale_samples
         )
@@ -338,10 +413,13 @@ def run(ctx: Ctx):
             severity="warn",
             message=(
                 f"The depth scale is the parameter value {p.depth_scale}, not "
-                f"measured -- no tracks were supplied."
+                f"measured -- neither a sparse model nor tracks was supplied."
             ),
             suggested_actions=[
-                "Pass a tracks/v1 input; the scale is then estimated and reported.",
+                "Pass the sparse model as `sparse`; its points are already in the "
+                "poses' frame, so the scale is measured directly. This is also the "
+                "only input that reaches this module from a refined model.",
+                "Or pass a tracks/v1 input; the scale is then estimated and reported.",
                 "The default 1.0 is correct ONLY when the poses came from VGGT too.",
                 "Check the cloud sits at a plausible distance from the cameras.",
             ],

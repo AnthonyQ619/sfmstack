@@ -1,5 +1,5 @@
 name: DenseVGGT
-version: 1.0.0
+version: 1.1.0
 kind: dense
 summary: >
   Dense point cloud from VGGT's per-pixel depth, unprojected with the SUPPLIED
@@ -11,14 +11,22 @@ description: |
   with the supplied K and pose lands in the supplied world frame whatever produced
   that pose.
 
+  **Pass it a `sparse` model when you have one.** Poses arrive as either
+  `poses/v1` or `sparse_model/v1` and exactly one is required. Prefer the sparse
+  model: every stage after the pose one produces that type, so it is the only way
+  to run this module on a refined model at all, and on a pipeline built through the
+  global reconstructor there is no `poses/v1` in existence to pass.
+
   **The scale is the thing this module cannot measure by itself.** It has no
-  correspondences, so nothing relates VGGT's depth unit to the poses' unit. Pass a
-  `tracks/v1` input and the scale is estimated from it exactly as `SparseVGGT`
-  does, and reported with its spread. Without one, the scale is the `depth_scale`
-  parameter, whose default of 1.0 is correct only when the poses came from VGGT
-  too — and getting it wrong does not fail, it produces a correctly-shaped cloud
-  at the wrong size in front of cameras at the wrong distance. The module says
-  which case it is in.
+  correspondences, so nothing relates VGGT's depth unit to the poses' unit. A
+  `sparse` model answers it outright — its points are already triangulated in
+  the poses' frame, so each observation compares a known depth against the
+  predicted depth at the pixel that saw it. Failing that, a `tracks/v1` input is
+  estimated from exactly as `SparseVGGT` does. Failing both, the scale is the
+  `depth_scale` parameter, whose default of 1.0 is correct only when the poses came
+  from VGGT too — and getting it wrong does not fail, it produces a
+  correctly-shaped cloud at the wrong size in front of cameras at the wrong
+  distance. The module says which case it is in.
 
   It is not MVS. There is no photometric consistency check and no cross-view
   fusion — every view contributes its own points independently, so a surface seen
@@ -35,7 +43,12 @@ resources:
 
 consumes:
   scene: {type: scene/v1, required: true}
-  poses: {type: poses/v1, required: true}
+  # Either pose-carrying type; exactly one is required. `sparse_model/v1` declares
+  # the same `poses` and `intrinsics` arrays as `poses/v1`, so both read the same
+  # way — and a refined model IS a sparse_model/v1, which is the only way to
+  # reach this module from anything downstream of the pose stage.
+  poses: {type: poses/v1, required: false}
+  sparse: {type: sparse_model/v1, required: false}
   tracks: {type: tracks/v1, required: false}
 
 produces:
@@ -76,12 +89,13 @@ params:
     maximum: 1000000.0
     description: >
       Scalar relating VGGT's depth unit to the supplied poses' unit. IGNORED when
-      a tracks input is given, which is the way to get it measured.
+      a sparse or tracks input is given, either of which gets it measured.
     tuning: >
       1.0 is correct only when the poses came from VGGT. With any other pose source
-      and no tracks, this is a guess, and a wrong one is invisible in every metric
-      -- the cloud is correctly shaped and wrongly sized. Pass tracks instead of
-      tuning this.
+      and neither a sparse model nor tracks, this is a guess, and a wrong one is
+      invisible in every metric — the cloud is correctly shaped and wrongly
+      sized. Pass the sparse model instead of tuning this; `depth_scale_source`
+      says which of the three the run actually used.
 
   min_scale_samples:
     type: integer

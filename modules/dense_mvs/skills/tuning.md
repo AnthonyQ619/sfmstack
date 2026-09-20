@@ -134,11 +134,10 @@ measured trade — see above.)
 **The scene is low-texture.** Lower `filter_min_ncc` toward 0.05. Reflective,
 transparent and untextured surfaces are where PatchMatch has nothing to correlate,
 and no setting invents evidence — this is the case for `DenseVGGT` instead, whose
-learned prior fills what it cannot verify. **But check first that you can reach it:**
-it consumes a `poses/v1`, which no stage after the pose one produces, so a refined
-model cannot feed it and a globally-reconstructed pipeline never has one. See
-[plan/dense.md](../../../skills/plan/dense.md). If it is out of reach, the fusion
-setting is the lever that remains.
+learned prior fills what it cannot verify. **Hand it the refined model** as its
+`sparse` input rather than a raw `poses/v1`: that is what reaches it from anywhere
+after the pose stage, and it is also what resolves its depth scale. See
+[plan/dense.md](../../../skills/plan/dense.md).
 
 **The baselines are small.** `filter_min_triangulation_angle` defaults to 3
 degrees. A drone or handheld sequence with small steps between frames may need

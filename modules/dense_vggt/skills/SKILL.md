@@ -1,6 +1,6 @@
 ---
 module: DenseVGGT
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: facebookresearch/vggt @ a288dd0, depth head
 curated_at: 2026-08-11
 sources: 2
@@ -36,18 +36,25 @@ in 22 s, most of it model load — a second run against a warm server is 2 s.
 consistency check, no cross-view fusion. Every view contributes independently, so
 a surface seen from four views appears four times.
 
-**It cannot be run on a refined sparse model, and that is an API gap rather than a
-limitation of the method.** This module consumes `poses/v1`, and nothing in the
-registry converts a `sparse_model/v1` into one — so a pipeline that has refined its
-model cannot hand it here without going back to the pose stage's own output. An
-agent hit exactly this in a dense batch. Check with
-`find(produces="poses/v1", consumes="sparse_model/v1")` before planning a
-comparison that needs it.
+**Hand it the refined model, as `sparse`.** It takes either a `poses/v1` or a
+`sparse_model/v1` and wants exactly one. The sparse model is the better input and
+usually the only possible one: every stage after the pose one — triangulation,
+the global reconstructor, both bundle adjusters — produces `sparse_model/v1`, so
+a refined model has no `poses/v1` to offer, and a pipeline built through the global
+reconstructor never had one at all.
 
-**The scale is the thing it cannot measure alone.** It has no correspondences.
-Pass the optional `tracks/v1` input and the scale is estimated and reported;
-without one it is the `depth_scale` parameter, whose default of 1.0 is correct
-only when the poses came from VGGT too.
+Until version 1.1.0 this module took `poses/v1` alone, which made it unreachable
+from any refined model. An agent hit exactly that in a dense batch: its subject was
+specular, the plan sent it here, and by then it held a bundle-adjusted model and
+nothing this module would accept. That is fixed, and the fix is why `sparse` exists.
+
+**The scale is the thing it cannot measure alone.** It has no correspondences of
+its own. A `sparse` model settles it outright: its points are already triangulated
+in the poses' frame, so each observation compares a known depth against the
+predicted depth at the pixel that saw it, with nothing re-triangulated. A
+`tracks/v1` input is the fallback. With neither, the scale is the `depth_scale`
+parameter, whose default of 1.0 is correct only when the poses came from VGGT too.
+`depth_scale_source` on the output says which of the three the run used.
 
 Measured, 8 DTU views, classical poses:
 

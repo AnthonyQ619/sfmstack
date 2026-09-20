@@ -19,17 +19,18 @@ only the pixels several views agree on. Where the evidence is absent it returns
 **`DenseVGGT`** predicts a depth for every pixel from a learned monocular prior
 refined across views. Where the evidence is absent it predicts anyway.
 
-**Check you can reach it before you plan around it.** The two densifiers do not
-consume the same thing: `DenseMVS` takes a `sparse_model/v1`, `DenseVGGT` takes a
-`poses/v1`. Only the incremental and the learned **pose** stages produce `poses/v1`;
-triangulation, the global reconstructor and both bundle adjusters all produce
-`sparse_model/v1`. So `DenseVGGT` cannot run on a refined model at all, and on a
-pipeline built through the global reconstructor no `poses/v1` exists at any point.
-A capture was lost to this: its subject was specular, this file sent it to the
-learned densifier, and by then it had a globally-reconstructed, bundle-adjusted
-model and nothing the module would accept. If the learned densifier is part of the
-plan, keep the pose artifact it needs — or accept that the escape is not available
-and plan the fusion instead.
+**Give `DenseVGGT` the refined model, not the raw poses.** It accepts either a
+`poses/v1` or a `sparse_model/v1` and wants exactly one. Pass the sparse model
+whenever one exists, for two reasons. It is the only input that reaches the module
+from anywhere downstream of the pose stage — triangulation, the global
+reconstructor and both bundle adjusters all produce `sparse_model/v1`, and a
+globally-reconstructed pipeline never holds a `poses/v1` at all. And it settles the
+scale below, which raw poses cannot.
+
+That was learned the hard way: the module once took `poses/v1` alone, which made
+this whole paragraph an impossibility rather than a preference. A specular capture
+was sent here by this file, arrived with a bundle-adjusted model, and found nothing
+the module would accept.
 
 **A cloud with no holes is not more complete. It is less willing to say it does not
 know.** The holes in an MVS cloud are the honest part: they sit on specular
@@ -88,7 +89,10 @@ a smeared or multiplied surface rather than a small one. It looks like bad depth
 is not. Nothing in the metrics moves, because the filters are scale-invariant.
 
 The scale must be measured against correspondences and reported. Assuming it is 1.0
-is correct only when the poses came from the same model.
+is correct only when the poses came from the same model. Passing the refined model as
+`sparse` measures it with no extra input and no re-triangulation, because its points
+already sit in the poses' frame; `depth_scale_source` on the output says which of the
+three routes the run actually took, and `parameter` means it was never measured.
 
 ### What each one needs
 
@@ -115,7 +119,9 @@ Neither is a threshold — what a densifier needs from them has not been measure
 here, and is one of the open questions below. They are the readings to take before
 the run so that an empty depth map can be attributed rather than guessed at.
 
-A learned densifier needs only poses, and optionally tracks for the scale.
+A learned densifier needs only poses — but should be given the refined model
+anyway, as its `sparse` input: it is what reaches the module after the pose stage, and
+its points are what fix the scale. Tracks are the fallback when there is no model.
 
 ---
 
@@ -238,7 +244,7 @@ to stop. The route from an output you already have is one replay:
 
 | Question | Needs |
 | --- | --- |
-| **What a learned prior buys where MVS genuinely has nothing** | A capture whose target surface is textureless or reflective, with reference geometry. Both families have now been measured, but only on captures where MVS works well — which is the case MVS is best at and the case the prior is least needed in. It is also the case the learned densifier cannot currently be reached in: see the reachability note above. |
+| **What a learned prior buys where MVS genuinely has nothing** | A capture whose target surface is textureless or reflective, with reference geometry. Both families have now been measured, but only on captures where MVS works well — which is the case MVS is best at and the case the prior is least needed in. Until recently the module could not be reached from a refined model at all, so this question has never actually been asked on the captures that motivate it. |
 | **The runtime curve against view count** | Cost per view is now measured across two campaigns and the resolution and check scalings with it (below). What is still unmeasured is whether cost per view is flat in the size of the set — every capture measured sat near fifty views. |
 
 **Runtime is no longer one of them.** Over a hundred timed stereo runs across two
