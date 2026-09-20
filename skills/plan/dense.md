@@ -201,6 +201,13 @@ published at, and about half the runtime. The region, and when to stay out of it
 doubtful poses, and never the check off with the loosest fusion — are in
 [DenseMVS tuning, "Delivering a dense cloud"](../../modules/dense_mvs/skills/tuning.md#delivering-a-dense-cloud).
 
+**Decide what the cloud is for before you fuse it, and record the answer.** Every
+dense delivery is a trade between accuracy and coverage, and a task that does not name
+one still gets one. Absent an instruction, deliver for accuracy: a looser fusion admits
+points a later stage cannot distinguish from real surface, which misplaces whatever is
+fitted to the cloud, while a tighter one only leaves holes. Where the two densifier
+families sit on that same trade is the axis above.
+
 **Plan a `DenseFusion` exploration only when the capture is unlike the ones
 measured.** It needs the stereo pass kept (`keep_workspace: true`), which is large on
 disk; after that each fusion setting costs seconds, and point counts alone say where
@@ -226,4 +233,5 @@ dense cloud and scored against reference surface geometry.
 | --- | --- |
 | **Accuracy against reference geometry** | The verified densifier is accurate at the fine tolerance the reference geometry can resolve; what it loses is completeness, by a factor of roughly one and a half to two on the same captures. |
 | **Whether MVS holes are where the prior is wrong** | **No, and this was the argument for the family split.** Union of the two clouds was several times *worse* than MVS alone at fine tolerance, and filling only the verified holes was worse still: most predicted points sit far from any verified surface — on the backdrop, the support surface, in empty space — not in the holes. A predicted cloud is a coverage instrument, not a repair kit for a verified one. |
+| **How the verified densifier behaves away from the bench** | A second campaign took the delivered region onto built frontages and enclosures, vegetated sites and built interiors, scored against site laser scans. Accuracy holds; completeness is the axis that falls, and it recovers quickly as the tolerance relaxes — the reading of a cloud that is coarse for the site rather than missing it. Question the working resolution before the scene. |
 | **What the two families cost each other on a capture MVS can solve** | Mirror images: the prior is several times less accurate on the surface it covers and meaningfully more complete. Choose on which error the deliverable can afford, not on which is better. |

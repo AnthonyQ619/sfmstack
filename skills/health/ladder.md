@@ -113,6 +113,31 @@ shape. Read them together: a mean close to p95 is a uniformly mediocre model, a
 mean far below it is a good model carrying a few bad points, and those want
 opposite responses.
 
+### When the ladder runs out and two models still disagree
+
+The ladder settles most comparisons, and the ones it does not settle share a shape: two
+finished models register the same frames, both pass the verifier, and then one has lower
+error while the other has more structure or higher yield. Agents burn runs here, and the
+runs do not resolve it, because the question is not "which model is better" but "is this
+difference real".
+
+**Measure the spread before ranking anything.** A difference you cannot reproduce is not
+a difference. Re-run the cheaper of the two pipelines once more, changing only what you
+are willing to call incidental — a seed, a window, an iteration cap — and read how far
+its own rungs move. Differences smaller than that movement are a tie, whatever their
+sign, and no further run will separate them.
+
+**Once it is a tie, stop comparing and choose on cost.** Prefer the model that fewer
+stages produced, and among equals the one whose stages you can explain. A tie broken by
+simplicity is reproducible; a tie broken by a third decimal place is not.
+
+**When the difference survives the spread test**, rank by what the deliverable is for. A
+sparse model that feeds a dense stage is a set of camera poses first and a point cloud
+second: prefer the lower error, because every pose error reaches the dense cloud and the
+extra structure does not. A sparse model that is itself the deliverable prefers the
+structure, because that is the product. State which case you are in when you record the
+decision — a later reader cannot infer it from the numbers.
+
 ---
 
 ## The health profile — the ladder as seven measurable rungs

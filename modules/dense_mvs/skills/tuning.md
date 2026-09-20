@@ -50,6 +50,28 @@ pixels means finer detail per pixel and a harder consistency test, so the fracti
 kept goes down while the absolute count goes up 2.7x. Never compare completeness
 across different `max_image_size` values.
 
+## What this was measured on, and what a second kind of site showed
+
+Every range above comes from studio orbits of compact subjects. A second campaign put
+the same delivered region on built frontages and enclosures, vegetated sites and built
+interiors, scored against their laser scans, and the ranges were not swept there — so
+what follows says how the region behaves away from the bench, not that it is optimal
+there.
+
+**Accuracy holds; completeness is what falls.** On those sites, at a working resolution
+well below the capture's own, most of the delivered cloud reaches the reference at a
+tolerance of a couple of centimetres, while barely more than a third of the reference is
+reached back. Relax the tolerance and the gap closes fast — completeness roughly triples
+between the tightest and the loosest tolerance measured, and the harmonic mean nearly
+triples with it. That shape is a cloud that is coarse, not one with holes: read a low
+completeness against a resolution before reading it against the scene.
+
+**So resolution is the first thing to question on a large site**, and the one a dense
+plan should state deliberately. A working resolution chosen for a compact subject carries
+a point spacing that a site-scale reference will charge for directly, and the reading it
+produces is not comparable to the bench numbers above.
+Measurements: `skills/evidence/eth-dense-2026-09.md`.
+
 ## Delivering a dense cloud
 
 **On a well-posed capture, deliver with the geometric check off and

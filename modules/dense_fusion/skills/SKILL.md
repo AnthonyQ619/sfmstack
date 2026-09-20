@@ -71,6 +71,14 @@ is a new `DenseMVS` run.
    then one step lower at a time. Read `point_count` after each.
 3. Stop at the step before the one that roughly doubles the cloud —
    [tuning](tuning.md#stepping-down-and-when-to-stop).
+
+   **When nothing says whether the deliverable wants accuracy or coverage, it wants
+   accuracy**, so take the anchor setting and step down only as far as the rule allows,
+   never past it. The cost of the wrong choice is not symmetric: a cloud carrying the
+   points a looser setting admits is not merely less accurate, it misplaces anything
+   fitted to it afterwards, and a later stage cannot tell those points from the rest. A
+   thinner cloud loses coverage and nothing else. Step toward coverage when the task
+   says so, and say in the run summary which way you took it.
 4. Deliver that artifact. The workspace is large and nothing here deletes it: say so
    in the run summary, so whoever owns the storage can remove it —
    [limitations](limitations.md#the-workspace-stays-on-disk).

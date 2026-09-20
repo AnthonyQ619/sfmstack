@@ -86,3 +86,19 @@ Minutes per view at full resolution, and quadratic in `max_image_size`. A pipeli
 that reaches this module having burned its budget upstream will not get to run it
 at a resolution worth having. Plan the dense stage first and the sparse stage
 around it.
+
+## Per-view depth is not a deliverable
+
+`write_depth_maps` exists for diagnosis and for feeding another stage, not for handing a
+surface to whoever asked for one. On sites carrying sky, foliage or glass, the raw depth
+of a single view keeps what those surfaces put in front of the camera; fusion's
+consistency check is what removes it, and a cloud scored straight from the depth maps was
+about three times less accurate than the fused cloud of the same runs, losing on five of
+the seven captures that could supply both. On studio orbits the comparison ran the other
+way, where a fused cloud's own stray points were the larger error. Deliver the fused
+cloud; reach for the depth maps when you need to see what one view thought.
+
+**They are also not always available.** The maps are written only when every undistorted
+view shares a resolution. A capture whose frames came from more than one camera setting
+produces none, and the run succeeds silently without them — check the artifact rather
+than assuming. Measurements: `skills/evidence/eth-dense-2026-09.md`.

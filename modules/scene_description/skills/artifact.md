@@ -97,6 +97,15 @@ which beats a 384px copy, and keeping thirteen images here would have made
 `sfm_artifact_image(<id>)` ambiguous in the one case it exists to make
 frictionless.
 
+**Going from a cell to that path: the filename under the cell is the key, not the
+index.** `[k]` numbers the browse set, which is a subset of the scene in scene order;
+it is not the scene's own image index, and the two coincide only when every frame was
+browsed. The filename under cell `[k]` is `browsed[k]`, and the scene's `images/names`
+array holds the same filenames in scene order, so the frame's scene index is where that
+filename sits in `names` — the one lookup that turns a sheet observation into an
+addressable frame. Name frames by filename when reporting, and the question does not
+arise for a reader.
+
 **Know what the sheet cannot settle.** It is two downscales deep: SceneLoader
 resized the capture, and each cell resizes that again to a
 `thumbnail_max_side` long edge. A DSLR frame at 6221x4146 loaded with
