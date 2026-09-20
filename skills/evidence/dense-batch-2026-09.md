@@ -1,5 +1,13 @@
 # Campaign: dense-batch-2026-09 — raw frames to a dense cloud, every capture, planning only from context
 
+**Campaign run 2026-09 over 22 captures. Derivation redone 2026-09-20 against the
+ten captures of [CORPUS.txt](CORPUS.txt) alone, and cross-checked on ETH3D.** The two
+dates are kept apart on purpose: the runs happened when the corpus was a different set,
+and restating them as though today's corpus existed then would be the same error this
+re-derivation exists to fix. What the re-derivation found is in
+[Replication](#replication-what-survived-a-second-dataset); it changed several verdicts
+and removed nothing.
+
 **This is a raw evidence table. Cite it; do not plan from it.** The reasoning built on these rows lives in [`plan/dense.md`](../plan/dense.md), [`plan/optimization.md`](../plan/optimization.md), [`health/ladder.md`](../health/ladder.md) and the dense modules' own skills, stated as capture properties rather than as scene names.
 
 ## Protocol
@@ -17,47 +25,105 @@ All 22 agents delivered on the first attempt, in 74–172 minutes each, and all 
 
 ## Per capture
 
-| capture | role | sparse pipeline | dense | reg | sparse pts | thinnest view | error px | acc | comp | overall | acc placed | comp placed | overall placed | align mm |
+| capture | role at run time | sparse pipeline | dense | reg | sparse pts | thinnest view | error px | acc | comp | overall | acc placed | comp placed | overall placed | align mm |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | <a id="cap-dtu-scan1"></a>DTU/scan1 | control | `sift-clahe+nn/incr@1600` | `mvs@1600` | 49/49 | 78,076 | — | 0.321 | 0.233 | 0.380 | **0.306** | 0.362 | 0.534 | 0.448 | 0.65 |
 | <a id="cap-dtu-scan4"></a>DTU/scan4 | control | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 72,173 | — | 0.321 | 0.280 | 0.566 | **0.423** | 0.648 | 1.072 | 0.860 | 0.90 |
 | <a id="cap-dtu-scan9"></a>DTU/scan9 | control | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 31,173 | — | 0.356 | 0.339 | 0.451 | **0.395** | 0.499 | 0.624 | 0.562 | 0.63 |
 | <a id="cap-dtu-scan10"></a>DTU/scan10 | control | `sift+nn/incr+gtsam@1600` | `mvs@1600` | 49/49 | 27,655 | — | 0.332 | 0.286 | 0.500 | **0.393** | 0.734 | 0.922 | 0.828 | 1.09 |
-| <a id="cap-dtu-scan11"></a>DTU/scan11 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 48/49 | 7,444 | — | 0.466 | 0.421 | 0.670 | **0.546** | 0.632 | 0.937 | 0.785 | 0.58 |
-| <a id="cap-dtu-scan12"></a>DTU/scan12 | holdout | `sift+nn/incr@1600` | `mvs@1000` | 49/49 | 15,620 | — | 0.321 | 0.511 | 0.505 | **0.508** | 1.288 | 1.401 | 1.345 | 0.92 |
-| <a id="cap-dtu-scan13"></a>DTU/scan13 | holdout | `sift-clahe+nn/incr@1600` | `mvs@1600` | 49/49 | 19,086 | — | 0.420 | 0.230 | 0.652 | **0.441** | 0.384 | 0.851 | 0.617 | 0.82 |
 | <a id="cap-dtu-scan15"></a>DTU/scan15 | control | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 36,702 | — | 0.356 | 0.345 | 0.426 | **0.386** | 0.532 | 0.620 | 0.576 | 0.70 |
 | <a id="cap-dtu-scan23"></a>DTU/scan23 | control | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 63,154 | — | 0.305 | 0.318 | 0.483 | **0.400** | 0.786 | 1.152 | 0.969 | 0.60 |
-| <a id="cap-dtu-scan24"></a>DTU/scan24 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 29,681 | — | 0.310 | 0.256 | 0.426 | **0.341** | 0.538 | 0.731 | 0.634 | 0.70 |
-| <a id="cap-dtu-scan29"></a>DTU/scan29 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 38,531 | — | 0.334 | 0.349 | 0.650 | **0.500** | 1.612 | 2.271 | 1.941 | 0.86 |
-| <a id="cap-dtu-scan32"></a>DTU/scan32 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 23,231 | — | 0.333 | 0.414 | 0.884 | **0.649** | 1.651 | 2.071 | 1.861 | 0.76 |
 | <a id="cap-dtu-scan33"></a>DTU/scan33 | control | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 71,600 | — | 0.265 | 0.452 | 0.611 | **0.531** | 0.693 | 0.902 | 0.798 | 0.70 |
-| <a id="cap-dtu-scan34"></a>DTU/scan34 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 114,361 | — | 0.263 | 0.243 | 0.391 | **0.317** | 0.771 | 0.917 | 0.844 | 0.60 |
 | <a id="cap-dtu-scan48"></a>DTU/scan48 | holdout | `sift-clahe+nn/global@1600` | `mvs@1600` | 49/49 | 2,876 | — | 0.345 | 0.373 | 2.928 | **1.651** | 0.939 | 3.513 | 2.226 | 1.67 |
-| <a id="cap-dtu-scan49"></a>DTU/scan49 | holdout | `sift-clahe+nn/incr@1600` | `mvs@1600` | 49/49 | 27,567 | — | 0.274 | 0.596 | 0.525 | **0.561** | 0.877 | 0.716 | 0.796 | 0.81 |
-| <a id="cap-dtu-scan62"></a>DTU/scan62 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 9,777 | — | 0.320 | 0.369 | 1.085 | **0.727** | 0.776 | 1.396 | 1.086 | 0.56 |
 | <a id="cap-dtu-scan75"></a>DTU/scan75 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 27,793 | — | 0.299 | 1.053 | 0.438 | **0.745** | 1.760 | 1.085 | 1.423 | 1.08 |
 | <a id="cap-dtu-scan77"></a>DTU/scan77 | holdout | `sift+lightglue/global@1600` | `mvs@1600` | 49/49 | 4,836 | — | 0.547 | 0.803 | 0.736 | **0.770** | 1.395 | 1.326 | 1.361 | 0.77 |
-| <a id="cap-dtu-scan110"></a>DTU/scan110 | holdout | `sift-clahe+nn/incr@1600` | `mvs@1600` | 49/49 | 21,209 | — | 0.345 | 0.404 | 0.460 | **0.432** | 0.896 | 0.891 | 0.893 | 0.70 |
-| <a id="cap-dtu-scan114"></a>DTU/scan114 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 16,885 | — | 0.325 | 0.234 | 0.379 | **0.307** | 0.624 | 0.741 | 0.682 | 0.45 |
-| <a id="cap-dtu-scan118"></a>DTU/scan118 | holdout | `sift+nn/incr@1600` | `mvs@1600` | 49/49 | 61,205 | — | 0.323 | 0.237 | 0.456 | **0.347** | 0.638 | 0.768 | 0.703 | 0.68 |
-| **mean, all 22** | | | | | | | | **0.398** | **0.664** | **0.531** | 0.865 | 1.156 | 1.011 | |
-| **mean, 15 holdout** | | | | | | | | **0.433** | **0.746** | **0.589** | 0.985 | 1.308 | 1.147 | |
-| **mean, 7 controls** | | | | | | | | **0.322** | **0.488** | **0.405** | 0.608 | 0.832 | 0.720 | |
+| **mean, 10 corpus** | | | | | | | | **0.448** | **0.752** | **0.600** | 0.835 | 1.175 | 1.005 | |
+
+**These are the ten corpus captures only.** The campaign ran over 22; the twelve that
+are not in [CORPUS.txt](CORPUS.txt) were moved to the experiment record on 2026-09-20
+(`~/sfm_experiments/DTU_dense_exp/HOLDOUT_ROWS.md`) and are deliberately not reachable
+from context. They are reserved for measuring whether this context generalises, and a
+holdout that has been read into context is no longer one.
+
+The `role at run time` column is historical: it records the corpus as it stood when the
+batch ran, when seven captures were named controls. scan48, scan75 and scan77 were
+promoted into the corpus on 2026-09-19 and that column still calls them holdout.
+
+For reference, the means the twelve holdout rows produce: published basis accuracy 0.355,
+completeness 0.590, overall **0.473**; as placed, overall 1.016. The corpus captures are
+the *harder* set on the published basis (0.600 against 0.473), because the three promoted
+in 2026-09 were promoted for being difficult.
 
 ## What was derived from these rows
 
-| Claim | Where it went | The rows behind it |
-| --- | --- | --- |
-| Coverage, not purity, is what the dense stage consumes | `plan/dense.md` §Planning the sparse stage | sparse points vs completeness **−0.64**; thinnest view **−0.59**; median points per view −0.50; at equal density, models keeping two-view structure −0.45 and models pruned to long tracks +0.47 |
-| The error rung cannot see metric placement | `health/ladder.md`; `plan/optimization.md` §3 | reprojection error flat at 0.26–0.55 px across the batch and **+0.29** against metric error over 74 models; two captures at 0.33 px differing five-fold in metric error |
-| Do not refine intrinsics on a calibrated capture | `plan/optimization.md`, `ba_global/tuning.md` | focal free: 0.44 → 0.33 px while the cloud moved 1.46 → 3.47 mm; focal + principal point → 13.36 mm at 0.28–0.33 px; recovered focal 0.877–1.055 of the shipped value |
-| A hole is a photometric refusal, not an absence | `plan/dense.md`; `dense_mvs/limitations.md` | 94–99.5% of missed reference surface visible and unoccluded in ≥5 of the capture's own cameras, depth-buffer occlusion test |
-| Blown highlights predict dense coverage | `scene_triage/module.yaml`, its `tuning.md`, `plan/dense.md` | `highlight_clipped_fraction` vs `depth_map_completeness` **−0.92**; texture density +0.59; textureless fraction −0.56; coverage spread 0.12–0.79 |
-| `fusion_min_num_pixels` is the one filter that buys coverage | `dense_mvs/tuning.md` | five captures, five improvements: completeness 0.741→0.717, 1.396→1.238, 3.513→3.305, 2.071→1.928, 0.768→0.734; points ×1.61–1.85; mean aligned overall −0.032 mm |
-| A predicted cloud is not a repair kit | `plan/dense.md`; `dense_vggt/limitations.md` | on one capture, aligned overall: MVS 0.307, predicted alone 1.164, union 1.217, hole-fill 1.585; 1.9 of 2.46 M predicted points >2 mm from any verified point |
-| Selection is not where the dense result is won | `health/ladder.md` | delivered model metrically best in 6 of 22; best computable rule −2.4%; oracle −15.5% |
-| MVS runtime under contention | `dense_mvs/SKILL.md` | under-predicted 1.5×–6×; 10 of 22 agents recorded it independently |
+| Claim | Where it went | The rows behind it | Verdict, 2026-09-20 |
+| --- | --- | --- | --- |
+| Coverage, not purity, is what the dense stage consumes | `plan/dense.md` §Planning the sparse stage | sparse points vs completeness **−0.64**; thinnest view **−0.59**; median points per view −0.50; at equal density, models keeping two-view structure −0.45 and models pruned to long tracks +0.47 | **Weakened — do not treat as a rule.** Its four supporting signals (point count, thinnest view, two-view structure, track length) all fail to replicate; two flip sign between datasets. Not withdrawn, because the claim may still hold by a mechanism these proxies do not capture, but nothing here establishes it outside this dataset's corpus. |
+| The error rung cannot see metric placement | `health/ladder.md`; `plan/optimization.md` §3 | reprojection error flat at 0.26–0.55 px across the batch and **+0.29** against metric error over 74 models; two captures at 0.33 px differing five-fold in metric error | **Too strong, and the only signal that replicates contradicts it.** Reprojection error is positively associated with metric error in all four cells (+0.63 on ETH3D). True as stated *within a narrow band*; false as a general prohibition. See [Replication](#replication-what-survived-a-second-dataset). |
+| Do not refine intrinsics on a calibrated capture | `plan/optimization.md`, `ba_global/tuning.md` | focal free: 0.44 → 0.33 px while the cloud moved 1.46 → 3.47 mm; focal + principal point → 13.36 mm at 0.28–0.33 px; recovered focal 0.877–1.055 of the shipped value | **Unaffected.** Interventional, not correlational: the same models refined two ways. Sample size does not bear on it. |
+| A hole is a photometric refusal, not an absence | `plan/dense.md`; `dense_mvs/limitations.md` | 94–99.5% of missed reference surface visible and unoccluded in ≥5 of the capture's own cameras, depth-buffer occlusion test | **Not re-derived.** Needs the visibility test re-run on corpus captures only; not attempted here. |
+| Blown highlights predict dense coverage | `scene_triage/module.yaml`, its `tuning.md`, `plan/dense.md` | `highlight_clipped_fraction` vs `depth_map_completeness` **−0.92**; texture density +0.59; textureless fraction −0.56; coverage spread 0.12–0.79 | **Not replicable on ETH3D** — eight of thirteen captures have no `depth_map_completeness` and the highlight range there is 0-2% against 12-79% here. Stands on this dataset alone. |
+| `fusion_min_num_pixels` is the one filter that buys coverage | `dense_mvs/tuning.md` | five captures, five improvements: completeness 0.741→0.717, 1.396→1.238, 3.513→3.305, 2.071→1.928, 0.768→0.734; points ×1.61–1.85; mean aligned overall −0.032 mm | **Unaffected.** Five paired interventions, five improvements. The strongest evidence in this table and the smallest sample — interventional beats correlational. |
+| A predicted cloud is not a repair kit | `plan/dense.md`; `dense_vggt/limitations.md` | on one capture, aligned overall: MVS 0.307, predicted alone 1.164, union 1.217, hole-fill 1.585; 1.9 of 2.46 M predicted points >2 mm from any verified point | **Unaffected.** One capture, measured directly, not a correlation. |
+| Selection is not where the dense result is won | `health/ladder.md` | delivered model metrically best in 6 of 22; best computable rule −2.4%; oracle −15.5% | **Replicates.** 6 of 22 here, 5 of 12 on ETH3D — the same rate on a different dataset. |
+| MVS runtime under contention | `dense_mvs/SKILL.md` | under-predicted 1.5×–6×; 10 of 22 agents recorded it independently | **Already re-derived** (2026-09-19) on 123 timed runs across the 19 corpus captures of both datasets. |
+
+## Replication: what survived a second dataset
+
+Added 2026-09-20. Six of the claims above rest on correlations over the 74 sparse models
+this batch's agents reported — every reading an agent CAN see, ranked against the metric
+error it cannot. Those correlations were recomputed four ways: this dataset's corpus and
+its holdout, and the same audit ported to ETH3D's thirteen captures
+(`ETH_dense_exp/scoring/eth_alt_audit.py`, 34 models, split 9 corpus / 4 holdout).
+
+Four cells. A relationship alive in one cell is an artifact of that cell; one alive in
+three or four is a property of reconstruction.
+
+| signal, against metric error | DTU corpus (34) | DTU holdout (40) | ETH corpus (24) | ETH holdout (10) | verdict |
+| --- | ---: | ---: | ---: | ---: | --- |
+| reprojection error | **+0.43** | +0.07 | **+0.63** | +0.41 | **replicates** — positive in all four |
+| point count (log) | **−0.79** | +0.17 | −0.08 | −0.10 | **fails** — one cell only |
+| two-view fraction | **−0.48** | −0.13 | +0.30 | **+0.69** | **fails** — sign flips by dataset |
+| mean track length | **+0.50** | −0.02 | **−0.41** | **−0.76** | **fails** — significant in both directions |
+| p05 triangulation angle | **+0.51** | **−0.46** | −0.28 | −0.62 | **fails** — three cells negative, the positive one is this dataset's corpus |
+| min frame points (log) | **−0.62** | +0.23 | −0.34 | +0.48 | **fails** — corpus negative, holdout positive, both datasets |
+
+Bold marks significance at the 5% threshold for that cell's n (0.34, 0.31, 0.40, 0.63).
+
+**Why the corpus cell looked so strong, and why that was the warning.** On the seven
+captures that were the corpus when this batch ran, *none* of these six is significant —
++0.06, −0.10, −0.22, −0.02, −0.20, +0.07, with the metric error spanning only sd 0.14 mm.
+Adding the three captures promoted in 2026-09 takes that spread to sd 0.70 mm and every
+coefficient becomes significant. They were promoted for being difficult, so they extend
+the range, and extending the range of a narrow set manufactures correlation. Dropping one
+of them alone moves the reprojection coefficient from +0.43 to +0.26, below its threshold.
+**A coefficient computed on the corpus is not the conservative reading; here it was the
+optimistic one.**
+
+**The one that replicates points the opposite way from the claim built on it.**
+Reprojection error is positively associated with metric error in all four cells and
+significantly so in two. The two cells where it is not significant are exactly the two
+with the narrowest reprojection spread — 0.31 px on this dataset's holdout and 0.17 px on
+ETH3D's. So the honest statement is narrower than "the error rung cannot see metric
+placement": *within the narrow band a well-behaved calibrated capture produces,
+reprojection error cannot discriminate* — which is what the two-captures-at-0.33 px
+example actually shows — *but a genuinely elevated reprojection error does mark a worse
+model.* On ETH3D, where the spread is 0.15–0.83 px, the association is +0.63.
+
+**Not tested here.** The highlights correlation could not be replicated on ETH3D and
+should not be reported as if it were: `depth_map_completeness` is null for eight of the
+thirteen captures, and the highlight fraction there spans 0–2% against this dataset's
+12–79%. Five points and a degenerate predictor cannot test anything. The claim stands on
+this dataset alone until a capture set with real clipping is measured.
+
+**What did replicate outside the correlations.** Selection: the delivered model was the
+metrically best available in 6 of 22 here and 5 of 12 on ETH3D — the same rate, and on
+ETH3D two captures' rejected alternatives were 2x and 3.7x nearer the reference than what
+shipped.
+
+**Five models were lost to the ETH3D audit** because their agents wrote prose into the
+report field that should hold an artifact id ("(none; stopped at pose ...)", "art_... 
+(unrefined)"). That is a harness defect, not a measurement one.
 
 ## The placement floor, and the six explanations that failed
 
