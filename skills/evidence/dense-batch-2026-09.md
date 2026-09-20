@@ -59,7 +59,7 @@ in 2026-09 were promoted for being difficult.
 | Claim | Where it went | The rows behind it | Verdict, 2026-09-20 |
 | --- | --- | --- | --- |
 | Coverage, not purity, is what the dense stage consumes | `plan/dense.md` §Planning the sparse stage | sparse points vs completeness **−0.64**; thinnest view **−0.59**; median points per view −0.50; at equal density, models keeping two-view structure −0.45 and models pruned to long tracks +0.47 | **Weakened — do not treat as a rule.** Its four supporting signals (point count, thinnest view, two-view structure, track length) all fail to replicate; two flip sign between datasets. Not withdrawn, because the claim may still hold by a mechanism these proxies do not capture, but nothing here establishes it outside this dataset's corpus. |
-| The error rung cannot see metric placement | `health/ladder.md`; `plan/optimization.md` §3 | reprojection error flat at 0.26–0.55 px across the batch and **+0.29** against metric error over 74 models; two captures at 0.33 px differing five-fold in metric error | **Too strong, and the only signal that replicates contradicts it.** Reprojection error is positively associated with metric error in all four cells (+0.63 on ETH3D). True as stated *within a narrow band*; false as a general prohibition. See [Replication](#replication-what-survived-a-second-dataset). |
+| The error rung cannot see metric placement | `health/ladder.md`; `plan/optimization.md` §3 | reprojection error flat at 0.26–0.55 px across the batch and **+0.29** against metric error over 74 models; two captures at 0.33 px differing five-fold in metric error | **Stands, and is understated.** The pooled correlation that looked like a contradiction is a between-capture effect. *Within* a capture the sign is capture-dependent — negative on this dataset (df 24, −0.51), positive on five of eight outdoor sites and strongly negative on two. Nothing visible to an agent says which sign a capture has, so the reading cannot rank models. See [Replication](#replication-what-survived-a-second-dataset). |
 | Do not refine intrinsics on a calibrated capture | `plan/optimization.md`, `ba_global/tuning.md` | focal free: 0.44 → 0.33 px while the cloud moved 1.46 → 3.47 mm; focal + principal point → 13.36 mm at 0.28–0.33 px; recovered focal 0.877–1.055 of the shipped value | **Unaffected.** Interventional, not correlational: the same models refined two ways. Sample size does not bear on it. |
 | A hole is a photometric refusal, not an absence | `plan/dense.md`; `dense_mvs/limitations.md` | 94–99.5% of missed reference surface visible and unoccluded in ≥5 of the capture's own cameras, depth-buffer occlusion test | **Not re-derived.** Needs the visibility test re-run on corpus captures only; not attempted here. |
 | Blown highlights predict dense coverage | `scene_triage/module.yaml`, its `tuning.md`, `plan/dense.md` | `highlight_clipped_fraction` vs `depth_map_completeness` **−0.92**; texture density +0.59; textureless fraction −0.56; coverage spread 0.12–0.79 | **Not replicable on ETH3D** — eight of thirteen captures have no `depth_map_completeness` and the highlight range there is 0-2% against 12-79% here. Stands on this dataset alone. |
@@ -81,7 +81,7 @@ three or four is a property of reconstruction.
 
 | signal, against metric error | DTU corpus (34) | DTU holdout (40) | ETH corpus (24) | ETH holdout (10) | verdict |
 | --- | ---: | ---: | ---: | ---: | --- |
-| reprojection error | **+0.43** | +0.07 | **+0.63** | +0.41 | **replicates** — positive in all four |
+| reprojection error | **+0.43** | +0.07 | **+0.63** | +0.41 | **pooled only** — see below; the sign reverses *within* a capture |
 | point count (log) | **−0.79** | +0.17 | −0.08 | −0.10 | **fails** — one cell only |
 | two-view fraction | **−0.48** | −0.13 | +0.30 | **+0.69** | **fails** — sign flips by dataset |
 | mean track length | **+0.50** | −0.02 | **−0.41** | **−0.76** | **fails** — significant in both directions |
@@ -100,15 +100,32 @@ of them alone moves the reprojection coefficient from +0.43 to +0.26, below its 
 **A coefficient computed on the corpus is not the conservative reading; here it was the
 optimistic one.**
 
-**The one that replicates points the opposite way from the claim built on it.**
-Reprojection error is positively associated with metric error in all four cells and
-significantly so in two. The two cells where it is not significant are exactly the two
-with the narrowest reprojection spread — 0.31 px on this dataset's holdout and 0.17 px on
-ETH3D's. So the honest statement is narrower than "the error rung cannot see metric
-placement": *within the narrow band a well-behaved calibrated capture produces,
-reprojection error cannot discriminate* — which is what the two-captures-at-0.33 px
-example actually shows — *but a genuinely elevated reprojection error does mark a worse
-model.* On ETH3D, where the spread is 0.15–0.83 px, the association is +0.63.
+**The one that replicates is a between-capture effect, and the claim it seemed to
+contradict is about something else.** Pooled, reprojection error tracks metric error in
+all four cells. Decomposed, it splits in two, and the halves disagree:
+
+| | between captures | within a capture | captures whose direction is positive |
+| --- | ---: | ---: | --- |
+| ETH3D corpus, outdoor sites | +0.53 (ns, 8 scenes) | +0.65 (sig, df 15) | **5 of 8** |
+| this dataset's corpus, studio orbits | +0.65 (sig, 10 scenes) | **−0.51** (sig, df 24) | 5 of 10 |
+
+The ladder's question is *"which of the models I hold is better"* — a within-capture
+question. Within a capture on this dataset the association is **negative**: the model
+with the lower reprojection error is the one further from the reference, which is the
+focal-refinement result stated another way. Outdoors it is positive on five of eight
+sites and strongly negative on two (−0.96, −0.66).
+
+**So the claim is not too strong; it is understated.** The reason the error rung cannot
+see metric placement is not that the correlation is weak. It is that **the sign is a
+property of the capture**, and nothing visible to an agent says which sign it has. A
+model ranked by reprojection error is right about half the time and systematically wrong
+on some captures. The pooled positive figure is a between-capture effect — harder scenes
+have both worse reprojection and worse placement — and an agent holding one capture
+cannot use it.
+
+*(Recorded because the first pass of this re-derivation, on 2026-09-20, read the pooled
++0.63 as contradicting the claim and proposed narrowing it. That was comparing a pooled
+correlation against a within-capture rule. The decomposition above is the correction.)*
 
 **Not tested here.** The highlights correlation could not be replicated on ETH3D and
 should not be reported as if it were: `depth_map_completeness` is null for eight of the
