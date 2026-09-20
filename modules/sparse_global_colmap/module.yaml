@@ -61,7 +61,12 @@ params:
       error over the whole graph rather than confining it to one image. Raise
       toward 100 when `mean_reprojection_error` is poor on a well-connected set;
       lower toward 15 only when `registered_fraction` is low AND the matcher's
-      `min_matches_per_pair` says the pairs are genuinely thin.
+      `min_matches_per_pair` says the pairs are genuinely thin. That case is real
+      and has been hit: on a low-texture rig capture the default sat above the
+      matcher's floor and dropped pairs the matcher had verified, taking the frames
+      they carried with them; lowering it to the matcher's floor registered the
+      whole capture. Read the argument above as the reason for the default, not as
+      an argument against lowering it when both conditions hold.
 
   min_track_len:
     type: integer

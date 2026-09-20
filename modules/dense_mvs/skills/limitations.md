@@ -82,10 +82,17 @@ lives in no module here.
 
 ## Runtime is not a detail
 
-Minutes per view at full resolution, and quadratic in `max_image_size`. A pipeline
-that reaches this module having burned its budget upstream will not get to run it
-at a resolution worth having. Plan the dense stage first and the sparse stage
-around it.
+Around half a minute to a minute per view at the working resolution, measured over
+a hundred runs on shared hardware — so a full capture is a half-hour to an hour, and
+three times that when the device is contended. A pipeline that reaches this module
+having burned its budget upstream will not get to run it at a resolution worth
+having. Plan the dense stage first and the sparse stage around it.
+
+**Dropping the resolution is the weak lever, not the strong one.** Halving
+`max_image_size` saves under half the time, not three quarters — the cost is far from
+quadratic in it at these sizes. Turning the geometric check off saves more, and
+`window_step: 2` saves about as much; both are in [tuning](tuning.md#the-runtime-knobs-in-the-order-to-reach-for-them),
+and the check is the one that changes what the result means.
 
 ## Per-view depth is not a deliverable
 

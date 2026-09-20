@@ -133,6 +133,22 @@ alternative discoverable through:
 sfm_find_alternatives(produces="tracks/v1", excluding="FeatureTrackUnionFind")
 ```
 
-Recorded here because the measured `inconsistent_rate` values on clean data
-(0.0000-0.0018) say this is not yet the binding constraint. Revisit when a
-matcher shows up whose conflicts cannot be tuned away.
+Recorded here because on the captures this was first measured on, `inconsistent_rate`
+sat near zero and so was not the binding constraint.
+
+**That range was far too narrow, and the matcher has now shown up.** On a clean
+capture — no repeated parts, no coherent reflector, every frame registered — the rate
+read around 0.06 at the ratio test's default, some thirty times the range above, with
+the diagnostic firing. A rate in the hundredths on a clean capture is **not** evidence
+of a broken pipeline; treat the diagnostic as a flag to settle at the model, not as a
+gate.
+
+**And the prescribed remedy does not reach it.** Three captures independently raised
+the learned matcher's threshold as the diagnostic and the matcher's own tuning both
+advise: the cycle terms fell by up to fifty times while `inconsistent_rate` stayed
+flat, and on one capture it *rose* as pairs were removed. The cycle terms and this
+rate are not measuring the same thing, and the matcher dial moves only the first. When
+the rate is high and the dial will not move it, stop spending runs on the dial: carry
+both branches to a finished model and let the verifier and the comparison in
+[ladder](../../../skills/health/ladder.md#comparing-two-finished-models) settle it,
+which is what worked on all three.

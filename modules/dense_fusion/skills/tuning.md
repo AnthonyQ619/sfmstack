@@ -49,6 +49,22 @@ When the deliverable is accuracy first, stay at or above the default. When it is
 coverage, take the lowest step the rule allows. Raising the setting well above the
 default gives a cleaner cloud and erodes whatever is seen from few views.
 
+**And when the deliverable names neither, it is accuracy** — see
+[SKILL.md](SKILL.md), step 3. That resolves what reads as a conflict with `DenseMVS`:
+its "Delivering a dense cloud" names one step below the default, and this file's
+coverage branch names the lowest step the rule allows. They are not two rules for one
+situation. **The delivery anchor is `DenseMVS`'s**, and this file's stepping is how to
+explore around it once coverage has actually been asked for. Two captures reached the
+two settings by those two routes and had nothing to choose between them.
+
+**The doubling rule is a break in the trend, not a threshold, and off a studio orbit
+it can fail to give you one.** Compare each step's growth against the step before it
+and stop where the factor jumps. On built and vegetated sites the growth instead
+accelerated smoothly — one capture stepped 1.2, 1.4, 1.8 with no break to find — and
+the rule cannot be applied as written. When no jump appears, do not keep stepping down
+looking for one: stay at the anchor, which is the accuracy default the paragraph above
+gives you.
+
 ## The geometric check was decided upstream
 
 `input_type: auto` fuses whatever the stereo pass produced, and that is almost

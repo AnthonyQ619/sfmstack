@@ -17,3 +17,6 @@
 /DTU/scan33
 /DTU/scan4
 /DTU/scan9
+/DTU/scan48
+/DTU/scan75
+/DTU/scan77

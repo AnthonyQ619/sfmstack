@@ -100,13 +100,21 @@ and `geom_consistency` doubles it by running the whole search twice.
 | 600 px | 75 s | 47 172 | 0.679 |
 | 1200 px | 131 s | 128 327 | 0.650 |
 
-Scale linearly in views and quadratically in `max_image_size`. A 50-view set at
-2000 px is an hour or more, not a minute — `timeout_s` is 6 hours for that reason.
+**Plan from the measured cost per view, not from that formula.** Across every timed
+stereo run of two dense campaigns — over a hundred runs on shared devices — the
+working resolution with the geometric check on costs around **40 seconds per view**,
+with the check off around **16**, and with `window_step: 2` around **18**. A
+fifty-view capture at the working resolution is therefore about half an hour with
+the check on, and the spread runs to three times that under contention. `timeout_s`
+is 6 hours for that reason.
 
-**That rule was measured on one idle machine, and contention dominates it.** Across
-a batch run on shared devices it under-predicted by between about one-and-a-half and
-six times, and half the agents in that batch recorded the gap independently. Treat
-it as a floor for planning, not an estimate.
+**Two of the three scalings in the formula hold; the resolution one does not.** The
+check costs about 2.4×, close to the doubling above, and `window_step: 2` saves about
+2.2×. But doubling `max_image_size` cost **about 1.75×**, not the 4× a quadratic
+predicts — measured on captures that ran both resolutions, where the same capture is
+its own control. Halving the resolution is a much weaker lever than the formula
+suggests, and the check is the cheaper one to reach for. Numbers and spread:
+`skills/evidence/dtu-dense-promoted-2026-09.md`.
 
 **Reading the output:** [artifact.md](artifact.md) ·
 **Tuning:** [tuning.md](tuning.md) · **Limits:** [limitations.md](limitations.md)

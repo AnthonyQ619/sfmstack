@@ -19,6 +19,18 @@ only the pixels several views agree on. Where the evidence is absent it returns
 **`DenseVGGT`** predicts a depth for every pixel from a learned monocular prior
 refined across views. Where the evidence is absent it predicts anyway.
 
+**Check you can reach it before you plan around it.** The two densifiers do not
+consume the same thing: `DenseMVS` takes a `sparse_model/v1`, `DenseVGGT` takes a
+`poses/v1`. Only the incremental and the learned **pose** stages produce `poses/v1`;
+triangulation, the global reconstructor and both bundle adjusters all produce
+`sparse_model/v1`. So `DenseVGGT` cannot run on a refined model at all, and on a
+pipeline built through the global reconstructor no `poses/v1` exists at any point.
+A capture was lost to this: its subject was specular, this file sent it to the
+learned densifier, and by then it had a globally-reconstructed, bundle-adjusted
+model and nothing the module would accept. If the learned densifier is part of the
+plan, keep the pose artifact it needs — or accept that the escape is not available
+and plan the fusion instead.
+
 **A cloud with no holes is not more complete. It is less willing to say it does not
 know.** The holes in an MVS cloud are the honest part: they sit on specular
 highlights, shadow, uniform paint, glass, anything that moved.
@@ -55,11 +67,17 @@ Two things follow:
 
 ### Runtime, and it is not a detail
 
-MVS cost is roughly `views × pixels × source_views × samples × iterations`, and it
-is measured in minutes per view at real resolution. Feed-forward depth is one
+MVS costs tens of seconds per view at the working resolution — measured, not
+extrapolated — so a full capture is a half-hour to an hour with the geometric check
+on, and up to three times that on a contended device. Feed-forward depth is one
 forward pass over the set. **This is often the deciding constraint**, and a pipeline
 that spends its budget upstream will not get to run MVS at a resolution worth
 having. Plan the dense stage first and the sparse stage around it.
+
+**If you need to buy time, the geometric check and `window_step` are the levers, not
+the resolution** — halving `max_image_size` saves under half the time while costing
+point count in proportion. The measured costs are in
+[DenseMVS tuning](../../modules/dense_mvs/skills/tuning.md#the-runtime-knobs-in-the-order-to-reach-for-them).
 
 ### A learned prior carries a scale, again
 
@@ -220,9 +238,15 @@ to stop. The route from an output you already have is one replay:
 
 | Question | Needs |
 | --- | --- |
-| **How far a dense stage's runtime model transfers** | Wall clock on shared hardware. The MVS scaling rule under-predicted by between about one-and-a-half and six times across a batch on a contended machine. |
-| **What a learned prior buys where MVS genuinely has nothing** | A capture whose target surface is textureless or reflective, with reference geometry. Both families have now been measured, but only on captures where MVS works well — which is the case MVS is best at and the case the prior is least needed in. |
-| **The runtime curve** | Wall clock against view count and resolution, on sets spanning both. "Minutes per view" is an order of magnitude, not a model. |
+| **What a learned prior buys where MVS genuinely has nothing** | A capture whose target surface is textureless or reflective, with reference geometry. Both families have now been measured, but only on captures where MVS works well — which is the case MVS is best at and the case the prior is least needed in. It is also the case the learned densifier cannot currently be reached in: see the reachability note above. |
+| **The runtime curve against view count** | Cost per view is now measured across two campaigns and the resolution and check scalings with it (below). What is still unmeasured is whether cost per view is flat in the size of the set — every capture measured sat near fifty views. |
+
+**Runtime is no longer one of them.** Over a hundred timed stereo runs across two
+campaigns put the working resolution with the geometric check on at around forty
+seconds per view, so a fifty-view capture is about half an hour and up to three times
+that on a contended device. The scalings that hold and the one that does not — halving
+the resolution buys far less than the old quadratic rule promised — are in
+[DenseMVS tuning](../../modules/dense_mvs/skills/tuning.md#the-runtime-knobs-in-the-order-to-reach-for-them).
 
 ## What HAS now been measured, against reference geometry
 

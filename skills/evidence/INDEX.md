@@ -125,6 +125,9 @@ capture name.
 | [DTU/scan15](agentic-campaign-2026-09.md#cap-dtu-scan15) | `studio-rig` · `orbit-of-an-object` | `single-object` `subject-cropped` | `target-textured` · `repeated-pattern` `repeated-parts` | `diffuse-reflector` `backdrop-clipped` | SIFT → NN → union-find → incremental → triangulate → BA | SIFT → LightGlue (same shape) | `density-decided` |
 | [DTU/scan23](agentic-campaign-2026-09.md#cap-dtu-scan23) | `studio-rig` · `orbit-of-an-object` | `single-object` `subject-cropped` | `target-textured` · `repeated-pattern` `repeated-parts` | `diffuse-reflector` `backdrop-clipped` | SIFT → NN → union-find → incremental → triangulate → BA | SIFT → LightGlue (same shape) | `density-decided` |
 | [DTU/scan33](agentic-campaign-2026-09.md#cap-dtu-scan33) | `studio-rig` · `orbit-of-an-object` | `single-object` `subject-cropped` | `target-textured` · `repeated-parts` | `coherent-reflector` `backdrop-clipped` | SIFT → NN → union-find → incremental → triangulate → BA | SIFT → LightGlue (same shape) | `density-decided` |
+| [DTU/scan48](dtu-dense-promoted-2026-09.md#scan48--the-cheap-chain-does-not-always-register-a-rig-orbit) | `studio-rig` · `orbit-of-an-object` | `single-object` `subject-cropped` | `target-flat` · `repeated-pattern` | `coherent-reflector` `backdrop-clipped` | SIFT+CLAHE → NN → **global** → BA | incremental, on either matcher (short of the capture) | `reconstructor-decided` |
+| [DTU/scan75](dtu-dense-promoted-2026-09.md#scan75--a-clean-captures-track-conflict-can-be-thirty-times-the-documented-ceiling) | `studio-rig` · `orbit-of-an-object` | `multi-object` `subject-cropped` | `target-flat` · `no-repetition` | `diffuse-reflector` `backdrop-clipped` | SIFT → NN → union-find → incremental → triangulate → BA | SIFT → LightGlue (same shape) | `density-decided` |
+| [DTU/scan77](dtu-dense-promoted-2026-09.md#scan77--a-named-escape-route-that-cannot-be-reached-and-a-health-band-that-misreads) | `studio-rig` · `orbit-of-an-object` | `single-object` `subject-cropped` | `target-flat` · `repeated-parts` | `specular-metal` `backdrop-clipped` | SIFT → **LightGlue** → global → BA | SIFT → NN (weaker model, both registered) | `density-decided` |
 | [ETH/courtyard](agentic-campaign-2026-09.md#cap-eth-courtyard) | `built-exterior` · `loop-inside-an-enclosure` | `no-single-subject` | `target-low-texture` · `repeated-pattern` `repeated-parts` | `coherent-reflector` `movers` | SIFT → LightGlue → union-find → incremental → triangulate → BA | SIFT → NN (same registration, far worse against truth) | `density-decided` |
 | [ETH/delivery_area](agentic-campaign-2026-09.md#cap-eth-delivery-area) | `built-interior` · `traverse-along-an-axis` | `no-single-subject` | `target-low-texture` · `repeated-pattern` `repeated-parts` | `diffuse-reflector` `movers` | SIFT+CLAHE → LightGlue → union-find → incremental → n-view triangulation → BA | the same chain at lower resolution; SIFT into pairwise triangulation with a ratio-test matcher and with a joint one | `density-decided` |
 | [ETH/electro](agentic-campaign-2026-09.md#cap-eth-electro) | `built-exterior` · `wander-around-a-site` | `no-single-subject` | `target-low-texture` · `repeated-pattern` `repeated-parts` | `coherent-reflector` `movers` | RoMa (detector-free, outdoor weights) → union-find → incremental → triangulate → BA, re-solved at a wider window | SIFT → LightGlue and SIFT → NN, both far short; LoFTR and SuperPoint+SuperGlue short | `matcher-decided` |
@@ -162,10 +165,22 @@ better of the two `matcher-decided` ones. The distinction is what the failing
 stage was, not how far it got, and a registered fraction alone will not tell you
 which you are looking at.
 
-**The `studio-rig` rows are unanimous and that is a property of the rig.** Seven
-orbits of an object on a controlled backdrop all shipped the same pipeline, and
-the only thing the alternative branch changed was density. A block of identical
-rows is weak evidence, not strong — it is one capture kind sampled seven times.
+**The `studio-rig` rows were unanimous, and that turned out to be the sampling and
+not the rig.** Seven orbits of an object on a controlled backdrop all shipped the
+same pipeline, with the alternative branch changing only density. A block of
+identical rows is weak evidence, not strong — it is one capture kind sampled seven
+times — and when three more orbits were added from the holdout, two of them broke
+the block, in opposite directions.
+
+One could not be registered by the prescribed chain at all: a smooth glaze whose
+only texture repeats around the subject, carrying the rig in reflection, left the
+incremental reconstructor short of the full capture on either matcher, and only the
+global one recovered it. On another the ratio test returned the *weaker* model and
+the joint matcher shipped. So a `studio-rig` row tells you what usually works on
+this capture kind, and the two traits that predict it will not are visible before
+the run — `coherent-reflector` on a subject whose texture is a repeating band, and
+a sparse model that comes out an order of magnitude thinner than the block's. Both
+are in [dtu-dense-promoted-2026-09](dtu-dense-promoted-2026-09.md).
 
 **The one `profile-misled` row is the most valuable row in the file.** A capture
 whose target is dim, nearly featureless polished plaster, and whose viewpoints

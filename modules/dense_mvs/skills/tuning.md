@@ -101,15 +101,23 @@ stop lowering the setting without reference geometry.
 
 ## The runtime knobs, in the order to reach for them
 
-1. **`max_image_size`** — quadratic in both directions. 600 px to answer "does this
-   pipeline work at all" in half a minute, then the real value.
-2. **`geom_consistency: false`** — halves the time and is the only one of these
-   that changes what the result *means*: nothing checks the depths against each
+1. **`geom_consistency: false`** — about 2.4× on a full capture, and the only one of
+   these that changes what the result *means*: nothing checks the depths against each
    other across views. On a well-posed capture that is also the better delivery
    setting — see "Delivering a dense cloud" — but not when the poses are in doubt.
-3. **`num_samples`** — linear. 15 → 8 is a real saving with visible noise cost.
-4. **`window_step: 2`** — roughly halves the correlation cost above ~1000 px, where
-   neighbouring pixels are nearly redundant. Below that it just loses accuracy.
+2. **`window_step: 2`** — about 2.2× above ~1000 px, where neighbouring pixels are
+   nearly redundant. Below that it just loses accuracy. This is the cheapest real
+   saving that leaves the meaning of the result alone.
+3. **`max_image_size`** — **weaker than it looks, and weaker than this file used to
+   say.** Halving it saved about 1.75×, not the 4× a quadratic in it predicts,
+   measured on captures that ran both resolutions. It still costs point count in
+   proportion, so it is a poor trade for time alone. 600 px to answer "does this
+   pipeline work at all" in under a minute, then go to the real value.
+4. **`num_samples`** — linear. 15 → 8 is a real saving with visible noise cost.
+
+The per-view costs these come from are in
+`skills/evidence/dtu-dense-promoted-2026-09.md`; the eight-view table above predicts
+the shape of the curve but not its height at real view counts.
 
 ## Nothing survives the filters
 
@@ -126,7 +134,11 @@ measured trade — see above.)
 **The scene is low-texture.** Lower `filter_min_ncc` toward 0.05. Reflective,
 transparent and untextured surfaces are where PatchMatch has nothing to correlate,
 and no setting invents evidence — this is the case for `DenseVGGT` instead, whose
-learned prior fills what it cannot verify.
+learned prior fills what it cannot verify. **But check first that you can reach it:**
+it consumes a `poses/v1`, which no stage after the pose one produces, so a refined
+model cannot feed it and a globally-reconstructed pipeline never has one. See
+[plan/dense.md](../../../skills/plan/dense.md). If it is out of reach, the fusion
+setting is the lever that remains.
 
 **The baselines are small.** `filter_min_triangulation_angle` defaults to 3
 degrees. A drone or handheld sequence with small steps between frames may need

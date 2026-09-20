@@ -1169,6 +1169,20 @@ the matcher for a jointly-reasoning one — no re-detection needed.
 returns the largest model of the three on a well-conditioned capture, and costs
 no GPU.
 
+**"Well-conditioned" is doing real work in that sentence, and two captures have
+shown what happens when it does not hold.** Both were controlled rig orbits — the
+kind this rule is safest on — and both broke it, in opposite directions. On one, a
+smooth glaze whose only texture was a band repeating around the subject, with the
+rig appearing in reflection and moving with the viewpoint, the cheap branch could
+not register the capture at all on *either* matcher; the global reconstructor did.
+On the other, a faceted metal subject, the cheap branch registered everything but
+returned the weaker model — well under half the points and a worst-frame count an
+order of magnitude lower — and the joint matcher shipped. The shared signature is
+visible before the dense stage and after the first solve: **a sparse model that
+comes back an order of magnitude thinner than the capture kind usually gives.**
+When that happens, the branch question is still open; carry the alternative rather
+than accepting the cheap model because the rule named it.
+
 **Asked in that order, this reproduces the best-performing branch on thirteen of
 the fourteen captures measured** — the miss being a marginal one where two branches
 finished within a sixth of each other. Asked in the other order it fails on every

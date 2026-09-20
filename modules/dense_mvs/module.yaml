@@ -30,10 +30,11 @@ description: |
   stores observations already undistorted, this module re-applies the distortion on
   the way in — a closed-form step, unlike undistortion.
 
-  Runtime is the thing to plan around. Cost is roughly `views × pixels ×
-  source_views × num_samples × num_iterations`, and it is measured in minutes per
-  view at full resolution, not seconds. `max_image_size` is the parameter that
-  matters most for that, and it is a quality/time trade rather than a free win.
+  Runtime is the thing to plan around, and it is measured in tens of seconds per
+  view at the working resolution, not seconds. The knob that moves it most is
+  `geom_consistency`, then `window_step`; `max_image_size` is a weaker time lever
+  than it looks, and it costs point count in proportion, so it is a quality trade
+  rather than a way to buy time.
 
 image: sfmstack/dense-mvs:1.0.0
 entrypoint: adapter:run
@@ -41,8 +42,10 @@ resources:
   gpu: true
   min_ram_gb: 16
   # Hint for ~12 views at max_image_size 1600 with geometric consistency on --
-  # i.e. two PatchMatch sweeps per view. Scale it linearly in view count and
-  # quadratically in max_image_size.
+  # i.e. two PatchMatch sweeps per view. Scales linearly in view count. It does NOT
+  # scale quadratically in max_image_size: measured across two dense campaigns,
+  # doubling the long edge cost about 1.75x, while the check costs about 2.4x and
+  # window_step 2 saves about 2.2x.
   expected_duration_s: 900
   timeout_s: 21600
 
@@ -63,10 +66,12 @@ params:
       Longest image dimension PatchMatch runs at. 0 uses the undistorted image at
       full resolution.
     tuning: >
-      The dominant runtime knob and a genuine trade, not a free win: cost is
-      roughly quadratic in this, and so is the point count. Start at 1600. Drop to
-      800 to find out in minutes whether a pipeline works at all, then raise it for
-      the run that matters. Above ~2400 the memory per view starts to matter more
+      A genuine quality/time trade, but a weaker time lever than it looks: point
+      count is roughly quadratic in this, while measured runtime is not -- doubling
+      the long edge cost about 1.75x across two dense campaigns. Reach for
+      geom_consistency or window_step to buy time, and move this to buy detail.
+      Start at 1600. Drop to 800 to find out in minutes whether a pipeline works at
+      all, then raise it for the run that matters. Above ~2400 the memory per view starts to matter more
       than the detail gained, because PatchMatch holds several full-resolution
       float images per source view.
 
