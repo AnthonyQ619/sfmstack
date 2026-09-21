@@ -143,8 +143,15 @@ def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
     env = environment(capture, gpu, scratch, batch, scope, control)
     procedure = PROCEDURES[scope]
     if prompt is None:
+        # Name the brief's fields rather than splatting: a --batch entry carries its own
+        # `capture` key alongside the two paths, and `capture` is already passed here by
+        # name, so splatting handed str.format() two of them and the batch path could not
+        # start an agent at all. It went unnoticed because the only earlier use of --batch
+        # was the smoke test, which supplies its own prompt and never reaches this line.
+        paths = paths_for(capture, batch, control)
         prompt = BRIEF.format(procedure=procedure, capture=capture, goal=GOALS[scope],
-                              **paths_for(capture, batch, control))
+                              image_dir=paths["image_dir"],
+                              calibration_path=paths["calibration_path"])
     log = {"capture": capture, "gpu": gpu, "scope": scope, "control": control,
            "started": time.time(), "attempts": []}
     resume = None
