@@ -271,6 +271,16 @@ points a later stage cannot distinguish from real surface, which misplaces whate
 fitted to the cloud, while a tighter one only leaves holes. Where the two densifier
 families sit on that same trade is the axis above.
 
+**That default is the safe choice under ignorance, not the better cloud.** It is right
+when something downstream will fit geometry to the cloud, because a stray point there
+costs more than a hole. It is the wrong end of the trade when the cloud itself is the
+deliverable and will be judged as a whole — a balanced accuracy-and-coverage score
+charges the hole and the stray equally, and a tightly fused cloud gives up more on the
+one than it gains on the other, particularly where coverage is already the weaker half.
+**So depart from the default only when the task names a use that says to**; do not
+guess at how the result will be judged, and do not loosen fusion in the hope of a
+better score.
+
 **Look at the cloud before you accept it.** Every densifier's published readings are
 scalars, and none of them separates a clean surface from a clean surface wrapped in
 strays — a cloud can carry a healthy point count, a healthy view count and a plausible

@@ -90,7 +90,7 @@ of those seven.
 | Away from studio orbits, accuracy holds and completeness is the axis that falls; scores climb steeply with the tolerance, which is the signature of a cloud that is coarse rather than absent | `modules/dense_mvs/skills/tuning.md`, "What this was measured on"; `plan/dense.md`, "What HAS now been measured" | the Protocol A means: F1 30 → 53 → 73 → 80 across 1, 2, 5 and 10 cm, with accuracy already at 80 by 2 cm |
 | Deliver the fused cloud, not the raw per-view depth, on sites carrying sky, foliage or glass | `modules/dense_mvs/skills/limitations.md`, "Per-view depth is not a deliverable" | Protocol B: the cloud beat per-view depth on five of seven, and by roughly three times on accuracy in the mean |
 | Per-view depth cannot be written at all when a capture's views differ in resolution | `modules/dense_mvs/skills/limitations.md` | two of nine captures produced no depth maps for that reason |
-| Placement by the capture's own cameras is sound on this kind of site | not stated as guidance; recorded here | eight of nine placed within 1.1 cm, the ninth at 3.6 cm with four of its cameras misplaced by the sparse stage |
+| Placement by the capture's own cameras is sound on this kind of site | not stated as guidance; recorded here | nine of nine placed within 1.1 cm, spanning 0.12–0.97 cm. **Corrected 2026-09-20.** This row first read "eight of nine, the ninth at 3.6 cm": the scoring script had been placing each cloud by the *first* sparse model in its lineage rather than the refined one the cloud was actually built on, on all thirteen captures. On one the difference was nearly fivefold, and that capture was the outlier. It still has four cameras the robust fit excludes; what was wrong was its distance, not its cameras |
 
 ## What these rows do NOT support
 
@@ -101,4 +101,6 @@ of those seven.
   the resolution cannot be separated here. That the two are linked is a reading of the
   tolerance curve, not a measurement against a second resolution.
 - **Nothing about generalisation.** All nine are corpus captures; the context was fitted
-  on them. The four held-out captures of this dataset are what that question needs.
+  on them. The four held-out captures of this dataset are what that question needs, and
+  they are deliberately not described here — a holdout that has been written down has
+  stopped being one. A run against them is kept in the experiment record instead.
