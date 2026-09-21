@@ -56,13 +56,15 @@ A bundle adjuster that refines K writes `intrinsics` into its output, and every
 consumer that finds them prefers them — because a pose refined jointly with a K is
 not consistent with an older K. Mixing them is a silent error.
 
-**On a calibrated capture, do not refine them to lower the error.** Measured over a
-batch of studio orbits carrying a shipped calibration: freeing the focal length cut
-reprojection error and moved the reconstruction several times further from where
-reference geometry says it belongs, and freeing the principal point as well was far
-worse again at an unchanged error. An orbit lets focal length trade against depth,
-so the optimiser buys the objective by resizing the scene — and no reading inside
-the pipeline separates that from an improvement. Treat a refined focal that departs
+**On a calibrated capture, do not refine them to lower the error.** Tested directly,
+by refining the same models twice and changing only this: freeing the focal length cut
+reprojection error and moved the reconstruction between one and a half and five times
+further from where reference geometry says it belongs. It did so on **every capture
+tried, on both close-range orbits and site captures**, so this is not a property of
+one kind of scene. Freeing the principal point as well was far worse again at an
+unchanged error. Focal length trades against depth, so the optimiser buys the
+objective by resizing the scene — and no reading inside the pipeline separates that
+from an improvement. Treat a refined focal that departs
 from the shipped value by more than a fraction of a percent as a warning rather
 than a result; `estimated_focal_ratio` and `focal_spread` are where it shows.
 

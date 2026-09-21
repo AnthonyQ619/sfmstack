@@ -100,19 +100,28 @@ Bounded by what VGGT predicts, which is a learned monocular prior refined across
 views. It is smooth, complete, and locally plausible; it is not photometrically
 verified anywhere.
 
-**Now measured against reference geometry, on studio orbits of compact subjects.**
-Against MVS on the same captures and the same poses, this module is *several times*
-less accurate on the surface it does cover, and meaningfully more complete. The two
-are mirror images: choose on which error the deliverable can afford.
+**Now measured against reference geometry, on close-range orbits of compact subjects
+and on site captures.** Against MVS on the same captures and the same poses, this
+module is the *less accurate* of the two on the surface it does cover — on every
+capture tried, on both kinds — and the more complete. The two are mirror images:
+choose on which error the deliverable can afford.
 
-**Its cloud does not repair an MVS cloud at fine tolerance**, which is the use this
-family split most invites. Measured three ways on the same capture: MVS alone was
-the best result; the union of the two clouds was several times worse; and adding
-predicted points only where MVS had nothing nearby was worse still. The reason is
-where the predicted points are — most of them sit far from any verified surface, on
-the backdrop, on the support surface and in empty space, not in the holes. As a
-*coverage instrument* — showing what a capture contains — it is doing its job. As a
-patch for a verified cloud at millimetre tolerance, it is not.
+**Its cloud does not repair an MVS cloud**, which is the use this family split most
+invites. Measured four ways on the same capture — MVS alone, this module alone, their
+union, and MVS plus predicted points only where MVS had nothing nearby — **that last
+one was never the best of the four, on any capture tried, in either dataset.** The
+reason is where the predicted points are: most sit far from any verified surface, on
+the backdrop, on the support surface and in empty space, not in the holes.
+
+**Where this module does win, it wins on coverage, not on being right.** On captures
+whose MVS cloud is reasonably complete, MVS alone is the better deliverable. On
+captures where MVS coverage has collapsed, this module — and the plain union — score
+substantially better, while *still* being the less accurate cloud. So the honest
+reading is the one above: it is a coverage instrument, and the verified cloud's own
+completeness is what says whether coverage is the thing that went wrong. Read
+accuracy and completeness separately when judging this; their average stops
+separating a tight cloud from a loose one exactly in the cases where the question
+comes up.
 
 ## Only posed views contribute
 
