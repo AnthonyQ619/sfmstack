@@ -1,5 +1,5 @@
 name: SparseVerification
-version: 1.0.2
+version: 1.1.0
 kind: analysis
 summary: >
   A veto on finished sparse models: rejects one that contradicts the matcher's
@@ -46,7 +46,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.0.2
+image: sfmstack/sparse-verification:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -60,8 +60,8 @@ types:
   - type: custom/verification/v1
     summary: A sparse model's agreement with pairwise evidence it was not fit on.
     description: |
-      One row per matched pair whose two images are both registered, plus three
-      scalar metrics. Written by SparseVerification. The per-pair array is the
+      One row per matched pair whose two images are both registered, plus the
+      scalar metrics below. Written by SparseVerification. The per-pair array is the
       point when a model is contradicted: a contradiction confined to the pairs
       across one part of the capture says where the solve went wrong.
     files:
@@ -96,6 +96,18 @@ types:
               under the model's relative pose, in undistorted working-resolution
               pixels. NaN where the pair had too few held-out correspondences to
               give a stable median.
+          residual_all_px:
+            required: false
+            shape: [null]
+            dtype: [float32, float64]
+            description: >
+              The same distance over ALL of the pair's correspondences, not only
+              the held-out ones. Never NaN where the pair was scored at all, and
+              it rests on hundreds of correspondences where residual_px rests on
+              tens. It is not independent of the solve and the veto does not read
+              it; it is what supported_components is computed from, because that
+              reading needs a per-pair median stable enough not to cut a sound
+              pair loose by chance.
     invariants:
       - check: same_length
         args: {file: pairs, arrays: [image_pair, matches, held_out, residual_px]}
@@ -112,6 +124,21 @@ types:
       pairs_verified:
         direction: neutral
         meaning: Pairs with enough held-out correspondences to contribute to the reading.
+      heldout_residual_mrad:
+        direction: lower_better
+        nullable: true
+        meaning: heldout_residual_px as an angle, divided by the median focal length.
+      supported_components:
+        direction: lower_better
+        meaning: >
+          Connected components the agreeing pairs induce on the registered cameras.
+      supported_largest_share:
+        direction: higher_better
+        meaning: Share of registered cameras in the largest such component.
+      agreeing_pair_share:
+        direction: higher_better
+        nullable: true
+        meaning: Share of scored pairs whose residual_all_px is within the inlier threshold.
 
 consumes:
   scene: {type: scene/v1, required: true}
@@ -184,6 +211,66 @@ metrics:
       are the pairs the reading is made of. Read it beside the capture's pair
       count: a reading resting on a few pairs describes those pairs.
 
+  heldout_residual_mrad:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      heldout_residual_px divided by the capture's median focal length in the same
+      pixels, so the reading is an angle and comparable between cameras. A pixel
+      tolerance is not: the same pixel figure is several times the angular error on
+      a wide-angle camera as on a long lens, which is why a px ceiling cannot be
+      read across captures of different focal length. See
+      plan/scene_to_pipeline.md trap 11.
+
+      **Deliberately banded nowhere.** The veto is the px threshold, and a second
+      band here would contradict it: across nineteen corpus captures that all
+      delivered, this reads 0.05 to 1.76 mrad, and the capture at the top of that
+      range sits comfortably inside the px ceiling it is judged by. Any mrad
+      ceiling tight enough to be interesting would fail a capture the module
+      passes. Use it to compare captures, not to judge one.
+
+  supported_components:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Take only the pairs whose held-out correspondences AGREE with the model --
+      residual within inlier_threshold_px -- and count the connected components
+      they induce on the registered cameras. One component means the model rests
+      on a single connected body of evidence. More than one means the model is a
+      set of internally consistent pieces joined across pairs its own geometry
+      contradicts, which is the shape of a wrong-but-self-consistent solve and is
+      invisible to registration, reprojection error, and to this module's own
+      weighted-median reading, because an average over pairs cannot express a
+      graph property.
+
+      Measured on nineteen corpus captures that all delivered: eighteen read
+      exactly 1, and the one exception read 2 with 96.8% of its cameras in the
+      largest -- a single camera hanging off. The band's ceiling is set from that.
+
+  agreeing_pair_share:
+    direction: higher_better
+    nullable: true
+    meaning: >
+      Of the pairs this module scored, the share whose all-correspondence residual
+      is within inlier_threshold_px -- the edges supported_components is built
+      from. It is the same evidence as the component count without the graph
+      structure, and the two come apart: across nineteen corpus captures that all
+      delivered it ranged from 0.70 to 1.00, and the lowest of those read one
+      component holding every camera. So a low share is not itself a fault; it is
+      context for the component reading, not a second version of it.
+
+  supported_largest_share:
+    direction: higher_better
+    healthy: [0.95, null]
+    meaning: >
+      Cameras in the largest agreeing component, over registered cameras. Read it
+      with supported_components, which alone cannot distinguish one stray camera
+      from a model in halves. The floor is above the worst corpus reading (0.968)
+      so that a single detached camera does not fire the diagnostic. Both readings
+      describe consistency with evidence and not accuracy: a capture whose matcher
+      produced many wrong pairs can read low here while the averaging survived them,
+      so a low reading is a reason to look, not a verdict that the model is wrong.
+
 diagnostics:
   - code: contradicted_by_held_out_evidence
     severity: error
@@ -193,6 +280,14 @@ diagnostics:
       - "Do not choose between models on reprojection error or registration. A wrong model that is self-consistent satisfies both, and has been measured satisfying them better than the correct one."
       - "Read the per-pair residual_px array: a contradiction confined to the pairs across one part of the capture says where the solve went wrong."
     see_also: limitations.md#what-a-contradiction-means
+  - code: model_not_supported_by_its_own_evidence
+    severity: error
+    message: The pairs that agree with the model do not connect it; it is internally consistent pieces joined across pairs it contradicts.
+    suggested_actions:
+      - "Read the per-pair residual_px array: the pairs bridging two pieces are where the model and its evidence part company, and they are the candidates for wrong correspondences that verified anyway."
+      - "On a scene with repeated or instanced structure this is the expected shape of a self-matching failure. Rotation averaging distributes one wrong relative pose over the whole graph, so the remedy is upstream in the matcher rather than in a threshold here."
+      - "Compare against another matcher's pairwise_matches of the same scene. If the pieces persist across matchers the capture is at fault; if they move, the matcher is."
+    see_also: limitations.md#a-model-can-be-in-pieces-and-the-residual-will-not-say-so
   - code: nothing_held_out
     severity: warn
     message: No pair had enough correspondences the model did not already use; the model is unverified, not verified.

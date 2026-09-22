@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.0.2
+module_version: 1.1.0
 produces: custom/verification/v1
 ---
 
@@ -17,9 +17,25 @@ both registered in the model:
 | `matches` | `[n]` | the matcher's correspondences on the pair |
 | `held_out` | `[n]` | of those, how many the model did not use |
 | `residual_px` | `[n]` | median epipolar distance of the held-out ones under the model's relative pose; NaN where too few were held out |
+| `residual_all_px` | `[n]` | the same distance over ALL the pair's correspondences, not only the held-out ones; never NaN on a scored pair |
 
-Three metrics summarise it: `heldout_residual_px`, `held_out_share` and
-`pairs_verified`.
+The metrics summarising it: `heldout_residual_px` and its angular twin
+`heldout_residual_mrad`, `held_out_share`, `pairs_verified`, and the three graph
+readings `supported_components`, `supported_largest_share` and
+`agreeing_pair_share`.
+
+**Why there are two residual columns, and which to read.** `residual_px` is the
+veto's: held-out correspondences are evidence the solve never saw, which is what
+makes a contradiction meaningful. `residual_all_px` is not independent of the
+solve and the veto ignores it — it exists because it rests on hundreds of
+correspondences where the held-out median rests on tens, and the component reading
+needs a per-pair estimate stable enough not to cut a sound camera loose by chance.
+Built on the held-out column instead, that reading fragmented five of nineteen
+corpus captures that had all delivered. So: read `residual_px` to ask whether the
+model is contradicted, `residual_all_px` to ask which pairs hold it together.
+
+Artifacts written before module version 1.1.0 do not carry `residual_all_px`; it
+is optional on the type for that reason.
 
 ## "Used" and "held out"
 

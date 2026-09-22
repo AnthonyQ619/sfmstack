@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.0.2
+module_version: 1.1.0
 curated_at: 2026-09-12
 ---
 
@@ -39,6 +39,72 @@ one a single solve lands in is not under the agent's control.
 4. If every solve is contradicted, the evidence itself is inconsistent with any
    single geometry. Look upstream — the matcher's `cycle_merge_rate`, the
    tracker's `inconsistent_rate` — rather than at the solver.
+
+## A model can be in pieces, and the residual will not say so
+
+*Symptom:* `model_not_supported_by_its_own_evidence`. `supported_components`
+above 1 with `supported_largest_share` below 0.95 — and note this can fire while
+`heldout_residual_px` sits inside its band.
+
+The two readings answer different questions and they come apart. The residual asks
+how far the evidence is from the model, over all pairs at once. The components ask
+whether the pairs that *agree* with the model still connect it. A solve whose every
+local neighbourhood is correct, and whose neighbourhoods are held at wrong
+orientations with respect to each other, has a majority of good pairs — so the
+weighted median can stay low — while the pairs joining the pieces are contradicted.
+An average over pairs cannot express a graph property, and this is the shape it
+cannot express.
+
+**Why it matters more than the scalar.** Registration, reprojection error and every
+rung of the health profile are computed over what the solve kept, and a piecewise
+model satisfies all of them; it reads as a full reconstruction. The component count
+is the one reading here that is structural rather than averaged, which is why the
+router names it first.
+
+*The corpus range.* Across nineteen captures that all delivered — studio rig
+orbits and outdoor and indoor site walks — **eighteen read exactly one component
+holding every registered camera.** The single exception read two, with 96.8% in the
+largest: one camera hanging off the end of a walk. So a healthy reading is not
+merely "usually one", it is one, and the band's floor sits just above that
+exception so a single stray camera does not raise an error.
+
+*What to do:*
+
+1. **Read the per-pair array for the pairs that bridge two pieces.** Those are
+   where the model and its evidence part company, and they are the candidates for
+   wrong correspondences that verified anyway.
+2. **Do not reach for a threshold in this module.** Widening
+   `inlier_threshold_px` merges the pieces by declaring the contradicting pairs
+   acceptable, which changes the reading and not the model.
+3. **Suspect the matcher, and specifically repeated structure.** Two copies of one
+   object match each other confidently and consistently, so such a pair earns its
+   inlier ratio honestly and no confidence filter reaches it. Rotation averaging
+   then spreads that single wrong relative pose over the whole graph — which is
+   why a global reconstructor fails this way where an incremental one localises
+   the damage. `SparseGlobalCOLMAP`'s own limitations file carries the mechanism.
+4. **Settle capture against matcher by changing the matcher.** Run this module
+   again with a different matcher's `pairwise_matches` of the same scene, which is
+   the one call it is worth making by hand. Pieces that persist across matchers
+   point at the capture; pieces that move point at the matcher.
+
+*What this does NOT tell you.* It measures consistency with evidence, not accuracy
+— the same limit the rest of this file states for the residual. A capture whose
+matcher produced many wrong pairs can read low here while the averaging survived
+them and the model is substantially right, so treat a low reading as a reason to
+look rather than a verdict. And the components are computed only over registered
+cameras: an unregistered camera is absent from this reading entirely, and
+`registered_fraction` is what reports that.
+
+**It is deliberately a conservative reading, and the floor is where it is because
+of that.** The band was set so that no capture in the reference corpus raises an
+error, which means the threshold sits well away from the merely imperfect. The
+cost is the other direction: a model fragmented into a few pieces whose largest
+still holds most of the cameras reads above the floor and stays silent. So silence
+here is weak evidence, in the way this file already says of the residual, and
+`supported_components` above 1 is worth reading even when the diagnostic does not
+fire — trap 0 in `plan/scene_to_pipeline.md` is the general form of that. What it
+is built to catch without fail is the collapse: the model that registered
+everything and is in pieces.
 
 ## When nothing is held out
 

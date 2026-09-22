@@ -427,6 +427,33 @@ comparison the profile can actually make — same reconstructor, or a
 reconstruction-free check such as reprojection distributions split by
 observation count — and say in the plan that the vector was short a rung.
 
+**One reading does survive into this hole, and it is not a rung.**
+`SparseVerification` publishes `supported_components` and
+`supported_largest_share`: of the pairs whose held-out correspondences agree with
+the model, how many connected components they leave on the registered cameras.
+It needs only poses and matches, both of which a global reconstructor has, so
+unlike the yield rungs it is evaluable on exactly the branch that opens this gap.
+Across nineteen corpus captures that all delivered, eighteen read one component
+containing every camera and one read two with 96.8% in the largest.
+
+Three things to keep straight about it:
+
+- **It is not a substitute for yield.** Yield asks what share of the available
+  structure the pipeline kept; this asks whether the evidence agreeing with the
+  model still connects it. A model can be one component and have discarded most
+  of its structure, so this does not restore the discriminator you lost — it
+  covers a different failure that the profile also cannot see.
+- **It is structural, which is why it does not saturate.** Every rung here is a
+  percentile against the reference corpus, and percentiles flatten outside it: an
+  out-of-corpus capture can read the same extreme value on a rung for every
+  candidate, and then the weakest-rung scalar orders nothing. A component count
+  is not a percentile. It is a property of the model and its own matches, with the
+  same meaning on a capture unlike anything in the corpus.
+- **It is a veto's reading, so treat it as one.** More than one component is a
+  reason to stop and look upstream, not a score to rank two models by. And it
+  speaks to consistency with evidence rather than accuracy, the same limit the
+  held-out residual carries.
+
 ---
 
 ## Comparing two finished models

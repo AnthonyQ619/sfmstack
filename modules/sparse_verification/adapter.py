@@ -176,6 +176,35 @@ def nearest_point(index_f, q: np.ndarray) -> np.ndarray:
     return best
 
 
+def component_sizes(nodes, edges) -> list[int]:
+    """Sizes of the connected components `edges` induce on `nodes`, largest first.
+
+    Union-find rather than a graph library: the module's only dependencies are numpy
+    and OpenCV, and this is twenty lines.
+    """
+    at = {v: k for k, v in enumerate(nodes)}
+    parent = list(range(len(at)))
+
+    def find(a: int) -> int:
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]      # path halving
+            a = parent[a]
+        return a
+
+    for i, j in edges:
+        a, b = at.get(int(i)), at.get(int(j))
+        if a is None or b is None:
+            continue
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+    sizes: dict[int, int] = {}
+    for a in range(len(at)):
+        r = find(a)
+        sizes[r] = sizes.get(r, 0) + 1
+    return sorted(sizes.values(), reverse=True)
+
+
 def weighted_median(values, weights) -> float:
     v, w = np.asarray(values, dtype=np.float64), np.asarray(weights, dtype=np.float64)
     order = np.argsort(v)
@@ -247,9 +276,17 @@ def run(ctx: Ctx):
             float(np.median(sampson(F, block[held])))
             if n_held >= p.min_held_out_per_pair else float("nan")
         )
-        rows.append((i, j, len(block), n_held, residual))
+        # The same test over ALL of the pair's correspondences. This is not
+        # independent evidence and is not what the veto reads; it is the
+        # well-determined per-pair median, resting on hundreds of correspondences
+        # where the held-out one rests on tens. The component reading below needs
+        # that: a noisy per-pair median disconnects the agreeing subgraph by
+        # chance, and on corpus captures with few held-out pairs it was measured
+        # doing exactly that.
+        residual_all = float(np.median(sampson(F, block)))
+        rows.append((i, j, len(block), n_held, residual, residual_all))
 
-    arr = np.array(rows, dtype=np.float64).reshape(-1, 5)
+    arr = np.array(rows, dtype=np.float64).reshape(-1, 6)
     verified = np.isfinite(arr[:, 4])
     reading = (
         weighted_median(arr[verified, 4], arr[verified, 3]) if verified.any() else None
@@ -263,11 +300,80 @@ def run(ctx: Ctx):
         matches=arr[:, 2].astype(np.int64),
         held_out=arr[:, 3].astype(np.int64),
         residual_px=arr[:, 4],
+        residual_all_px=arr[:, 5],
     )
     out.metric("heldout_residual_px", None if reading is None else round(reading, 4),
                direction="lower_better", healthy=(None, 3.0))
     out.metric("held_out_share", round(share, 4), direction="neutral")
     out.metric("pairs_verified", int(verified.sum()), direction="neutral")
+
+    # The per-pair residuals read as a graph rather than as an average.
+    #
+    # A weighted median answers "how far is the evidence from the model". It cannot
+    # answer "is the evidence that agrees with the model still connected", and those
+    # come apart on exactly the failure this module exists to catch: a model whose
+    # every local neighbourhood is solved correctly and whose neighbourhoods are held
+    # at wrong relative orientations reads as fully registered, and the pairs that
+    # disagree are the ones joining the pieces. Averaging them in hides the seam;
+    # counting components over the agreeing pairs alone shows it.
+    #
+    # Computed on residual_all_px, not on the held-out residual, and the reason is
+    # measured rather than aesthetic: over nineteen corpus captures that all
+    # delivered, the held-out version fragmented on five of them -- worst where
+    # held-out pairs were fewest -- because a median over tens of correspondences is
+    # noisy enough to drop a sound pair below the threshold and cut a camera loose.
+    # The all-correspondence median rests on hundreds and read one component on
+    # eighteen of the nineteen. This reading does not need independence from the
+    # solve: a model in pieces is contradicted by the matches it kept as well.
+    focal = float(np.median([(K_model[i][0, 0] + K_model[i][1, 1]) / 2.0
+                             for i in sorted(pose)])) if pose else float("nan")
+    # No healthy band. The veto is the px threshold, and a second band in mrad
+    # would contradict it: a corpus capture reading well inside the px ceiling
+    # reads 1.76 mrad, because the px threshold is per-capture by construction.
+    # This is the comparable number, not a second gate.
+    out.metric("heldout_residual_mrad",
+               None if reading is None or not np.isfinite(focal)
+               else round(1000.0 * reading / focal, 4),
+               direction="lower_better")
+    supported = np.isfinite(arr[:, 5]) & (arr[:, 5] <= p.inlier_threshold_px)
+    agreeing = arr[supported]
+    sizes = component_sizes(sorted(pose), agreeing[:, :2].astype(np.int64))
+    largest = (sizes[0] / len(pose)) if sizes and pose else 0.0
+    out.metric("supported_components", len(sizes),
+               direction="lower_better", healthy=(None, 1))
+    out.metric("supported_largest_share", round(largest, 4),
+               direction="higher_better", healthy=(0.95, None))
+    out.metric("agreeing_pair_share",
+               round(float(supported.sum() / len(arr)), 4) if len(arr) else None,
+               direction="higher_better")
+
+    if len(sizes) > 1 and largest < 0.95:
+        out.diagnostic(
+            "model_not_supported_by_its_own_evidence",
+            severity="error",
+            message=(
+                f"The pairs whose held-out correspondences agree with this model do "
+                f"not connect it: they leave {len(sizes)} pieces, the largest holding "
+                f"{largest:.0%} of the {len(pose)} registered cameras "
+                f"(sizes {', '.join(str(s) for s in sizes[:6])}"
+                f"{', ...' if len(sizes) > 6 else ''}). Every piece is internally "
+                f"consistent and they are joined across pairs the model contradicts, "
+                f"so registration and reprojection error cannot see this."
+            ),
+            suggested_actions=[
+                "Read the per-pair array: the pairs bridging two pieces are where the "
+                "model and its evidence part company, and they are candidates for "
+                "wrong correspondences that verified anyway.",
+                "On a scene with repeated or instanced structure this is the expected "
+                "shape of a self-matching failure. Averaging distributes one wrong "
+                "relative pose over the whole graph, so the remedy is upstream in the "
+                "matcher, not in a threshold here.",
+                "Compare against another matcher's pairwise_matches of the same scene. "
+                "If the pieces persist across matchers the capture is at fault; if "
+                "they move, the matcher is.",
+            ],
+            see_also="limitations.md#a-model-can-be-in-pieces-and-the-residual-will-not-say-so",
+        )
 
     if reading is None:
         out.diagnostic(

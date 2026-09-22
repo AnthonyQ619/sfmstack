@@ -40,33 +40,14 @@ cloud roughly half the size — it triangulates only tracks reaching
 
 ## What `max_epipolar_error` actually admits
 
-The parameter is in working-resolution pixels, but rotation averaging does not
-receive pixels. It receives the angle those pixels subtend, which is the threshold
-divided by the focal length in those same pixels — so one setting is a different
-tolerance on every camera.
-
-Every capture behind the numbers on this page is a long-focal camera. The studio
-rig sits near 2900 px and the site captures near 3400 px, so the 1.0 px default is
-between 0.29 and 0.35 mrad throughout. A wide-angle camera — a built interior shot
-to fit the room in, an action camera, most handheld indoor work — has a focal
-length of a few hundred pixels, and there the same 1.0 px is around 2 mrad: five to
-seven times the angular slack at an identical parameter value.
-
-Two consequences, and they pull in opposite directions:
-
-- **Do not scale the pixel value down to compensate.** Keypoint localisation error
-  is roughly constant in pixels and does not shrink with the image, so a threshold
-  much below a pixel rejects sound correspondences at any resolution. The default
-  sits near that floor and belongs there.
-- **Do price a step upward in angle rather than in pixels.** Raising 1.0 to 3.0
-  costs about 0.7 mrad of extra slack on a long-focal capture and around 4 on a
-  wide-angle one. The advice on this page to raise it one step was written for the
-  former; on the latter it is a much larger move than it looks, and the
-  repeated-structure case below is the one that cannot afford it.
-
-`downscale_factor` does not tell you which case you are in. A scene that was never
-resized reads 1.000 and can still be the short-focal one. The focal length in the
-calibration is what to read.
+The parameter is in working-resolution pixels, but rotation averaging receives the
+angle those pixels subtend — the threshold over the focal length in the same pixels.
+Every capture behind the numbers on this page is a long lens, so the 1.0 px default
+has only ever been read here at about a third of a milliradian; on a wide-angle
+camera it is several times that at the identical value, and a step upward costs
+correspondingly more. `plan/scene_to_pipeline.md` trap 11 carries the conversion,
+both directions of the trade, and what rests on arithmetic rather than measurement.
+The thinning diagnostic below now reports the figure for the scene in hand.
 
 ## `verified_pairs` is zero
 
@@ -98,10 +79,21 @@ two cases below it is not. Settle which case you are in before loosening anythin
   `limitations.md` carries the mechanism — averaging spreads one wrong relative
   rotation over the whole graph, where incremental localises it. Read
   `repetitiveness` from the scene analysis before touching `max_epipolar_error` at
-  all, and raise `min_inlier_ratio` toward 0.5 instead. Note also that a matcher's
-  confidence filter does not substitute for this: a wrong match between two copies
-  of the same object is a *confident* one, so tightening the matcher removes sound
-  correspondences ahead of the ambiguous ones.
+  all. Note also that a matcher's confidence filter does not substitute for this: a
+  wrong match between two copies of the same object is a *confident* one, so
+  tightening the matcher removes sound correspondences ahead of the ambiguous ones.
+
+  **What to do instead is genuinely open, and the remedy `limitations.md` names is
+  reasoned rather than measured.** That file says to raise `min_inlier_ratio`
+  toward 0.5. It is the parameter aimed at this hazard and worth a probe, but be
+  clear about why it might not work: it is a threshold on the *same* inlier
+  evidence the wrong pairs already satisfy. A match between two copies of one
+  object is geometrically consistent, so it earns a high inlier ratio honestly, and
+  a filter reading that quantity has no purchase on it. Nothing in this corpus
+  isolates the case, so there is no measured cut point. Probe it, read the effect
+  rather than assuming it, and if the model does not move, treat this as the shape
+  with no parameter behind it: the damage was done in the matcher, and no setting
+  in this module recovers a view graph whose wrong pairs outnumber its right ones.
 - **A heavily downscaled scene.** Raise `max_epipolar_error`.
 - **`inlier_ratio` healthy and `planarity` low, yet pairs still dropped.** Raise
   `max_epipolar_error` one step and watch `mean_reprojection_error`: if error
@@ -185,12 +177,16 @@ numbers in the `min_num_matches`, `min_track_len`, `max_epipolar_error`,
 `min_inlier_ratio`, `min_tri_angle_deg`, `ba_num_iterations` advice (and one
 more) are settings that worked here, not published results.
 
-**"What `max_epipolar_error` actually admits" rests on a different kind of
-evidence, and it is worth naming.** The conversion is arithmetic — a pixel
-tolerance over a focal length is an angle — and the focal lengths quoted for the
-corpus are read from its calibrations, not measured from any run. So the *size* of
-the effect is exact and the *claim that it matters downstream* is inference from
-this module's own limitation on wrong relative rotations, not a controlled
-comparison. Nothing here has been swept across focal lengths. The
-repeated-structure bullet below it is a restatement of `limitations.md`, moved to
-where the diagnostic sends a reader; it adds no new measurement.
+**Two sections here rest on something other than this module's runs.** The
+angular reading of `max_epipolar_error` is arithmetic — a pixel tolerance over a
+focal length is an angle — over focal lengths read from the corpus calibrations
+rather than measured from any run; it now lives in `plan/scene_to_pipeline.md`
+trap 11, with the same caveat, because a module tuning topic is pulled and a
+reader who does not fetch it never sees the correction. The repeated-structure
+bullet restates `limitations.md` in the place the thinning diagnostic sends a
+reader, and then downgrades that file's `min_inlier_ratio` remedy from a
+prescription to a probe. **That downgrade is an argument, not a measurement**: the
+filter reads the same inlier evidence a self-matching object already satisfies, so
+in principle it has no purchase on it. No capture in this corpus isolates repeated
+structure sharply enough to test the claim either way, which is the honest reason
+no cut point is given rather than an omission.

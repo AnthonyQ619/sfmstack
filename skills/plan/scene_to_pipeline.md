@@ -808,6 +808,13 @@ Two corollaries worth stating, because both have cost runs:
    listed in the brief's `rebuild_scene`, separately from `menu` — `menu` is what
    consumes a scene, so the module that made it can never appear there, and readers
    have repeatedly concluded from that it did not exist.
+   **The remedy can also simply not exist.** A capture whose frames are already
+   small has nothing to build a larger scene from: `downscale_factor` reads 1.000,
+   `low_working_resolution` fires anyway, and every suggested action assumes a
+   larger source. Then this trap has one remedy, not two, and §2's flat-not-burnt
+   row is where to go — exposure normalisation at detection, which that row
+   measures as the stronger of the pair regardless. Trap 11 is the other half of
+   what a small frame costs.
 8. **A capture can split into disconnected halves and no metric says so.**
    An outdoor site walked in two passes and a long frontage walked end to end have
    both done it. `pairing: exhaustive`, watch `graph_components`.
@@ -844,6 +851,29 @@ Two corollaries worth stating, because both have cost runs:
    §3b as a result; two others cited the sentence as authority. **A correction that
    overshoots is worse than the error it corrects**, because it arrives with the
    credibility of a retraction. State what the re-run changed, not what it rescued.
+11. **A pixel-denominated threshold is an angle in disguise, and the corpus fixes
+   the conversion at one end of its range.** `max_epipolar_error`,
+   `ransac_threshold`, `merge_eps_px`, `max_reprojection_error` and the rest are
+   all quoted in working-resolution pixels, but what the geometry downstream
+   receives is the pixel value over the focal length in those same pixels. Every
+   calibration in this corpus is a long lens — the studio rig near 2900 px, the
+   site captures near 3400 px — so a 1.0 px tolerance has only ever been read here
+   at about a third of a milliradian. A wide-angle camera, which is most built
+   interiors shot to fit the room in and most handheld indoor work, carries a focal
+   length of a few hundred pixels, and there the same 1.0 px is around 2 mrad: five
+   to seven times the angular slack at an identical parameter value. Two
+   consequences. **Do not scale the pixel number down to compensate** — keypoint
+   localisation error is roughly constant in pixels and does not shrink with the
+   frame, so a tolerance far below a pixel rejects sound correspondences at any
+   resolution. **Do price a step upward in angle rather than in pixels** — the same
+   nominal step from 1.0 to 3.0 costs about 0.7 mrad on a long lens and around 4 on
+   a wide one, so advice written on this corpus to "raise it one step" is a
+   materially larger move off it. And note which quantity tells you: not
+   `downscale_factor`, which reads 1.000 on a capture that was never resized and
+   can still be the wide-angle case, but the focal length in the calibration.
+   **This is arithmetic over the corpus calibrations, not a sweep.** Nothing here
+   has been measured across focal lengths, so treat the size of the conversion as
+   exact and the claim that it matters downstream as inference.
 
 ---
 

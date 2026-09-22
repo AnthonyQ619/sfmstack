@@ -547,7 +547,10 @@ def run(ctx: Ctx):
                 "Read repetitiveness from the scene analysis first. Where a facade "
                 "or an instanced object matches itself, verification is the only "
                 "stage that removes those pairs and raising the threshold admits "
-                "them; raise min_inlier_ratio toward 0.5 instead.",
+                "them. min_inlier_ratio toward 0.5 is the probe aimed at that "
+                "hazard, but it thresholds the same inlier evidence a "
+                "self-matching object already satisfies, so read its effect "
+                "rather than assuming it works.",
                 "Check the matcher's planarity; degenerate pairs fail correctly.",
                 f"Otherwise raise max_epipolar_error above {p.max_epipolar_error} "
                 f"(working-resolution pixels) -- but price the step in angle, not "

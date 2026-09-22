@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.0.2
+module_version: 1.1.0
 upstream: none -- numpy, and OpenCV for undistortion only
 curated_at: 2026-09-13
 sources: 0
@@ -17,9 +17,13 @@ This file is the router. The detail lives in the other four documents.
 | you are reading the per-pair array | **`artifact`** — the layout of `custom/verification/v1` |
 | you want to know where a claim came from | **`sources`** — what was measured, and what rests on nothing |
 
-**First reading on this module's output:** `heldout_residual_px`, then `pairs_verified`.
+**First reading on this module's output:** `supported_components` and
+`supported_largest_share` together, then `heldout_residual_px`. The residual is an
+average and the components are a graph property; a model can read a clean residual
+and still be in pieces, and the pieces are the failure this module exists to catch.
 
-**Diagnostics it can raise:** `contradicted_by_held_out_evidence`, `nothing_held_out`.
+**Diagnostics it can raise:** `contradicted_by_held_out_evidence`,
+`model_not_supported_by_its_own_evidence`, `nothing_held_out`.
 
 ## What this module is for
 
