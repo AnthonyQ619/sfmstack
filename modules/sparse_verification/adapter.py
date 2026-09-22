@@ -341,13 +341,25 @@ def run(ctx: Ctx):
     largest = (sizes[0] / len(pose)) if sizes and pose else 0.0
     out.metric("supported_components", len(sizes),
                direction="lower_better", healthy=(None, 1))
+    # No band on the share: it is camera-count dependent and so cannot carry one.
+    # A single stray camera reads 0.968 on a 31-image capture and 0.933 on a
+    # 15-image one -- the same physical situation, on opposite sides of any fixed
+    # floor. supported_components carries the band; this is how to read it.
     out.metric("supported_largest_share", round(largest, 4),
-               direction="higher_better", healthy=(0.95, None))
+               direction="higher_better")
+    out.metric("supported_second_size", sizes[1] if len(sizes) > 1 else 0,
+               direction="lower_better", healthy=(None, 1))
     out.metric("agreeing_pair_share",
                round(float(supported.sum() / len(arr)), 4) if len(arr) else None,
                direction="higher_better")
 
-    if len(sizes) > 1 and largest < 0.95:
+    # Gate on the SECOND component's size, not on the largest's share, for the
+    # reason above: one camera whose agreeing pairs do not reach the rest is a
+    # stray and occurs in the reference corpus on a capture that delivered. Two or
+    # more cameras forming their own island is a split model. Scale-free, and on
+    # the twenty-four models this was checked against it agrees exactly with the
+    # share rule it replaces while not punishing a small capture for its size.
+    if len(sizes) > 1 and sizes[1] >= 2:
         out.diagnostic(
             "model_not_supported_by_its_own_evidence",
             severity="error",

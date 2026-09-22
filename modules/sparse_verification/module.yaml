@@ -135,6 +135,9 @@ types:
       supported_largest_share:
         direction: higher_better
         meaning: Share of registered cameras in the largest such component.
+      supported_second_size:
+        direction: lower_better
+        meaning: Cameras in the second largest such component; zero when the model is in one piece.
       agreeing_pair_share:
         direction: higher_better
         nullable: true
@@ -261,15 +264,33 @@ metrics:
 
   supported_largest_share:
     direction: higher_better
-    healthy: [0.95, null]
     meaning: >
       Cameras in the largest agreeing component, over registered cameras. Read it
       with supported_components, which alone cannot distinguish one stray camera
-      from a model in halves. The floor is above the worst corpus reading (0.968)
-      so that a single detached camera does not fire the diagnostic. Both readings
-      describe consistency with evidence and not accuracy: a capture whose matcher
-      produced many wrong pairs can read low here while the averaging survived them,
-      so a low reading is a reason to look, not a verdict that the model is wrong.
+      from a model in halves.
+
+      **Deliberately banded nowhere, because the quantity is camera-count
+      dependent and so cannot carry a fixed floor.** One stray camera reads 0.968
+      on a 31-image capture and 0.933 on a 15-image one: the same physical
+      situation on opposite sides of any threshold, which would charge a small
+      capture for being small. supported_second_size is the scale-free form and is
+      what the diagnostic gates on.
+
+  supported_second_size:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Cameras in the SECOND largest agreeing component -- zero when the model is in
+      one piece. This is the reading that separates a stray from a split: one
+      camera whose agreeing pairs do not reach the rest occurs in the reference
+      corpus on a capture that delivered, while two or more cameras forming their
+      own island is a model in pieces. Unlike the share, it does not change meaning
+      with the number of cameras.
+
+      Both these readings describe consistency with evidence and not accuracy: a
+      capture whose matcher produced many wrong pairs can read clean here while the
+      averaging survived them, so a poor reading is a reason to look, not a verdict
+      that the model is wrong.
 
 diagnostics:
   - code: contradicted_by_held_out_evidence

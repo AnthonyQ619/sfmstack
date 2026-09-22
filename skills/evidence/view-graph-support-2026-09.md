@@ -43,15 +43,23 @@ that reads on models already known to be good.
 | | components | largest share | agreeing pairs | residual (mrad) |
 |---|---|---|---|---|
 | 18 of the 19 | **1** | **100%** | 69.5–100% | 0.052–1.756 |
-| `kicker` | 2 | 96.8% | 99.5% | 0.235 |
+| `kicker` | 2 (second of size **1**) | 96.8% | 99.5% | 0.235 |
 
 Every studio-rig orbit and eight of the nine site walks read exactly one component
 holding every registered camera. `kicker` is the single exception: two components
 with 96.8% of its cameras in the largest, which is one camera hanging off.
 
-**That is the whole basis for the band** — `supported_components` ceiling 1,
-`supported_largest_share` floor 0.95, the floor set just above `kicker` so a single
-stray camera does not raise an error.
+**That is the whole basis for the band** — `supported_components` ceiling 1, and
+`supported_second_size` ceiling 1, which is what the diagnostic gates on.
+
+The gate was first written on `supported_largest_share` with a floor of 0.95, and
+that is wrong for a reason worth recording: the share is camera-count dependent.
+One stray camera reads 0.968 on `kicker`'s 31 images and would read 0.933 on
+`meadow`'s 15 — the same situation on either side of any fixed floor, penalising
+the smaller capture for its size. The second component's size does not move with
+the camera count. Checked against all 24 models in this campaign and the ICL
+batch, the two rules fire on exactly the same three; the scale-free one was kept
+because it will not diverge on a capture smaller than any measured here.
 
 **It is a description of 19 successes, not a discrimination experiment.** No capture
 here reads as pieces, so this campaign fixes the healthy end of the reading and says

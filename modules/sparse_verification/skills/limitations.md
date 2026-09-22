@@ -43,7 +43,7 @@ one a single solve lands in is not under the agent's control.
 ## A model can be in pieces, and the residual will not say so
 
 *Symptom:* `model_not_supported_by_its_own_evidence`. `supported_components`
-above 1 with `supported_largest_share` below 0.95 — and note this can fire while
+above 1 with `supported_second_size` at 2 or more — and note this can fire while
 `heldout_residual_px` sits inside its band.
 
 The two readings answer different questions and they come apart. The residual asks
@@ -63,10 +63,21 @@ router names it first.
 
 *The corpus range.* Across nineteen captures that all delivered — studio rig
 orbits and outdoor and indoor site walks — **eighteen read exactly one component
-holding every registered camera.** The single exception read two, with 96.8% in the
-largest: one camera hanging off the end of a walk. So a healthy reading is not
-merely "usually one", it is one, and the band's floor sits just above that
-exception so a single stray camera does not raise an error.
+holding every registered camera.** The single exception read two, the second of
+size one: a camera hanging off the end of a walk. So a healthy reading is not
+merely "usually one", it is one.
+
+*Why the gate is the second component's SIZE and not the largest's share.* The
+share cannot carry a fixed floor, because it means different things at different
+camera counts: one stray camera reads 0.968 on a thirty-camera capture and 0.933
+on a fifteen-camera one, the same situation on either side of any threshold, and a
+floor set between them charges a small capture for being small. The second
+component's size does not move with the camera count. One camera that the agreeing
+pairs do not reach is a stray, and the corpus contains one on a capture that
+delivered; two or more cameras forming their own island is a split. Both rules
+were checked against the same twenty-four models and agree on every one — the
+scale-free one was kept because it will not diverge on a capture smaller than any
+measured here.
 
 *What to do:*
 
