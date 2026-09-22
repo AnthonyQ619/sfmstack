@@ -38,13 +38,44 @@ For contrast, the incremental chain on the same input needs
 cloud roughly half the size — it triangulates only tracks reaching
 `min_track_len` views, where the incremental path keeps two-view points.
 
+## What `max_epipolar_error` actually admits
+
+The parameter is in working-resolution pixels, but rotation averaging does not
+receive pixels. It receives the angle those pixels subtend, which is the threshold
+divided by the focal length in those same pixels — so one setting is a different
+tolerance on every camera.
+
+Every capture behind the numbers on this page is a long-focal camera. The studio
+rig sits near 2900 px and the site captures near 3400 px, so the 1.0 px default is
+between 0.29 and 0.35 mrad throughout. A wide-angle camera — a built interior shot
+to fit the room in, an action camera, most handheld indoor work — has a focal
+length of a few hundred pixels, and there the same 1.0 px is around 2 mrad: five to
+seven times the angular slack at an identical parameter value.
+
+Two consequences, and they pull in opposite directions:
+
+- **Do not scale the pixel value down to compensate.** Keypoint localisation error
+  is roughly constant in pixels and does not shrink with the image, so a threshold
+  much below a pixel rejects sound correspondences at any resolution. The default
+  sits near that floor and belongs there.
+- **Do price a step upward in angle rather than in pixels.** Raising 1.0 to 3.0
+  costs about 0.7 mrad of extra slack on a long-focal capture and around 4 on a
+  wide-angle one. The advice on this page to raise it one step was written for the
+  former; on the latter it is a much larger move than it looks, and the
+  repeated-structure case below is the one that cannot afford it.
+
+`downscale_factor` does not tell you which case you are in. A scene that was never
+resized reads 1.000 and can still be the short-focal one. The focal length in the
+calibration is what to read.
+
 ## `verified_pairs` is zero
 
 Nothing entered the view graph, so there was nothing to average. In order:
 
 1. **`max_epipolar_error` is in WORKING-resolution pixels.** This is the usual
    cause. 1.0 px is tight; on a scene downscaled to `max_edge: 640` real
-   correspondences land further off the epipolar line than that. Try 2–4.
+   correspondences land further off the epipolar line than that. Try 2–4, and read
+   the section above first for what that costs at this scene's focal length.
 2. **`min_num_matches` (30) against the matcher's `min_matches_per_pair`.** If the
    matcher's weakest pair is below 30, those pairs never reach verification.
 3. **`min_inlier_ratio` (0.25)** last. Lower it only when the matcher's own
@@ -53,10 +84,24 @@ Nothing entered the view graph, so there was nothing to average. In order:
 ## `verified_pairs` far below `pairs_matched`
 
 The module rejected a large share of what the matcher produced. That is often
-correct — verification here is stricter than the matcher's — but check which:
+correct — verification here is stricter than the matcher's — and the diagnostic
+that reports it frames its own rejection as something to undo, which on the first
+two cases below it is not. Settle which case you are in before loosening anything:
 
 - **The matcher's `planarity` near 1.0 on many pairs.** Those pairs are planar or
   rotation-only and *should* fail. Nothing to fix here.
+- **Repeated structure in the scene.** A facade, a row of identical windows, the
+  same furniture instanced twice: these produce matches that are confident,
+  geometrically consistent, and relate the wrong two places. Verification is the
+  only stage that removes them, so here the rejection is the thing doing the work,
+  and raising the threshold admits exactly the pairs you needed dropped.
+  `limitations.md` carries the mechanism — averaging spreads one wrong relative
+  rotation over the whole graph, where incremental localises it. Read
+  `repetitiveness` from the scene analysis before touching `max_epipolar_error` at
+  all, and raise `min_inlier_ratio` toward 0.5 instead. Note also that a matcher's
+  confidence filter does not substitute for this: a wrong match between two copies
+  of the same object is a *confident* one, so tightening the matcher removes sound
+  correspondences ahead of the ambiguous ones.
 - **A heavily downscaled scene.** Raise `max_epipolar_error`.
 - **`inlier_ratio` healthy and `planarity` low, yet pairs still dropped.** Raise
   `max_epipolar_error` one step and watch `mean_reprojection_error`: if error
@@ -139,3 +184,13 @@ measured so far, not judgements on yours, fitted on eight runs. The specific
 numbers in the `min_num_matches`, `min_track_len`, `max_epipolar_error`,
 `min_inlier_ratio`, `min_tri_angle_deg`, `ba_num_iterations` advice (and one
 more) are settings that worked here, not published results.
+
+**"What `max_epipolar_error` actually admits" rests on a different kind of
+evidence, and it is worth naming.** The conversion is arithmetic — a pixel
+tolerance over a focal length is an angle — and the focal lengths quoted for the
+corpus are read from its calibrations, not measured from any run. So the *size* of
+the effect is exact and the *claim that it matters downstream* is inference from
+this module's own limitation on wrong relative rotations, not a controlled
+comparison. Nothing here has been swept across focal lengths. The
+repeated-structure bullet below it is a restatement of `limitations.md`, moved to
+where the diagnostic sends a reader; it adds no new measurement.

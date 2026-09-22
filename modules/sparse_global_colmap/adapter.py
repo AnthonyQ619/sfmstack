@@ -528,6 +528,11 @@ def run(ctx: Ctx):
     out.metric("models_found", len(models), direction="neutral")
 
     if verified < 0.7 * len(image_pair):
+        # max_epipolar_error is a pixel value standing in for an angle, and it is the
+        # angle that reaches rotation averaging. Reporting it in pixels alone lets a
+        # reader take the same nominal step on a wide-angle capture that the default
+        # was set on with a long lens, where it is several times the slack.
+        focal_px = float(np.median((K_all[:, 0, 0] + K_all[:, 1, 1]) / 2.0)) or 1.0
         out.diagnostic(
             "graph_thinned_by_verification",
             severity="warn",
@@ -536,9 +541,19 @@ def run(ctx: Ctx):
                 f"({verified / max(len(image_pair), 1):.0%})."
             ),
             suggested_actions=[
-                f"Raise max_epipolar_error above {p.max_epipolar_error} "
-                f"(working-resolution pixels).",
+                # Ordered deliberately. This rejection is as often correct as not,
+                # and the two cases where it is correct are cheap to check, so they
+                # come before the action that undoes it.
+                "Read repetitiveness from the scene analysis first. Where a facade "
+                "or an instanced object matches itself, verification is the only "
+                "stage that removes those pairs and raising the threshold admits "
+                "them; raise min_inlier_ratio toward 0.5 instead.",
                 "Check the matcher's planarity; degenerate pairs fail correctly.",
+                f"Otherwise raise max_epipolar_error above {p.max_epipolar_error} "
+                f"(working-resolution pixels) -- but price the step in angle, not "
+                f"in pixels: at this scene's focal length the current value admits "
+                f"{1000.0 * p.max_epipolar_error / focal_px:.2f} mrad, against "
+                f"0.3 mrad or so on the long-focal captures the default was set on.",
             ],
             see_also="tuning.md#verified_pairs-far-below-pairs_matched",
         )
