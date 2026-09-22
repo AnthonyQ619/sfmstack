@@ -30,8 +30,8 @@ makes a contradiction meaningful. `residual_all_px` is not independent of the
 solve and the veto ignores it — it exists because it rests on hundreds of
 correspondences where the held-out median rests on tens, and the component reading
 needs a per-pair estimate stable enough not to cut a sound camera loose by chance.
-Built on the held-out column instead, that reading fragmented five of nineteen
-corpus captures that had all delivered. So: read `residual_px` to ask whether the
+Built on the held-out column instead, that reading fragmented roughly a quarter of
+the corpus captures that had all delivered. So: read `residual_px` to ask whether the
 model is contradicted, `residual_all_px` to ask which pairs hold it together.
 
 Artifacts written before module version 1.1.0 do not carry `residual_all_px`; it

@@ -226,11 +226,11 @@ metrics:
       plan/scene_to_pipeline.md trap 11.
 
       **Deliberately banded nowhere.** The veto is the px threshold, and a second
-      band here would contradict it: across nineteen corpus captures that all
-      delivered, this reads 0.05 to 1.76 mrad, and the capture at the top of that
-      range sits comfortably inside the px ceiling it is judged by. Any mrad
-      ceiling tight enough to be interesting would fail a capture the module
-      passes. Use it to compare captures, not to judge one.
+      band here would contradict it: across the corpus this spans more than an
+      order of magnitude, and the capture at the top of that range sits comfortably
+      inside the px ceiling it is judged by. Any mrad ceiling tight enough to be
+      interesting would fail a capture the module passes. Use it to compare
+      captures, not to judge one.
 
   supported_components:
     direction: lower_better
@@ -246,9 +246,11 @@ metrics:
       weighted-median reading, because an average over pairs cannot express a
       graph property.
 
-      Measured on nineteen corpus captures that all delivered: eighteen read
-      exactly 1, and the one exception read 2 with 96.8% of its cameras in the
-      largest -- a single camera hanging off. The band's ceiling is set from that.
+      Measured across the corpus captures that delivered: all but one read exactly
+      1, and the exception read 2 with a single camera hanging off. The ceiling is
+      set from that. Per-capture figures live in the campaign file rather than
+      here, deliberately -- a share or a residual carried across from another
+      capture is a threshold nobody fitted.
 
   agreeing_pair_share:
     direction: higher_better
@@ -257,8 +259,8 @@ metrics:
       Of the pairs this module scored, the share whose all-correspondence residual
       is within inlier_threshold_px -- the edges supported_components is built
       from. It is the same evidence as the component count without the graph
-      structure, and the two come apart: across nineteen corpus captures that all
-      delivered it ranged from 0.70 to 1.00, and the lowest of those read one
+      structure, and the two come apart: across the corpus it ranges from roughly
+      seven tenths up to one, and the capture at the BOTTOM of that range reads one
       component holding every camera. So a low share is not itself a fault; it is
       context for the component reading, not a second version of it.
 
@@ -270,11 +272,12 @@ metrics:
       from a model in halves.
 
       **Deliberately banded nowhere, because the quantity is camera-count
-      dependent and so cannot carry a fixed floor.** One stray camera reads 0.968
-      on a 31-image capture and 0.933 on a 15-image one: the same physical
-      situation on opposite sides of any threshold, which would charge a small
-      capture for being small. supported_second_size is the scale-free form and is
-      what the diagnostic gates on.
+      dependent and so cannot carry a fixed floor.** One stray camera on a capture
+      of a few dozen views leaves a share in the high nineties; the same stray on a
+      capture of a dozen or so leaves it several points lower. Same situation,
+      opposite sides of any fixed threshold, which would charge a small capture for
+      being small. supported_second_size is the scale-free form and is what the
+      diagnostic gates on.
 
   supported_second_size:
     direction: lower_better

@@ -441,10 +441,20 @@ def run(ctx: Ctx):
         if reading > p.inlier_threshold_px
         else f"consistent ({reading:.3f}px <= {p.inlier_threshold_px:.1f}px)"
     )
+    # The verdict above is the VETO's, and it is a statement about one average. On a
+    # model in pieces it reads "consistent" while this module raises an error on the
+    # same output, which is correct and looks like a contradiction unless the note
+    # says which reading is which.
+    pieces = (
+        "" if len(sizes) <= 1 else
+        f" The pairs that agree with the model leave it in {len(sizes)} pieces "
+        f"(largest {largest:.0%} of {len(pose)} cameras), which that verdict is an "
+        f"average over and cannot express; read supported_components beside it."
+    )
     out.note(
         f"Held-out verification over {int(verified.sum())} of {len(arr)} registered "
-        f"pairs: {verdict}. {share:.1%} of the matcher's correspondences on those "
-        f"pairs were not used by the model and served as the test set. Consistency "
-        f"with held-out evidence is not accuracy: an error every pair's "
+        f"pairs: {verdict}.{pieces} {share:.1%} of the matcher's correspondences on "
+        f"those pairs were not used by the model and served as the test set. "
+        f"Consistency with held-out evidence is not accuracy: an error every pair's "
         f"correspondences allow reads clean here."
     )

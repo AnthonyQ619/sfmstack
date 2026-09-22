@@ -61,17 +61,20 @@ model satisfies all of them; it reads as a full reconstruction. The component co
 is the one reading here that is structural rather than averaged, which is why the
 router names it first.
 
-*The corpus range.* Across nineteen captures that all delivered — studio rig
-orbits and outdoor and indoor site walks — **eighteen read exactly one component
-holding every registered camera.** The single exception read two, the second of
-size one: a camera hanging off the end of a walk. So a healthy reading is not
-merely "usually one", it is one.
+*The corpus range.* Across every corpus capture that delivered — studio rig orbits
+and outdoor and indoor site walks — **all but one read a single component holding
+every registered camera**, and the exception read two, the second of size one: a
+camera hanging off the end of a walk. So a healthy reading is not merely "usually
+one", it is one. The figures are in
+[evidence/view-graph-support-2026-09](../../../skills/evidence/view-graph-support-2026-09.md);
+do not carry a share from there as a threshold, for the reason immediately below.
 
 *Why the gate is the second component's SIZE and not the largest's share.* The
 share cannot carry a fixed floor, because it means different things at different
-camera counts: one stray camera reads 0.968 on a thirty-camera capture and 0.933
-on a fifteen-camera one, the same situation on either side of any threshold, and a
-floor set between them charges a small capture for being small. The second
+camera counts. One stray camera on a capture of a few dozen views leaves a share in
+the high nineties; the same stray on a capture of a dozen or so leaves it several
+points lower. Same situation, and any fixed floor falls between them — charging a
+small capture for being small, and passing a genuinely split large one. The second
 component's size does not move with the camera count. One camera that the agreeing
 pairs do not reach is a stray, and the corpus contains one on a capture that
 delivered; two or more cameras forming their own island is a split. Both rules

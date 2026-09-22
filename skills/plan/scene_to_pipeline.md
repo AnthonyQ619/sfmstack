@@ -856,19 +856,21 @@ Two corollaries worth stating, because both have cost runs:
    `ransac_threshold`, `merge_eps_px`, `max_reprojection_error` and the rest are
    all quoted in working-resolution pixels, but what the geometry downstream
    receives is the pixel value over the focal length in those same pixels. Every
-   calibration in this corpus is a long lens — the studio rig near 2900 px, the
-   site captures near 3400 px — so a 1.0 px tolerance has only ever been read here
-   at about a third of a milliradian. A wide-angle camera, which is most built
-   interiors shot to fit the room in and most handheld indoor work, carries a focal
-   length of a few hundred pixels, and there the same 1.0 px is around 2 mrad: five
-   to seven times the angular slack at an identical parameter value. Two
+   calibration in this corpus is a long lens — the rig and the site captures alike
+   sit in the low thousands of pixels — so a 1.0 px tolerance has only ever been
+   read here at roughly a third of a milliradian. A wide-angle camera, which is
+   most built interiors shot to fit the room in and most handheld indoor work,
+   carries a focal length of a few hundred pixels, and there the same 1.0 px is
+   several times that slack at an identical parameter value. **Read your own
+   calibration rather than these figures**: the conversion is one division, and a
+   focal length carried across from another capture is a threshold nobody fitted. Two
    consequences. **Do not scale the pixel number down to compensate** — keypoint
    localisation error is roughly constant in pixels and does not shrink with the
    frame, so a tolerance far below a pixel rejects sound correspondences at any
    resolution. **Do price a step upward in angle rather than in pixels** — the same
-   nominal step from 1.0 to 3.0 costs about 0.7 mrad on a long lens and around 4 on
-   a wide one, so advice written on this corpus to "raise it one step" is a
-   materially larger move off it. And note which quantity tells you: not
+   nominal step from 1.0 to 3.0 costs well under a milliradian on a long lens and
+   several on a wide one, so advice written on this corpus to "raise it one step"
+   is a materially larger move off it. And note which quantity tells you: not
    `downscale_factor`, which reads 1.000 on a capture that was never resized and
    can still be the wide-angle case, but the focal length in the calibration.
    **This is arithmetic over the corpus calibrations, not a sweep.** Nothing here

@@ -40,31 +40,45 @@ and the component reading's in
   co-visibility weighting, and comparison against each pair's own two-view fit —
   are described, with why each failed, in the adapter's module docstring.
 - **That the agreeing pairs of a delivered model form one component.** The
-  component reading recomputed over nineteen corpus captures that all delivered a
-  dense reconstruction — ten studio-rig orbits and nine site walks, indoor and
-  out. Eighteen read exactly one component containing every registered camera;
-  one read two with 96.8% of its cameras in the largest, a single camera hanging
-  off. That is the whole basis for the `supported_components` ceiling of 1 and the
-  `supported_largest_share` floor of 0.95, and it is a description of nineteen
-  successes rather than a discrimination experiment: **no corpus capture in it
-  reads as pieces, so the corpus fixes the healthy end of this reading and says
-  nothing about where the unhealthy end begins.** The separation is wide enough
-  that a floor had to be chosen rather than fitted.
+  component reading recomputed over every corpus capture that delivered a dense
+  reconstruction — studio-rig orbits and site walks, indoor and out. All but one
+  read a single component containing every registered camera; the exception read
+  two, the second of size one, a camera hanging off the end of a walk. That is the
+  whole basis for the `supported_components` and `supported_second_size` ceilings
+  of 1, and it is a description of successes rather than a discrimination
+  experiment: **no corpus capture reads as pieces, so the corpus fixes the healthy
+  end of this reading and says nothing about where the unhealthy end begins.** The
+  separation is wide enough that a ceiling had to be chosen rather than fitted.
+  Per-capture figures are in the campaign file; carry none of them as a threshold.
 - **That the component reading has to use `residual_all_px` and not the held-out
   residual, which is why the more independent quantity is the wrong one here.**
   Built first on the held-out residual, the obvious choice given what the rest of
-  this module does, and run over the same nineteen. It fragmented five of them:
-  three, four and five components on three rig orbits and three on one site walk,
-  the worst of them the capture with the fewest scored pairs. **Two would have
+  this module does, and run over the same set. It fragmented roughly a quarter of
+  them — several rig orbits and a site walk, into a handful of components each,
+  worst on the capture with the fewest scored pairs. **More than one would have
   raised an error on a capture that delivered.** The cause is sample size, not
   geometry — a held-out median rests on tens of correspondences where the
   all-correspondence median rests on hundreds, and a noisy per-pair median drops
   sound pairs below the threshold and cuts cameras loose. Recomputed on
-  `residual_all_px`, the same nineteen gave the eighteen-of-nineteen result above.
+  `residual_all_px`, the same set gave the all-but-one result above.
   So this reading trades independence for a stable per-pair estimate, and the
   trade is sound because a model in pieces is contradicted by the correspondences
   it KEPT as well as by the ones it did not — independence is what the veto needs,
   not what a connectivity test needs.
+
+- **That the shipped container computes all of this correctly**, and not merely the
+  adapter's functions driven in-process. The 1.1.0 image run by hand on two corpus
+  captures, chosen as the hardest cases rather than the easiest: the rig orbits the
+  discarded held-out design fragmented worst and thinnest, the capture with the
+  highest residual and lowest agreeing share, the smallest capture in the corpus,
+  and the only one that reads two components. Every one reproduced the in-process
+  computation exactly and every one stayed silent, the last correctly treating its
+  stray camera as a stray. A model known from reference geometry to be badly wrong
+  was run through the same image and did raise the error, so both directions are
+  exercised. The artifact sealed with the new
+  column present and `residual_all_px` finite on every scored pair where
+  `residual_px` is NaN on half of them, which is the sample-size problem that
+  design was discarded for, visible in one artifact.
 
 ## Reasoned, not measured
 
@@ -80,9 +94,10 @@ and the component reading's in
   observation that a self-matching pair satisfies an inlier-ratio filter honestly.
   No capture in this corpus isolates repeated structure sharply enough to test it.
 - **`heldout_residual_mrad`** is a unit conversion of the px reading by the
-  capture's focal length. It is deliberately given no band: the corpus range is
-  0.05 to 1.76 mrad, and the capture at the top of that sits well inside the px
-  ceiling it is actually judged by, so any mrad band tight enough to be useful
+  capture's focal length. It is deliberately given no band: across the corpus it
+  spans more than an order of magnitude, from a small fraction of a milliradian to
+  under two, and the capture at the top of that range sits well inside the px
+  ceiling it is actually judged by — so any mrad band tight enough to be useful
   would fail a capture this module passes. Nothing has been swept across focal
   lengths; see `plan/scene_to_pipeline.md` trap 11 for what rests on arithmetic.
 

@@ -433,8 +433,8 @@ observation count — and say in the plan that the vector was short a rung.
 the model, how many connected components they leave on the registered cameras.
 It needs only poses and matches, both of which a global reconstructor has, so
 unlike the yield rungs it is evaluable on exactly the branch that opens this gap.
-Across nineteen corpus captures that all delivered, eighteen read one component
-containing every camera and one read two with 96.8% in the largest.
+Across every corpus capture that delivered, all but one read a single component
+containing every camera; the exception read two, the second of them a lone camera.
 
 Three things to keep straight about it:
 
