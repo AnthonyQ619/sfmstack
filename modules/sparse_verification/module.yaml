@@ -229,8 +229,17 @@ metrics:
       band here would contradict it: across the corpus this spans more than an
       order of magnitude, and the capture at the top of that range sits comfortably
       inside the px ceiling it is judged by. Any mrad ceiling tight enough to be
-      interesting would fail a capture the module passes. Use it to compare
-      captures, not to judge one.
+      interesting would fail a capture the module passes.
+
+      **Read it anyway on a short-focal capture, and read it beside the veto.**
+      Measured over five families spanning well over an order of magnitude of focal
+      length, against thirteen delivered models known to be wrong: the px veto
+      caught two of them and this reading caught nearly all, and every model the
+      veto missed came from a wide-angle camera where its slack is many times the
+      angle the same pixel figure is on a long lens. It fires on roughly one good
+      model in five, so it is a reason to look again rather than a second veto --
+      which is why no band is published here and why the absence is not an
+      oversight. See plan/pose.md and evidence/sparse-pose-2026-09.md.
 
   supported_components:
     direction: lower_better

@@ -45,6 +45,15 @@ configuration therefore passes all of them, and has been measured passing them
 *better* than the correct model of the same capture. An agent deciding whether to
 check would be deciding from those same readings.
 
+**Being a fixed step is not the same as being read.** Because the verdict arrives
+unasked, it is easy to take the word and not the number. Measured over a campaign of
+seventy-five captures, thirteen delivered models were badly wrong and **eleven of
+them had been told `consistent`** — the px threshold this verdict is made against is
+a different amount of geometry on every camera, and on a short-focal capture it is
+loose by the ratio of the focal lengths. Read `heldout_residual_mrad` beside the
+verdict whenever the capture is not a long-lens one, and see
+`plan/pose.md` for what to do when the two disagree.
+
 **How to use the verdict:**
 
 - **Contradicted** — veto. Do not keep this model. If another solve of the same

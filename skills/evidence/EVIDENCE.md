@@ -30,9 +30,12 @@ rows that support it.
 | [dense-batch-2026-09](dense-batch-2026-09.md) | the whole loop to a dense cloud over the standard evaluation set of one studio-rig dataset, scored against reference surface geometry | `plan/dense.md`'s sparse-for-dense section and its measured-questions table; the placement floor and the two scoring bases; `health/ladder.md` on what the error rung cannot see; the intrinsics warning in `plan/optimization.md`; the dense modules' coverage, runtime and hole claims |
 | [second-solve-2026-09](second-solve-2026-09.md) | every configuration where points escaped the pose stage, re-solved through refinement under each candidate rule; the held-out verifier on every finished model; the sixteen captures re-run through the current service | the second solve's trigger, width, keep rule and registration tolerance; the retry for refused cameras; the verifier as a veto, and its blind spot |
 | [view-graph-support-2026-09](view-graph-support-2026-09.md) | the delivered sparse model of all 19 corpus captures of the two dense campaigns, each checked against the correspondences it was built from | `SparseVerification`'s component reading and its band; why that reading uses the all-correspondence residual and not the held-out one; the one reading in `health/ladder.md` that survives behind a global reconstructor |
+| [sparse-pose-2026-09](sparse-pose-2026-09.md) | seventy-five captures of five families driven cold to a refined sparse model, ten views each, scored against reference extrinsics as pair-wise AUC, then the verifier run over all seventy-five delivered models | that the verifier's pixel veto misses most wrong models on a short-focal camera and its angular reading does not; the hybrid rule and the frozen fill in `plan/pose.md`; the registration rung's denominator in `health/ladder.md`; that the reading does not transfer to the dense path as that path has so far been run |
 
-[CORPUS.txt](CORPUS.txt) lists the captures every quoted range in
-`plan/scene_to_pipeline.md` was fitted on. [INDEX.md](INDEX.md) is the precedent
+[CORPUS.txt](CORPUS.txt) lists the captures this corpus has already been shown the
+answer to: the benchmark captures every quoted range in `plan/scene_to_pipeline.md`
+was fitted on, and — listed separately at its foot — captures promoted since to carry
+a worked lesson in a `plan/` file. [INDEX.md](INDEX.md) is the precedent
 table — a different question ("has a capture like mine been solved before, and
 what solved it?"), kept separate because retrieval wants a row you match against
 and this tier exists to be cited and not matched. It is keyed on observed capture

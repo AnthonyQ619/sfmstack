@@ -140,6 +140,105 @@ mechanism-backed expectation and not as a measured law — and see the reliabili
 ladder in [`evidence/EVIDENCE.md`](../evidence/EVIDENCE.md) for why a predictive
 claim from this corpus is the category to trust least.
 
+---
+
+## Before you deliver a model, ask it whether it agrees with itself
+
+Everything above is about choosing an estimator. This is about the model that came
+out, and it is where this stage most often goes wrong in a way nothing else catches.
+
+**You already have this reading, and that is exactly the problem.** The service runs
+`SparseVerification` itself after the optimization stage, so a verdict comes back
+whether or not you asked for one. Across a campaign of seventy-five captures driven
+cold, thirteen delivered models were badly wrong against reference geometry — and
+**every one of the thirteen had a verifier reading in hand, which said the model was
+consistent on eleven of them.** The failure here is not a step that was skipped. It
+is a verdict that was believed.
+
+**Read the angular residual, not only the pixel one, and this is the part that will
+surprise you.** The module's veto is `heldout_residual_px`, banded at the pose
+estimator's inlier threshold. A pixel tolerance is not a fixed amount of geometry:
+the same pixel figure is a much larger angle on a wide-angle camera than on a long
+lens, and across that campaign's five families the median focal length spanned well
+over an order of magnitude. Measured against the thirteen known-wrong models, **the
+pixel veto caught two of them and the same residual read as an angle
+(`heldout_residual_mrad`) caught nearly all**. Every model the veto missed came from
+a short-focal camera, where its default slack is many times the angle it is on a
+long lens. So:
+
+- On a long-focal capture — a rig orbit, a survey camera — the px veto and the angle
+  say the same thing and there is nothing to do.
+- **On a wide-angle or short-focal capture the px veto is loose by the ratio of the
+  focal lengths, and it is the angular reading that carries the signal.** Read it,
+  compare it against what a correct model reads rather than against a published
+  ceiling, and note that the module deliberately publishes no band for it.
+
+**And the band you would compare an angle against was fitted on long lenses.** Every
+capture whose readings set the healthy end of this reading is a rig orbit or a survey
+camera. On one of the campaign's worst models the driving agent did the conversion
+itself, wrote down that its residual was around two milliradians and that this sat
+*outside a long-lens corpus* — and delivered the model anyway, because nothing told
+it which of the two readings to believe. It was wrong by more than a right angle.
+**When the px verdict and the angle disagree on a short-focal capture, the angle is
+the one carrying information**, and the px verdict's silence is not evidence.
+
+This is the same defect this corpus has already corrected once on a different axis:
+a camera-count-dependent statistic was withdrawn for a scale-free one because it put
+the same situation on either side of a fixed floor depending on capture size. See
+[`evidence/view-graph-support-2026-09.md`](../evidence/view-graph-support-2026-09.md)
+for that precedent and
+[`evidence/sparse-pose-2026-09.md`](../evidence/sparse-pose-2026-09.md) for this one.
+
+**Three readings, and what each means when it fires.**
+
+| reading | what it says | what to do |
+| --- | --- | --- |
+| angular residual well above what a correct model of this capture reads | the model disagrees with correspondences it was never fit on | do not deliver without looking again — below |
+| `supported_second_size` at one or more | the model's own agreeing evidence leaves a camera or a group disconnected | the same, and the disconnected piece names where to look |
+| `nothing_held_out` | the model is too small to check at all | **unverified, not verified.** Say so in the report and do not let it pass as clean |
+
+**It is a reason to look again, never a discard.** At any sensitivity that catches
+the wrong models, the angular reading also fires on roughly one good model in five,
+and two of the most accurate models in that campaign are among its false alarms —
+shallow-relief interiors that read high and are excellent. That is not a flaw to be
+tuned away: this reading measures consistency with evidence, never accuracy, and a
+shallow subject is exactly where the two come apart. Weigh it as a constraint that
+has fired, in the sense [`health/ladder.md`](../health/ladder.md) uses, and then
+decide.
+
+### When it fires, fill rather than swap — and do not refine the fill
+
+Where the reading fires *and* the geometric branch is holding cameras its own
+matcher cannot justify, the remedy measured to work is narrower than the wholesale
+swap above.
+
+**Keep the geometric core. Use the feed-forward estimator only for the cameras the
+core cannot support.** Measured over the worst captures in that campaign, this beat
+both the geometric model as delivered and the feed-forward estimator run alone, at
+every threshold — where the wholesale swap, as the section above records, buys
+coverage at the cost of accuracy. Fit a similarity from the feed-forward frame into
+the core's frame on the cameras they share and deliver **one** model; that alignment
+is cheap and it *gains* at tight thresholds, because a mixed pair then has the
+accurate core on one side of it.
+
+**Then freeze the filled cameras. Do not put them in the global refinement.** This
+is the single largest effect in the whole result and it runs against the obvious
+expectation. Bundle adjustment over the combined model **helps the geometric core on
+every capture and badly damages the fill** — pairs touching a filled camera came out
+several times worse refined than left at their feed-forward estimate, with the share
+of catastrophic pairs rising by a factor of several. The mechanism is plain once
+stated: refinement drags those cameras using exactly the correspondences that were
+too thin to register them in the first place. Refine the core, hold the fill fixed,
+and say in the report which cameras are which.
+
+**And do not reach for this every time the reading fires.** One of the two captures
+promoted into [CORPUS.txt](../evidence/CORPUS.txt) is there to be the counter-example:
+a wide-FOV room capture that the verifier flags on both readings, that was **already
+good**, and that the hybrid made distinctly worse. Where the geometric branch is
+holding its cameras on evidence it actually has, filling is a downgrade. The trigger
+is the reading *together with* cameras the view graph cannot justify — not the
+reading alone.
+
 **Global reconstruction instead** when `registered_fraction` is low on an
 *unordered* set and the matcher's `graph_components` is 1. That combination says
 the correspondences are there and the order is the problem.
@@ -287,7 +386,8 @@ angle is usually buying a smaller, easier model rather than a better one.
 
 | Question | Needs |
 | --- | --- |
-| **Absolute pose accuracy of either** | ~~Ground-truth extrinsics.~~ **Measured.** Relative pose error against reference extrinsics, per capture, over the images each model registered. What it settled is above and in [`health/ladder.md`](../health/ladder.md); what it could not is that an error over the frames a stalled model kept is not comparable to one over a whole capture, so absolute *rankings* between models of unequal registration remain unavailable. AUC at fixed angle thresholds is still not computed. |
-| ~~**What feed-forward buys where geometric stalls**~~ | **Measured**, on seven captures where it genuinely stalled: full registration on all seven, worse per-pair accuracy on six. Above. |
+| **Absolute pose accuracy of either** | ~~Ground-truth extrinsics.~~ **Measured.** Relative pose error against reference extrinsics, per capture, over the images each model registered. What it settled is above and in [`health/ladder.md`](../health/ladder.md); what it could not is that an error over the frames a stalled model kept is not comparable to one over a whole capture, so absolute *rankings* between models of unequal registration remain unavailable. **AUC at fixed angle thresholds has since been computed** over five families at a fixed view count, charging every unanswered pair as a miss so that models of unequal registration become comparable after all — see [`evidence/sparse-pose-2026-09.md`](../evidence/sparse-pose-2026-09.md). The shape it found: the geometric chain wins at the tight threshold on four families of five and loses at the loose one, which is the coverage-for-accuracy trade above, measured. |
+| ~~**What feed-forward buys where geometric stalls**~~ | **Measured** twice. On seven captures where it genuinely stalled: full registration on all seven, worse per-pair accuracy on six. And again as a *fill* rather than a swap, on the worst captures of a seventy-five-capture campaign, where it beat both branches at every threshold provided the filled cameras were left out of the refinement. Both above. |
 | **How far in-loop local BA carries** | Sequence length against drift, on captures long enough for drift to dominate. The mechanism is understood; the length at which it stops being enough is not. |
+| **Whether the delivered-model reading matters on a dense chain** | It was tested on thirty-five captures that had been driven to a dense cloud and did not predict dense quality there at all. But every one of those was a capture with dense overlap and full registration, which is the regime where this reading is silent on the sparse path too — so what that tests is the population, not the reading. **Nothing has driven a thin capture to a dense cloud**, which is the only condition under which it could say anything. The module runs on both paths regardless — the question is only where to act on what it says. Until one does: act on it here, record it there. |
 | **Whether estimated intrinsics are usable** | `estimated_focal_ratio` says whether a model agrees with a calibration. Whether its estimate is good enough to reconstruct with, on a scene with no calibration at all, is a different question and untested. |

@@ -1,5 +1,13 @@
-# Captures the ranges in skills/scene_to_pipeline.md were fitted on.
+# Captures this corpus has already been shown the answer to.
 # Matched against whole path segments of the scene's image_dir. One per line.
+#
+# Two kinds of entry, and the distinction matters when you read a result:
+#   - the benchmark captures below, which the ranges in plan/scene_to_pipeline.md
+#     were fitted on;
+#   - captures promoted to carry a worked lesson in a plan/ file, listed at the
+#     foot with the file they inform.
+# Either way a member is not a cold capture, sfm_plan_brief reports
+# in_planning_corpus for it, and a result measured on it is recall.
 
 /ETH/courtyard
 /ETH/delivery_area
@@ -20,3 +28,8 @@
 /DTU/scan48
 /DTU/scan75
 /DTU/scan77
+
+# Promoted to carry the two sides of the hybrid rule in plan/pose.md.
+# See evidence/sparse-pose-2026-09.md.
+/euroc/V2_01_easy
+/tum_vi/room4

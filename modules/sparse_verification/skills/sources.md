@@ -98,8 +98,19 @@ and the component reading's in
   spans more than an order of magnitude, from a small fraction of a milliradian to
   under two, and the capture at the top of that range sits well inside the px
   ceiling it is actually judged by — so any mrad band tight enough to be useful
-  would fail a capture this module passes. Nothing has been swept across focal
-  lengths; see `plan/scene_to_pipeline.md` trap 11 for what rests on arithmetic.
+  would fail a capture this module passes. That remains true and is why no band is
+  published. See `plan/scene_to_pipeline.md` trap 11 for what rests on arithmetic.
+
+  **The focal-length sweep this file used to say was missing has since been run**,
+  over five families spanning well over an order of magnitude of median focal
+  length, and it changes how much the reading is worth even though it changes no
+  band. Of thirteen delivered models known to be badly wrong against reference
+  geometry, **the px veto caught two and the angular reading caught nearly all**;
+  every model the veto missed came from a short-focal camera, where its default
+  slack is many times the angle the same figure is on a long lens. The cost is that
+  the angular reading also fires on about one good model in five, which is why it is
+  a reading to weigh and not a second veto. Rows in
+  `evidence/sparse-pose-2026-09.md`; what to do about it in `plan/pose.md`.
 
 ## What rests on nothing
 

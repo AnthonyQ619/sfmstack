@@ -93,8 +93,8 @@ separated the kept model from the best alternative that failed.
 **Two of these six have no rows**, which is worth saying plainly because an
 empty category is easy to mistake for an impossible one.
 
-`unsolved` is empty because sixteen captures from two benchmark families were
-all solved by something already in the registry. Nothing here has yet demanded a
+`unsolved` is empty because every capture here was solved by something already in
+the registry. Nothing here has yet demanded a
 module that does not exist, so this file cannot show you what that looks like —
 only `swap_or_build.md` can, and it says the signal is an empty capability query
 and not a run of bad results.
@@ -137,12 +137,14 @@ capture name.
 | [ETH/office](agentic-campaign-2026-09.md#cap-eth-office) | `built-interior` · `wander-around-a-site` | `no-single-subject` | `target-low-texture` · `repeated-pattern` `repeated-parts` | `coherent-reflector` `target-underexposed` | SuperPoint → LightGlue → global reconstructor → BA | every seed-and-grow branch tried, classical and learned and detector-free alike | `reconstructor-decided` |
 | [ETH/playground](agentic-campaign-2026-09.md#cap-eth-playground) | `vegetated-exterior` · `wander-around-a-site` | `no-single-subject` | `target-textured` · `repeated-pattern` `repeated-parts` | `coherent-reflector` `movers` `flare` | SIFT+CLAHE → LightGlue → global reconstructor → BA | five seed-and-grow branches, none past half the capture | `reconstructor-decided` |
 | [ETH/relief](agentic-campaign-2026-09.md#cap-eth-relief) | `built-interior` · `traverse-along-an-axis` | `no-single-subject` | `target-low-texture` · `repeated-pattern` `repeated-parts` | `diffuse-reflector` | SIFT → NN → union-find → incremental → triangulate → BA, at higher resolution, re-solved at a wider window | the same chain at lower resolution with a ratio-test and a joint matcher; **and a global reconstructor that also registered every frame and that truth ranked far above this chain's first solve** | `profile-misled` |
+| [EUROC/V2_01_easy](sparse-pose-2026-09.md#the-thirteen-wrong-models) | `built-interior` · `wander-around-a-site` | `no-single-subject` | `target-low-texture` · `repeated-pattern` `repeated-parts` | `backdrop-clipped` | SuperPoint (dense threshold) → LightGlue → global reconstructor → BA | the same chain at the detector's default (half the capture); seed-and-grow on the same matches (two and three frames) | `reconstructor-decided` |
+| [TUM_VI/room4](sparse-pose-2026-09.md#what-to-do-when-the-reading-fires) | `built-interior` · `wander-around-a-site` | `no-single-subject` | `target-low-texture` · `repeated-pattern` `repeated-parts` | `diffuse-reflector` `backdrop-clipped` | RoMa (detector-free, indoor weights) → union-find → incremental → triangulate → BA | SuperPoint → LightGlue into seed-and-grow, short of half the capture; the same into a global reconstructor, short by two frames and **cleaner on pose agreement**; a tighter RoMa re-run, vetoed | `matcher-decided` |
 
 ---
 
 ## What the rows say when you read down the columns
 
-These are observations about this corpus of sixteen, not rules. They are here
+These are observations about this handful of captures, not rules. They are here
 because they are the reason to open the file at all.
 
 **The four `reconstructor-decided` rows have no surface trait in common, and
@@ -181,6 +183,23 @@ this capture kind, and the two traits that predict it will not are visible befor
 the run — `coherent-reflector` on a subject whose texture is a repeating band, and
 a sparse model that comes out an order of magnitude thinner than the block's. Both
 are in [dtu-dense-promoted-2026-09](dtu-dense-promoted-2026-09.md).
+
+**The two interior-room rows are a matched pair, and the `reconstructor-decided`
+one carries a warning its outcome value does not.** Both are small rooms shot with
+large rotations between neighbouring views, both read `target-low-texture` with
+repetition on both axes, and both were rescued off a stalled seed-and-grow. They
+part company on what the rescue was worth. On the `matcher-decided` row the
+detector-free matcher carried the capture and the delivered model is accurate. On
+the `reconstructor-decided` row the global reconstructor registered every frame,
+every health rung read healthy, the verifier said consistent — and reference
+geometry says the model is wrong by more than a right angle. **So a rescue that
+restores registration is not thereby a rescue that produced a good model**, and on
+a capture of this kind the outcome column is telling you what unstuck the run, not
+that the run ended well. Read the delivered model's own evidence before delivering
+it — [pose](../plan/pose.md) says which reading and what to do when it fires — and
+note that on the losing branch of the `matcher-decided` row the *rejected* model was
+the cleaner one on pose agreement while being short two frames, which is rung 1
+working as designed and is the reason these two are both here.
 
 **The one `profile-misled` row is the most valuable row in the file.** A capture
 whose target is dim, nearly featureless polished plaster, and whose viewpoints

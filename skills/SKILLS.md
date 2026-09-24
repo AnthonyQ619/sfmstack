@@ -71,9 +71,11 @@ one) has not been asked for; the two modules' own `SKILL.md` files carry it.
   **cite, never match**. [INDEX.md](evidence/INDEX.md) is the opposite file and
   the one to match against: one row per worked capture, keyed on observed
   capture kind, carrying no measurements and naming the move that decided each
-  one. [CORPUS.txt](evidence/CORPUS.txt) pins what every quoted range was fitted
-  on — and every INDEX row is a member of it, so check `in_planning_corpus`
-  before treating a match as retrieval.
+  one. [CORPUS.txt](evidence/CORPUS.txt) pins what this corpus has already been
+  shown the answer to — the captures every quoted range was fitted on, plus a
+  short list promoted since to carry a worked lesson in a `plan/` file — and every
+  INDEX row is a member of it, so check `in_planning_corpus` before treating a
+  match as retrieval.
 
 Scene names live in this tier and nowhere else; every claim elsewhere describes
 the *scenario*. Trait thresholds are nowhere: the analysis modules emit numbers,

@@ -47,6 +47,21 @@ that registers more, and only look further if you are choosing between how they
 got there. The service's second solve is the one exception — see
 [Comparing two finished models](#comparing-two-finished-models).
 
+**And the fraction's denominator is the frames the loader was given, which is not
+always the capture.** On a set subsampled out of a long walk — ten views from a
+sequence of thousands, an unordered collection assembled by hand — most pairs
+genuinely share nothing, and a model that registers a handful of frames can read a
+perfect 1.00 on this rung by registering all of the ones it was handed. Measured
+across a campaign of captures of exactly that shape: models registering a third of
+their frames cleared this rung, and models registering *more* frames than their own
+view graph could justify were the ones that came out catastrophically wrong. So on a
+sparse or subsampled set, **read the fraction beside what the correspondences
+support**, and understand that pushing the fraction up is not automatically progress
+here the way it is on a capture whose frames overlap throughout. The reading that
+tells you whether the cameras a model placed are actually held by its evidence is
+the verifier's, not this one — see
+[`plan/pose.md`](../plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself).
+
 **A precondition is not a guarantee, and the other half of that has now been
 measured too.** A configuration has registered **every frame of a capture** and
 produced a model with **no points in it at all** — the pose stage reported full
@@ -429,8 +444,9 @@ observation count — and say in the plan that the vector was short a rung.
 
 **One reading does survive into this hole, and it is not a rung.**
 `SparseVerification` publishes `supported_components` and
-`supported_largest_share`: of the pairs whose held-out correspondences agree with
-the model, how many connected components they leave on the registered cameras.
+`supported_second_size`: of the pairs whose held-out correspondences agree with
+the model, how many connected components they leave on the registered cameras, and
+how big the second largest is.
 It needs only poses and matches, both of which a global reconstructor has, so
 unlike the yield rungs it is evaluable on exactly the branch that opens this gap.
 Across every corpus capture that delivered, all but one read a single component
@@ -453,6 +469,17 @@ Three things to keep straight about it:
   reason to stop and look upstream, not a score to rank two models by. And it
   speaks to consistency with evidence rather than accuracy, the same limit the
   held-out residual carries.
+
+**Take the residual here too, and take it as an angle.** This hole opens on the
+branch that rescues registration, and that is precisely the branch measured
+delivering a fully-registered model wrong by more than a right angle while every
+rung in this file read healthy and the module's own pixel veto said consistent. Its
+angular residual did not. A pixel tolerance is a different amount of geometry on
+every camera, so on a wide-angle capture the veto is loose by the ratio of the focal
+lengths — which is the same scale-dependence that cost `supported_largest_share` its
+place above, on a different axis.
+[`plan/pose.md`](../plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself)
+has which reading, what it costs in false alarms, and what to do when it fires.
 
 ---
 
