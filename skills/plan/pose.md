@@ -197,20 +197,50 @@ for that precedent and
 | `supported_second_size` at one or more | the model's own agreeing evidence leaves a camera or a group disconnected | the same, and the disconnected piece names where to look |
 | `nothing_held_out` | the model is too small to check at all | **unverified, not verified.** Say so in the report and do not let it pass as clean |
 
-**It is a reason to look again, never a discard.** At any sensitivity that catches
-the wrong models, the angular reading also fires on roughly one good model in five,
-and two of the most accurate models in that campaign are among its false alarms —
-shallow-relief interiors that read high and are excellent. That is not a flaw to be
-tuned away: this reading measures consistency with evidence, never accuracy, and a
-shallow subject is exactly where the two come apart. Weigh it as a constraint that
-has fired, in the sense [`health/ladder.md`](../health/ladder.md) uses, and then
-decide.
+**The ANGULAR reading is a reason to look again, not a discard — and this scopes to
+the angular reading alone.** At any sensitivity that catches the wrong models it
+also fires on roughly one good model in five, and two of the most accurate models in
+that campaign are among its false alarms: shallow-relief interiors that read high and
+are excellent. That is not a flaw to be tuned away, because this reading measures
+consistency with evidence and never accuracy, and a shallow subject is exactly where
+the two come apart. Weigh it as a constraint that has fired, in the sense
+[`health/ladder.md`](../health/ladder.md) uses, and then decide.
+
+**None of that loosens the px veto, which stays absolute.** `contradicted` and
+`model_not_supported_by_its_own_evidence` mean what
+[`SparseVerification`](../../modules/sparse_verification/skills/SKILL.md) has always
+said they mean: do not keep that model. The two readings fail in opposite
+directions and must not be confused — the px verdict is nearly silent and almost
+never wrong when it does speak (it raised two alarms in seventy-five captures and
+both were genuine), while the angular reading speaks often and is wrong about a fifth
+of the time. **So a firing angle invites a second look; a firing veto ends the
+matter.** Measured on the run that followed this section's first draft: four agents
+recorded overruling a veto, and one of them delivered a studio orbit **forty times
+further from truth** than the model it rejected, on the grounds that the vetoed model
+carried more points and better coverage. Those are exactly the rungs a
+self-consistent wrong model wins on. If a veto leaves you with no model, that is
+information about the capture — say so and deliver the smaller verified model, or
+fill it by the section below. It is never grounds to keep the vetoed one.
 
 ### When it fires, fill rather than swap — and do not refine the fill
 
 Where the reading fires *and* the geometric branch is holding cameras its own
 matcher cannot justify, the remedy measured to work is narrower than the wholesale
 swap above.
+
+**Dropping cameras is half a move, and half is worse than none.** This is the
+failure the first run of this section produced, so it is stated before the remedy
+rather than after it. Rejecting the unsupported cameras makes the model you keep
+more accurate — measured, on every capture where it was tried — and it makes the
+*delivery* worse, because the frames you dropped are still frames the capture
+contains and every pair touching one is now unanswered. On one subsampled room
+capture the rejection took median rotation error from about fourteen degrees to
+under three and cost roughly half the delivered accuracy-over-all-pairs anyway; on
+an interior walk it cost more than that. **So if a verdict or a reading takes
+cameras out of your model, finish the move: fill them back by the method below, in
+the same session, before you deliver.** A model that stops at the verified core and
+stops there is not the conservative choice — it is an unfinished one, and the report
+should say which frames are missing and why you could not fill them.
 
 **Keep the geometric core. Use the feed-forward estimator only for the cameras the
 core cannot support.** Measured over the worst captures in that campaign, this beat
@@ -238,6 +268,16 @@ good**, and that the hybrid made distinctly worse. Where the geometric branch is
 holding its cameras on evidence it actually has, filling is a downgrade. The trigger
 is the reading *together with* cameras the view graph cannot justify — not the
 reading alone.
+
+**The two halves of that, side by side, because they are easy to collapse into one
+rule and they are opposites:**
+
+| you are holding | do |
+| --- | --- |
+| every frame, on evidence the matcher verified, and the reading is quiet | deliver it; nothing here applies |
+| every frame, but some on evidence the matcher could not verify, and the reading fires | drop those cameras **and fill them**, frozen — both halves |
+| fewer frames than the capture has, because a veto or the graph took them out | **fill them**, frozen. Stopping here is the unfinished move above |
+| fewer frames, and the feed-forward estimator will not run or its poses disagree wildly with the core | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved |
 
 **Global reconstruction instead** when `registered_fraction` is low on an
 *unordered* set and the matcher's `graph_components` is 1. That combination says

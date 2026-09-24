@@ -291,6 +291,42 @@ produced. It is about whether to act on it. Until a thin capture is driven to a 
 cloud, **act on it on the sparse path and merely record it on the dense one**, and
 the reason is measured rather than assumed.
 
+## What happened when this file's rules were first put into the context
+
+The five waves were re-run with everything above written into `plan/pose.md` and
+`health/ladder.md`, the same captures, the same arms and the same scorer. It is
+recorded here because the result is mixed and the failure is instructive.
+
+**The failure mode these rules target got better.** Captures delivering a median
+rotation error over ten degrees fell from thirteen to eight, mean rotation error over
+all seventy-five fell by about a third, and accuracy over the pairs that were
+actually answered rose at every threshold. Agents quoting the angular reading rose
+from roughly three in five to nearly nine in ten, so the context was demonstrably
+read.
+
+**The delivered metric did not move.** Pooled over holdouts, AUC rose about half a
+point at the tight threshold and not at all at the loose one. Two mechanisms account
+for the gap, and both are now written into `plan/pose.md`:
+
+- **Rejection without replacement.** The new text made agents readier to reject
+  unsupported cameras, and roughly three in five never took the second half of the
+  remedy. A capture that improved from fourteen degrees to under three while
+  dropping four of ten cameras still lost about half its delivered AUC, because
+  every pair touching a dropped frame is charged as a miss. Stopping at the
+  verified core is an unfinished move, not a conservative one.
+- **A softened veto.** The first draft said of the angular reading that it is "a
+  reason to look again, never a discard", and four agents went on to record
+  overruling a *veto* — one of them keeping a studio orbit about forty times further
+  from truth than the model it rejected, on the grounds that the vetoed model had
+  more points and better coverage. Those are precisely the rungs a self-consistent
+  wrong model wins on. The two readings fail in opposite directions and the text now
+  says so explicitly.
+
+**What this does not establish.** Every figure here is one draw against another, and
+each dataset's movement in both directions is dominated by one or two captures that
+swung hard — which is exactly the caution at the foot of [EVIDENCE.md](EVIDENCE.md),
+applied to this campaign's own follow-up. The corrected text has not been re-run.
+
 ## What is not established here
 
 - **Precision.** At any ceiling that catches these models the reading also fails
