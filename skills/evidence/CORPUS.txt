@@ -33,3 +33,7 @@
 # See evidence/sparse-pose-2026-09.md.
 /euroc/V2_01_easy
 /tum_vi/room4
+
+# Promoted to carry the consensus reading in plan/pose.md — the capture that
+# neither estimator catches alone. See evidence/consensus-2026-09.md.
+/TT/Barn

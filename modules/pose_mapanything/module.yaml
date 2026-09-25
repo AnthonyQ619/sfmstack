@@ -1,0 +1,189 @@
+name: PoseMapAnything
+version: 1.0.0
+kind: pose
+summary: >
+  Feed-forward camera poses and intrinsics from images alone, via MapAnything's
+  camera head, run UNCONDITIONED. The second correspondence-free pose estimator.
+  GPU required.
+
+description: |
+  The sibling of `PoseVGGT`, and it exists for a reason that is not "it might be
+  better". It is a SECOND estimator that consumes `scene/v1` and nothing else.
+
+  **Why a second one is worth a module.** Every other producer of poses here is
+  downstream of correspondences: `PoseEssentialToPnP` needs tracks,
+  `SparseGlobalCOLMAP` needs pairwise matches, and `SparseVGGT` and
+  `SparseMapAnything` take the poses as INPUT and are therefore conditioned on the
+  geometry one might want to check. That left exactly one module whose answer is
+  independent of the matcher, and one opinion cannot break a tie.
+
+  It matters because of a failure no correspondence-based reading can see. On a
+  capture with repeated or near-symmetric structure the matcher can be confidently
+  wrong in a globally consistent way; the model then agrees with its own evidence
+  at every baseline, and every reading built on that evidence agrees with it too.
+  Measured on such a capture: two different matchers produced models agreeing to
+  within a few per cent of the capture's span, the held-out residual was the
+  lowest of its batch, and the delivered cloud was metres out. Two
+  correspondence-free estimators agreeing with each other and disagreeing with the
+  model is a reading the rest of this registry cannot produce.
+
+  **It runs unconditioned, and that is not a default but the design.** MapAnything
+  will accept poses and intrinsics and predict the rest — that capability is what
+  `SparseMapAnything` is for, and it is exactly why that module is not a second
+  opinion. Nothing is supplied here. Conditioning this module on the geometry it
+  is being asked to check independently would remove its only purpose.
+
+  **Frame and scale are its own.** Poses come back camera-to-world in
+  MapAnything's frame at MapAnything's scale, as VGGT's do, and are inverted to
+  the cam-from-world the type declares. Nothing about the output is metric and
+  `is_metric_scale` is never asserted.
+
+  **What it gives up** is the same as PoseVGGT: no seed pair, no inlier count, no
+  per-image diagnostic, and `mean_reprojection_error` null because there are no
+  correspondences to measure against. Accuracy is initialisation-grade.
+
+image: sfmstack/pose-mapanything:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: true
+  min_ram_gb: 24
+  expected_duration_s: 90
+  timeout_s: 3600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+
+produces:
+  poses: {type: poses/v1}
+
+params:
+  max_images_per_pass:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 1000
+    description: >
+      Split the set into chunks of this many images. 0 runs the whole set in one
+      pass, which is what makes the poses comparable to each other.
+    tuning: >
+      Leave at 0. Each chunk gets its own world frame and its own scale and this
+      module does not stitch them, so a chunked answer cannot serve as a second
+      opinion at all -- the comparison needs one frame. Prefer sampling fewer
+      images. `chunks` above 1 raises an error diagnostic for this reason.
+
+  memory_efficient_inference:
+    type: boolean
+    default: false
+    description: Trade speed for peak GPU memory on large sets.
+    tuning: >
+      Turn on only when a pass does not fit. It does not change the answer.
+
+  amp_dtype:
+    type: string
+    default: bf16
+    enum: [fp32, bf16, fp16]
+    description: Autocast precision for the forward pass.
+    tuning: >
+      bf16 is the tested setting. fp32 costs memory and time for no measured
+      change; fp16 is not recommended on this model.
+
+  assume_uniform_scale:
+    type: boolean
+    default: true
+    description: >
+      Treat upstream's preprocessing as an aspect-preserving resize plus a centre
+      crop when mapping the estimated intrinsics back to the scene's resolution.
+    tuning: >
+      Leave true. It matches `preprocess_inputs` as written. If upstream ever
+      resizes anisotropically this becomes wrong in the silent way PoseVGGT's
+      first version was -- the focal comes back off by the aspect ratio and looks
+      like a model/calibration disagreement.
+
+metrics:
+  registered_fraction:
+    direction: higher_better
+    healthy: [1.0, null]
+    meaning: >
+      Fraction of images given a pose. MapAnything poses every image it is shown, so
+      anything below 1.0 means images were dropped before the forward pass, not
+      that registration failed.
+
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: Absolute count of posed cameras.
+
+  mean_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Always null here. This module has no correspondences to measure against, and
+      a number invented from its own point maps would report how self-consistent
+      the network is, not how accurate the poses are. Triangulate against these
+      poses and read the triangulator's error instead.
+
+  median_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: Always null, for the same reason as the mean.
+
+  median_camera_separation:
+    direction: neutral
+    meaning: >
+      Median distance between camera centres, in the model's own arbitrary scale
+      unit. Not accuracy -- it is the number that says what the scale unit MEANS
+      for anything downstream that takes a distance, notably
+      SparseTriangulationGTSAM's max_landmark_distance.
+
+  baseline_span:
+    direction: higher_better
+    healthy: [0.1, null]
+    meaning: >
+      THE MEDIAN camera-centre separation OVER THE LARGEST one, so it is bounded
+      by 1 and falls as the spread of baselines widens. It is a UNIFORMITY ratio,
+      not a size: it says nothing about how far apart the cameras are, only how
+      evenly. Read median_camera_separation for the size.
+
+      Near 1 means every camera pair is about as far apart as every other. Note
+      that an ORBIT DOES NOT PRODUCE THAT -- on a ring, adjacent cameras are close
+      and opposite ones are a diameter apart, so a clean partial orbit reads
+      around a third and that is healthy. Values well under 0.1, which is where
+      the diagnostic fires, mean the separations are dominated by a few distant
+      pairs while most cameras sit nearly on top of each other; that is the case
+      where triangulation against these poses will not condition well.
+
+      An earlier version of this text had the ratio the wrong way up and read
+      "near 1 means a turntable". Under that reading every well-formed orbit in a
+      capture sweep looked like near-coincident cameras. The computation was
+      always median-over-largest; the description was what was wrong.
+
+  estimated_focal_ratio:
+    direction: neutral
+    nullable: true
+    meaning: >
+      Estimated focal length over the scene's calibrated focal length, averaged
+      over images. Null on an uncalibrated scene, where there is nothing to compare
+      against. Far from 1.0 on a CALIBRATED scene means the two disagree and the
+      poses were computed with the estimate, not with your calibration.
+
+      Carried as a metric and not as a diagnostic, deliberately: this module is a
+      second opinion, and a scene whose calibration is wrong is one of the things
+      it is being asked about. Read it beside PoseVGGT's, which is estimated
+      independently -- two estimators agreeing with each other and disagreeing with
+      the calibration says considerably more than either alone.
+
+  chunks:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Forward passes the set was split into. Above 1, poses in different chunks
+      are in different world frames at different scales and are not comparable.
+
+diagnostics:
+  - code: chunked
+    severity: error
+    message: The set was split across forward passes; the poses are not in one frame.
+    suggested_actions:
+      - Set max_images_per_pass to 0 and sample fewer images instead.
+      - Or reconstruct each chunk as its own scene.
+    see_also: limitations.md#chunking-does-not-stitch

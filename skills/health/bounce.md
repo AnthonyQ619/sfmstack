@@ -53,7 +53,16 @@ A rung names the stage that owns it, which is what scopes the build:
 | Coverage | structure concentrates where the tools can see — a detector/matcher for the surfaces being skipped |
 | Error | residuals stay high on well-supported points — usually upstream, rule out calibration before building anything |
 | Yield | structure is found and then lost wholesale — the hand-off between stages is the defect, not either stage |
-| Pose agreement | the global solve cannot reconcile the local evidence — an optimizer or pose paradigm mismatch for this motion. **Rule out the reference first:** solve the capture with a second pose paradigm and read `sfm_compare`'s `rotation_agreement` between the two models. If they agree far more closely than this rung reports, the rung is measuring noise in the pairwise two-view estimates it compares against — common on near-planar subjects and narrow baselines — not a defect, and it is no bounce signal |
+| Pose agreement | the global solve cannot reconcile the local evidence — an optimizer or pose paradigm mismatch for this motion. **Rule out the reference first:** solve the capture with a second pose paradigm and read `sfm_compare`'s `rotation_agreement` between the two models — under `sparse_models` when the second solve is a sparse model, under `pose_agreement` when it is a correspondence-free estimator emitting `poses/v1`. If they agree far more closely than this rung reports, the rung is measuring noise in the pairwise two-view estimates it compares against — common on near-planar subjects and narrow baselines — not a defect, and it is no bounce signal |
+
+**Use two references, not one, when the second paradigm is a feed-forward
+estimator.** Both `PoseVGGT` and `PoseMapAnything` consume the scene alone, and
+passing your model and both of them to `sfm_compare` in one call costs one extra run
+and answers a question one reference cannot: whether a wide disagreement is your
+model or the reference wandering. If the two estimators disagree with *each other*
+about as much as they disagree with you, you have ruled nothing out. The reading and
+what it is worth are in [`plan/pose.md`](../plan/pose.md); this rung only needs the
+part about not trusting a single reference.
 
 These are directions, not verdicts; each one still owes the three-part signal
 above before it justifies a build.

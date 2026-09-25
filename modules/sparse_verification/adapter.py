@@ -353,13 +353,22 @@ def run(ctx: Ctx):
                round(float(supported.sum() / len(arr)), 4) if len(arr) else None,
                direction="higher_better")
 
-    # Gate on the SECOND component's size, not on the largest's share, for the
-    # reason above: one camera whose agreeing pairs do not reach the rest is a
-    # stray and occurs in the reference corpus on a capture that delivered. Two or
-    # more cameras forming their own island is a split model. Scale-free, and on
-    # the twenty-four models this was checked against it agrees exactly with the
-    # share rule it replaces while not punishing a small capture for its size.
-    if len(sizes) > 1 and sizes[1] >= 2:
+    # Gate on how many cameras are OUTSIDE the largest agreeing piece, not on the
+    # largest's share, for the reason above: one camera whose agreeing pairs do not
+    # reach the rest is a stray and occurs in the reference corpus on a capture that
+    # delivered. Two or more cameras off the main piece is a split model. Scale-free,
+    # and it does not punish a small capture for its size.
+    #
+    # Counting every stray rather than the SECOND piece alone is a strict widening:
+    # the second piece is one of the strays, so anything the old rule caught this one
+    # catches too. It differs only where the strays do not agree with EACH OTHER
+    # either -- several cameras each off on their own, which the second-size rule
+    # reads as 1, 1, 1 and passes. That shape is a scattered registration failure,
+    # not a stray, and it is the one the old rule was blind to.
+    strays = sum(sizes[1:])
+    out.metric("supported_stray_cameras", strays,
+               direction="lower_better", healthy=(None, 1))
+    if strays >= 2:
         out.diagnostic(
             "model_not_supported_by_its_own_evidence",
             severity="error",

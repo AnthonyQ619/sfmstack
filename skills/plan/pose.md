@@ -194,8 +194,14 @@ for that precedent and
 | reading | what it says | what to do |
 | --- | --- | --- |
 | angular residual well above what a correct model of this capture reads | the model disagrees with correspondences it was never fit on | do not deliver without looking again — below |
-| `supported_second_size` at one or more | the model's own agreeing evidence leaves a camera or a group disconnected | the same, and the disconnected piece names where to look |
+| `supported_stray_cameras` at two or more | the model's own agreeing evidence leaves cameras disconnected from the body of it | the same, and the disconnected cameras name where to look |
 | `nothing_held_out` | the model is too small to check at all | **unverified, not verified.** Say so in the report and do not let it pass as clean |
+
+Read the strays rather than `supported_second_size`, which is the same quantity
+seen only through its largest piece: cameras that each fail to reach the model and
+fail to reach each other leave pieces of one, which that reading reports as a single
+stray and passes. Several cameras unsupported *separately* is a scattered
+registration failure, not a stray, and only the total makes it visible.
 
 **The ANGULAR reading is a reason to look again, not a discard — and this scopes to
 the angular reading alone.** At any sensitivity that catches the wrong models it
@@ -221,6 +227,61 @@ carried more points and better coverage. Those are exactly the rungs a
 self-consistent wrong model wins on. If a veto leaves you with no model, that is
 information about the capture — say so and deliver the smaller verified model, or
 fill it by the section below. It is never grounds to keep the vetoed one.
+
+### Every reading above is built on the model's own evidence
+
+That is the limit of all three of them, and it is worth saying once, plainly, because
+it defines a failure they share rather than one they each happen to miss.
+
+The residual, the strays and the veto are all computed from correspondences. On a
+capture with repeated or near-symmetric structure the matcher can be wrong in a way
+that is *globally consistent*: the wrong answer satisfies the two-view geometry at
+every baseline, so the model agrees with its own evidence everywhere, and every
+reading built on that evidence agrees with it. Measured on such a capture — two
+different matchers produced models agreeing closely with each other, the held-out
+residual was the lowest of its batch, every camera registered, and the delivered
+cloud was metres out. **No amount of care with the readings above reaches this.** The
+evidence is not being read wrongly; the evidence is wrong.
+
+**So ask something that never saw your correspondences.** Run both
+correspondence-free estimators — `PoseVGGT` and `PoseMapAnything`, each of which
+consumes the scene and nothing else — and pass your model and both of them to
+`sfm_compare` in one call. It returns `pose_agreement`: all three pairwise rotation
+disagreements, with nothing privileged.
+
+**Read your disagreement against theirs, never on its own.** This is the whole
+technique and it is easy to get wrong by leaving out the second estimator:
+
+| what you see | what it means |
+| --- | --- |
+| the two estimators sit close to each other, and both sit far from you | the two independent answers agree, and yours is the outlier — **look** |
+| the two estimators sit far from each other | they are not agreeing on anything, so their distance from you measures their spread, not your error — no signal, whichever one you happened to compare against |
+| the two estimators sit close to each other and close to you | three independent answers agree; this is the quiet case |
+
+One estimator cannot distinguish the first row from the second. Measured across a
+multi-family batch, a single estimator condemns captures where the *estimator* is the
+outlier — including one of the most accurate reconstructions in the batch — and
+misses captures whose disagreement is small in absolute terms but large against how
+tightly the two estimators agree. Neither error survives having both. The second
+estimator is not a refinement; it is what supplies the scale the reading is in.
+
+**When it fires, the remedy is the whole feed-forward branch, and it is measured
+rather than assumed.** Not the poses alone — a model built from feed-forward poses
+on top of geometric depth was worse than either on every capture it was tried on, so
+a half-swap is not available here. Run the branch through to a cloud, measure both
+deliveries the way you would measure any two candidates, and keep the better.
+
+**A disagreement is a reason to measure the alternative. It is never, by itself, a
+reason to discard what you have.** The two estimators are independent of your
+matcher; they are not independent of each other. They share a training distribution,
+and on a scene far outside it — dense vegetation is the measured case — they agree
+tightly and are *both* wrong, while the geometric model is the better reconstruction.
+The reading is still true there: those poses really do disagree with everything. What
+is false is the inference from disagreement to swap. Acting on the reading directly
+costs you that capture; acting on the measurement costs you one run.
+
+The campaign is in
+[`evidence/consensus-2026-09.md`](../evidence/consensus-2026-09.md).
 
 ### When it fires, fill rather than swap — and do not refine the fill
 

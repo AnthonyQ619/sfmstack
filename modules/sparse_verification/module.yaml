@@ -304,6 +304,24 @@ metrics:
       averaging survived them, so a poor reading is a reason to look, not a verdict
       that the model is wrong.
 
+  supported_stray_cameras:
+    direction: lower_better
+    healthy: [null, 1]
+    meaning: >
+      Registered cameras OUTSIDE the largest agreeing component -- every piece but
+      the first, added together. This is what the diagnostic gates on, and it is
+      supported_second_size widened: the second piece is always among the strays,
+      so a split this reading passes is one that reading passes too.
+
+      The two come apart on one shape. Several cameras that each fail to reach the
+      main body and do not reach EACH OTHER either leave pieces of size 1, 1, 1 --
+      a second size of 1, which reads as a single stray and passes, while three
+      cameras are in fact unsupported. That is a scattered registration failure
+      rather than a stray, and counting the strays is what makes it visible.
+
+      One stray occurs in the reference corpus on a capture that delivered, which
+      is where the ceiling comes from; two is where the diagnostic fires.
+
 diagnostics:
   - code: contradicted_by_held_out_evidence
     severity: error

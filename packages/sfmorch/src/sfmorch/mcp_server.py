@@ -310,6 +310,15 @@ def build_server(service: SfmService):
         paired difference on shared tracks when both came from one track table,
         and how far their relative camera rotations disagree -- the readings
         health/ladder's model comparison and health/bounce's pose check ask for.
+
+        Rotations need no points, so whenever two or more of the artifacts carry
+        poses and at least one is NOT a sparse model, it also returns
+        `pose_agreement`: the same rotation disagreement between any pose-carrying
+        artifacts, whatever produced them. That is how a model is compared against
+        a correspondence-free estimator such as PoseVGGT or PoseMapAnything, which
+        emit `poses/v1`. Pass all three at once -- the model and both estimators --
+        and read your disagreement against the estimators' disagreement with each
+        other; one estimator alone cannot tell you which of you is the outlier.
         """
         return service.compare(artifact_ids)
 

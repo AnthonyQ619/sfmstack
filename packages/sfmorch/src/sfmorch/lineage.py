@@ -137,11 +137,39 @@ def compare(store: ArtifactStore, artifact_ids: list[str]) -> dict[str, Any]:
     sparse = [aid for aid in artifact_ids if rows[aid]["type"] == SPARSE_MODEL]
     if len(sparse) >= 2:
         out["sparse_models"] = _sparse_comparison(store, sparse)
+    # Rotations do not need points, and `poses/v1` declares the same cam_from_world,
+    # valid and image_index arrays `sparse_model/v1` does, so the two read alike. The
+    # comparison used to be gated to sparse models, which made health/bounce's "solve
+    # the capture with a second pose paradigm and read rotation_agreement" impossible
+    # to carry out: every second paradigm reachable from here -- PoseVGGT,
+    # PoseMapAnything -- emits poses/v1, so the tool returned nothing for exactly the
+    # pair the instruction named. This adds a key; it changes no existing one.
+    posed = [aid for aid in artifact_ids if rows[aid]["type"] in POSE_CARRYING]
+    if len(posed) >= 2 and not all(rows[aid]["type"] == SPARSE_MODEL for aid in posed):
+        out["pose_agreement"] = _pose_comparison(store, posed)
     return out
 
 
 SPARSE_MODEL = "sparse_model/v1"
+POSES = "poses/v1"
+POSE_CARRYING = (SPARSE_MODEL, POSES)
 TRACKS = "tracks/v1"
+
+POSE_HOW_TO_READ = (
+    "rotation_agreement is how far two models' RELATIVE camera rotations disagree "
+    "over the cameras both registered, in degrees -- gauge-free, needing no "
+    "reference, and defined between any two artifacts carrying poses whatever "
+    "produced them. It is the check health/bounce asks for before a stuck "
+    "pose-agreement rung is read as a capability gap, and the reading plan/pose "
+    "asks for before a model is delivered. Two INDEPENDENT estimators are what "
+    "make it readable: one estimator disagreeing with your model cannot tell you "
+    "whether the model or the estimator is the outlier, so compare the estimators "
+    "with EACH OTHER as well and read your disagreement against their spread. A "
+    "disagreement is a reason to measure the alternative, never a reason to "
+    "discard a model -- two learned estimators sharing a training distribution can "
+    "agree closely and both be wrong. Entries are null where the two share fewer "
+    "than two cameras, or were built on different scenes."
+)
 
 SPARSE_HOW_TO_READ = (
     "error_by_support splits each model's per-point reprojection error by how "
@@ -197,3 +225,23 @@ def _sparse_comparison(store: ArtifactStore, ids: list[str]) -> dict[str, Any]:
         "pairs": pairs,
         "how_to_read": SPARSE_HOW_TO_READ,
     }
+
+
+def _pose_comparison(store: ArtifactStore, ids: list[str]) -> dict[str, Any]:
+    """Pairwise rotation agreement over anything carrying poses.
+
+    No error_by_support here: that reading needs per-point reprojection error, which
+    `poses/v1` does not have -- a feed-forward estimator has no correspondences to
+    measure against, which is exactly why it is worth comparing to.
+    """
+    from .health import rotation_agreement
+
+    arts = {aid: store.open(aid) for aid in ids}
+    pairs: dict[str, Any] = {}
+    for i, a in enumerate(ids):
+        for b in ids[i + 1:]:
+            same_scene = (arts[a].manifest.scene
+                          and arts[a].manifest.scene == arts[b].manifest.scene)
+            pairs[f"{a} vs {b}"] = (rotation_agreement(arts[a], arts[b])
+                                    if same_scene else None)
+    return {"pairs": pairs, "how_to_read": POSE_HOW_TO_READ}
