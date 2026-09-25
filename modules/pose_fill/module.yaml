@@ -1,0 +1,214 @@
+name: PoseFill
+version: 1.0.0
+kind: pose
+summary: >
+  One pose table out of two: the geometric core's cameras kept as they are, and the
+  cameras it could not support carried across from a correspondence-free estimator
+  by a similarity fit on the cameras they share. CPU only.
+
+description: |
+  The executable half of `plan/pose.md`'s fill rule. That rule was measured to beat
+  both the geometric model as delivered and the feed-forward estimator run alone, at
+  every threshold, on the captures where the trigger fires -- and until this module
+  existed it named an operation with no handle, which is worse than silence because
+  agents spent runs looking for one.
+
+  **It merges POSES, not models, and that is the design.** Merging two
+  `sparse_model/v1`s means reconciling two point sets, two track tables and two
+  observation tables built in different frames at different scales, and the scale
+  question there is genuinely hard. Merging the pose tables is a seven-parameter
+  problem with a closed-form answer. Run `SparseTriangulation` on the result and the
+  structure is built from the scene's own tracks in one frame, so a filled camera
+  carries real observations wherever correspondences reach it instead of being a
+  pose-only stub attached to someone else's cloud.
+
+  **The similarity is what removes the scale difference.** A feed-forward estimator
+  answers in its own frame at its own scale. Fitting scale, rotation and translation
+  on the cameras both tables place puts its answer into the core's frame; afterwards
+  there is one frame and one scale. This is also why the module cannot be used as a
+  swap -- with no shared cameras there is nothing to fit on, and it refuses rather
+  than guessing.
+
+  **What it marks, and why everything downstream needs it.** A filled camera rests
+  on no correspondences, so every reading built on correspondences finds it
+  unsupported. That is correct and it is misleading, because the camera was never
+  claimed to be supported. The output carries a `filled` mask beside the poses;
+  `SparseVerification` reads it to keep those cameras out of its stray count, and the
+  producers of `sparse_model/v1` carry it through so `filled_images` can be read
+  beside `registered_images`. Without the mark, a correctly-filled model trips an
+  error-severity veto by construction.
+
+  **Then freeze them.** Refining a filled camera drags it using exactly the
+  correspondences that were too thin to register it, which was the single largest
+  effect in the campaign that produced this rule. Pass the filled indices to
+  `BundleAdjustmentGlobal`'s `fixed_image_indices` and refine the core only.
+
+image: sfmstack/pose-fill:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 2
+  expected_duration_s: 2
+  timeout_s: 600
+
+consumes:
+  scene: {type: scene/v1, required: true}
+  sparse: {type: sparse_model/v1, required: true}
+  poses: {type: poses/v1, required: true}
+
+produces:
+  poses: {type: poses/v1}
+
+params:
+  min_shared_cameras:
+    type: integer
+    default: 6
+    minimum: 4
+    maximum: 200
+    description: >
+      Cameras that must carry a pose in BOTH tables before a similarity is fitted.
+    tuning: >
+      Four is the algebraic minimum and six is the working floor, because the
+      residual on four cameras is a fit to four points and says nothing about
+      whether the frames agree. Raising it makes the module refuse more often,
+      which is the safe direction: a refused fill costs the core, a bad fill costs
+      the delivery. Do not lower it to make a capture pass -- a core that shares
+      fewer than four cameras with the estimator has not registered enough to be a
+      core, and the answer there is the feed-forward model on its own.
+
+  trim:
+    type: number
+    default: 0.2
+    minimum: 0.0
+    maximum: 0.5
+    description: >
+      Share of the worst-fitting shared cameras dropped before the fit is repeated.
+    tuning: >
+      A plain least-squares similarity is pulled by its worst correspondence, and
+      the worst shared camera is the one most likely to be misplaced in one of the
+      two tables. 0.2 matches the trim used elsewhere in this corpus for the same
+      reason. 0 makes the fit and the residual describe every shared camera, which
+      is the honest setting when you want the residual to be a verdict on the WHOLE
+      overlap rather than on its agreeing part.
+
+  max_shared_residual:
+    type: number
+    default: 0.03
+    minimum: 0.0
+    maximum: 1.0
+    description: >
+      Median residual on the shared cameras, as a fraction of the model's span,
+      above which the fill is refused with an error diagnostic.
+    tuning: >
+      This is the gate, and it is the only parameter that changes whether a fill is
+      delivered. It is scale-free by construction -- the residual over the span of
+      the core's own cameras -- so it means the same on a studio rig and a city
+      block. It is NOT fitted: it is set where a fit that has found a common frame
+      plainly sits below and a fit that has not plainly sits above, and the campaign
+      files carry the per-capture numbers. Read `shared_residual` against what a
+      capture of this kind reads rather than against this number.
+
+metrics:
+  registered_images:
+    direction: higher_better
+    healthy: [3, null]
+    meaning: >
+      Cameras carrying a pose in the output: the core's, plus the ones filled. Read
+      it with filled_images, never alone -- the two provenances are not the same
+      thing and this number cannot tell them apart.
+
+  registered_fraction:
+    direction: higher_better
+    meaning: >
+      The above over the scene's image count. Note that a successful fill drives
+      this to 1.0, so rules elsewhere that key on LOW registration stop applying
+      once this module has run. That is correct -- the capture is now fully posed --
+      but it does hide the matcher weakness underneath, which is why filled_images
+      is published and why the report has to say which cameras are which.
+
+  mean_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Always null here. This module moves poses; it does not see a correspondence,
+      and a number invented from the core's own error would describe the core rather
+      than the merged table. Triangulate against these poses and read the
+      triangulator's error, which is the first reading that prices the fill's
+      structure.
+
+  median_reprojection_error:
+    direction: lower_better
+    nullable: true
+    meaning: Always null, for the same reason as the mean.
+
+  filled_images:
+    direction: neutral
+    meaning: >
+      Cameras that came from the estimator because the core did not have them. This
+      is the number that makes registered_images readable: a camera counted here was
+      PLACED rather than registered, it rests on no correspondence, and the
+      catastrophic over-registration that `health/ladder.md`'s first rung warns about
+      cannot have produced it. Zero means the estimator had nothing the core lacked.
+
+  shared_cameras:
+    direction: higher_better
+    meaning: >
+      Cameras carrying a pose in both tables -- the evidence the similarity is fitted
+      on. Everything this module claims rests on these and on nothing else.
+
+  shared_residual:
+    direction: lower_better
+    meaning: >
+      Median distance between where the two tables put the cameras they SHARE, after
+      the similarity, over the span of the core's cameras. Scale-free and
+      frame-free.
+
+      **Deliberately banded nowhere.** The gate is `max_shared_residual`, a
+      parameter, and a fixed band beside it would state a second threshold that
+      disagrees with the real one as soon as anybody changes it. The diagnostic is
+      the gate; this is the comparable number.
+
+      **This is the reading that prices the fill, and it is the only one that can.**
+      The filled cameras have no ground truth and no correspondences, so nothing
+      measures them directly. What can be measured is whether the two tables were
+      put into a common frame at all, on the cameras where both have an opinion. If
+      they were not, the fill is placing cameras using a transform that does not
+      hold, and the residual is how far from holding it is.
+
+      A high reading is what a DRIFTING estimator looks like: one similarity has
+      seven parameters and cannot correct a scale that varies along the capture.
+      Expect it on a long handheld walk; do not expect it on a subsampled orbit.
+
+  fitted_scale:
+    direction: neutral
+    meaning: >
+      The scale taken out of the estimator's frame. Not a quality reading -- a
+      feed-forward estimator has no metric scale, so this can be any positive number
+      and says only what unit the estimator happened to choose. Read shared_residual
+      for whether the fit worked.
+
+  shared_cameras_kept:
+    direction: higher_better
+    meaning: >
+      Shared cameras surviving the trim, so the population the residual describes.
+      Well below shared_cameras means the two tables agree on some of the overlap and
+      not the rest, which is the shape of a partial disagreement rather than a frame
+      mismatch, and is worth reading the per-camera residuals over.
+
+diagnostics:
+  - code: fit_does_not_agree
+    severity: error
+    message: The cameras both tables placed do not line up after the similarity; the fill is not trustworthy.
+    suggested_actions:
+      - Do not deliver this fill. Deliver the core and say in the report which frames are missing and that the capture was not fully solved.
+      - One similarity cannot correct a scale that varies along the capture. Expect this on a long handheld walk.
+      - Read sfm_compare's pose_agreement between the core and the estimator first; if they disagree where they overlap, no fill of them will agree either.
+    see_also: limitations.md#what-one-similarity-cannot-absorb
+
+  - code: nothing_to_fill
+    severity: warn
+    message: The estimator carries no camera the core does not already have.
+    suggested_actions:
+      - The output is the core's poses unchanged; use the core model directly.
+      - If cameras are missing from BOTH tables, the estimator ran on a reduced set; run it on the whole scene.
+    see_also: SKILL.md#when-to-run-it

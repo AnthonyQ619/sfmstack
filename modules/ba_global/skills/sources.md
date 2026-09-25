@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentGlobal
-module_version: 1.2.1
+module_version: 1.3.0
 curated_at: 2026-09-07
 ---
 

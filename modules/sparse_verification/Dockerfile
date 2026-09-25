@@ -1,6 +1,6 @@
 # SparseVerification 1.0.0
 #
-#   docker build -t sfmstack/sparse-verification:1.0.0 -f modules/sparse_verification/Dockerfile .
+#   docker build -t sfmstack/sparse-verification:1.2.0 -f modules/sparse_verification/Dockerfile .
 #
 # Build context is the repository root.
 #

@@ -307,10 +307,29 @@ should say which frames are missing and why you could not fill them.
 core cannot support.** Measured over the worst captures in that campaign, this beat
 both the geometric model as delivered and the feed-forward estimator run alone, at
 every threshold — where the wholesale swap, as the section above records, buys
-coverage at the cost of accuracy. Fit a similarity from the feed-forward frame into
-the core's frame on the cameras they share and deliver **one** model; that alignment
-is cheap and it *gains* at tight thresholds, because a mixed pair then has the
-accurate core on one side of it.
+coverage at the cost of accuracy. The alignment is cheap and it *gains* at tight
+thresholds, because a mixed pair then has the accurate core on one side of it.
+
+**The chain is `PoseFill` → `SparseTriangulation` → `BundleAdjustmentGlobal`.**
+`PoseFill` fits the similarity from the feed-forward frame into the core's on the
+cameras both tables place, and returns **one pose table** with the core's rows
+untouched and the rest carried across, marked. Triangulation then builds the
+structure from the scene's own tracks, in one frame at one scale — so the filled
+cameras carry real observations wherever correspondences reach them, rather than
+being poses bolted onto someone else's cloud. Merging two finished *models* instead
+is the shape to avoid: it means reconciling two point sets and two track tables
+built at different scales, and that is where the scale question becomes genuinely
+hard. Merging the pose tables is seven parameters with a closed-form answer.
+
+**Read `shared_residual` before you deliver it.** The filled cameras have no
+correspondences and no reference, so nothing measures them directly. What can be
+measured is whether the two tables were put into a common frame at all, on the
+cameras where both have an opinion — and if they were not, the transform placing
+the filled cameras does not hold. A high reading is what a **drifting** estimator
+looks like: one similarity has seven parameters and cannot correct a scale that
+varies along a capture. Expect it on a long handheld walk, not on a subsampled
+orbit. When it fires, deliver the core and say which frames are missing; a refused
+fill costs the core, a bad fill costs the delivery.
 
 **Then freeze the filled cameras. Do not put them in the global refinement.** This
 is the single largest effect in the whole result and it runs against the obvious
@@ -321,6 +340,21 @@ of catastrophic pairs rising by a factor of several. The mechanism is plain once
 stated: refinement drags those cameras using exactly the correspondences that were
 too thin to register them in the first place. Refine the core, hold the fill fixed,
 and say in the report which cameras are which.
+
+Pass the filled indices to `BundleAdjustmentGlobal`'s **`fixed_image_indices`**;
+`filled_images` on the model is the count, and the `filled` mask says which. Their
+points still move — a filled camera contributes structure like any other, it just
+does not move itself.
+
+**And the mark travels with the model, which matters more than it sounds.** A
+filled camera rests on no correspondences, so every reading built on
+correspondences finds it unsupported — correctly, and misleadingly, because it was
+never claimed to be supported. `SparseVerification` builds its components over the
+cameras that *claimed* to rest on evidence and reports the rest as
+`filled_cameras_excluded`. Without that, four filled cameras read as four strays and
+trip the error veto, and a correctly executed fill would be discarded by
+construction. If you ever assemble a merged pose table by hand, carry the mask or
+the rest of the stack is obliged to reject what you built.
 
 **And do not reach for this every time the reading fires.** One of the two captures
 promoted into [CORPUS.txt](../evidence/CORPUS.txt) is there to be the counter-example:
@@ -336,9 +370,15 @@ rule and they are opposites:**
 | you are holding | do |
 | --- | --- |
 | every frame, on evidence the matcher verified, and the reading is quiet | deliver it; nothing here applies |
-| every frame, but some on evidence the matcher could not verify, and the reading fires | drop those cameras **and fill them**, frozen — both halves |
-| fewer frames than the capture has, because a veto or the graph took them out | **fill them**, frozen. Stopping here is the unfinished move above |
-| fewer frames, and the feed-forward estimator will not run or its poses disagree wildly with the core | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved |
+| every frame, but some on evidence the matcher could not verify, and the reading fires | drop those cameras **and fill them**, frozen — both halves. `PoseFill`, then triangulate, then refine with the filled indices in `fixed_image_indices` |
+| fewer frames than the capture has, because a veto or the graph took them out | **fill them**, frozen, by the same chain. Stopping here is the unfinished move above |
+| fewer frames, and the feed-forward estimator will not run, or `PoseFill` refuses, or its `shared_residual` fires | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved |
+
+**One consequence of a successful fill to keep in view:** `registered_fraction`
+reaches 1.0, so the rules below that key on *low* registration — global
+reconstruction, for one — stop applying. That is correct, because the capture is
+now fully posed. It also hides the matcher weakness underneath, which is why
+`filled_images` is published and why the report has to name the filled frames.
 
 **Global reconstruction instead** when `registered_fraction` is low on an
 *unordered* set and the matcher's `graph_components` is 1. That combination says

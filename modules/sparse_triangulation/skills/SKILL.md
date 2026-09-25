@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulation
-module_version: 1.1.0
+module_version: 1.2.0
 upstream: OpenCV DLT triangulation
 curated_at: 2026-08-07
 sources: 3

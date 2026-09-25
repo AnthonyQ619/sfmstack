@@ -62,6 +62,23 @@ tells you whether the cameras a model placed are actually held by its evidence i
 the verifier's, not this one — see
 [`plan/pose.md`](../plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself).
 
+**Be precise about what that caution is a caution against, because the fraction
+counts two different things.** The catastrophe above is a camera **registered on
+correspondences the model cannot justify** — the matcher was confidently wrong, the
+solve accepted it, and the camera landed in the wrong place with nothing built on
+correspondences able to see it. The signature is the fraction and the verifier's
+stray count rising *together*.
+
+A camera counted by **`filled_images`** did not come from correspondences at all. It
+was PLACED by a correspondence-free estimator because the core could not reach it,
+and the mechanism above cannot have produced it. So it is not evidence of the
+failure this rung warns about, and this rung is not what prices it — the fill's own
+`shared_residual` is, which asks whether the two pose tables were put into a common
+frame on the cameras they share. **Compare models on `registered_images` minus
+`filled_images` when the two differ**, and read the fill's residual separately. The
+ordering that follows from this is in [Comparing two finished
+models](#comparing-two-finished-models).
+
 **A precondition is not a guarantee, and the other half of that has now been
 measured too.** A configuration has registered **every frame of a capture** and
 produced a model with **no points in it at all** — the pose stage reported full
@@ -489,7 +506,21 @@ Most stopping decisions are really this decision. The procedure that survives
 scrutiny:
 
 1. **Equalise registration first.** If the two models do not contain the same
-   cameras, rung 1 has already answered you.
+   cameras, rung 1 has already answered you — *unless the difference is a fill*,
+   which rung 1 cannot rank, because the fraction counts placed and registered
+   cameras under one number. That case has its own ordering:
+
+   | prefer | over | when |
+   | --- | --- | --- |
+   | core **+ fill** | the core alone | the fill's trigger fired **and** `shared_residual` passed |
+   | the core alone | core + fill | the fill would not run, or its residual fired — a refused fill costs the core, a bad fill costs the delivery |
+   | either of the above | a model that registered those same frames on correspondences it cannot justify | always, on a subsampled set. This is the catastrophe rung 1 describes, and the two are told apart by `filled_images` and the verifier's stray count |
+
+   Where the fill's trigger did **not** fire — the capture is holding its cameras on
+   evidence it actually has — filling is a downgrade and the core is the answer.
+   There is a capture promoted into [CORPUS.txt](../evidence/CORPUS.txt) to say
+   exactly that. The trigger and the chain are in
+   [`plan/pose.md`](../plan/pose.md#when-it-fires-fill-rather-than-swap--and-do-not-refine-the-fill).
 2. **Pair points only when there is something to pair them on.** Two models
    built from ONE track table — they differ only downstream of tracking — carry
    the same `track_id`s: join on it, never on row order, which gives an answer

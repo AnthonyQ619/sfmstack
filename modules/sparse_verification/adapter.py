@@ -337,8 +337,23 @@ def run(ctx: Ctx):
                direction="lower_better")
     supported = np.isfinite(arr[:, 5]) & (arr[:, 5] <= p.inlier_threshold_px)
     agreeing = arr[supported]
-    sizes = component_sizes(sorted(pose), agreeing[:, :2].astype(np.int64))
-    largest = (sizes[0] / len(pose)) if sizes and pose else 0.0
+
+    # Cameras a PoseFill PLACED rather than registered are excluded from the graph.
+    # They rest on no correspondences by construction, so each one is its own
+    # component and the model reads as many strays as it has filled cameras -- which
+    # would trip this module's error veto on exactly the models the fill rule exists
+    # to produce. Their provenance is the mark, not the evidence, so the question
+    # "does this model's own evidence hold it together" is asked of the cameras that
+    # claimed to rest on evidence. They are counted and reported separately; nothing
+    # here says a filled camera is correct, only that this reading cannot price it.
+    placed = set()
+    if model.has("fill"):
+        mask = np.asarray(model.load("fill", "filled"), dtype=bool)
+        placed = {i for i in pose if i < len(mask) and bool(mask[i])}
+    graph_nodes = sorted(i for i in pose if i not in placed)
+    sizes = component_sizes(graph_nodes, agreeing[:, :2].astype(np.int64))
+    largest = (sizes[0] / len(graph_nodes)) if sizes and graph_nodes else 0.0
+    out.metric("filled_cameras_excluded", len(placed), direction="neutral")
     out.metric("supported_components", len(sizes),
                direction="lower_better", healthy=(None, 1))
     # No band on the share: it is camera-count dependent and so cannot carry one.
@@ -375,7 +390,7 @@ def run(ctx: Ctx):
             message=(
                 f"The pairs whose held-out correspondences agree with this model do "
                 f"not connect it: they leave {len(sizes)} pieces, the largest holding "
-                f"{largest:.0%} of the {len(pose)} registered cameras "
+                f"{largest:.0%} of the {len(graph_nodes)} cameras that rest on correspondences "
                 f"(sizes {', '.join(str(s) for s in sizes[:6])}"
                 f"{', ...' if len(sizes) > 6 else ''}). Every piece is internally "
                 f"consistent and they are joined across pairs the model contradicts, "

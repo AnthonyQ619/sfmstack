@@ -1,6 +1,6 @@
 # SparseTriangulation 1.0.0
 #
-#   docker build -t sfmstack/sparse-triangulation:1.0.0 -f modules/sparse_triangulation/Dockerfile .
+#   docker build -t sfmstack/sparse-triangulation:1.2.0 -f modules/sparse_triangulation/Dockerfile .
 #
 # Build context is the repository root. Same pip line as the other OpenCV
 # modules, so the layer is shared.

@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.1.0
+module_version: 1.2.0
 upstream: none -- numpy, and OpenCV for undistortion only
 curated_at: 2026-09-13
 sources: 0

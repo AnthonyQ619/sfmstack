@@ -1,5 +1,5 @@
 name: SparseTriangulation
-version: 1.1.0
+version: 1.2.0
 kind: sparse
 summary: >
   Triangulates tracks against known poses into a sparse model, filtering on ray
@@ -21,7 +21,7 @@ description: |
   view is discarded rather than kept with a large residual, because a single bad
   observation is enough to drag a bundle adjustment.
 
-image: sfmstack/sparse-triangulation:1.1.0
+image: sfmstack/sparse-triangulation:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -114,6 +114,21 @@ params:
       intermediate; the colours are what make a sanity check by eye possible.
 
 metrics:
+
+  filled_images:
+    direction: neutral
+    meaning: >
+      Cameras a `PoseFill` PLACED, because the geometric core could not reach them,
+      rather than registered on correspondences. Zero on every model that did not
+      come through a fill, which is almost all of them.
+
+      **This is the number that makes registered_images readable.** The two
+      provenances are not the same thing and that count cannot tell them apart: the
+      catastrophic over-registration `health/ladder.md`'s first rung warns about is a
+      camera placed on correspondences the model cannot justify, and a camera counted
+      here rests on no correspondences at all, so that mechanism cannot have produced
+      it. Compare models on registered_images MINUS this, and read the fill's own
+      shared_residual for whether the placed cameras are trustworthy.
   min_frame_points:
     meaning: >
       The fewest observations any REGISTERED camera contributes to this model.

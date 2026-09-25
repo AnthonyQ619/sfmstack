@@ -1,5 +1,5 @@
 name: SparseVerification
-version: 1.1.0
+version: 1.2.0
 kind: analysis
 summary: >
   A veto on finished sparse models: rejects one that contradicts the matcher's
@@ -46,7 +46,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.1.0
+image: sfmstack/sparse-verification:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -240,6 +240,25 @@ metrics:
       model in five, so it is a reason to look again rather than a second veto --
       which is why no band is published here and why the absence is not an
       oversight. See plan/pose.md and evidence/sparse-pose-2026-09.md.
+
+  filled_cameras_excluded:
+    direction: neutral
+    meaning: >
+      Cameras left OUT of the component graph because an upstream `PoseFill` marked
+      them as placed rather than registered.
+
+      A placed camera rests on no correspondences by construction, so it appears in
+      no agreeing pair and would be its own component. A model with four of them
+      would read four strays and trip this module's error veto -- on exactly the
+      models the fill rule exists to produce. The question this reading asks is
+      whether a model's own evidence holds it together, so it is asked of the cameras
+      that claimed to rest on evidence.
+
+      **Nothing here says a placed camera is correct.** It says this reading cannot
+      price it. What prices it is the fill's own `shared_residual`: whether the two
+      pose tables were put into a common frame on the cameras they share. Read that
+      beside this, and treat a model with a high count here and no fill residual to
+      show for it as unverified rather than verified.
 
   supported_components:
     direction: lower_better

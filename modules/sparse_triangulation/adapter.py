@@ -104,6 +104,26 @@ def structure_readings(xyz, obs, error, cam_from_world, valid, K_all, n_images):
     }
 
 
+def filled_mask(art, n_images: int):
+    """The `filled` mask an upstream PoseFill wrote, or None.
+
+    A filled camera was PLACED by a correspondence-free estimator rather than
+    registered on correspondences, and every reading built on correspondences will
+    find it unsupported -- correctly, and misleadingly. Carrying the mask forward is
+    what lets the verifier and the ladder tell the two provenances apart; dropping it
+    turns a correctly executed fill into a model the rest of the stack must reject.
+    """
+    import numpy as _np
+    if not art.has("fill"):
+        return None
+    m = _np.asarray(art.load("fill", "filled"), dtype=bool)
+    if len(m) != n_images:
+        out = _np.zeros(n_images, dtype=bool)
+        out[: min(len(m), n_images)] = m[: min(len(m), n_images)]
+        return out
+    return m
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -296,6 +316,9 @@ def run(ctx: Ctx):
         valid=valid,
         image_index=image_index.astype(np.int32),
     )
+    _filled = filled_mask(ctx.inputs["poses"], n_images)
+    if _filled is not None:
+        out.save("fill", filled=_filled)
 
     mean_err = float(np.mean(kept_error))
     mean_len = len(obs_table) / len(xyz)
@@ -307,6 +330,8 @@ def run(ctx: Ctx):
     out.metric("observation_count", len(obs_table),
                direction="higher_better", healthy=(300, None))
     _s = structure_readings(xyz, obs_table, np.asarray(kept_error), cam_from_world, valid, None, n_images)
+    out.metric("filled_images", 0 if _filled is None else int(_filled.sum()),
+               direction="neutral")
     out.metric("min_frame_points", _s["min_frame_points"],
                direction="higher_better", healthy=(50, None))
     out.metric("two_view_fraction", _s["two_view_fraction"],

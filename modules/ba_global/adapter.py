@@ -269,6 +269,26 @@ def structure_readings(xyz, obs, error, cam_from_world, valid, K_all, n_images):
     }
 
 
+def filled_mask(art, n_images: int):
+    """The `filled` mask an upstream PoseFill wrote, or None.
+
+    A filled camera was PLACED by a correspondence-free estimator rather than
+    registered on correspondences, and every reading built on correspondences will
+    find it unsupported -- correctly, and misleadingly. Carrying the mask forward is
+    what lets the verifier and the ladder tell the two provenances apart; dropping it
+    turns a correctly executed fill into a model the rest of the stack must reject.
+    """
+    import numpy as _np
+    if not art.has("fill"):
+        return None
+    m = _np.asarray(art.load("fill", "filled"), dtype=bool)
+    if len(m) != n_images:
+        out = _np.zeros(n_images, dtype=bool)
+        out[: min(len(m), n_images)] = m[: min(len(m), n_images)]
+        return out
+    return m
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -330,7 +350,31 @@ def run(ctx: Ctx):
     config = pycolmap.BundleAdjustmentConfig()
     for image_id in image_id_of.values():
         config.add_image(image_id)
-    config.fix_gauge(pycolmap.BundleAdjustmentGauge.TWO_CAMS_FROM_WORLD)
+
+    # Cameras held fixed. The case this exists for is a model whose cameras have two
+    # provenances: a geometric core that correspondences support, and cameras placed
+    # by a correspondence-free estimator because the core could not reach them.
+    # Refining the second kind drags it using exactly the correspondences that were
+    # too thin to register it, which was measured to damage those pairs badly while
+    # the same solve helped the core -- so the two have to be separable here.
+    fixed = sorted({int(i) for i in (p.fixed_image_indices or [])})
+    frozen = 0
+    for image_index_value in fixed:
+        image_id = image_id_of.get(image_index_value)
+        if image_id is None:
+            continue
+        # A trivial-rig image owns its frame, so freezing the frame's pose freezes
+        # the camera. Points stay variable: the fill contributes structure like any
+        # other camera, it just does not move.
+        config.set_constant_rig_from_world_pose(rec.image(image_id).frame_id)
+        frozen += 1
+
+    # The gauge is what a solve with no constant pose would otherwise float on. Two
+    # constant cameras already pin it, so asking for it again over-constrains the
+    # problem; one constant camera pins rotation and translation but not scale, so
+    # the gauge still has to be fixed in that case.
+    if frozen < 2:
+        config.fix_gauge(pycolmap.BundleAdjustmentGauge.TWO_CAMS_FROM_WORLD)
 
     ctx.progress(0.5, f"solving: {rec.num_points3D()} points, {n_obs} observations")
     adjuster = pycolmap.create_default_bundle_adjuster(options, config, rec)
@@ -398,6 +442,9 @@ def run(ctx: Ctx):
         valid=valid,
         image_index=image_index.astype(np.int32),
     )
+    _filled = filled_mask(sparse, n_images)
+    if _filled is not None:
+        out.save("fill", filled=_filled)
 
     refined_K = None
     if p.refine_focal_length or p.refine_principal_point:
@@ -444,6 +491,9 @@ def run(ctx: Ctx):
     # counted in escaped_points instead.
     stayed = np.isfinite(error) & (error <= extent)
     _s = structure_readings(xyz, _obs, error[stayed], refined_poses, valid, None, n_images)
+    _nf = 0 if _filled is None else int(_filled.sum())
+    out.metric("filled_images", _nf, direction="neutral")
+    out.metric("frozen_images", frozen, direction="neutral")
     out.metric("min_frame_points", _s["min_frame_points"],
                direction="higher_better", healthy=(50, None))
     out.metric("two_view_fraction", _s["two_view_fraction"],

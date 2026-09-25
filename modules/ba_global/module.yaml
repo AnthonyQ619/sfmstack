@@ -1,5 +1,5 @@
 name: BundleAdjustmentGlobal
-version: 1.2.1
+version: 1.3.0
 kind: optimization
 summary: >
   Ceres bundle adjustment over the whole reconstruction, refining every pose and
@@ -27,7 +27,7 @@ description: |
   authoritative; the sidecar is a convenience, and a consumer without pycolmap
   loses nothing but the convenience.
 
-image: sfmstack/ba-global:1.2.1
+image: sfmstack/ba-global:1.3.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -100,6 +100,30 @@ params:
       observable from a short sequence and trades off directly against translation;
       refining it on limited data usually moves error around rather than removing it.
 
+  fixed_image_indices:
+    type: array
+    items: {type: integer, minimum: 0}
+    default: []
+    description: >
+      Image indices whose poses are held constant. Their points still move.
+    tuning: >
+      Leave empty for an ordinary refinement, which is what almost every chain
+      wants: bundle adjustment exists to move the cameras.
+
+      The case it exists for is a model whose cameras have two provenances -- a
+      geometric core the correspondences support, and cameras a `PoseFill` placed
+      because the core could not reach them. **Refining the second kind damages it
+      badly while the same solve helps the core**: pairs touching a placed camera
+      came out several times worse refined than left at their estimate, with the
+      share of catastrophic pairs rising by a factor of several, because refinement
+      drags those cameras using exactly the correspondences that were too thin to
+      register them. That was the single largest effect in the campaign behind the
+      rule. Pass the filled indices here and refine the core only.
+
+      Indices are into the SCENE's images, matching `filled` on the pose artifact and
+      `image_index` on the model. An index the model does not carry is ignored rather
+      than raising, so the same list can be passed to a chain that dropped a frame.
+
   min_track_len:
     type: integer
     default: 2
@@ -116,6 +140,33 @@ params:
       cost without adding information. Check `points_optimized` afterwards.
 
 metrics:
+
+  frozen_images:
+    direction: neutral
+    meaning: >
+      Cameras held fixed by fixed_image_indices, so cameras the solve did not move.
+      Normally zero. It is non-zero on the one chain that needs it: a model carrying
+      cameras a correspondence-free estimator placed, where refining them drags them
+      on exactly the correspondences that were too thin to register them.
+
+      Note that two or more constant cameras also pin the gauge, so the solve stops
+      fixing it separately; with one constant camera rotation and translation are
+      pinned but scale is not, and the gauge is still fixed explicitly.
+
+  filled_images:
+    direction: neutral
+    meaning: >
+      Cameras a `PoseFill` PLACED, because the geometric core could not reach them,
+      rather than registered on correspondences. Zero on every model that did not
+      come through a fill, which is almost all of them.
+
+      **This is the number that makes registered_images readable.** The two
+      provenances are not the same thing and that count cannot tell them apart: the
+      catastrophic over-registration `health/ladder.md`'s first rung warns about is a
+      camera placed on correspondences the model cannot justify, and a camera counted
+      here rests on no correspondences at all, so that mechanism cannot have produced
+      it. Compare models on registered_images MINUS this, and read the fill's own
+      shared_residual for whether the placed cameras are trustworthy.
   min_frame_points:
     meaning: >
       The fewest observations any REGISTERED camera contributes to the refined
