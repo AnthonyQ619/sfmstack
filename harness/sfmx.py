@@ -248,7 +248,17 @@ elif cmd == "run":
         ch = load_chain()  # read under the lock: nothing else writes it meanwhile
         inputs = {s: overrides.get(s, ch["current"].get(s)) for s in consumes}
         inputs = {s: a for s, a in inputs.items() if a}
-        missing = [s for s in consumes if s not in inputs]
+        # Only a REQUIRED slot the chain cannot fill is an error. Every slot was
+        # treated as required until a module declared an optional input the chain
+        # never carries: the optional estimator PoseFill compares its fill against.
+        # Modules whose optional slots happen to name something the chain always has
+        # -- DenseVGGT's poses, sparse and tracks -- never exposed this, because
+        # `ch["current"]` filled them and they were never missing.
+        def needed(slot):
+            spec = consumes.get(slot)
+            return not isinstance(spec, dict) or spec.get("required", True)
+
+        missing = [s for s in consumes if s not in inputs and needed(s)]
         if missing and module != "SceneLoader":
             sys.exit(f"{module} needs {missing}, which this capture's chain does not carry. "
                      f"It has {sorted(ch['current'])}. Produce them first, or pass slot=artifact_id.")

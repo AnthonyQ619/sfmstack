@@ -1,6 +1,6 @@
 ---
 module: PoseFill
-module_version: 1.0.0
+module_version: 1.1.0
 upstream: none -- a similarity fit, implemented here
 curated_at: 2026-09-25
 sources: 2
@@ -42,11 +42,19 @@ After the pose stage, before triangulation, when all of these hold:
 Then: `PoseFill` → `SparseTriangulation` → `BundleAdjustmentGlobal` with the filled
 indices in `fixed_image_indices`. That last part is not optional; see below.
 
+**Pass `poses_b` as well when a second estimator has run.** It costs nothing and it
+is what prices the frames being placed rather than the frames already agreed on.
+
 ## What it does
 
 Fits scale, rotation and translation from the estimator's frame into the core's, on
 the cameras they both place, and writes one pose table: the core's rows untouched,
 the missing rows carried across, and a `filled` mask saying which is which.
+
+**Both halves of the rule live here.** `drop_image_indices` removes cameras from the
+core before the fit, so a camera the model cannot support is taken out *and* refilled
+in one move. Read `SparseVerification`'s `worst_camera_index` to know which — a bad
+camera is not always a stray, and dropping on suspicion removes evidence you had.
 
 The similarity is what removes the scale difference. A feed-forward estimator
 answers in its own frame at its own scale; after the fit there is one frame and one

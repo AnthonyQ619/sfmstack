@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.2.0
+module_version: 1.3.0
 produces: custom/verification/v1
 ---
 
@@ -61,3 +61,26 @@ distinguishes a model in the wrong configuration from a model with a few bad
 pairs. A handful of high pairs on an otherwise clean model is more often pairs
 where the matcher's outliers are the majority; check their `held_out` against
 `matches` before reading anything into them.
+
+## The per-camera rollup
+
+Beside `pairs`, the artifact carries a `cameras` array from 1.3.0: one row per
+registered camera with the median held-out residual over every scored pair touching
+it, and how many pairs that median is over.
+
+It is published because every reader who needed it computed it by hand from `pairs`,
+which is what this corpus treats as the definition of a missing metric. And it is
+needed because the remedy for one bad camera is to **drop** it — `plan/pose.md` says
+so — and the remedy depends on knowing which. One report put the problem exactly:
+*"p90 of 127° with median 2.2° implied one bad camera; remedy depends on knowing
+which."*
+
+`worst_camera_index` names it and `worst_camera_residual_px` is its reading.
+
+**A bad camera is not always a stray.** It can sit inside the largest agreeing
+component, add nothing to `supported_stray_cameras`, and still be the camera every
+pair touching it disagrees with. The two readings answer different questions: the
+strays say the model is in pieces, this says which camera the evidence argues with.
+
+Read `pairs_scored` beside the median. A camera with one or two scored pairs has a
+median that a single bad pair sets.

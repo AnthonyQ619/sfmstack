@@ -92,6 +92,32 @@ def trimmed_fit(src: np.ndarray, dst: np.ndarray, trim: float, rounds: int = 3):
     return s, R, t, res, keep
 
 
+def rotations(cam_from_world, valid, image_index):
+    """Per-image rotation block, for the rows that carry a pose."""
+    return {int(i): np.asarray(cam_from_world[r])[:, :3]
+            for r, (i, ok) in enumerate(zip(image_index, valid)) if ok}
+
+
+def relative_disagreement(ra: dict, rb: dict, which) -> float | None:
+    """Median angle between the two tables' RELATIVE rotations, over `which`.
+
+    Gauge-free: it compares pair-to-pair relative rotations, so neither table's
+    world frame enters. Restricting `which` is the whole point -- the fit residual
+    already says whether the two frames agree where both tables have an opinion,
+    and this says whether they agree about the cameras being PLACED, which is a
+    different question and the one the fill actually rests on.
+    """
+    ks = sorted(set(which) & set(ra) & set(rb))
+    if len(ks) < 2:
+        return None
+    A = np.stack([ra[k] for k in ks])
+    B = np.stack([rb[k] for k in ks])
+    i, j = np.triu_indices(len(ks), k=1)
+    d = (A[j] @ np.swapaxes(A[i], 1, 2)) @ np.swapaxes(B[j] @ np.swapaxes(B[i], 1, 2), 1, 2)
+    ang = np.degrees(np.arccos(np.clip((np.trace(d, axis1=1, axis2=2) - 1) / 2, -1, 1)))
+    return float(np.median(ang))
+
+
 @module
 def run(ctx: Ctx):
     core = ctx.inputs["sparse"]
@@ -113,10 +139,26 @@ def run(ctx: Ctx):
 
     C = centres(c_cfw, c_valid, c_idx)
     F = centres(f_cfw, f_valid, f_idx)
+
+    # The DROP half of the rule. `plan/pose.md` says "drop those cameras AND fill
+    # them, frozen -- both halves", and until this parameter existed only the fill
+    # was executable: an agent that found one bad camera in an otherwise good core
+    # had no way to take it out, so the fill was built on a contaminated core and the
+    # finished model was vetoed. Measured on two captures of the pose batch, both of
+    # which recorded the gap in their own reports.
+    #
+    # A dropped camera is removed from the core BEFORE the similarity is fitted, so a
+    # camera that is in the wrong place cannot pull the frame fit either, and it then
+    # becomes an ordinary fill candidate.
+    dropped = sorted({int(i) for i in (p.drop_image_indices or [])} & set(C))
+    for i in dropped:
+        del C[i]
+
     shared = sorted(set(C) & set(F))
     missing = sorted(set(F) - set(C))
 
-    ctx.progress(0.3, f"{len(C)} core, {len(F)} feed-forward, {len(shared)} shared")
+    ctx.progress(0.3, f"{len(C)} core ({len(dropped)} dropped), "
+                      f"{len(F)} feed-forward, {len(shared)} shared")
 
     if len(shared) < p.min_shared_cameras:
         raise ValueError(
@@ -126,6 +168,8 @@ def run(ctx: Ctx):
             f"and this module is not a swap: if the core registered almost nothing, "
             f"deliver the feed-forward model on its own and say so, rather than "
             f"filling a core that is not there."
+            + (f" {len(dropped)} camera(s) were dropped before this count was taken."
+               if dropped else "")
         )
 
     src = np.array([F[i] for i in shared])
@@ -167,6 +211,21 @@ def run(ctx: Ctx):
 
     ctx.progress(0.8, f"filled {int(filled.sum())} camera(s)")
 
+    # The SECOND estimator, when one is supplied, and the reading the fit residual
+    # cannot give. `shared_residual` is computed on cameras BOTH tables already
+    # place; it is silent about the frames being filled. An agent hit exactly this:
+    # the two estimators agreed on the overlap and disagreed by tens of degrees on
+    # precisely the frames it was about to place, and nothing in the module saw it.
+    filled_agreement = None
+    other = ctx.inputs.get("poses_b")
+    if other is not None and filled.any():
+        o = other.load("poses")
+        ra = rotations(f_cfw, f_valid, f_idx)
+        rb = rotations(np.asarray(o["cam_from_world"], dtype=np.float64),
+                       np.asarray(o["valid"], dtype=bool),
+                       np.asarray(o["image_index"], dtype=int))
+        filled_agreement = relative_disagreement(ra, rb, np.flatnonzero(filled))
+
     out = ctx.output("poses")
     out.save("poses", cam_from_world=cam_from_world, valid=valid,
              image_index=np.arange(n_images, dtype=np.int32))
@@ -186,6 +245,10 @@ def run(ctx: Ctx):
     out.metric("mean_reprojection_error", None, direction="lower_better")
     out.metric("median_reprojection_error", None, direction="lower_better")
     out.metric("filled_images", int(filled.sum()), direction="neutral")
+    out.metric("dropped_images", len(dropped), direction="neutral")
+    out.metric("filled_agreement_deg",
+               None if filled_agreement is None else round(filled_agreement, 4),
+               direction="lower_better")
     # No healthy band on either of these, and for the same reason the verifier's
     # mrad reading carries none: the gate IS a parameter, so a fixed band beside it
     # states a second threshold that disagrees with the real one the moment anybody
@@ -220,6 +283,29 @@ def run(ctx: Ctx):
                 "they share, no fill of them will agree either.",
             ],
             see_also="limitations.md#what-one-similarity-cannot-absorb")
+
+    if filled_agreement is not None and filled_agreement > p.max_filled_disagreement_deg:
+        out.diagnostic(
+            "filled_frames_disputed",
+            severity="error",
+            message=(
+                f"The two correspondence-free estimators disagree by "
+                f"{filled_agreement:.1f} deg about the {int(filled.sum())} frame(s) "
+                f"being filled, while the similarity on the shared cameras came back "
+                f"at {shared_residual:.1%}. The frames are being placed on an answer "
+                f"only one estimator gives."
+            ),
+            suggested_actions=[
+                "Do not deliver this fill. The fit residual passed because the two "
+                "tables agree where the core already has cameras; that says nothing "
+                "about the cameras this fill is actually placing.",
+                "Deliver the core and name the missing frames, per plan/pose.md's "
+                "fourth row.",
+                "If one estimator is plainly the outlier elsewhere too, read "
+                "sfm_compare's pose_agreement across all three before spending "
+                "another run here.",
+            ],
+            see_also="limitations.md#the-fit-residual-does-not-price-the-filled-frames")
 
     if not len(missing):
         out.diagnostic(

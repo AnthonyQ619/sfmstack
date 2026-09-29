@@ -1,5 +1,5 @@
 name: PoseFill
-version: 1.0.0
+version: 1.1.0
 kind: pose
 summary: >
   One pose table out of two: the geometric core's cameras kept as they are, and the
@@ -43,7 +43,7 @@ description: |
   effect in the campaign that produced this rule. Pass the filled indices to
   `BundleAdjustmentGlobal`'s `fixed_image_indices` and refine the core only.
 
-image: sfmstack/pose-fill:1.0.0
+image: sfmstack/pose-fill:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -55,11 +55,39 @@ consumes:
   scene: {type: scene/v1, required: true}
   sparse: {type: sparse_model/v1, required: true}
   poses: {type: poses/v1, required: true}
+  poses_b: {type: poses/v1, required: false}
 
 produces:
   poses: {type: poses/v1}
 
 params:
+  drop_image_indices:
+    type: array
+    items: {type: integer, minimum: 0}
+    default: []
+    description: >
+      Cameras removed from the core before the similarity is fitted. They become
+      ordinary fill candidates.
+    tuning: >
+      **This is the DROP half of the rule in `plan/pose.md`**, and until it existed
+      only the fill was executable. An agent that found one bad camera in an
+      otherwise good core had no way to take it out, so the fill was built on a
+      contaminated core and the finished model was vetoed anyway. Two captures of the
+      pose batch failed exactly that way and both recorded the gap themselves.
+
+      A dropped camera is removed BEFORE the fit, so a camera in the wrong place
+      cannot pull the frame alignment either. That matters: leaving it in and letting
+      the trim reject it makes the fit depend on the trim finding it.
+
+      **Which camera.** `SparseVerification` publishes `worst_camera_index` and a
+      per-camera residual array; the camera to drop is the one whose held-out pairs
+      disagree, which is not always a stray -- it can sit inside the largest agreeing
+      component and still be wrong. Dropping on suspicion rather than on that reading
+      removes evidence you had.
+
+      Empty is the normal setting. Dropping cameras you cannot name a reason for
+      makes the model smaller and no better.
+
   min_shared_cameras:
     type: integer
     default: 6
@@ -108,6 +136,26 @@ params:
       files carry the per-capture numbers. Read `shared_residual` against what a
       capture of this kind reads rather than against this number.
 
+  max_filled_disagreement_deg:
+    type: number
+    default: 5.0
+    minimum: 0.0
+    maximum: 180.0
+    description: >
+      Degrees of disagreement between the two estimators, over the FILLED frames
+      only, above which the fill is refused. Needs `poses_b`.
+    tuning: >
+      Only applies when a second estimator is supplied, and it is worth supplying:
+      the fit residual is computed on cameras both tables already place and is silent
+      about the frames being filled. An agent met the failure this exists for -- the
+      estimators agreed on the overlap and disagreed by tens of degrees on precisely
+      the frames it was about to place.
+
+      5 degrees is well above what two estimators that agree on a capture read and
+      well below a genuine dispute; it has not been fitted on a campaign. Read
+      `filled_agreement_deg` against what the same pair reads on the shared cameras
+      rather than against this number.
+
 metrics:
   registered_images:
     direction: higher_better
@@ -149,6 +197,30 @@ metrics:
       PLACED rather than registered, it rests on no correspondence, and the
       catastrophic over-registration that `health/ladder.md`'s first rung warns about
       cannot have produced it. Zero means the estimator had nothing the core lacked.
+
+  dropped_images:
+    direction: neutral
+    meaning: >
+      Cameras removed from the core by `drop_image_indices` before the fit. They are
+      not in the core and are eligible to be filled, so a dropped camera that the
+      estimator also lacks simply leaves the model. Normally zero.
+
+  filled_agreement_deg:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      Median relative-rotation disagreement between the two estimators, **restricted
+      to the frames being filled**. Null when no second estimator was supplied or
+      nothing was filled.
+
+      **This is the reading `shared_residual` cannot give.** That one is computed on
+      cameras both tables already place, so it says whether the two frames were put
+      into correspondence -- not whether the estimators agree about the cameras this
+      fill is actually placing. The two come apart exactly where it matters: a fill
+      can sit on a clean frame fit and still be placing frames only one estimator has
+      an opinion about.
+
+      Gauge-free, so neither estimator's world frame enters.
 
   shared_cameras:
     direction: higher_better
@@ -196,6 +268,15 @@ metrics:
       mismatch, and is worth reading the per-camera residuals over.
 
 diagnostics:
+  - code: filled_frames_disputed
+    severity: error
+    message: The two estimators disagree about the frames being filled, however well the shared cameras fit.
+    suggested_actions:
+      - Do not deliver this fill. A clean fit residual says the frames were put into correspondence, not that the placed cameras are right.
+      - Deliver the core and name the missing frames, per plan/pose.md's fourth row.
+      - If one estimator is the outlier elsewhere too, read sfm_compare's pose_agreement across all three first.
+    see_also: limitations.md#the-fit-residual-does-not-price-the-filled-frames
+
   - code: fit_does_not_agree
     severity: error
     message: The cameras both tables placed do not line up after the similarity; the fill is not trustworthy.

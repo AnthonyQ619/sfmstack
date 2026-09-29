@@ -1,17 +1,19 @@
 ---
 module: PoseFill
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-09-25
 ---
 
 # Tuning
 
-Three parameters. Two of them change nothing about whether a fill is delivered, and
-the third is the whole decision.
+Five parameters. Two of them decide whether a fill is delivered, one decides what
+the core is, and two change nothing about the answer.
 
 | Parameter | Default | Effect |
 | --- | --- | --- |
-| `max_shared_residual` | 0.03 | **The gate.** Above it the fill is refused. |
+| `max_shared_residual` | 0.03 | **The frame gate.** Above it the fill is refused. |
+| `max_filled_disagreement_deg` | 5.0 | **The frames gate**, when `poses_b` is supplied. |
+| `drop_image_indices` | empty | The drop half of the rule. |
 | `min_shared_cameras` | 6 | How much overlap is required before a fit is attempted. |
 | `trim` | 0.2 | Which shared cameras the fit and the residual describe. |
 

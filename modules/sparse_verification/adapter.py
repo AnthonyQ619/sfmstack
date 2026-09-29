@@ -293,6 +293,25 @@ def run(ctx: Ctx):
     )
     share = held_total / total if total else 0.0
 
+    # Per camera, from the pairs already computed. The pairs array has carried this
+    # all along and every reader who needed it rolled it up by hand -- which is the
+    # definition of a metric that should have been published, and the same argument
+    # sparse_model/v1 makes about its own structure readings. It is needed because
+    # the remedy for one bad camera is to DROP it, and the remedy depends on knowing
+    # which: a camera can sit inside the largest agreeing component, contribute no
+    # stray, and still be the one whose held-out pairs disagree.
+    cam_ids = sorted(pose)
+    cam_row = {c: k for k, c in enumerate(cam_ids)}
+    cam_med = np.full(len(cam_ids), np.nan)
+    cam_n = np.zeros(len(cam_ids), dtype=np.int64)
+    for c in cam_ids:
+        touching = arr[(arr[:, 0] == c) | (arr[:, 1] == c)]
+        r = touching[:, 4][np.isfinite(touching[:, 4])]
+        if len(r):
+            cam_med[cam_row[c]] = float(np.median(r))
+            cam_n[cam_row[c]] = len(r)
+    worst_i = int(np.nanargmax(cam_med)) if np.isfinite(cam_med).any() else None
+
     out = ctx.output("verification")
     out.save(
         "pairs",
@@ -302,6 +321,17 @@ def run(ctx: Ctx):
         residual_px=arr[:, 4],
         residual_all_px=arr[:, 5],
     )
+    out.save(
+        "cameras",
+        image_index=np.asarray(cam_ids, dtype=np.int64),
+        median_residual_px=cam_med,
+        pairs_scored=cam_n,
+    )
+    out.metric("worst_camera_index",
+               None if worst_i is None else int(cam_ids[worst_i]), direction="neutral")
+    out.metric("worst_camera_residual_px",
+               None if worst_i is None else round(float(cam_med[worst_i]), 4),
+               direction="lower_better")
     out.metric("heldout_residual_px", None if reading is None else round(reading, 4),
                direction="lower_better", healthy=(None, 3.0))
     out.metric("held_out_share", round(share, 4), direction="neutral")

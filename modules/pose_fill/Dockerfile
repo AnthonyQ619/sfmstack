@@ -1,6 +1,6 @@
 # PoseFill 1.0.0
 #
-#   docker build -t sfmstack/pose-fill:1.0.0 -f modules/pose_fill/Dockerfile .
+#   docker build -t sfmstack/pose-fill:1.1.0 -f modules/pose_fill/Dockerfile .
 #
 # Build context is the repository root.
 #

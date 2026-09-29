@@ -1,5 +1,5 @@
 name: SparseVerification
-version: 1.2.0
+version: 1.3.0
 kind: analysis
 summary: >
   A veto on finished sparse models: rejects one that contradicts the matcher's
@@ -46,7 +46,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.2.0
+image: sfmstack/sparse-verification:1.3.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -108,6 +108,33 @@ types:
               it; it is what supported_components is computed from, because that
               reading needs a per-pair median stable enough not to cut a sound
               pair loose by chance.
+      cameras:
+        required: false
+        description: >
+          One row per registered camera, rolled up from the pairs above. Present
+          from 1.3.0; a reader that has to work against an older artifact computes
+          it from `pairs` the way every reader did before it was published.
+        arrays:
+          image_index:
+            required: true
+            shape: [null]
+            dtype: [int32, int64]
+            description: Scene frame index of the camera.
+          median_residual_px:
+            required: true
+            shape: [null]
+            dtype: [float32, float64]
+            description: >
+              Median held-out residual over every scored pair touching this camera.
+              NaN where no pair touching it had enough held-out correspondences.
+          pairs_scored:
+            required: true
+            shape: [null]
+            dtype: [int32, int64]
+            description: >
+              How many pairs that median is over. A camera with one or two scored
+              pairs has a median that one bad pair sets, so read it beside this.
+
     invariants:
       - check: same_length
         args: {file: pairs, arrays: [image_pair, matches, held_out, residual_px]}
@@ -240,6 +267,32 @@ metrics:
       model in five, so it is a reason to look again rather than a second veto --
       which is why no band is published here and why the absence is not an
       oversight. See plan/pose.md and evidence/sparse-pose-2026-09.md.
+
+  worst_camera_index:
+    direction: neutral
+    nullable: true
+    meaning: >
+      The registered camera whose held-out pairs disagree with the model most, by
+      median residual. Null when no camera had a scorable pair.
+
+      **This is the reading the drop remedy needs.** `plan/pose.md` says to drop the
+      cameras a model cannot support and fill them, and until this was published the
+      agent could see THAT one camera was wrong and not WHICH -- one report put it as
+      "p90 of 127 deg with median 2.2 deg implied one bad camera; remedy depends on
+      knowing which". Note it is not always a stray: a camera can sit inside the
+      largest agreeing component, add nothing to supported_stray_cameras, and still
+      be the one every pair touching it disagrees with.
+
+  worst_camera_residual_px:
+    direction: lower_better
+    nullable: true
+    meaning: >
+      That camera's median held-out residual, in undistorted working-resolution
+      pixels. Banded nowhere, for the reason the module's other residual is banded
+      nowhere: a pixel is a different amount of geometry on a wide-angle camera than
+      on a long lens. Read it against what the other cameras of THIS capture read --
+      the per-camera array is there for exactly that comparison -- and convert to an
+      angle before carrying any judgement across captures.
 
   filled_cameras_excluded:
     direction: neutral

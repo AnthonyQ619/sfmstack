@@ -1,6 +1,6 @@
 ---
 module: PoseFill
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-09-25
 ---
 
@@ -25,6 +25,23 @@ not, the transform placing the filled cameras does not hold. The
 
 When it fires, deliver the core and say in the report which frames are missing.
 A refused fill costs the core; a bad fill costs the delivery.
+
+## The fit residual does not price the filled frames
+
+`shared_residual` is computed on the cameras **both tables already place**. It says
+whether the two frames were put into correspondence. It says nothing about the
+cameras this fill is actually placing, and the two come apart exactly where it
+matters: a fill can sit on a clean frame fit and still be placing frames only one
+estimator has an opinion about.
+
+An agent met this and had no reading for it — the two estimators agreed across the
+overlap and disagreed by tens of degrees on precisely the four frames it was about
+to fill. Supply a second estimator as `poses_b` and `filled_agreement_deg` answers
+it: the estimators' relative-rotation disagreement restricted to the filled indices.
+`filled_frames_disputed` fires on it.
+
+Without `poses_b` the reading is null, and the fill rests on one opinion about the
+frames that matter most. That is allowed and it is worth knowing you are doing it.
 
 ## It cannot tell you whether the estimator is right
 

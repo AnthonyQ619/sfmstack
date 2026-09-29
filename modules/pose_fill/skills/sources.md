@@ -1,6 +1,6 @@
 ---
 module: PoseFill
-module_version: 1.0.0
+module_version: 1.1.0
 curated_at: 2026-09-25
 ---
 
@@ -17,5 +17,7 @@ browsed.** The provenance summary rides `SKILL.md`; unsourced-band warnings sit 
 | the similarity convention: a world rescaled by `s` puts `s` in the camera translation and leaves the rotation block a rotation | derived, and checked numerically against random poses |
 | that a filled camera becomes its own component in `SparseVerification`, so an unmarked fill trips `model_not_supported_by_its_own_evidence` | read directly from that module's component construction over posed cameras |
 | that a filled camera holding no structure yields an empty depth map rather than a corrupted one, so the fill is dense-neutral | `plan/dense.md` on `min_frame_points` and MVS source-view selection |
-| **the gate default, the shared-camera floor, the trim** | **nothing** — see the audit section in `tuning.md` |
+| **that the rule needs an executable drop**: two captures produced a clean fill on a core still holding one bad camera, and the finished model was vetoed; both agents recorded the missing drop in their own reports | measured; the pose batch of 2026-09-25 |
+| **that the fit residual does not price the filled frames**: one capture's estimators agreed across the overlap and disagreed by tens of degrees on exactly the frames being filled | measured; same batch |
+| **the gate defaults, the shared-camera floor, the trim, the filled-frame ceiling** | **nothing** — see the audit section in `tuning.md` |
 | **behaviour in a real pipeline** | **nothing** — this module is new and has not run a campaign |

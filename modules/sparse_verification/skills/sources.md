@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.2.0
+module_version: 1.3.0
 curated_at: 2026-09-14
 ---
 
@@ -79,6 +79,14 @@ and the component reading's in
   column present and `residual_all_px` finite on every scored pair where
   `residual_px` is NaN on half of them, which is the sample-size problem that
   design was discarded for, visible in one artifact.
+
+- **The per-camera rollup, and why it is published.** Every reader who needed a
+  per-camera reading computed it by hand from the `pairs` array. The remedy for
+  one bad camera is to drop it, which `plan/pose.md` prescribes, and the remedy
+  depends on knowing which — one agent's report put it as "p90 of 127° with
+  median 2.2° implied one bad camera; remedy depends on knowing which", and had
+  nothing to act on. Measured on the pose batch of 2026-09-25, where two captures
+  delivered a smaller model for exactly this reason.
 
 ## Reasoned, not measured
 

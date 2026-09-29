@@ -321,15 +321,41 @@ is the shape to avoid: it means reconciling two point sets and two track tables
 built at different scales, and that is where the scale question becomes genuinely
 hard. Merging the pose tables is seven parameters with a closed-form answer.
 
-**Read `shared_residual` before you deliver it.** The filled cameras have no
-correspondences and no reference, so nothing measures them directly. What can be
-measured is whether the two tables were put into a common frame at all, on the
-cameras where both have an opinion — and if they were not, the transform placing
-the filled cameras does not hold. A high reading is what a **drifting** estimator
-looks like: one similarity has seven parameters and cannot correct a scale that
-varies along a capture. Expect it on a long handheld walk, not on a subsampled
-orbit. When it fires, deliver the core and say which frames are missing; a refused
-fill costs the core, a bad fill costs the delivery.
+**Dropping is the same move, and `drop_image_indices` is how.** The table below says
+to drop the cameras the model cannot support *and* fill them. Pass them to
+`PoseFill` and both halves happen at once: they leave the core before the similarity
+is fitted, so a camera in the wrong place cannot pull the frame alignment either,
+and they are then filled like any other missing camera. Dropping by re-running the
+loader on a narrower pattern is not the same thing — that rebuilds the capture from
+features onward and throws away the core you were keeping.
+
+**Which camera to drop is a reading, not a guess.** `SparseVerification` publishes
+`worst_camera_index` and a per-camera median held-out residual beside its per-pair
+array. Read it rather than dropping on suspicion, and note that **the camera to drop
+is often not a stray**: it can sit inside the largest agreeing component, contribute
+nothing to `supported_stray_cameras`, and still be the one every pair touching it
+disagrees with. The two readings answer different questions.
+
+**Read both gates before you deliver it, because they price different things.**
+
+| reading | what it asks | when it is silent |
+| --- | --- | --- |
+| `shared_residual` | were the two tables put into a common frame, on the cameras where both have an opinion | it says nothing about the cameras being placed |
+| `filled_agreement_deg` | do two independent estimators agree about **the frames being filled** | null unless a second estimator was passed as `poses_b` |
+
+The first is what a **drifting** estimator trips: one similarity has seven parameters
+and cannot correct a scale that varies along a capture. Expect it on a long handheld
+walk, not on a subsampled orbit.
+
+The second exists because the first can pass while the fill is still wrong. Measured:
+a capture whose two estimators agreed across the whole overlap and disagreed by tens
+of degrees on exactly the four frames being filled — a clean frame fit, placing
+cameras only one estimator had an opinion about. **Pass the second estimator.** It
+costs one run you have usually already spent on the consensus reading, and without it
+the frames that matter most rest on a single opinion.
+
+When either fires, deliver the core and say which frames are missing; a refused fill
+costs the core, a bad fill costs the delivery.
 
 **Then freeze the filled cameras. Do not put them in the global refinement.** This
 is the single largest effect in the whole result and it runs against the obvious
@@ -370,9 +396,10 @@ rule and they are opposites:**
 | you are holding | do |
 | --- | --- |
 | every frame, on evidence the matcher verified, and the reading is quiet | deliver it; nothing here applies |
-| every frame, but some on evidence the matcher could not verify, and the reading fires | drop those cameras **and fill them**, frozen — both halves. `PoseFill`, then triangulate, then refine with the filled indices in `fixed_image_indices` |
+| every frame, but some on evidence the matcher could not verify, and the reading fires | drop those cameras **and fill them**, frozen — both halves, in one call: their indices go in `PoseFill`'s `drop_image_indices`, then triangulate, then refine with the filled indices in `fixed_image_indices` |
 | fewer frames than the capture has, because a veto or the graph took them out | **fill them**, frozen, by the same chain. Stopping here is the unfinished move above |
-| fewer frames, and the feed-forward estimator will not run, or `PoseFill` refuses, or its `shared_residual` fires | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved |
+| fewer frames, and the estimator will not run, or `PoseFill` refuses, or either gate fires | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved |
+| **a core too small to fill at all** — fewer than a handful of cameras shared with the estimator | there is nothing to fit a frame onto, and this is not a swap. Deliver the estimator's model **on its own**, marked as such, or deliver the core and say the capture was not solved. Do **not** lower `min_shared_cameras` to get a fill through: a residual computed on four cameras is a fit to four points, and an agent that tried it had the fill caught by the other gate anyway |
 
 **One consequence of a successful fill to keep in view:** `registered_fraction`
 reaches 1.0, so the rules below that key on *low* registration — global
