@@ -1,6 +1,6 @@
 ---
 module: BundleAdjustmentGlobal
-module_version: 1.3.0
+module_version: 1.5.0
 curated_at: 2026-08-07
 ---
 
@@ -23,7 +23,7 @@ poses → pairwise triangulation, all defaults.
 | `reprojection_error_after` | 0.2531 px |
 | `error_reduction` | 0.328 |
 | `points_optimized` | 6941 |
-| `observations_optimized` | 22743 |
+| `observation_count` | 22743 |
 | `iterations` | 154 |
 | `converged` | 1 |
 | runtime | 5.3 s |
@@ -129,6 +129,13 @@ the least information.
 
 ## Metrics that mislead
 
+**`frozen_images` is normally zero, and non-zero on exactly one chain.** It counts
+cameras held fixed by `fixed_image_indices` — cameras this solve did not move. The
+chain that needs it is a model carrying cameras a correspondence-free estimator
+placed, where refining them would drag them on the very correspondences that were too
+thin to register them. Two or more constant cameras also pin the gauge, so the solve
+stops fixing it separately.
+
 `error_reduction` near zero is good news when the error is low and bad news when it
 is high. It can also be **negative** without anything being wrong: with the robust
 loss on, the solver is not minimising the mean.
@@ -144,9 +151,8 @@ this pipeline.
 ## What here rests on nothing — the manifest audit
 
 Audited against this module's own manifest. **Seven healthy bands**
-(`min_frame_points`, `p95_reprojection_error`, `observations_optimized`,
-`observation_count`, `mean_track_length`, `mean_reprojection_error`, and one
-more) declare a range that no diagnostic reads: each is a description of the
+(`min_frame_points`, `p95_reprojection_error`, `observation_count`,
+`mean_track_length`, `mean_reprojection_error`, and two more) declare a range that no diagnostic reads: each is a description of the
 captures measured so far, not a judgement on yours, and a corpus maximum is the
 largest of N draws — the next capture exceeding it is expected, not anomalous.
 The specific numbers in the `max_iterations`, `loss_scale` and

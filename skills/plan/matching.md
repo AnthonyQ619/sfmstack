@@ -18,6 +18,24 @@ A **detector-free** matcher (`FeatureMatchLoFTR`, `FeatureMatchRoMa`) consumes
 images and produces correspondences directly. There is no keypoint table, so there
 is no `feature_index`.
 
+**Between the two, reach for `FeatureMatchRoMa` first, and the gap is not subtle.**
+Run head to head on the seven corpus captures that span `studio`, `indoor` and
+`outdoor`, at both weight settings — fourteen configurations each — RoMa returned a
+**complete view graph on every one of the twelve that completed**: one component, every
+image matched to every other, no weak pairs. LoFTR completed twelve as well and
+managed a complete graph on **three**; the other nine left the graph in pieces or an
+image at degree zero. Its median is about 350 correspondences per pair against RoMa's
+3100. Five of LoFTR's refusals were at its defaults and were re-tried at its
+permissive floor — `min_confidence` 0.0 and `min_matches` 8, both as low as the module
+allows — where three completed and only one of those was usable. **An image at degree
+zero cannot register at all**, so this is a structural difference, not a quality
+preference.
+
+LoFTR remains the right thing to try where RoMa will not run or runs out of memory,
+and it is roughly three times faster. But it is not the stronger matcher on this
+corpus, and a capture that is fragmenting is not a reason to reach for it. The campaign
+is in [`evidence/detector-free-2026-10.md`](../evidence/detector-free-2026-10.md).
+
 **That difference propagates into the tracker and changes how tracks are built.**
 With `feature_index`, chaining is *exact*: two matches share a node when they cite
 the same keypoint. Without it, the tracker must merge endpoints by **proximity**,
@@ -406,7 +424,11 @@ decision rather than a free one.
 `pairwise_matches/v1` publishes `pairs/match_count` beside `pairs/image_pair`. The
 scalar metrics are a mean and a min over that array; the array is where the
 decisions at this stage actually live, because **the same count means opposite
-things in different positions.** Three tests, all checkable on a capture nobody has
+things in different positions.** `weak_pairs` — every matcher here publishes it —
+counts the pairs that fell under `min_matches` and were dropped, so it says how much
+of the graph the floor removed before you read any of these counts; a non-zero value
+means the array below is already missing edges, and which edges is what
+`min_image_degree` then answers. Three tests, all checkable on a capture nobody has
 seen, none of them requiring a corpus.
 
 **Read them in this order, and do not stop at the first one that clears.** The
@@ -486,6 +508,16 @@ ceilings across every configuration you try, with no diagnostic firing and
 `cycle_merge_rate` and `cycle_split_rate` still separate them: they count the
 matches that pass their own two-view check and contradict themselves once a third
 view is compared, which is the failure none of the tests above can see.
+
+**That escape does not exist for a detector-free matcher.** Both readings chain
+`feature_index` across three views, and `FeatureMatchLoFTR` and `FeatureMatchRoMa`
+publish none, so both come back **null rather than zero** — the type says so, and the
+null is honest rather than missing. Measured on one batch: null on all 78 RoMa runs,
+populated on 222 of 250 LightGlue runs and 73 of 79 NN runs. So on exactly the
+matchers you reach for when a capture is hard, the reading this section sends you to
+is unavailable. Use the tracker's `inconsistent_rate` instead — it is the quantity
+these two were validated against over 54 paired runs, it is defined for every
+matcher, and it costs a tracker run rather than nothing.
 
 **Read the SUM of the two when you are asking what the tracker will report, and
 each one separately when you are asking what to fix.** That distinction is measured

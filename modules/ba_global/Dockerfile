@@ -1,6 +1,6 @@
 # BundleAdjustmentGlobal 1.0.0
 #
-#   docker build -t sfmstack/ba-global:1.3.0 -f modules/ba_global/Dockerfile .
+#   docker build -t sfmstack/ba-global:1.5.0 -f modules/ba_global/Dockerfile .
 #
 # Build context is the repository root.
 #

@@ -546,21 +546,36 @@ So: let it nudge you, never let it decide. Where it and `repetition_notes`
 disagree, the description is describing the real hazard and this number is
 describing the wallpaper.
 
-### `combined_change` — quiet on adjacent pairs, not on full pairing
+### `combined_change` — read it against pairing AND frame count
 
-Illumination, colour and exposure drift. Measured with adjacent-frame pairing it
-stays inside its healthy band on every capture, and the lighting diagnostic has
-never fired there. **Read it against the pairing it was computed with** — that is
+Illumination, colour and exposure drift. Two things decide what the reading means,
+and neither is a property of the scene.
+
+**Pairing.** **Read it against the pairing it was computed with** — that is
 `SceneTriage`'s own `pairing` parameter, which is the module that produces this
 reading. `SceneMotion` has no such parameter, and an agent has passed it there
-after reading this passage. Pairing
-every frame with every other compares frames from opposite ends of the trajectory,
-and on a studio orbit whose backdrop swings from bright to dark it reads well above
-the band — enough to fire `illumination_unstable` — while the subject's own
-lighting has not changed and the capture reconstructs fully. Under full pairing,
-open the worst pair it names and check whether the change sits on the backdrop
-before acting on it. Expect it to matter for real on outdoor sequences shot over
-hours, which is not what has been measured.
+after reading this passage. Pairing every frame with every other compares frames
+from opposite ends of the trajectory, so under `pairing: all` the reading is higher
+by construction: the band is exceeded on nearly every corpus capture measured that
+way, and `illumination_unstable` fires on nearly all of them. **The band is not an
+alarm under full pairing** — the level worth acting on there is the one this
+module's `tuning.md` is written around, which is materially higher.
+
+**Frame count.** Under the default `consecutive` pairing the band holds at the
+frame counts the dense campaigns ran, and is exceeded on a substantial share of
+short loads, where "adjacent" spans far more of the trajectory. This is the
+sampling dependence §1 states for this metric, and it applies to the band as much
+as to the value: a band measured at one frame count is not a band at another.
+
+**Decompose before acting — the dominant component names the fix, and it is not
+always the same one.** Where `illumination_change` drives the total, a studio-rig
+orbit whose backdrop swings from bright to dark reads well above the band while the
+subject's own lighting has not changed; open the worst pair it names and check
+whether the change sits on the backdrop. On open outdoor sites the driver is
+`color_shift` instead, and there is no backdrop to dismiss — a detector that
+converts to grayscale first is indifferent to it, one that consumes colour is not.
+Captures reading above this band under full pairing have reconstructed fully on
+both kinds, so a high reading is grounds for choosing a detector, not for stopping.
 
 ### `overall_magnitude`, `variability`, `rotation_median_deg` — what the camera did
 
@@ -719,7 +734,7 @@ for what they cover:
 
 | field | decides |
 | --- | --- |
-| `environment` | `setting: indoor \| outdoor` on `FeatureMatchLoFTR` and `FeatureMatchRoMa` — ScanNet against MegaDepth weights. **Nothing measured distinguishes these**, and the modules' tuning notes say the wrong one costs `inlier_ratio` outright. `studio` maps to neither; expect to try both. |
+| `environment` | `setting: indoor \| outdoor` on `FeatureMatchLoFTR` and `FeatureMatchRoMa` — ScanNet against MegaDepth weights, and the wrong one costs `inlier_ratio` outright. Measured on the seven corpus captures spanning this field: on `indoor`, `setting: indoor` is **required** — `outdoor` weights refused to match at all on both interior captures, where `indoor` worked on both. On `outdoor` and on `studio`, `setting: outdoor` wins on `inlier_ratio` on four of five and never refused, so `studio` maps to `outdoor` rather than to neither. See [`evidence/detector-free-2026-10.md`](../evidence/detector-free-2026-10.md). |
 | `repetition_objects` | repeated *castings* — identical windows, dormers, street lamps. **Counted nowhere at any level.** |
 | `material_hazards` / `hazard_position` | whether a reflection carries a legible image, and where the phantom lands |
 | `dynamic_content` | movers. Both measuring modules list this as unimplemented. |
@@ -743,6 +758,18 @@ against a ≤0.05 ceiling on a warning that does not trip until 0.1; a split rat
 above the ceiling published at the time; a median track length under its floor.
 The first of those was the capture's real defect, and fixing it improved every
 other reading — a reader working from diagnostics alone would have shipped it.
+
+**The sharpest instance measured so far cost a delivery its alignment.** One corpus
+capture shipped with every frame registered, no diagnostic anywhere on the model, a mean
+reprojection error under half a pixel and a held-out residual of two tenths of a pixel —
+and one camera hundreds of metres from where reference geometry puts it. Exactly one
+published reading was out of band: `supported_components`, the number of connected
+components the supporting evidence leaves on the registered cameras, which sat at two
+against a ceiling of one. **Nothing fires on that reading.** A camera stranded by a
+handful of bad matches is self-consistently wrong — its own observations fit, so no error
+average can see it, and only the component structure can. Read the bands on a delivery
+even when every error reading is clean, and read that one before trusting any alignment
+to something external.
 
 **Two of those three examples have since been retired, and how they were retired
 is the more useful lesson.** The split-rate ceiling was raised once it was measured

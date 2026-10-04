@@ -1,6 +1,6 @@
 ---
 module: FeatureTrackUnionFind
-module_version: 1.4.0
+module_version: 1.5.0
 curated_at: 2026-08-07
 ---
 
@@ -276,6 +276,10 @@ positions come from the detector and the merge only decides which ones belong
 together.
 
 ## Metrics that mislead
+
+**`trifocal_seconds` is cost, not quality.** It is reported because this module's
+transfer measurement is the one part whose price is not obvious from its parameters.
+It carries no verdict on the tracks and no band reads it.
 
 `avg_track_length` rises both when the pipeline improves and when the matcher gets
 much worse. It is only comparable at constant matcher `inlier_ratio`. See

@@ -769,6 +769,11 @@ def run(ctx: Ctx):
     # value called the run diverged -- on solves whose median and tail had
     # improved. With escapees counted apart the gain is bounded by the image and
     # needs no guard.
+    # Correlates with registered_images at r = 1.000 -- but only over runs where
+    # local_ba was ON and working. The metric separates THREE states, not two: 0 with
+    # local_ba off, 0 with it on (no window ever carried enough structure, a
+    # structural failure), and N when it ran. Two tests pin that distinction. The
+    # correlation is an artifact of measuring only the third state.
     out.metric("local_ba_runs", ba_runs, direction="neutral")
     out.metric("local_ba_gain_px", round(mean_gain, 4) if mean_gain is not None else None,
                direction="higher_better", healthy=(0.0, None))

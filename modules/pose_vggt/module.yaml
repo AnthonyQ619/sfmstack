@@ -1,5 +1,5 @@
 name: PoseVGGT
-version: 1.0.0
+version: 1.2.0
 kind: pose
 summary: >
   Feed-forward camera poses and intrinsics from images alone, via VGGT's camera
@@ -32,7 +32,7 @@ description: |
   Accuracy is initialisation-grade rather than final. Follow it with
   `SparseTriangulation` and `BundleAdjustmentGlobal` when precision matters.
 
-image: sfmstack/pose-vggt:1.0.0
+image: sfmstack/pose-vggt:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -79,7 +79,6 @@ params:
 metrics:
   registered_fraction:
     direction: higher_better
-    healthy: [1.0, null]
     meaning: >
       Fraction of images given a pose. VGGT poses every image it is shown, so
       anything below 1.0 means images were dropped before the forward pass, not
@@ -144,12 +143,6 @@ metrics:
       warning this module produces: the two disagree, and the poses were computed
       with the estimate.
 
-  chunks:
-    direction: lower_better
-    healthy: [null, 1]
-    meaning: >
-      Forward passes the set was split into. Above 1, poses in different chunks
-      are in different world frames at different scales and are not comparable.
 
 diagnostics:
   - code: intrinsics_disagree

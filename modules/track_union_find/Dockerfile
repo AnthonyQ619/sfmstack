@@ -1,6 +1,6 @@
 # FeatureTrackUnionFind 1.0.0
 #
-#   docker build -t sfmstack/track-union-find:1.0.0 -f modules/track_union_find/Dockerfile .
+#   docker build -t sfmstack/track-union-find:1.5.0 -f modules/track_union_find/Dockerfile .
 #
 # Build context is the repository root.
 #

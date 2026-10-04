@@ -448,7 +448,7 @@ def run(ctx: Ctx):
         # 0 none, 1 diffuse, 2 coherent. Band ends at 0: a diffuse reflector is
         # not harmless, it is a different harm, and it gets its own diagnostic
         # rather than being folded in with the one that predicts phantom points.
-        direction="lower_better", healthy=(None, 0),
+        direction="lower_better",
     )
     out.metric(
         "hazard_position",
@@ -476,7 +476,7 @@ def run(ctx: Ctx):
         # Null on three different grounds -- no report, no subject, or a subject
         # whose completeness was not asked about. All three mean "not a claim".
         int(report.get("subject_completeness") == "complete") if subject else None,
-        direction="higher_better", healthy=(1, None),
+        direction="higher_better",
     )
 
     if not described:

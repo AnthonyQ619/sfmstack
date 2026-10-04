@@ -1,6 +1,6 @@
 # SceneTriage 1.2.0
 #
-#   docker build -t sfmstack/scene-triage:1.2.0 -f modules/scene_triage/Dockerfile .
+#   docker build -t sfmstack/scene-triage:1.5.0 -f modules/scene_triage/Dockerfile .
 #
 # Build context is the repository root.
 #

@@ -116,4 +116,4 @@ Audited against this module's own manifest. **Five healthy bands**
 descriptions of the captures measured so far, not judgements on yours. The
 numbers in the `match_threshold`, `sinkhorn_iterations`, `max_keypoints` and
 `window` advice are settings that worked in isolated testing, not published
-results — and this module has run **zero times** in a real pipeline.
+results, and nothing here has been exercised end to end.

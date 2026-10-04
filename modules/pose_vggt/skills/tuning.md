@@ -1,6 +1,6 @@
 ---
 module: PoseVGGT
-module_version: 1.0.0
+module_version: 1.2.0
 curated_at: 2026-08-10
 ---
 
@@ -133,5 +133,5 @@ Audited against this module's own manifest. The `registered_fraction`,
 `registered_images`, `baseline_span` and `chunks` bands have no diagnostic
 reading them — descriptions of the captures measured so far, not judgements on
 yours. The numbers in the `max_images_per_pass` and `dtype` advice are settings
-that worked in isolated testing, not published results — and this module has
-run **zero times** in a real pipeline.
+that worked in isolated testing, not published results, and they have not been
+revised against the module's pipeline runs.

@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.4.0
+module_version: 1.5.0
 upstream: OpenCV essential matrix + SQPnP, the COLMAP incremental strategy
 curated_at: 2026-09-13
 sources: 4

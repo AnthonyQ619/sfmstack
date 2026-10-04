@@ -114,11 +114,13 @@ params:
     description: Reject tracks whose best observation has confidence below this.
     tuning: >
       MapAnything's confidence is unbounded above and starts near 1, so this is NOT
-      a 0-1 probability — but its scale differs from VGGT's by nearly an order of
-      magnitude. Measured means here are 6.2 unconditioned and 10.1 conditioned,
-      against VGGT's 46.6 on the same scene. A threshold carried over from
-      SparseVGGT rejects everything. Read mean_depth_confidence from a run first,
-      and note it moves when condition_on_poses does.
+      a 0-1 probability, and it is not on the same scale as VGGT's identically named
+      metric. A threshold carried over from SparseVGGT rejects everything. No
+      reference value is stated here deliberately: the quantity has no corpus
+      measurement, and the two figures this file and the skills once gave for it
+      disagreed. Read mean_depth_confidence from a run at min_confidence 0 and set
+      the threshold as a fraction of what you read, noting it moves when
+      condition_on_poses does.
 
   max_reprojection_error:
     type: number
@@ -269,8 +271,8 @@ metrics:
     meaning: >
       Mean of MapAnything's own confidence at the chosen observation. Unbounded
       above, starting near 1. NOT on the same scale as SparseVGGT's identically
-      named metric — 10.1 here against 46.6 there on the same scene — so a
-      threshold cannot be carried between them.
+      named metric, so a threshold cannot be carried between them. Read it from a
+      run rather than from any value quoted in these files.
 
   yield:
     direction: higher_better

@@ -63,6 +63,10 @@ it costs one extra pass.
 
 ## Provenance
 
-Exercised across **4 runs at version 1.6.0** in the seventeen-capture sweep of two
-benchmark families (`evidence/CORPUS.txt`); no capture outside them.
-Claim-by-claim citations: the `sources` skill.
+**Written from isolated testing; the one pipeline claim here could not be
+verified.** An earlier note recorded four runs in a seventeen-capture sweep of two
+benchmark families. No run of this module survives anywhere in the store, so that
+count cannot be checked — it may have been lost with a deleted batch, or it may
+have been wrong. Treat everything here as isolated testing, and where a number
+disagrees with the store, the store is right. Claim-by-claim citations: the
+`sources` skill.

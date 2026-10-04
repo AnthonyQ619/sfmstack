@@ -1,6 +1,6 @@
 # SparseGlobalCOLMAP 1.0.0
 #
-#   docker build -t sfmstack/sparse-global-colmap:1.0.0 -f modules/sparse_global_colmap/Dockerfile .
+#   docker build -t sfmstack/sparse-global-colmap:1.3.0 -f modules/sparse_global_colmap/Dockerfile .
 #
 # Build context is the repository root. Same pycolmap line as ba_global/ba_local
 # and pose_incremental, so the layer is shared with all three.

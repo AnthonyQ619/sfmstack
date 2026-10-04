@@ -1,6 +1,6 @@
 ---
 module: PoseVGGT
-module_version: 1.0.0
+module_version: 1.2.0
 upstream: facebookresearch/vggt @ a288dd0, VGGT-1B checkpoint
 curated_at: 2026-08-10
 sources: 3
@@ -69,7 +69,8 @@ Triangulate against these poses and read the triangulator's error.
 
 ## Provenance
 
-**Run zero times in any pipeline.** Every claim in these skills is from isolated
-testing or carried from the predecessor codebase; nothing here has been exercised
-end to end. The first real run is the trigger to re-check all of it.
-Claim-by-claim citations: the `sources` skill.
+**Written from isolated testing, not revised against pipeline evidence.** Every
+claim in these skills is from isolated testing or carried from the predecessor
+codebase. This module has since run in real pipelines and that evidence has not
+been folded back in, so where a number here disagrees with the store, the store
+is right. Claim-by-claim citations: the `sources` skill.

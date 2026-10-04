@@ -80,16 +80,18 @@ because all three placed points against the same poses under the same
 
 ## `mean_depth_confidence` is not comparable to `SparseVGGT`'s
 
-13.97 here against 60.60 there, same scene, same metric name. Both are unbounded
-self-reports on different scales. A `min_confidence` carried between the two
-modules is meaningless.
+Same metric name, unbounded self-reports on different scales. A `min_confidence`
+carried between the two modules is meaningless. No ratio is quoted here: neither
+module has a corpus measurement of this reading, and the two figures these files
+once gave for the comparison disagreed with each other.
 
 **Reading the output:** [artifact.md](artifact.md) ·
 **Tuning:** [tuning.md](tuning.md) · **Limits:** [limitations.md](limitations.md)
 
 ## Provenance
 
-**Run zero times in any pipeline.** Every claim in these skills is from isolated
-testing or carried from the predecessor codebase; nothing here has been exercised
-end to end. The first real run is the trigger to re-check all of it.
-Claim-by-claim citations: the `sources` skill.
+**Written from isolated testing, not revised against pipeline evidence.** Every
+claim in these skills is from isolated testing or carried from the predecessor
+codebase. This module has since run in real pipelines and that evidence has not
+been folded back in, so where a number here disagrees with the store, the store
+is right. Claim-by-claim citations: the `sources` skill.

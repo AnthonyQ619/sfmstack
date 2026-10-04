@@ -1,6 +1,6 @@
 ---
 module: SceneDescription
-module_version: 0.7.1
+module_version: 0.8.0
 upstream: none (in-house)
 curated_at: 2026-08-16
 sources: 1

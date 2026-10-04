@@ -1,5 +1,5 @@
 name: BundleAdjustmentGlobal
-version: 1.3.0
+version: 1.5.0
 kind: optimization
 summary: >
   Ceres bundle adjustment over the whole reconstruction, refining every pose and
@@ -27,7 +27,7 @@ description: |
   authoritative; the sidecar is a convenience, and a consumer without pycolmap
   loses nothing but the convenience.
 
-image: sfmstack/ba-global:1.3.0
+image: sfmstack/ba-global:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -238,22 +238,13 @@ metrics:
 
   error_reduction:
     direction: higher_better
-    healthy: [0.0, null]
     meaning: >
       Fraction of reprojection error removed. Near zero means the input was
       already at a local minimum -- fine if the error was low, and a sign the
       solve is stuck if it was high. NEGATIVE means the robust loss traded mean
       error for outlier resistance, which is not necessarily wrong.
 
-  points_optimized:
-    direction: higher_better
-    healthy: [100, null]
-    meaning: Points included in the solve after min_track_len filtering.
 
-  observations_optimized:
-    direction: higher_better
-    healthy: [300, null]
-    meaning: Residual blocks; the size of the problem actually solved.
 
   iterations:
     direction: neutral
@@ -271,6 +262,14 @@ metrics:
       Surviving 3D points. Required by sparse_model/v1: it describes the artifact,
       where the before/after pair describes this module's own work.
 
+  points_optimized:
+    direction: higher_better
+    healthy: [100, null]
+    meaning: >
+      Points included in the solve after min_track_len filtering. Kept because the
+      COLMAP sidecar written beside this artifact is checked against it: the two must
+      describe the same solve. It has never differed from point_count on a real
+      capture, so read point_count unless you are auditing the sidecar.
   observation_count:
     direction: higher_better
     healthy: [100, null]

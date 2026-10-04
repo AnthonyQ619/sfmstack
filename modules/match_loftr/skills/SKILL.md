@@ -69,7 +69,8 @@ symptom.
 
 ## Provenance
 
-**Run zero times in any pipeline.** Every claim in these skills is from isolated
-testing or carried from the predecessor codebase; nothing here has been exercised
-end to end. The first real run is the trigger to re-check all of it.
-Claim-by-claim citations: the `sources` skill.
+**Written from isolated testing, not revised against pipeline evidence.** Every
+claim in these skills is from isolated testing or carried from the predecessor
+codebase. This module has since run in real pipelines and that evidence has not
+been folded back in, so where a number here disagrees with the store, the store
+is right. Claim-by-claim citations: the `sources` skill.

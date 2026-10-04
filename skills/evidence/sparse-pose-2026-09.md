@@ -26,8 +26,11 @@ alarms".
 - **Captures.** Ten views sampled from each of 75 captures across five families —
   three hand-carried visual-inertial datasets (a phone walk, a micro-aerial flight, a
   wide-FOV room rig) and the two benchmark families already in this corpus. All 45
-  unordered pairs of each capture are scored. Nineteen of the 75 are corpus members;
-  the other 56 were cold.
+  unordered pairs of each capture are scored. **Twenty-four of the 75 are corpus
+  members** (nineteen when the batch ran; five promoted since). The other fifty-one are
+  not, and are not named anywhere in this file. Every figure below is stated over the
+  corpus subset; where the whole batch is quoted it is labelled as such, because the
+  batch total is what the protocol swept and the corpus subset is what may be recalled.
 - **The agent loop.** `harness/PROCEDURE.md`, unchanged, one capture per agent, no
   ground truth reachable. Frozen context at `a955521`.
 - **Pose error, pair-wise and gauge-free.** Relative rotation is gauge-free; relative
@@ -86,23 +89,26 @@ better.
 `SparseVerification`'s veto is `heldout_residual_px`, banded at the pose estimator's
 inlier threshold. Its own [sources](../../modules/sparse_verification/skills/sources.md)
 file states the risk and that nothing had tested it: *"Nothing has been swept across
-focal lengths."* These 75 captures sweep it, over a **15× range** of median focal
+focal lengths."* The batch sweeps it over a **15× range** of median focal
 length — from a wide-FOV room camera at the low end to a studio rig at the high end.
 
-Thirteen delivered models are wrong by more than ten degrees of median rotation.
+**Three of the twenty-four corpus models are wrong** by more than ten degrees of
+median rotation. Thirteen of the whole batch are.
 
-| reading | catches (of 13) | false alarms (of 62) |
-|---|---|---|
-| the published px veto, at its default | **2** | 0 |
-| the same residual as an angle, at 1.5 mrad | 11 | 11 |
-| + `supported_second_size ≥ 1` | 12 | 13 |
-| + `nothing_held_out` counted as unverified | **13** | 17 |
+| reading | catches (corpus, of 3) | false alarms (corpus, of 21) | catches (batch, of 13) | false alarms (batch, of 62) |
+|---|---|---|---|---|
+| the published px veto, at its default | **0** | 0 | **2** | 0 |
+| the same residual as an angle, at 1.5 mrad | 2 | 2 | 11 | 11 |
+| + `supported_second_size ≥ 1` | **3** | 4 | 12 | 13 |
+| + `nothing_held_out` counted as unverified | **3** | 4 | **13** | 17 |
 
-**The px veto missed eleven of thirteen wrong models, and it missed them in a
-pattern.** Every one of the models it missed came from a short-focal camera, where a
-fixed pixel tolerance is a much larger angle. At the low end of this range the
-default veto is roughly fifteen milliradians of slack; at the high end it is about
-one. The two it did catch are the two whose residual was large in *both* units.
+**On the corpus the px veto caught nothing at all**, and the layered angular reading
+caught every wrong model for four false alarms in twenty-one. On the whole batch the
+veto caught two of thirteen. It misses in a pattern either way: the models it misses
+come from short-focal cameras, where a fixed pixel tolerance is a much larger angle.
+At the low end of this range the default veto is roughly fifteen milliradians of
+slack; at the high end it is about one. The two it caught in the wider batch are the
+two whose residual was large in *both* units, and neither is a corpus capture.
 
 This is the second time this corpus has found a scale-dependent statistic behaving
 this way, and the first time is the direct precedent:
@@ -119,40 +125,44 @@ the metric — is *correct as a band* and is left alone. What changes is that th
 reading is now known to carry the signal the px veto loses, which is a different
 claim from "it should replace the veto".
 
-**Correlation, for what it is worth.** Across the 70 models with a residual at all,
-the angular residual correlates **+0.72** with the log of delivered median rotation
-error (+0.77 in log-log). That is the strongest single discriminator found anywhere
-in this campaign, and it is still only a correlation over a mixed population.
+**Correlation, for what it is worth.** Over the twenty-four corpus models the angular
+residual correlates **+0.77** with the log of delivered median rotation error (+0.76
+in log-log). Across all seventy models of the batch that have a residual at all it is
++0.72 (+0.77 log-log), so the corpus subset reads slightly stronger rather than
+weaker. That is the best single discriminator found anywhere in this campaign, and it
+is still only a correlation.
 
-## The thirteen wrong models
+## The wrong models
+
+**The three corpus cases**, which are the rows that may be recalled:
 
 | capture | family | reg /10 | median rot | mrad | 2nd comp | what the module said |
 |---|---|---|---|---|---|---|
-| advio-02 | phone walk | 3 | 64.3° | 7.34 | 0 | contradicted — the one clean catch |
-| advio-04 | phone walk | 3 | 35.1° | 2.94 | 0 | contradicted |
-| advio-05 | phone walk | 3 | 86.6° | 2.61 | 0 | silent |
-| advio-06 | phone walk | 2 | 153.4° | — | 0 | `nothing_held_out` — unverifiable |
-| advio-10 | phone walk | 9 | 68.0° | 2.20 | 1 | silent on the residual; the graph reading fires |
-| advio-19 | phone walk | 5 | 11.0° | 1.95 | 1 | silent on the residual; the graph reading fires |
-| advio-23 | phone walk | 2 | 69.0° | 2.39 | 0 | silent |
-| V1_03_difficult | aerial | 7 | 17.6° | 4.90 | 0 | silent |
-| V2_01_easy | aerial | 10 | 106.4° | 1.80 | 1 | silent — **and every other rung passed** |
-| V2_03_difficult | aerial | 10 | 79.0° | 1.87 | 1 | silent |
-| room2 | room rig | 10 | 14.0° | 1.54 | 1 | silent |
-| room3 | room rig | 8 | 34.0° | 1.99 | 0 | silent |
-| office | site walk | 10 | 24.3° | 1.37 | 1 | silent on the residual; the graph reading fires |
+| `EUROC/V2_01_easy` | aerial | 10 | 106.4° | 1.80 | 1 | silent — **and every other rung passed** |
+| `TUM_VI/room3` | room rig | 8 | 34.0° | 1.99 | 0 | silent |
+| `ETH/office` | site walk | 10 | 24.3° | 1.37 | 1 | silent on the residual; the graph reading fires |
 
-**Six of the thirteen registered eight cameras or more**, so the registration rung
-cleared them. `V2_01_easy` is the sharpest case in the campaign and is now a corpus
+**The other ten are not corpus captures and are deliberately not named here**, because
+naming a capture in context is what stops it being cold. By family they are seven
+phone walks, two micro-aerial flights and one room rig, with median rotation error
+from 11° to 153° and registration from two cameras to ten. Their shape is the same as
+the three above and they add two things the corpus rows do not show: the only two
+models the px veto caught at all, both with a residual large in pixels *and* in
+angle, and the single `nothing_held_out` case, a two-camera model the verifier could
+not assess. Neither of those is recallable evidence; both are the reason the layered
+reading in the table above has a `nothing_held_out` row.
+
+**All three corpus cases registered eight cameras or more** — six of the thirteen
+across the batch — so the registration rung cleared every one of them. `V2_01_easy` is the sharpest case in the campaign and is now a corpus
 member for that reason: a global reconstructor placed all ten cameras, every health
 rung read healthy, the module reported *consistent* against its own px band, and the
 model is a hundred and six degrees wrong.
 
-**Every one of the thirteen had a verifier reading, and eleven of them read
-`consistent`.** The service runs the module itself after the optimization stage, so
-a verdict comes back whether the driving agent asks for one or not, and all thirteen
-reports quote one. Only thirty of the seventy-five agents additionally invoked it by
-hand, but that number describes initiative, not coverage, and nothing rests on it.
+**Every wrong model had a verifier reading, and on the corpus all three read
+`consistent`.** The service runs the module itself after the optimization stage, so a
+verdict comes back whether the driving agent asks for one or not, and every report
+quotes one. Some agents additionally invoked it by hand, but that describes
+initiative, not coverage, and nothing rests on it.
 
 Three of those verdicts are worth quoting, because together they show the veto
 failing in three different ways:

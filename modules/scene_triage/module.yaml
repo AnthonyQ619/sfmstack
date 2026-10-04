@@ -1,5 +1,5 @@
 name: SceneTriage
-version: 1.4.0
+version: 1.5.0
 kind: analysis
 summary: >
   CPU scene characterisation before anything is reconstructed: photometric
@@ -54,7 +54,7 @@ description: |
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 
-image: sfmstack/scene-triage:1.4.0
+image: sfmstack/scene-triage:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -153,7 +153,6 @@ params:
 metrics:
   illumination_change:
     direction: lower_better
-    healthy: [null, 0.12]
     meaning: >
       p75 over compared pairs of a weighted luminance-change score: change in
       mean and median brightness, in contrast, and in the shape of the luminance
@@ -220,7 +219,6 @@ metrics:
 
   textureless_fraction:
     direction: lower_better
-    healthy: [null, 0.35]
     meaning: >
       Median over images of the image area whose local standard deviation is
       below `texture_floor`. Sky, water, plaster. Detection cannot happen here at

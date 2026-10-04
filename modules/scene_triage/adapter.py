@@ -422,7 +422,7 @@ def run(ctx: Ctx):
     out.save("texture", **tex)
 
     out.metric("illumination_change", round(illumination, 4),
-               direction="lower_better", healthy=(None, 0.12))
+               direction="lower_better")
     out.metric("color_shift", round(color, 4),
                direction="lower_better", healthy=(None, 0.12))
     out.metric("exposure_shift", round(exposure, 4),
@@ -434,7 +434,7 @@ def run(ctx: Ctx):
     out.metric("repetitiveness", None if repeat is None else round(repeat, 4),
                direction="lower_better", healthy=(None, 0.75))
     out.metric("textureless_fraction", round(textureless, 4),
-               direction="lower_better", healthy=(None, 0.35))
+               direction="lower_better")
     out.metric("sharpness_ratio", round(sharp_ratio, 4),
                direction="higher_better", healthy=(0.4, None))
     out.metric("sharpness_median", round(median_sharp, 2), direction="neutral")

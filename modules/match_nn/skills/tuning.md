@@ -174,8 +174,8 @@ and a learned matcher is the real answer — do not just leave the mutual check 
 
 One weak link in an otherwise healthy graph. Tracks can only cross the graph
 through its thinnest edge, so a single 16-match pair caps what the whole set
-achieves regardless of a 237 mean. In the window-2 row above, `min_frame_obs` was
-19 while the mean was 237.
+achieves regardless of a 237 mean. In the window-2 row above,
+`min_matches_per_pair` was 19 while the mean was 237.
 
 Raise `window` so the weak frame links to more neighbours rather than depending on
 one bad pair. Raising `min_matches` to *drop* the weak pair is usually wrong — it

@@ -155,6 +155,14 @@ metric is a property of the model rather than a knob.
 
 ## Metrics that mislead
 
+**`query_frames` is a parameter echo, not a result.** It reports how many frames
+contributed query points, which `query_frame_num` already set. It is worth reading
+only to confirm the module saw the number of query frames you intended.
+
+**`trifocal_seconds` is cost, not quality.** It is reported because this module's
+transfer measurement is the one part whose price is not obvious from its parameters.
+It carries no verdict on the tracks and no band reads it.
+
 **`track_count` is lower than a union-find tracker's and that is expected.** 4033
 against 4702 on the same scene, with tracks that are 35% longer and three times as
 likely to reach five views. Read `track_survival_5`.
@@ -177,5 +185,5 @@ diagnostic reading them — descriptions of the captures measured so far, not
 judgements on yours. The numbers in the `query_selection`, `query_frame_num`,
 `max_query_points_per_frame`, `visibility_threshold`, `min_track_len`,
 `fine_tracking` advice (and two more) are settings that worked in isolated
-testing, not published results — and this module has run **zero times** in a
-real pipeline.
+testing, not published results, and they have not been revised against the
+module's pipeline runs.

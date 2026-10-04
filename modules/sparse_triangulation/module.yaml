@@ -1,5 +1,5 @@
 name: SparseTriangulation
-version: 1.2.0
+version: 1.3.0
 kind: sparse
 summary: >
   Triangulates tracks against known poses into a sparse model, filtering on ray
@@ -21,7 +21,7 @@ description: |
   view is discarded rather than kept with a large residual, because a single bad
   observation is enough to drag a bundle adjustment.
 
-image: sfmstack/sparse-triangulation:1.2.0
+image: sfmstack/sparse-triangulation:1.3.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -149,7 +149,7 @@ metrics:
       headline reads better than the model is. mean_track_length is a mean over a
       bimodal distribution and hides this completely.
     direction: lower_better
-    healthy: [null, 0.6]
+    healthy: [null, 0.843]
   p95_reprojection_error:
     meaning: >
       The tail of the per-point error distribution. The published mean runs about
@@ -187,7 +187,6 @@ metrics:
 
   mean_track_length:
     direction: higher_better
-    healthy: [3.0, null]
     meaning: >
       Observations per surviving point. 2.0 means the cloud is entirely two-view
       and bundle adjustment has no redundancy to exploit.

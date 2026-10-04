@@ -469,6 +469,16 @@ unlike the yield rungs it is evaluable on exactly the branch that opens this gap
 Across every corpus capture that delivered, all but one read a single component
 containing every camera; the exception read two, the second of them a lone camera.
 
+**That lone camera was hundreds of metres out of place, and this was the only reading
+that saw it.** The same delivery carried every frame registered, no diagnostic anywhere
+on the model, and both of the verifier's own error readings — in pixels and in
+milliradians — comfortably inside their bands. So this reading is not a weaker substitute
+for the error rungs; it is the only one that sees a stranded camera at all, because such
+a camera's own observations fit and no error average can be moved by it. Read it on every
+delivery, and read it before an alignment to anything external: that camera is what a
+reference alignment has to reject, and a similarity fitted without rejecting it places
+the whole model wrong.
+
 Three things to keep straight about it:
 
 - **It is not a substitute for yield.** Yield asks what share of the available

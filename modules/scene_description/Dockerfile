@@ -1,6 +1,6 @@
 # SceneDescription 0.3.0
 #
-#   docker build -t sfmstack/scene-description:0.3.0 -f modules/scene_description/Dockerfile .
+#   docker build -t sfmstack/scene-description:0.8.0 -f modules/scene_description/Dockerfile .
 #
 # Build context is the repository root.
 #

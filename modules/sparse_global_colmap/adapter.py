@@ -500,7 +500,7 @@ def run(ctx: Ctx):
 
     _s = structure_readings(xyz, obs, error, cam_from_world, valid, None, n_images)
     out.metric("min_frame_points", _s["min_frame_points"],
-               direction="higher_better", healthy=(50, None))
+               direction="higher_better", healthy=(10, None))
     out.metric("two_view_fraction", _s["two_view_fraction"],
                direction="lower_better", healthy=(None, 0.6))
     out.metric("p95_reprojection_error", _s["p95_reprojection_error"],
@@ -525,7 +525,9 @@ def run(ctx: Ctx):
                direction="higher_better", healthy=(1, None))
     out.metric("largest_component_fraction", round(biggest / n_images, 3),
                direction="higher_better", healthy=(1.0, None))
-    out.metric("models_found", len(models), direction="neutral")
+    # models_found was published here as a metric until it read 1 on 100 consecutive
+    # runs. The exception it existed to report is already a diagnostic -- see
+    # split_into_models below, which fires on the same condition and names the sizes.
 
     if verified < 0.7 * len(image_pair):
         # max_epipolar_error is a pixel value standing in for an angle, and it is the

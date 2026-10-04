@@ -200,6 +200,15 @@ with a prediction rather than a measurement, which
 
 ## Metrics that mislead
 
+**`points_per_view` is provenance, not density.** Fused points over contributing
+views. It falls when more views contribute and rises when fewer do, so it moves with
+the view count rather than with how well the surface was reconstructed. Read
+`depth_map_completeness` and `point_count` for that.
+
+**`ply_megabytes` is the size of a sidecar, not a property of the cloud.** It is 0
+when `write_ply` is off and otherwise tracks `point_count` almost exactly. Read it to
+plan disk, never to judge a reconstruction.
+
 **`point_count` is mostly `max_image_size`.** Quadratic in it. Two runs' point
 counts are not comparable unless the resolutions match — 46 562 at 600 px and
 128 327 at 1200 px are the same reconstruction.

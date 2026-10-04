@@ -152,7 +152,7 @@ def run(ctx: Ctx) -> None:
     out.save("intrinsics", K=K_all, camera_index=np.arange(n_images, dtype=np.int32))
 
     out.metric("registered_fraction", round(float(valid.mean()), 3),
-               direction="higher_better", healthy=(1.0, None))
+               direction="higher_better")
     out.metric("registered_images", int(valid.sum()),
                direction="higher_better", healthy=(3, None))
     # Null for the same reason PoseVGGT's are null: a reprojection error computed
@@ -167,7 +167,10 @@ def run(ctx: Ctx) -> None:
     out.metric("estimated_focal_ratio",
                round(focal_ratio, 4) if focal_ratio is not None else None,
                direction="neutral")
-    out.metric("chunks", len(groups), direction="lower_better", healthy=(None, 1))
+    # `chunks` was published as a metric here until it read 1 on every run of a
+    # 135-run batch. The exception it existed to report already fires as the
+    # `chunked` diagnostic below, at error severity and saying more than the count
+    # did: each pass has its own world frame and scale.
 
     if len(groups) > 1:
         out.diagnostic(

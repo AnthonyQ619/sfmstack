@@ -83,6 +83,14 @@ none of `graph_components`, `min_image_degree`, `inlier_ratio` or `planarity`
 exists. The default above still applies — read the tracker in the matcher's place:
 `min_frame_observations` and `long_tracks_per_frame` for whether every frame is
 carried, `trifocal_transfer_px` for whether the correspondences are any good.
+
+**On any chain, the floor that decides whether a frame can be registered at all is
+`min_frame_long_tracks`, not `min_frame_observations`.** Resection needs 2D–3D
+correspondences, which only a track reaching a third view can supply, so a frame can
+carry a great many observations and still fail PnP because almost all of them belong
+to two-view tracks. Read the long-track count for the weakest frame before concluding
+that a frame which failed to register was poorly matched — the two readings disagree
+exactly where it matters.
 Connectivity is not at risk on such a chain in the way it is with a view graph,
 because nothing was ever cut off. Note that the third option below,
 global reconstruction, consumes `pairwise_matches/v1` and is simply **unavailable**
@@ -111,6 +119,31 @@ And the swap is nearly free to try. It needs no correspondences, so it can run
 off the artifacts already on disk, and it costs seconds where the campaign it
 rescues costs an afternoon. Where `registered_fraction` is low, run it before
 you spend a single run tuning the matcher.
+
+**Where the trade flips is a reading, and it is `registered_fraction`.** The paragraph
+below says the damage scales with how much the geometric branch had already done; the
+crossing is at about **0.7**. At or below it, the estimator's own model was the better
+delivery on most of the corpus captures that reached it, and on one of them by a wide
+margin. Above it the finding reverses, which is the same result from the other side:
+over corpus captures that registered every frame the core won more often than not and
+the median favoured it — though two low-texture outdoor captures were large exceptions,
+so full registration is not by itself a reason to stop looking. Read
+the fraction rather than the absolute camera count: a capture missing three of ten and
+one missing thirty of a hundred are the same situation, and the second is not three
+times worse. The campaign is in
+[`evidence/short-core-2026-10.md`](../evidence/short-core-2026-10.md), which also
+reports the wider batch for scale.
+
+**The counter-case is in the corpus and it is not currently detectable.** One
+interior walk held seven of ten and its core still beat both estimators — at 0.021
+against 0.000, which is a contest between two failures rather than a good delivery
+lost. What makes it the exception is not that it was hard: a coherent reflector stood
+between the camera and the scene, and four of its nine pairs carried no parallax, so
+**the estimators themselves were unusable there**. No estimator-side reading separates
+it from the captures the swap helped — `baseline_span` sits inside their range and no
+diagnostic fires — and where the swap did cost something it cost at most 0.064 against
+gains several times that. So this is a default with a known cost, not a rule with an
+escape, and the report should name which model was delivered and why.
 
 **What it does not automatically buy is accuracy, and the trade is sharp.**
 Against ground truth, the fully-registered feed-forward model was *worse* per
@@ -149,11 +182,11 @@ out, and it is where this stage most often goes wrong in a way nothing else catc
 
 **You already have this reading, and that is exactly the problem.** The service runs
 `SparseVerification` itself after the optimization stage, so a verdict comes back
-whether or not you asked for one. Across a campaign of seventy-five captures driven
-cold, thirteen delivered models were badly wrong against reference geometry — and
-**every one of the thirteen had a verifier reading in hand, which said the model was
-consistent on eleven of them.** The failure here is not a step that was skipped. It
-is a verdict that was believed.
+whether or not you asked for one. Across a campaign driven cold, a number of delivered
+models were badly wrong against reference geometry — and **every one of them had a
+verifier reading in hand, which called most of them consistent.** On the corpus
+captures of that campaign it called every wrong model consistent. The failure here is
+not a step that was skipped. It is a verdict that was believed.
 
 **Read the angular residual, not only the pixel one, and this is the part that will
 surprise you.** The module's veto is `heldout_residual_px`, banded at the pose
@@ -217,9 +250,9 @@ the two come apart. Weigh it as a constraint that has fired, in the sense
 [`SparseVerification`](../../modules/sparse_verification/skills/SKILL.md) has always
 said they mean: do not keep that model. The two readings fail in opposite
 directions and must not be confused — the px verdict is nearly silent and almost
-never wrong when it does speak (it raised two alarms in seventy-five captures and
-both were genuine), while the angular reading speaks often and is wrong about a fifth
-of the time. **So a firing angle invites a second look; a firing veto ends the
+never wrong when it does speak — across that campaign the alarms it raised were all
+genuine, and on the corpus captures it raised none at all — while the angular reading
+speaks often and is wrong about a fifth of the time. **So a firing angle invites a second look; a firing veto ends the
 matter.** Measured on the run that followed this section's first draft: four agents
 recorded overruling a veto, and one of them delivered a studio orbit **forty times
 further from truth** than the model it rejected, on the grounds that the vetoed model
@@ -227,6 +260,29 @@ carried more points and better coverage. Those are exactly the rungs a
 self-consistent wrong model wins on. If a veto leaves you with no model, that is
 information about the capture — say so and deliver the smaller verified model, or
 fill it by the section below. It is never grounds to keep the vetoed one.
+
+**A quiet verdict is not a clearance, and the asymmetry is the whole point.** Both
+vetoes are *structural*: they ask whether the pairs that agree with the model connect
+it, and whether any camera stands outside that agreement. A model can be wrong
+everywhere and still answer yes to both, because being uniformly displaced breaks no
+component and leaves no stray. Measured over twenty delivered models, **no veto fired
+on any of them** — and one of the twenty sat at seventy-four degrees of median
+rotation error against reference poses, with `supported_components` 1,
+`supported_largest_share` 1.0 and `supported_stray_cameras` 0. Every structural reading
+was quiet and the model was the worst in the batch.
+
+**What carried that capture was the magnitude, and it carries no band.**
+`heldout_residual_mrad` read **14.1** on it, against a next-highest of 3.6 and a
+median under 1.5 across the other nineteen; over the twenty it tracks rotation error
+at rho +0.68. It has no healthy band for the reason
+[`tuning.md`](../../modules/sparse_verification/skills/tuning.md) gives — the gate is
+a parameter, and a fixed band beside it would state a second threshold that disagrees
+the moment anyone changes the first. So read it the way the corpus asks every other
+residual to be read: **against what a capture of this kind reads**, not against a
+number. An order of magnitude above the rest of your own batch is the signal, and no
+diagnostic will raise it for you. Before you treat a passing verdict as clearance,
+read [what the module says it cannot
+see](../../modules/sparse_verification/skills/limitations.md).
 
 ### Every reading above is built on the model's own evidence
 
@@ -304,10 +360,13 @@ stops there is not the conservative choice — it is an unfinished one, and the 
 should say which frames are missing and why you could not fill them.
 
 **Keep the geometric core. Use the feed-forward estimator only for the cameras the
-core cannot support.** Measured over the worst captures in that campaign, this beat
-both the geometric model as delivered and the feed-forward estimator run alone, at
-every threshold — where the wholesale swap, as the section above records, buys
-coverage at the cost of accuracy. The alignment is cheap and it *gains* at tight
+core cannot support.** Measured over the worst captures in that campaign, the fill beat the geometric model
+as delivered at every threshold, and was level with the feed-forward estimator run
+alone — ahead at the tight and the loose end, behind in the middle, and never by a
+margin that decides anything. So it is the better delivery
+where the core is nearly complete, and where the core is badly short the estimator's
+model on its own is ahead — which is what `registered_fraction` at about 0.7 separates
+and what the delivery table below says. The alignment is cheap and it *gains* at tight
 thresholds, because a mixed pair then has the accurate core on one side of it.
 
 **The chain is `PoseFill` → `SparseTriangulation` → `BundleAdjustmentGlobal`.**
@@ -335,6 +394,25 @@ array. Read it rather than dropping on suspicion, and note that **the camera to 
 is often not a stray**: it can sit inside the largest agreeing component, contribute
 nothing to `supported_stray_cameras`, and still be the one every pair touching it
 disagrees with. The two readings answer different questions.
+
+**A camera can be in the wrong place without disagreeing with anything.**
+`worst_camera_index` asks which camera its own pairs contradict, and a camera can
+contradict nothing and still be misplaced — on a measured capture the camera 45000 times
+the median camera-centre offset out of position carried 105 observations and
+contradicted nothing at all. A spatial reading of exactly that was published through
+`SparseVerification` 1.4.0 and **retired in 1.5.0**: scored on delivered rather than
+known-bad models it did not predict the outcome, because the grossly displaced cameras it
+caught had already been rejected by the readings above. So the gap is real and currently
+unmeasured — do not infer from a quiet verifier that every camera is where it belongs.
+
+**Before dropping on either reading, ask whether dropping can help at all.** On that
+same capture, removing the far camera changed the reference alignment by nothing: it
+was already an outlier, and fifty-two of ninety cameras were misplaced by a fraction
+of a metre each. A model wrong everywhere does not become right when its most
+visible symptom is deleted, and `supported_components` above 1 with a large second
+piece is what says so. The drop is for the capture whose cameras are right except for
+one or two — where it has been measured to recover most of a failed alignment — and
+not for a model that is globally adrift.
 
 **Read both gates before you deliver it, because they price different things.**
 
@@ -398,8 +476,9 @@ rule and they are opposites:**
 | every frame, on evidence the matcher verified, and the reading is quiet | deliver it; nothing here applies |
 | every frame, but some on evidence the matcher could not verify, and the reading fires | drop those cameras **and fill them**, frozen — both halves, in one call: their indices go in `PoseFill`'s `drop_image_indices`, then triangulate, then refine with the filled indices in `fixed_image_indices` |
 | fewer frames than the capture has, because a veto or the graph took them out | **fill them**, frozen, by the same chain. Stopping here is the unfinished move above |
-| fewer frames, and the estimator will not run, or `PoseFill` refuses, or either gate fires | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved |
-| **a core too small to fill at all** — fewer than a handful of cameras shared with the estimator | there is nothing to fit a frame onto, and this is not a swap. Deliver the estimator's model **on its own**, marked as such, or deliver the core and say the capture was not solved. Do **not** lower `min_shared_cameras` to get a fill through: a residual computed on four cameras is a fit to four points, and an agent that tried it had the fill caught by the other gate anyway |
+| fewer frames, `PoseFill` refuses or either gate fires, and **`registered_fraction` is above about 0.7** | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved. A nearly-complete accurate core is the case the swap damages |
+| fewer frames, `PoseFill` refuses or either gate fires, and **`registered_fraction` is at or below about 0.7** | **deliver the estimator's model on its own**, marked as such. The core alone was the wrong delivery on most of the captures this row fired on, and on one of them by a wide margin. If no estimator will run, deliver the core and say the capture was not solved |
+| **a core too small to fill at all** — fewer than a handful of cameras shared with the estimator | there is nothing to fit a frame onto, and this is not a swap. **Deliver the estimator's model on its own**, marked as such. Every capture measured at this row delivered the core instead, and the estimator's model was the better delivery on nearly all of them — a core of two to five cameras is not the conservative delivery, it is most of the capture missing. Deliver the core only where the estimators are themselves unusable, and say so. Do **not** lower `min_shared_cameras` to get a fill through: a residual computed on four cameras is a fit to four points, and an agent that tried it had the fill caught by the other gate anyway |
 
 **One consequence of a successful fill to keep in view:** `registered_fraction`
 reaches 1.0, so the rules below that key on *low* registration — global
@@ -555,7 +634,7 @@ angle is usually buying a smaller, easier model rather than a better one.
 | Question | Needs |
 | --- | --- |
 | **Absolute pose accuracy of either** | ~~Ground-truth extrinsics.~~ **Measured.** Relative pose error against reference extrinsics, per capture, over the images each model registered. What it settled is above and in [`health/ladder.md`](../health/ladder.md); what it could not is that an error over the frames a stalled model kept is not comparable to one over a whole capture, so absolute *rankings* between models of unequal registration remain unavailable. **AUC at fixed angle thresholds has since been computed** over five families at a fixed view count, charging every unanswered pair as a miss so that models of unequal registration become comparable after all — see [`evidence/sparse-pose-2026-09.md`](../evidence/sparse-pose-2026-09.md). The shape it found: the geometric chain wins at the tight threshold on four families of five and loses at the loose one, which is the coverage-for-accuracy trade above, measured. |
-| ~~**What feed-forward buys where geometric stalls**~~ | **Measured** twice. On seven captures where it genuinely stalled: full registration on all seven, worse per-pair accuracy on six. And again as a *fill* rather than a swap, on the worst captures of a seventy-five-capture campaign, where it beat both branches at every threshold provided the filled cameras were left out of the refinement. Both above. |
+| ~~**What feed-forward buys where geometric stalls**~~ | **Measured** twice. On seven captures where it genuinely stalled: full registration on all seven, worse per-pair accuracy on six. And again as a *fill* rather than a swap, on the worst captures of that campaign, where it beat both branches at every threshold provided the filled cameras were left out of the refinement. Both above. |
 | **How far in-loop local BA carries** | Sequence length against drift, on captures long enough for drift to dominate. The mechanism is understood; the length at which it stops being enough is not. |
 | **Whether the delivered-model reading matters on a dense chain** | It was tested on thirty-five captures that had been driven to a dense cloud and did not predict dense quality there at all. But every one of those was a capture with dense overlap and full registration, which is the regime where this reading is silent on the sparse path too — so what that tests is the population, not the reading. **Nothing has driven a thin capture to a dense cloud**, which is the only condition under which it could say anything. The module runs on both paths regardless — the question is only where to act on what it says. Until one does: act on it here, record it there. |
 | **Whether estimated intrinsics are usable** | `estimated_focal_ratio` says whether a model agrees with a calibration. Whether its estimate is good enough to reconstruct with, on a scene with no calibration at all, is a different question and untested. |

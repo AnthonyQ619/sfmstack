@@ -118,4 +118,4 @@ no diagnostic reading it — a description of the captures measured so far, not 
 judgement on yours. The numbers in the `max_keypoints`, `ssc_tolerance`,
 `detect_multiplier`, `scale_factor`, `fast_threshold`, `edge_threshold` advice
 (and one more) are settings that worked in isolated testing, not published
-results — and this module has run **zero times** in a real pipeline.
+results, and nothing here has been exercised end to end.

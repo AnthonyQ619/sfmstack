@@ -145,4 +145,5 @@ Audited against this module's own manifest. **Five healthy bands**
 descriptions of the captures measured so far, not judgements on yours. The
 numbers in the `max_matches`, `min_certainty`, `use_custom_corr`, `pairing` and
 `ransac_threshold` advice are settings that worked in isolated testing, not
-published results — and this module has run **zero times** in a real pipeline.
+published results, and they have not been revised against the module's pipeline
+runs.

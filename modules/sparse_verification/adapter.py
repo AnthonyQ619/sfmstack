@@ -312,6 +312,16 @@ def run(ctx: Ctx):
             cam_n[cam_row[c]] = len(r)
     worst_i = int(np.nanargmax(cam_med)) if np.isfinite(cam_med).any() else None
 
+    # A spatial reading lived here through 1.4.0: `camera_spread_ratio`, the furthest
+    # camera's offset from the camera centroid over the median such offset, with the
+    # per-camera `centre_offset_ratio` beneath it. It was fitted on two models known to
+    # be wrong, where it read 32 and 480 against a p50 of 1.96, and it was retired after
+    # a campaign scored it on DELIVERED models: rho +0.05 against rotation error, where
+    # `heldout_residual_mrad` below reads +0.68. The models it was built to catch had
+    # already been rejected upstream, so on the surviving population it was noise. See
+    # evidence/band-calibration-2026-10.md. Do not reinstate it without scoring it on
+    # models that passed every other check.
+
     out = ctx.output("verification")
     out.save(
         "pairs",

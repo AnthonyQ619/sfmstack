@@ -149,6 +149,14 @@ metric is a property of the model rather than a knob.
 
 ## Metrics that mislead
 
+**`query_frames` is a parameter echo, not a result.** It reports how many frames
+contributed query points, which `query_frame_num` already set. It is worth reading
+only to confirm the module saw the number of query frames you intended.
+
+**`trifocal_seconds` is cost, not quality.** It is reported because this module's
+transfer measurement is the one part whose price is not obvious from its parameters.
+It carries no verdict on the tracks and no band reads it.
+
 **Every track metric here flatters this module.** `avg_track_length` 5.98 against
 union-find's 2.85, `track_survival_5` 0.754 against 0.116 — genuinely the best in
 the repository, and the same tracks triangulate to 1548 points at 1.581 px against
@@ -175,5 +183,5 @@ Audited against this module's own manifest. **Seven healthy bands**
 a range no diagnostic reads — descriptions of the captures measured so far, not
 judgements on yours. The numbers in the `query_frame_num`, `input_size`,
 `min_confidence`, `pyramid_level` and `dedupe_eps_px` advice are settings that
-worked in isolated testing, not published results — and this module has run
-**zero times** in a real pipeline.
+worked in isolated testing, not published results, and they have not been revised
+against the module's pipeline runs.

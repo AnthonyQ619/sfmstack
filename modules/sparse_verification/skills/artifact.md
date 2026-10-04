@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.3.0
+module_version: 1.5.0
 produces: custom/verification/v1
 ---
 
@@ -8,8 +8,8 @@ produces: custom/verification/v1
 
 ## Layout
 
-One payload file, `pairs`, with one row per matched pair whose two images are
-both registered in the model:
+Two payload files. `pairs` has one row per matched pair whose two images are both
+registered in the model:
 
 | array | shape | meaning |
 | --- | --- | --- |
@@ -19,10 +19,32 @@ both registered in the model:
 | `residual_px` | `[n]` | median epipolar distance of the held-out ones under the model's relative pose; NaN where too few were held out |
 | `residual_all_px` | `[n]` | the same distance over ALL the pair's correspondences, not only the held-out ones; never NaN on a scored pair |
 
-The metrics summarising it: `heldout_residual_px` and its angular twin
-`heldout_residual_mrad`, `held_out_share`, `pairs_verified`, and the three graph
+A second payload file, `cameras`, with one row per registered camera, in
+ascending frame order:
+
+| array | shape | meaning |
+| --- | --- | --- |
+| `image_index` | `[m]` | scene frame index of the camera |
+| `median_residual_px` | `[m]` | median held-out residual over every scored pair touching it; NaN where no such pair had enough held out |
+| `pairs_scored` | `[m]` | how many pairs that median is over |
+
+The metrics summarising them: `heldout_residual_px` and its angular twin
+`heldout_residual_mrad`, `held_out_share`, `pairs_verified`, the three graph
 readings `supported_components`, `supported_largest_share` and
-`agreeing_pair_share`.
+`agreeing_pair_share`, the per-camera rollup `worst_camera_index` and
+`worst_camera_residual_px`.
+
+**A spatial column lived here through 1.4.0.** `centre_offset_ratio` asked whether a
+camera was anywhere plausible rather than whether it agreed with correspondences, and
+`camera_spread_ratio` summarised it. Both were retired in 1.5.0: scored on delivered
+models the summary read rho +0.05 against rotation error where `heldout_residual_mrad`
+reads +0.68, because the models it was built to catch had already been rejected
+upstream. See `evidence/band-calibration-2026-10.md`.
+
+`cameras` is present from module version 1.3.0 and is optional on the type, so a reader
+working against an older artifact computes what it needs from `pairs` and from the
+model's poses. An artifact written by 1.4.0 also carries `centre_offset_ratio`; nothing
+reads it.
 
 **Why there are two residual columns, and which to read.** `residual_px` is the
 veto's: held-out correspondences are evidence the solve never saw, which is what

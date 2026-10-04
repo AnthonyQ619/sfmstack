@@ -85,6 +85,9 @@ strict for this capture — lower it. If the input's cloud was empty too, the pr
 is in PatchMatch, and `DenseMVS`'s tuning, "Nothing survives the filters", is where
 to go. Nothing here can recover it.
 
+**`ply_megabytes` is the size of a sidecar, not a property of the cloud.** It is 0
+when `write_ply` is off. Read it to plan disk, never to judge a reconstruction.
+
 ## What here rests on nothing
 
 `max_reproj_error`, `max_depth_error` and `max_normal_error` are COLMAP's defaults

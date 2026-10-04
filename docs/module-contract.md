@@ -214,8 +214,22 @@ actually routes on it.
 The `healthy` bands are the softest part of this contract: each is one author's
 reference run, mostly DTU scan1 at eight images. They are an orientation, not a
 validated threshold, and a `warning` means "look at this", never "this failed".
-**They are due a revision pass from the agent-driven runs**, which will be the
-first evidence spanning more than one scene per module.
+
+**That revision pass has now run**, over every reading in every batch on disk, and the
+rules it produced are in [`skills/health/bands.md`](../skills/health/bands.md) with the
+measurements in `skills/evidence/band-calibration-2026-10.md`. Three of them bind on
+anyone adding a metric here:
+
+- **Name the kind before writing a band.** A metric that measures the *capture* rather
+  than the artifact cannot be unhealthy, and one that exists to explain another reading
+  is not reporting a defect. Neither takes a band. Fifteen bands in the `scene` family
+  are in this position.
+- **Calibrate on the distribution the pipeline actually produces, not on the ideal.**
+  Ten bands fire on more than seven readings in ten and every one is at or below the
+  base rate for a poor delivery; twenty-nine more have never fired at all, several
+  because the threshold sits outside the range the quantity reaches.
+- **A band that fires on a few percent of readings is the target shape.** Twenty-two
+  already behave that way.
 
 Modules add whatever else they measure. The contract is a floor, not a ceiling.
 

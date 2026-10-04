@@ -70,6 +70,14 @@ and takes no extra inference — the depth maps are already computed.
 
 ## Metrics that mislead
 
+**`scale_samples` is 0 when the scale was supplied rather than fitted.** It counts
+the tracks that supported the scale estimate, so zero means the `depth_scale`
+parameter was used and nothing was estimated — not that the estimate failed.
+
+**`ply_megabytes` is the size of a sidecar, not a property of the cloud.** It is 0
+when `write_ply` is off and otherwise roughly fifteen bytes times `point_count`. It
+is reported because it decides whether the artifact is convenient to move.
+
 **`point_count` is mostly a function of `stride`.** Quadratic in it. Comparing two
 runs' point counts without comparing their strides compares the parameter.
 
@@ -91,5 +99,4 @@ have no diagnostic reading them — descriptions of the captures measured so far
 not judgements on yours. The numbers in the `stride`, `min_confidence`,
 `depth_scale` and `write_ply` advice are settings that worked in isolated
 testing, not published results — and this module has run in a real pipeline only
-as a comparison arm, never as a delivered dense stage; see `sources`. It has run zero times as the dense stage of a
-real pipeline.
+as a comparison arm, never as a delivered dense stage; see `sources`.

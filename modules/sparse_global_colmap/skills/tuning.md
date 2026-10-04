@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.1.0
+module_version: 1.3.0
 curated_at: 2026-08-10
 ---
 
@@ -29,7 +29,6 @@ defaults, ratio-test matcher at `pairing: exhaustive`, everything here at defaul
 | `observation_count` | 16335 |
 | `mean_track_length` | 4.53 |
 | `mean_reprojection_error` | 0.316 px |
-| `models_found` | 1 |
 | runtime | 4.5 s |
 
 For contrast, the incremental chain on the same input needs
@@ -107,8 +106,12 @@ the graph could not place it.
 1. **`largest_component_fraction`.** Below 1.0, the graph is split and no
    parameter in this module can join it — widen the matcher's `window` or use
    `pairing: exhaustive`.
-2. **`models_found` above 1.** Same cause, seen from the other side: the pipeline
-   built several reconstructions and only the largest is returned.
+2. **The same cause, seen from the other side.** Where the graph splits, the
+   pipeline builds several reconstructions and returns only the largest; the rest of
+   the images come back with `valid=False`. A count of those reconstructions was
+   published through 1.2.0 and is no longer, because `largest_component_fraction`
+   above moves with it, and the exception it existed to report is already a
+   diagnostic: `split_into_models` fires on the same condition and names the sizes.
 3. **`min_num_matches`** last. Lowering it admits thin pairs, which may connect a
    stray image at the cost of a worse rotation everywhere.
 

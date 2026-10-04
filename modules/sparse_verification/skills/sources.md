@@ -1,7 +1,7 @@
 ---
 module: SparseVerification
-module_version: 1.3.0
-curated_at: 2026-09-14
+module_version: 1.5.0
+curated_at: 2026-10-03
 ---
 
 # Where the claims in these files come from
@@ -10,6 +10,39 @@ There is no upstream library to cite. The epipolar (Sampson) distance is textboo
 two-view geometry; everything else here is measured in this stack.
 
 ## Measured
+
+- **That the spatial reading's construction was `max / median`, and not the textbook
+  robust z-score.** Retired in 1.5.0 along with the reading itself; kept because the
+  rejection of the textbook statistic is the durable part. `camera_spread_ratio` divided the furthest camera's offset from
+  the camera centroid by the MEDIAN such offset. The conventional choice would be a
+  modified z-score against the median absolute deviation (Iglewicz and Hoaglin's
+  rule, cut at 3.5), and that was tried first and rejected on measurement, not on
+  taste.
+
+  Four constructions were scored over 67 delivered models from the pose and dense
+  batches, against a criterion fixed beforehand: catch the two models a displaced
+  camera is known to have harmed, and flag none of the five dense captures that
+  scored well. All four met that bar. They differ in what else they flag.
+
+  | construction | cut | also flags |
+  | --- | --- | --- |
+  | `max / median` | 25 | 1 further model |
+  | `max / p75` | 5 | 1 further model |
+  | MAD z-score | 3.5 | 15 further models |
+  | MAD z-score on log offsets | 3.5 | 4 further models |
+
+  The MAD variants fail for a reason specific to this corpus and not to the
+  statistic: **many delivered models hold four to ten cameras**, and on a sample
+  that small the median absolute deviation is nearly degenerate. A four-camera
+  capture whose cameras are as evenly spread as any in the corpus -- `max / median`
+  of 1.84 -- reads a modified z-score of 53.8, and 39.0 after a log transform. The
+  offsets are also distances from a centre, so they are non-negative and
+  right-skewed, and a symmetric z-score mis-calibrates on them by construction.
+
+  `max / median` is therefore the better estimator HERE, and the honest statement is
+  that it is not the standard one. It was kept because it survived a test the
+  standard one failed, on this corpus's camera counts.
+
 
 The readings behind each point are in
 [evidence/second-solve-2026-09](../../../skills/evidence/second-solve-2026-09.md#the-veto),

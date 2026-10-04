@@ -49,6 +49,21 @@ applying once this has run — `plan/pose.md`'s "global reconstruction instead w
 posed. It also hides the matcher weakness underneath, which is exactly why
 `filled_images` is published and why the report has to name the filled frames.
 
+**`fitted_scale` is not a quality reading.** It is the scale taken out of the
+estimator's frame, and a feed-forward estimator has no metric scale, so this can be
+any positive number and says only what unit that estimator happened to choose. Read
+`shared_residual` for whether the fit worked. **`mean_reprojection_error` and
+`median_reprojection_error` are both always null here** — this module fits a
+similarity to camera centres and never touches a correspondence, so there is no
+reprojection for it to report.
+
+**`dropped_images` is the other half of that accounting, and it is normally zero.**
+It counts cameras `drop_image_indices` removed from the core before the fit. A
+dropped camera the estimator also lacks simply leaves the model, so read it beside
+`filled_images`: if the two do not account for the difference between the core's
+`registered_images` and the delivery's, cameras left the pipeline without any
+reading saying so.
+
 ## What it does not write
 
 No points, no observations, no tracks, no intrinsics. It is a pose table. The

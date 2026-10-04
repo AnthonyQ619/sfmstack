@@ -1,6 +1,6 @@
 ---
 module: PoseEssentialToPnP
-module_version: 1.4.0
+module_version: 1.5.0
 curated_at: 2026-09-13
 ---
 
@@ -417,6 +417,12 @@ incremental rather than full re-triangulation, which is a code change, not a
 parameter.
 
 ## Metrics that mislead
+
+**`local_ba_runs` is provenance for the schedule, not a verdict on it.** It records
+how many window solves ran. Zero with `local_ba` on is the one reading in it that
+means something — no window ever carried enough structure to solve, which is a
+structure problem and not a BA setting. Otherwise it moves with the schedule by
+construction and says nothing about quality.
 
 `mean_reprojection_error` can look excellent on a reconstruction that is
 geometrically wrong. A point triangulated from near-parallel rays reprojects

@@ -1,5 +1,5 @@
 name: SceneDescription
-version: 0.7.1
+version: 0.8.0
 kind: analysis
 summary: >
   Renders a browsable contact sheet from the scene, then records what a viewer
@@ -85,7 +85,7 @@ description: |
   of `scene_analysis/v1`, which is marked as such in the schema. It can be wrong
   in ways a measurement cannot.
 
-image: sfmstack/scene-description:0.7.1
+image: sfmstack/scene-description:0.8.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -181,7 +181,6 @@ metrics:
 
   material_hazards:
     direction: lower_better
-    healthy: [null, 0]
     meaning: >
       Graded by COHERENCE, which is the mechanism: 0 none, 1 diffuse, 2 coherent.
 
@@ -236,7 +235,6 @@ metrics:
 
   subject_complete:
     direction: higher_better
-    healthy: [1, null]
     meaning: >
       1 when the main subject sits fully inside the frames, 0 when it is cropped
       by the frame edge or occluded by something else. Null when there is no main

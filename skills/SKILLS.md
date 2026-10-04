@@ -65,6 +65,13 @@ one) has not been asked for; the two modules' own `SKILL.md` files carry it.
 
 ## evidence/ — the record
 
+- **[bands.md](health/bands.md)** — what a `healthy` band is and what a
+  firing one means. Four kinds of metric answer to different rules: a reading
+  that describes the CAPTURE cannot be unhealthy, and a reading that exists to
+  explain another one is not a defect. Measured: ten bands fire on more than
+  seven readings in ten and every one is at or below the base rate for a poor
+  delivery; twenty-nine more have never fired. Read it before adding a band or
+  acting on one.
 - **[EVIDENCE.md](evidence/EVIDENCE.md)** — the index of campaigns, and the
   reliability ladder: when two pieces of this corpus disagree, which to believe.
   One file per campaign beside it, raw per-capture tables with scene names —

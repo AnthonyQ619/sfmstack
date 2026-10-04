@@ -473,11 +473,15 @@ def run(ctx: Ctx):
                None if blew_up else round(error_after, 4),
                direction="lower_better", healthy=(None, 1.0))
     out.metric("error_reduction", None if blew_up else round(reduction, 4),
-               direction="higher_better", healthy=(0.0, None))
+               direction="higher_better")
+    # points_optimized stays, and the reason is a test rather than a reading:
+    # test_a_colmap_sidecar_is_written_and_opens pins it against the sidecar's own
+    # num_points3D, so it is the cross-check that the COLMAP model written beside this
+    # artifact describes the same solve. observations_optimized had no such anchor --
+    # it correlated with observation_count at r = 1.000 over 235 runs and was never
+    # cited in 82 agent reports -- and was removed.
     out.metric("points_optimized", len(point_ids),
                direction="higher_better", healthy=(100, None))
-    out.metric("observations_optimized", len(obs_rows),
-               direction="higher_better", healthy=(300, None))
     out.metric("iterations", iterations, direction="neutral")
     out.metric("converged", int(converged), direction="higher_better", healthy=(1, None))
 

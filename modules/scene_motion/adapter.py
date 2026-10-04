@@ -444,7 +444,7 @@ def run(ctx: Ctx):
     out.metric("fastest_pair", round(fastest_pair, 5), direction="neutral")
     out.metric("pair_p90_across", round(pair_spread, 5), direction="neutral")
     out.metric("variability", round(variability, 5),
-               direction="lower_better", healthy=(None, 0.035))
+               direction="lower_better")
     out.metric("low_baseline_risk", round(low_baseline, 4),
                direction="lower_better", healthy=(None, 0.35))
     out.metric("rotation_median_deg",

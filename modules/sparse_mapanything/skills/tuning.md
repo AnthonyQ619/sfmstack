@@ -8,9 +8,13 @@ curated_at: 2026-08-11
 
 1. `depth_scale_spread` — do the learned depth and the supplied poses agree up to
    one scalar at all?
-2. `yield` — how much of the tracker's work survived.
-3. `conditioned` — because every other number moves with it.
-4. Only then `mean_reprojection_error`.
+2. `scale_samples` — whether that scalar rests on enough evidence.
+   `min_scale_samples` defaults to 20, and a run near that floor fitted the scale on
+   a handful of tracks, which makes a small `depth_scale_spread` soft rather than
+   reassuring.
+3. `yield` — how much of the tracker's work survived.
+4. `conditioned` — because every other number moves with it.
+5. Only then `mean_reprojection_error`.
 
 ## Reference run
 
@@ -45,14 +49,15 @@ than not, the poses are the problem, not the model. That comparison is the reaso
 ## `min_confidence` — read the metric first, and do not carry it from SparseVGGT
 
 MapAnything's confidence is unbounded above and starts near 1, so it is not a
-probability. Its magnitude differs from VGGT's by nearly a factor of five on the
-same scene: **13.97 here, 60.60 in `SparseVGGT`**. A threshold copied across
-rejects everything.
+probability, and its magnitude is not comparable to `SparseVGGT`'s. A threshold
+copied across rejects everything.
 
+Do not carry a threshold — not from VGGT, and not from another capture of your own.
 The procedure is the same as for `SparseVGGT`: run once at 0, read
-`mean_depth_confidence`, set the threshold as a fraction of it. Note it also moves
-with `condition_on_poses` — 9.82 to 13.97 — so a threshold tuned unconditioned is
-too low once conditioning is on.
+`mean_depth_confidence`, set the threshold as a fraction of it. On the reference
+run above it moved with `condition_on_poses`, 9.82 to 13.97, so a threshold tuned
+unconditioned is too low once conditioning is on — but that is one run, and no
+corpus capture has measured this reading at all.
 
 ## Nothing survives
 
@@ -75,6 +80,11 @@ the reference run, which is the few pixels upstream's resolution table trims off
 the long side. A large number means the scene's aspect ratio is far from anything
 in that table.
 
+**`cheirality`** — the point landed behind a camera, so the depth prior and the poses
+disagree about which side of the camera the scene is on. `rejected_cheirality` counts
+them, and it is usually the scale problem above seen from another angle: check
+`depth_scale_spread` before touching a threshold.
+
 **`short`** — the tracker, not this module.
 
 ## The cloud is smaller than SparseTriangulation's and that is not a bug
@@ -94,8 +104,8 @@ what the model can attend to and therefore the depth it predicts.
 ## Metrics that mislead
 
 **`mean_depth_confidence` is not comparable to `SparseVGGT`'s.** Same name,
-different scale — 13.97 against 60.60 on the same scene. Both unbounded
-self-reports.
+different scale, both unbounded self-reports. No cross-module ratio is quoted
+because none is corroborated.
 
 **`depth_scale` is not quality.** It is the unit conversion, and it changes with
 the pose source, not with how good the reconstruction is.
@@ -119,7 +129,7 @@ Audited against this module's own manifest. **Eleven healthy bands**
 (`min_frame_points`, `two_view_fraction`, `p95_reprojection_error`,
 `p05_triangulation_angle`, `point_count`, `observation_count`, and five more)
 declare a range no diagnostic reads — descriptions of the captures measured so
-far, not judgements on yours, and this module has run **zero times** in a real
-pipeline, so they come from isolated testing. The numbers in the
+far, not judgements on yours, and they come from isolated testing that has not
+been revised against the module's pipeline runs. The numbers in the
 `use_model_mask`, `min_track_len`, `min_confidence` and `amp_dtype` advice are
 settings that worked in that isolated testing, not published results.

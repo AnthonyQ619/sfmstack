@@ -1,5 +1,5 @@
 name: FeatureTrackUnionFind
-version: 1.4.0
+version: 1.5.0
 kind: tracking
 summary: >
   Chains pairwise correspondences into multi-view tracks by union-find, detecting
@@ -30,7 +30,7 @@ description: |
   this module -- it means the matcher is producing contradictory correspondences,
   and the useful response is to tighten the matcher or replace it.
 
-image: sfmstack/track-union-find:1.4.0
+image: sfmstack/track-union-find:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -137,7 +137,6 @@ metrics:
 
   avg_track_length:
     direction: higher_better
-    healthy: [3.0, null]
     meaning: >
       Mean observations per track. 2.0 means nothing merged across more than one
       pair, so the view graph, not the matcher, is what is limiting you.
@@ -274,7 +273,6 @@ metrics:
 
   track_survival_5:
     direction: higher_better
-    healthy: [0.1, null]
     meaning: Fraction of tracks seen in 5+ views.
 
 diagnostics:

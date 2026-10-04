@@ -335,7 +335,7 @@ def run(ctx: Ctx):
     out.metric("min_frame_points", _s["min_frame_points"],
                direction="higher_better", healthy=(50, None))
     out.metric("two_view_fraction", _s["two_view_fraction"],
-               direction="lower_better", healthy=(None, 0.6))
+               direction="lower_better", healthy=(None, 0.843))
     out.metric("p95_reprojection_error", _s["p95_reprojection_error"],
                direction="lower_better", healthy=(None, 2.0))
     out.metric("p05_triangulation_angle", _s["p05_triangulation_angle"],
@@ -343,7 +343,7 @@ def run(ctx: Ctx):
     out.metric("mean_reprojection_error", round(mean_err, 3),
                direction="lower_better", healthy=(None, 2.0))
     out.metric("mean_track_length", round(mean_len, 2),
-               direction="higher_better", healthy=(3.0, None))
+               direction="higher_better")
     out.metric("median_triangulation_angle", round(median_angle, 2),
                direction="higher_better", healthy=(3.0, None))
     out.metric("yield", round(yield_, 3), direction="higher_better", healthy=(0.3, None))

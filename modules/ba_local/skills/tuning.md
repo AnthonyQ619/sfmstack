@@ -137,5 +137,5 @@ Audited against this module's own manifest. **Seven healthy bands**
 more) declare a range no diagnostic reads — each is a description of the
 captures measured so far, not a judgement on yours. The numbers in the
 `window_size` and `min_track_len` advice are settings that worked here, not
-published results. And this module has run **zero times** in a real pipeline,
-so every band here comes from isolated testing.
+published results, and nothing here has been exercised end to end, so every
+band here comes from isolated testing.

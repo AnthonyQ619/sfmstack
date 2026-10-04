@@ -5,6 +5,20 @@ them is not degree. A third module, `DenseFusion`, also produces the type, but i
 tuning tool rather than a densifier: it re-fuses a `DenseMVS` stereo pass at other
 settings — see "Delivering the verified cloud" below.
 
+**A dense job is a sparse job first, and the rules for choosing a sparse model are
+not here.** Densifying is the last stage; everything upstream of it is the pose and
+reconstruction problem, and which model you hand the densifier decides more than any
+setting on this page. The verifier's veto, the consensus check against two
+correspondence-free estimators, and the fill rule all live in
+[pose](pose.md) — **read it before choosing the model you densify**, not after the
+cloud disappoints.
+
+This is not a general exhortation. On a seven-capture dense batch the four scenes
+whose agents read `plan/pose.md` placed their clouds within 0.6% of the capture's own
+extent; the two that did not were the two worst sparse results, and neither ran
+either correspondence-free estimator. One of them was the capture promoted expressly
+to carry the consensus reading.
+
 ---
 
 ## The axis
@@ -166,6 +180,13 @@ When the deliverable is a dense cloud, it is tempting to treat the sparse stage 
 the supply and tune it for what the densifier will consume. That has been tested, and
 it is mostly the wrong place to spend effort.
 
+**Read `supported_components` before aligning a cloud to anything external.** A single
+stranded camera is invisible to every error reading on the model and is exactly what a
+reference alignment must reject; a similarity fitted without rejecting it places the
+whole cloud wrong. [`plan/scene_to_pipeline.md`](scene_to_pipeline.md) trap 0 is the
+general rule, and [`health/ladder.md`](../health/ladder.md) says why no error rung sees
+it.
+
 **Measured end to end, there is very little to plan here.** Four sparse-side changes
 were run through to a scored dense cloud, on close-range orbits of a compact subject
 and not yet anywhere else: the detector's budget, its contrast threshold, exposure
@@ -188,6 +209,19 @@ the two difficulties are set by different things, so even the association goes a
 **What decides the dense result is the dense stage's own policy**, not its input:
 `fusion_min_num_pixels` and `geom_consistency` moved completeness by two orders of
 magnitude more than any of the above. See "Delivering the verified cloud" below.
+
+**And there is a cheap way to tell before you spend anything, because a reading that
+does not move when the model changes is not measuring the model.** One promoted
+capture was densified in three separate batches, each on a different context, and the
+agent delivered a **different sparse model** each time — different artifact, different
+lineage, eighty-five of ninety cameras aligned in all three. Its placement error read
+101.188, 101.187 and 101.189 mm. Five significant figures of agreement across three
+independent models says the sparse stage is not the constraint, and three batches had
+already been spent improving it. **If two deliveries of a capture give the same dense
+number, stop looking upstream** — read accuracy and coverage separately and look at the
+dense policy instead. That capture's cloud was the *most accurate* of four arms and
+covered a third of the surface the reference holds. The campaign is in
+[`evidence/dense-saturated-2026-10.md`](../evidence/dense-saturated-2026-10.md).
 
 **Where thin models and poor dense coverage do go together, do not assume the
 mechanism is per-view starvation.** On close-range orbits of a compact subject the two
@@ -254,6 +288,32 @@ highlights are a property of the capture, and per-view density does not predict 
 views come back empty.
 
 ---
+
+**A count of aligned cameras is not a measure of accuracy, and a worse model scores
+higher on it.** The robust aligner keeps a camera unless its residual exceeds both a
+multiple of the kept median and an absolute floor, so the effective cutoff is set by the
+model's own residuals: a model whose cameras are uniformly mediocre is judged against a
+looser cutoff than a good one and keeps more of them. Measured on one corpus capture, a
+feed-forward arm kept more than twice as many cameras as the delivered model while
+having a fifth as many inside the floor. **Never compare the count between two models,
+and never set a target on it** — a plan that asks for more aligned cameras can be
+satisfied by making the reconstruction worse.
+
+Read instead, at one distance you fix yourself: how many cameras fall inside it, the
+median residual, and the worst. The same caution applies to a stored residual summary
+that describes only the kept cameras — by construction every value in it is inside the
+floor, so it says the alignment is excellent however much of the model sits outside.
+
+**Two error shapes, and neither is a repair for the other.** A tight core with a long
+tail is accumulated drift: most cameras are close, a few are far, and
+[`plan/optimization.md`](optimization.md) is where that goes — noting that a window
+which never spans the sequence cannot correct it, so a model that has already had a
+global solve has had the remedy. A uniform spread with a short tail is the
+feed-forward shape, which has no registration order and therefore no drift but gets
+whatever it gets wrong wrong everywhere at once. **A feed-forward swap is therefore not
+a repair for drift**; it trades a few accurate cameras for many mediocre ones. Choose by
+deliverable — completeness wants the uniform model, accuracy wants the tight core — and
+see [`evidence/dense-saturated-2026-10.md`](../evidence/dense-saturated-2026-10.md#the-alignment-count-is-self-referential-and-must-not-be-compared-between-models).
 
 ## Delivering the verified cloud
 

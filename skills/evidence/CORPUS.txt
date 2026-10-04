@@ -34,6 +34,28 @@
 /euroc/V2_01_easy
 /tum_vi/room4
 
+# Promoted to carry the two sides of the short-core rule in plan/pose.md — what to
+# deliver when the fill is not available. See evidence/short-core-2026-10.md.
+#
+# Dataset directories as the real image_dir spells them, checked against
+# pose_data_10/{euroc,advio}/<seq>/n010_undistorted/rgb before being written here,
+# per the Barn note below.
+/euroc/MH_05_difficult
+/advio/advio-07
+/tum_vi/room3
+
 # Promoted to carry the consensus reading in plan/pose.md — the capture that
 # neither estimator catches alone. See evidence/consensus-2026-09.md.
-/TT/Barn
+#
+# Written as the DATASET DIRECTORY, not the batch alias. Entries match whole path
+# segments of the scene's image_dir, and this capture's is
+# .../tanks_and_temples/Barn/n090/rgb -- there is no "TT" segment in it. Listed as
+# /TT/Barn it matched nothing, and the two dense batches ran the capture promoted to
+# carry the consensus reading WITHOUT the agent being told it was a member. Check a
+# new entry against a real image_dir before trusting it.
+/tanks_and_temples/Barn
+
+# Promoted to carry the dense-side counter-case in plan/dense.md — a capture whose
+# sparse model is sound and whose dense result still fails, on coverage alone.
+# See evidence/dense-saturated-2026-10.md.
+/tanks_and_temples/Meetingroom

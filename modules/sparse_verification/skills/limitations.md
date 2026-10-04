@@ -1,7 +1,7 @@
 ---
 module: SparseVerification
-module_version: 1.3.0
-curated_at: 2026-09-12
+module_version: 1.5.0
+curated_at: 2026-10-03
 ---
 
 # What held-out verification cannot tell you
@@ -120,6 +120,16 @@ fire — trap 0 in `plan/scene_to_pipeline.md` is the general form of that. What
 is built to catch without fail is the collapse: the model that registered
 everything and is in pieces.
 
+**Measured, on the one corpus delivery that read above the ceiling.** It read two
+components, the second a single camera, and that camera sat 415 m from its reference
+position. Everything else on that model was clean: 31 of 31 registered, no diagnostic,
+`mean_reprojection_error` 0.4157 px, `heldout_residual_px` 0.2061 and
+`heldout_residual_mrad` 0.2346. Both of this module's own error readings were therefore
+excellent while the model carried a camera four hundred metres out of place. **No
+diagnostic in this module reads `supported_components`** — the ceiling of 1 is the whole
+alarm, and it only works if someone looks. That is the case this reading exists for, and
+the only one the corpus has produced.
+
 ## When nothing is held out
 
 *Symptom:* `nothing_held_out`, and `heldout_residual_px` is null.
@@ -195,3 +205,30 @@ adjustment is what pulls a correct model onto the evidence it never saw and
 leaves a drifted one where it was. That is why the service runs this after an
 optimization module and nowhere earlier, and why a reading taken on a
 triangulator's output is not comparable with one taken after refinement.
+
+
+## Catching the camera is not the same as the drop helping
+
+This reading names the camera furthest from the rest. Whether removing it helps is a
+different question, and it has been measured both ways on one dense batch. On one
+capture a single camera sat far out and its removal recovered most of a failed
+reference alignment. On another the furthest camera was already an alignment outlier
+and dropping it changed the result by nothing, because fifty-two of ninety cameras
+were misplaced by a fraction of a metre each -- a model adrift everywhere rather than
+one with a stray.
+
+`supported_components` above 1 with a large second piece is what separates them. Read
+it before acting on this one.
+
+## The spatial reading that used to be here
+
+Through 1.4.0 this module published `camera_spread_ratio` and `centre_offset_ratio`, a
+reading of whether a camera sat anywhere plausible rather than whether it agreed with
+correspondences. Two sections here described its limits. It was retired in 1.5.0 and the
+reason is worth keeping, because it is a trap this module is well placed to fall into
+again: the reading was fitted on two models known to be wrong, where it read 32 and 480
+against a healthy median near 2. Scored on **delivered** models it reads rho +0.05
+against rotation error — the gross cases it caught had already been rejected by the
+readings above, so on the population that survives to a delivery it was noise.
+`heldout_residual_mrad` reads +0.68 on the same models and is the reading to use.
+See `evidence/band-calibration-2026-10.md`.

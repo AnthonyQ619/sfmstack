@@ -90,6 +90,43 @@ and needs a well-determined edge.
 
 The held-out residual remains the veto and is unchanged.
 
+## The consequence, measured on the one corpus delivery that broke the ceiling
+
+The ceiling of 1 was set on the reasoning above. `ETH/kicker` is the only corpus delivery
+of the dense campaigns to read above it, and it shows what the ceiling is worth.
+
+| reading on the delivered model | value | verdict |
+|---|---|---|
+| **`supported_components`** | **2** | **outside the ceiling of 1** |
+| `registered_images` | 31 of 31 | clean |
+| `mean_reprojection_error` | 0.4157 px | clean |
+| `p95_reprojection_error` | 1.2696 px | clean |
+| `two_view_fraction` | 0.0099 | clean |
+| `heldout_residual_px` | 0.2061 | clean |
+| `heldout_residual_mrad` | 0.2346 | clean |
+| `agreeing_pair_share` | 0.9953 | clean |
+| diagnostics on the model | none | — |
+
+**The second component was a single camera, and it sits 415 m from its reference
+position.** Against a scene whose cameras span tens of metres, that is a camera in the
+wrong place entirely — and every error reading on the model, including both of this
+module's own, was comfortably inside its band.
+
+The mechanism is that a camera stranded by a handful of bad matches is *self-consistently*
+wrong: its own observations fit the pose it was given, so no average over residuals is
+moved by it, and only the structure of what the held-out evidence supports can see that
+it hangs off the model rather than in it.
+
+**No diagnostic reads `supported_components`.** The ceiling is carried by the band alone,
+which makes this a measured instance of trap 0 in
+[`plan/scene_to_pipeline.md`](../plan/scene_to_pipeline.md) — read the bands, not the
+diagnostics. One of thirty dense deliveries read above it; it was the only corpus one.
+
+**Where it costs something.** A reference alignment has to reject that camera, and the
+robust fit does. A similarity fitted without rejecting it would place the entire cloud
+wrong, which is why [`plan/dense.md`](../plan/dense.md) now says to read this before
+aligning a cloud to anything external.
+
 ## What is not established here
 
 - **No measured catch.** That the component count sees a failure the weighted median

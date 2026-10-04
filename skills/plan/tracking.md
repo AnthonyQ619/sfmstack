@@ -33,6 +33,12 @@ advantage to trade, and the comparison has to be run rather than assumed.
 
 A **predictive** tracker (`FeatureTrackVGGSfM`, `FeatureTrackTapir`) is given
 keypoints in a few query frames and predicts where they land everywhere else.
+**Both refuse a scene whose images are not all at one resolution** — they stack the
+frames into a single tensor and track across the stack — so a capture the loader
+delivered at mixed sizes stops them at the first step, and the fix is upstream: run
+the loader again with a fixed resize. Check this before choosing a predictive
+tracker, because nothing downstream reveals it and the refusal costs the whole
+branch.
 Nothing truncates the track, because there is no view graph to have a hole in. But
 the observations are predictions, and the precision floor is set by THE MODEL'S
 OWN WORKING RESOLUTION RELATIVE TO THE SCENE -- which is a fact about the module,
@@ -69,6 +75,18 @@ whose matcher was detector-free -- which is what the table's parenthesis already
 predicts. Two detector-based captures did read better for a predictive tracker,
 and both margins were small.
 
+**One capture has since broken that pattern decisively, and it names the condition
+to look for.** On a hand-held indoor capture the chaining tracker delivered an
+enormous track table carrying a transfer error in the mid tens of pixels, while a
+predictive tracker on the same stored scene and detector returned a table a few
+percent of its size at a twentieth of its error — a margin more than an order of
+magnitude outside the span test above, so it decides. The condition is not in the
+scene description: it is **the incumbent's own `trifocal_transfer_px`**. Where that
+reading is already small the chain wins and there is nothing to rescue; where it is
+large *despite* a large `track_count`, the table is mostly wrong and its size is
+measuring how wrong. A large table with a bad transfer error is the signal to pay
+for a predictive run, and it is a reading you already have before you do.
+
 **Price a margin before believing it, and the yardstick is the tracker's own
 span.** Sweep one cheap parameter on the tracker you are judging, with nothing
 else changed, and record the range this metric covers across that sweep. A gap
@@ -79,6 +97,16 @@ and one capture's reader reached that verdict unprompted. Measured spans have ru
 to roughly one-and-a-half times, which is why a several-fold difference decides a
 tracker choice and a twenty-percent one settles nothing. Equal `trifocal_triples`
 is a precondition for comparing at all, not a substitute for this test.
+
+**`trifocal_samples` says whether there is a reading to compare.** It counts the
+held-out observations the median was taken over, and it falls when few frame
+triples share enough tracks. At zero, `trifocal_transfer_px` is published as null —
+the check did not run, and these two counts are the only readings that say so, which
+is why a capture can ship with no transfer verdict and nothing flagging it. A small
+but nonzero count makes the median soft, and soft is the regime where the span test
+above will fail on any margin you care about. Read it before you read the median,
+and read it on both arms: a comparison where one arm measured an order of magnitude
+more held-out observations than the other is not a comparison.
 
 The ordering is not a coincidence of one dataset. Predicting rather than matching
 buys reach and costs precision, and the further a model runs from the image's

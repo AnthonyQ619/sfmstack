@@ -1,5 +1,5 @@
 name: PoseEssentialToPnP
-version: 1.4.0
+version: 1.5.0
 kind: pose
 summary: >
   Incremental SfM: essential-matrix bootstrap on a chosen initial pair, then
@@ -51,7 +51,7 @@ description: |
   Scale is arbitrary and unrecoverable from images alone. The initial pair's
   baseline is fixed to unit length, so every distance downstream is in that unit.
 
-image: sfmstack/pose-incremental:1.4.0
+image: sfmstack/pose-incremental:1.5.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -332,6 +332,14 @@ metrics:
     healthy: [3, null]
     meaning: Absolute count. Two is the seed pair alone, i.e. total failure to grow.
 
+  local_ba_runs:
+    direction: neutral
+    meaning: >
+      Local bundle adjustments performed during registration. Three states, not two:
+      0 with local_ba off, 0 with local_ba ON means no window ever carried enough
+      structure to solve -- a structural failure, not a tuning one -- and N means it
+      ran. Equal to registered_images whenever it ran at all, so it carries nothing
+      extra in the healthy case; its value is the zero.
   points_triangulated:
     direction: higher_better
     healthy: [100, null]
@@ -419,13 +427,6 @@ metrics:
     meaning: >
       Median parallax of the seed pair, in degrees. Everything else is registered
       against structure this pair created, so a weak seed is not recoverable later.
-
-  local_ba_runs:
-    direction: neutral
-    meaning: >
-      Local bundle adjustments performed during registration. 0 with local_ba on
-      means no window ever carried enough structure to solve, which is a structure
-      problem, not a BA setting.
 
   local_ba_gain_px:
     direction: higher_better

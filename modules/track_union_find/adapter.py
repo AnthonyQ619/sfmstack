@@ -388,7 +388,7 @@ def run(ctx: Ctx):
     out.metric("track_count", track_count,
                direction="higher_better", healthy=(200, None))
     out.metric("avg_track_length", round(avg_len, 2),
-               direction="higher_better", healthy=(3.0, None))
+               direction="higher_better")
     out.metric("long_track_fraction", round(long_fraction, 3),
                direction="higher_better", healthy=(0.3, None))
     # Module-specific, not part of tracks/v1: a track longer than any chain of
@@ -396,7 +396,7 @@ def run(ctx: Ctx):
     # predictive tracker has a use for it.
     out.metric("max_track_length", max_len, direction="neutral")
     out.metric("track_survival_5", round(survival_5, 3),
-               direction="higher_better", healthy=(0.1, None))
+               direction="higher_better")
     out.metric("min_frame_observations", min_frame_obs,
                direction="higher_better", healthy=(50, None))
     # Positional accuracy -- the one axis no other metric here touches. Timed and

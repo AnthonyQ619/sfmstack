@@ -1,6 +1,6 @@
 ---
 module: PoseMapAnything
-module_version: 1.0.0
+module_version: 1.2.0
 curated_at: 2026-09-25
 ---
 
@@ -20,5 +20,5 @@ browsed.** The provenance summary rides `SKILL.md`; unsourced-band warnings sit 
 | **that a second correspondence-free estimator makes the comparison readable at all** — one estimator alone condemns scenes where the estimator, not the model, is the outlier, and misses scenes where the disagreement is small in absolute terms but large against the estimators' own spread | measured across 35 scored captures; `skills/evidence/consensus-2026-09.md` |
 | **that two learned estimators can agree tightly and both be wrong** on a scene outside their training distribution, and that the delivered model can be the better reconstruction in exactly that case | measured; same campaign file |
 | the failure this module exists to catch: a matcher wrong in a globally consistent way, two matchers agreeing to a few per cent, the lowest held-out residual in its batch, and a cloud metres out | measured; same campaign file |
-| **everything about behaviour as a delivery path** | **nothing** — this module is never delivered from; it is read, not shipped |
+| **behaviour as a delivery path** | measured. Run over all seventy-five captures of the pose batch as a scoring arm, and measured as the DELIVERY on the captures where the geometric core came back short: at `registered_fraction` at or below about 0.7 this module's own model was the better delivery than the short core on three of the four corpus captures that reached that point, by as much as 0.56 AUC@30 over all pairs, and on captures that registered every frame it was worse. The exception is a capture whose geometry is degenerate — a coherent reflector between camera and scene, no parallax — where this module scored zero and the seven-camera core won. [`evidence/short-core-2026-10.md`](../../../skills/evidence/short-core-2026-10.md) |
 | 7 healthy bands; every numeric value in `tuning.md` and the cost figures in `SKILL.md` | **nothing** — see the audit section in `tuning.md` |
