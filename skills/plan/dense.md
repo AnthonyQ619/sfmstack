@@ -307,13 +307,38 @@ floor, so it says the alignment is excellent however much of the model sits outs
 **Two error shapes, and neither is a repair for the other.** A tight core with a long
 tail is accumulated drift: most cameras are close, a few are far, and
 [`plan/optimization.md`](optimization.md) is where that goes — noting that a window
-which never spans the sequence cannot correct it, so a model that has already had a
-global solve has had the remedy. A uniform spread with a short tail is the
-feed-forward shape, which has no registration order and therefore no drift but gets
+which never spans the sequence cannot correct it. A uniform spread with a short tail is
+the feed-forward shape, which has no registration order and therefore no drift but gets
 whatever it gets wrong wrong everywhere at once. **A feed-forward swap is therefore not
 a repair for drift**; it trades a few accurate cameras for many mediocre ones. Choose by
 deliverable — completeness wants the uniform model, accuracy wants the tight core — and
 see [`evidence/dense-saturated-2026-10.md`](../evidence/dense-saturated-2026-10.md#the-alignment-count-is-self-referential-and-must-not-be-compared-between-models).
+
+**A global bundle adjustment is not the end of the drift road, and this is measured.**
+Refinement starts from where the incremental model already is, so it cannot undo a bend
+that the registration order built into the initialisation — it finds the nearest good
+answer to a model that is already bent. On one capture whose delivered model had
+*already* had a global solve, rebuilding it from the same matches with a global
+**reconstructor** — rotation averaging over the whole view graph, no registration
+order — more than halved the dense error, and the rebuilt cloud scored better where it
+stood than the original did after being optimally re-fitted to the reference. So when a
+global solve has not fixed the shape, the remaining lever is the **initialisation**,
+not more optimisation.
+
+**But that was one capture, and it does not come with a trigger.** The obvious
+candidate is measured dead: the size of the gain does **not** follow how much the
+model's placement costs it against a reference. Across a protocol's captures with that
+cost spanning more than a threefold range, the association with the gain is slightly
+**negative**, the arm was better on about half of them, and the capture with the large
+gain carried a *lower* placement cost than any of the captures that gained nothing.
+Nor does anything the pipeline report predict it: a search over every metric the stack
+reports found nothing that beats chance. The alignment count cannot stand in either,
+for the reason given earlier in this section.
+
+**So expect a small gain of either sign, and treat the one large win on record as an
+outlier rather than a template.** Where a reference-scored dense cloud is the
+deliverable, run both arms and compare the clouds — there is no reading, with or
+without the reference, that chooses for you.
 
 ## Delivering the verified cloud
 

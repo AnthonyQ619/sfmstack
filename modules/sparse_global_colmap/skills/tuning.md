@@ -61,6 +61,23 @@ Nothing entered the view graph, so there was nothing to average. In order:
 3. **`min_inlier_ratio` (0.25)** last. Lower it only when the matcher's own
    `inlier_ratio` is genuinely low, and expect worse rotations if you do.
 
+## The run fails and writes no model
+
+Distinct from the two sections around it: those describe a model that came out thin,
+this is no artifact at all. Measured on two corpus captures at short frame loads, the
+run failed in **under fifteen seconds** — fast enough that the first instinct is to
+blame the harness, and on both occasions that instinct was wrong.
+
+Short loads are the common factor worth checking first. Rotation averaging needs the
+view graph to be rigid, and a dozen frames of a capture that was shot as hundreds can
+leave it connected but under-constrained, which is a different failure from the pairs
+never arriving. Read `verified_pairs` to tell the two apart: pairs present and no
+model is this case, pairs absent is the section above.
+
+The mechanism of the refusal is **not recorded** for either capture, and the job
+records did not survive. Treat the frame count as the lead, not as the cause, and if
+you reproduce it, capture the failure payload — nobody has one.
+
 ## `verified_pairs` far below `pairs_matched`
 
 The module rejected a large share of what the matcher produced. That is often

@@ -70,6 +70,24 @@ an unordered collection where incremental registration cannot find a next image 
 can place. It is not in this family because it produces `sparse_model/v1`; see
 [sparse.md](sparse.md).
 
+**It is not a way to register more cameras, and short registration is not an
+indication for it.** Measured on captures delivered with cameras missing, it added
+**no** camera on any of them, and on one it registered half as many as the
+incremental model it was being compared against. Whatever it changes, it is not
+coverage — so a model that stalled is not a reason to reach for this, and the remedy
+for missing cameras remains the fill rule below.
+
+**The consensus reading does not select it either.** Reaching for this module because
+the two estimators put your model outside their mutual agreement was tried and
+measured: the association between that reading and whether this module produced the
+better model is indistinguishable from zero, and the two captures it did help sat at
+the extreme ends of that reading. Do not route the consensus reading to this
+decision; it is a branch-choice reading and is documented as one above.
+
+What it does change is the model's global **shape**, and that shows up in a
+reference-scored dense deliverable rather than in any reading the pipeline reports.
+See [dense.md](dense.md).
+
 ---
 
 ## Which end to reach for
