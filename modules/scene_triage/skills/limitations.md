@@ -77,9 +77,12 @@ read `spatial_coverage` once a detector has run.
 
 ## The bands here are provisional
 
-Every `healthy` band on this module was set from ten ETH3D and DTU scenes at 12
-images each [S4]. That is enough to see the range and not enough to place a
-boundary in it.
+Most `healthy` bands on this module were set from ten scenes of a studio rig and
+two outdoor sites, twelve images each [S4] — enough to see the range and not enough to
+place a boundary in it. **The appearance bands are no longer among them.** Three were
+scored against delivery outcome and two retired on that evidence; the one that
+survived, `combined_change`, now rests on [S5] rather than on the sample described
+here. Read this section as applying to what is left.
 
 Specifically:
 

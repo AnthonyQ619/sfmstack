@@ -445,7 +445,25 @@ def run(ctx: Ctx):
     out.metric("ordered", int(ordered), direction="neutral")
 
     # ----------------------------------------------------------- diagnostics
-    if combined > 0.28:
+    #
+    # The trigger is the BAND under adjacent pairing, and silence under full
+    # pairing. Both halves are measured, and both were previously the other way
+    # round -- this alarm fired at 0.28, which no corpus capture reaches under
+    # `consecutive` at all, while under `pairing: all` it fired on about a fifth.
+    # So it was silent in exactly the regime where the reading discriminates and
+    # spoke in the one where it does not:
+    #
+    #   consecutive  the 0.12 band catches most poor deliveries at a modest
+    #                false-alarm rate, and holds up inside each capture family
+    #                rather than only when they are pooled
+    #   all          every appearance band falls to the base rate here, because
+    #                firing on nearly every capture cannot be informative
+    #
+    # A reader who got no alarm under adjacent pairing had to find the band
+    # themselves, which is trap 0 in `plan/scene_to_pipeline.md` -- read the
+    # bands, not the diagnostics -- reproduced inside this module. Evidence:
+    # `skills/evidence/triage-bands-2026-10.md`.
+    if p.pairing == "consecutive" and combined > 0.12:
         worst = int(np.argmax([c["combined"] for c in changes]))
         i, j = pairs[worst]
         out.diagnostic(

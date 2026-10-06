@@ -14,8 +14,11 @@ threshold. Tuning the ratio test on a disconnected graph is wasted work.
 1. `graph_components` == 1? If not, raise `window`. Nothing else matters yet.
 2. `inlier_ratio` above 0.5? If not, lower `ratio_test` or raise
    `ransac_threshold` — see below for which.
-3. `matches_per_pair` and `min_matches_per_pair` healthy? If not, the fix is
-   usually **upstream** in the detector, not here.
+3. `matches_per_pair` healthy? If not, the fix is usually **upstream** in the
+   detector, not here. Read `min_matches_per_pair` beside it but do not look for a
+   band on it — it carries none, because the count the weakest pair survives on
+   depends on what that pair sees, and a floor that suits one capture vetoes
+   another. Use it to find which pair is thinnest, then judge that pair.
 4. `planarity` below ~0.9? If not, the capture geometry is the problem and no
    matcher parameter helps.
 

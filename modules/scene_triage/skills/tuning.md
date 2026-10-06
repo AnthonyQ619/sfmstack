@@ -23,9 +23,15 @@ only when they are pooled [S5]. The 0.28 this section used to be titled after is
 predecessor's HIGH label [S1], inherited and never measured here; it is far above the
 level that actually discriminates, so do not wait for it.
 
-**Read it against adjacent pairing.** Under `pairing: all` it fires on nearly every
-capture and its precision falls to the base rate — the alarm carries no signal there
-[S5].
+**Read it against adjacent pairing.** Under `pairing: all` the band is exceeded on
+nearly every capture and its precision falls to the base rate — the reading carries no
+signal there [S5], and `illumination_unstable` is not raised in that regime.
+
+**The alarm's trigger has moved, and it used to be inverted.** It fired above 0.28,
+which under adjacent pairing no corpus capture reaches — so the one regime where this
+reading discriminates raised no diagnostic at all, while full pairing, where it
+discriminates nothing, raised it on about a fifth of captures. It now fires at the
+band under adjacent pairing and nowhere else.
 
 **First, decompose it.** The total is `0.45·illumination + 0.35·colour +
 0.20·exposure`, and the three have different fixes:

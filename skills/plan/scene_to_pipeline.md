@@ -557,9 +557,10 @@ reading. `SceneMotion` has no such parameter, and an agent has passed it there
 after reading this passage. Pairing every frame with every other compares frames
 from opposite ends of the trajectory, so under `pairing: all` the reading is higher
 by construction: the band is exceeded on nearly every corpus capture measured that
-way, and `illumination_unstable` fires on nearly all of them. **The band is not an
-alarm under full pairing** — the level worth acting on there is the one this
-module's `tuning.md` is written around, which is materially higher.
+way, and its precision falls to the base rate. **So the band is not an alarm under
+full pairing**, and `illumination_unstable` is no longer raised there at all — the
+module now conditions the alarm on pairing and fires it at the band under adjacent
+pairing, which is where the reading was measured to discriminate.
 
 **Frame count.** Under the default `consecutive` pairing the band holds at the
 frame counts the dense campaigns ran, and is exceeded on a substantial share of

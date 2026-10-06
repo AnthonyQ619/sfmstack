@@ -44,6 +44,16 @@ or one where tracks sit on object silhouettes.
 `rejected_outside_frame` is a **different** number with a different fix: those
 observations fell outside the centre crop upstream's resolution table imposes.
 
+**The other two rejection counters, which nothing else here names.**
+`rejected_confidence` counts observations dropped because the depth prediction at
+that pixel was below `min_confidence`; it rises on the same content the mask
+targets, so read it beside `rejected_masked` rather than alone.
+`rejected_reprojection` counts those dropped for disagreeing with the track they
+belong to once placed, which is the only one of the five that reflects the
+*geometry* rather than the prediction. None of the five carries a band: they are
+counts whose healthy value depends entirely on how many observations went in, so
+read them as a fraction of `observation_count` and against each other.
+
 ## Single-view points are real structure and unverified
 
 A point resting on one observation was placed from one depth prediction and
