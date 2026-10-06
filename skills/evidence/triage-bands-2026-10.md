@@ -35,7 +35,7 @@ Two departures, both deliberate:
 
 | metric | readings | fired | precision | base | fires on poor | fires on good |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `combined_change` | 99 | 53% | **75%** | 46% | **87%** | **25%** |
+| `combined_change` | 99 | 54% | **75%** | 46% | **87%** | **25%** |
 | `color_shift` | 99 | 53% | 67% | 46% | 76% | 32% |
 | `exposure_shift` | 99 | 6% | **17%** | 46% | **2%** | 9% |
 | `illumination_change` *(A1's control, retired)* | 99 | 67% | 44% | 46% | 63% | 70% |

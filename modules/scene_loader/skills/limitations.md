@@ -6,7 +6,7 @@
 
 **Signature:** the `mixed_resolution` diagnostic fires; `size_original` rows differ.
 
-**Not an error.** Real datasets do this. ETH3D `courtyard` mixes 6205×4135,
+**Not an error.** Real datasets do this. One ETH3D outdoor site mixes 6205×4135,
 6208×4134 and 6198×4129 within a single scene [S1].
 
 **What it invalidates:** any single scalar scale for the set. The predecessor
@@ -52,8 +52,8 @@ the right type either way, since calibration is an optional file within it.
 image files. The layouts differ per dataset and none of them are guessable:
 
 ```
-DTU              <root>/scan1/                                    flat
-Tanks & Temples  <root>/barn_1_40/                                flat
+DTU              <root>/<scan>/                                   flat
+Tanks & Temples  <root>/<capture>/                                flat
 ETH3D            <root>/<scene>/images/dslr_images_undistorted/   nested
 CO3D             <root>/<category>/<sequence>/<subset>/           nested
 ```

@@ -16,7 +16,8 @@ it is shown. Almost all the value is in reading the output correctly.
 
 ## Reference run
 
-DTU scan1, 12 contiguous images, `max_edge: 1024`, defaults, GPU, in a container:
+A studio rig orbit, first 12 images, `max_edge: 1024`, defaults, GPU, in a
+container:
 
 | metric | value |
 |---|---|

@@ -67,11 +67,8 @@ pipeline [S5]. It was reporting its own threshold.
    want can be applied there rather than inherited from this module.
 
 **When the concern is real** — a large tail *and* rotation past ~20° — the problem is
-viewpoint change, not displacement. **No capture in the measured set reaches that
-threshold**, so treat it as the inherited general claim it is rather than as a line
-drawn here; the two captures this passage used to name as sitting past it re-measure
-three to four times lower [S5]. Lower `stride` if the capture supports it; otherwise
-prefer a detector-free matcher:
+viewpoint change, not displacement. Lower `stride` if the capture supports it;
+otherwise prefer a detector-free matcher:
 `sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1')`.
 
 ---
@@ -104,11 +101,9 @@ displacement ones it is a direct statement about how much the *view* changed.
 **Gradient:**
 
 1. Past roughly 20–30° a detector-based matcher loses correspondences to
-   viewpoint change rather than to anything tunable. **Nothing measured here sits in
-   that region** — the whole set re-measures between about five and fifteen degrees,
-   and the two captures this step used to cite as examples are among the lowest of
-   them [S5]. The threshold is inherited and unexercised, so it is a reason to look
-   rather than a boundary anything here has crossed.
+   viewpoint change rather than to anything tunable. The range is inherited and
+   nothing measured here reaches it [S5], so it is a reason to look rather than a
+   boundary.
 2. Lower `stride` if the capture supports it. Displacement and rotation both
    fall with it, and here it addresses the cause rather than the symptom.
 3. Otherwise this is a detector-family question. Learned descriptors are more

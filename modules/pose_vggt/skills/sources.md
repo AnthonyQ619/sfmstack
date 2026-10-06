@@ -12,6 +12,7 @@ in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
 
 | Claim / content | Rests on |
 | --- | --- |
+| the `Reference run` figures in `tuning.md` | one DTU studio rig orbit (scan1), its first 12 images at `max_edge: 1024`, module defaults, on GPU in a container — one capture, so the figures are a shape to expect rather than a range |
 | alternating frame-wise and global attention over the whole set; cameras, depth, point maps and tracks read off aggregated tokens in one forward pass — this module uses the camera head only. Needs no correspondences; accuracy is **initialisation-grade**, trained to be right about geometry, not to minimise reprojection on your scene | VGGT — Wang, Leroy, Cabon, Chidlovskii, Revaud et al., CVPR 2025; <https://arxiv.org/abs/2503.11651> |
 | commit `a288dd0`, checkpoint `facebook/VGGT-1B` (5 GB) baked into the image — the HF cache follows `HOME`, and the container runs as the host uid with `HOME=/tmp`, so a hub-cached file written as root at build is not where the module looks at run time | implementation, verified |
 | `aggregator(images)` takes `(B, N, 3, 518, 518)` — a single set is `images[None]`; `pose_encoding_to_extri_intri` returns **cam_from_world** 3×4 OpenCV, matching `poses/v1`, with intrinsics in pixels of the 518-square; the module implements `pad` preprocessing itself so it can invert it exactly in the intrinsics | verified against the commit |
