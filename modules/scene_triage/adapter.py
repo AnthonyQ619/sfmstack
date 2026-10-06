@@ -424,9 +424,9 @@ def run(ctx: Ctx):
     out.metric("illumination_change", round(illumination, 4),
                direction="lower_better")
     out.metric("color_shift", round(color, 4),
-               direction="lower_better", healthy=(None, 0.12))
+               direction="lower_better")
     out.metric("exposure_shift", round(exposure, 4),
-               direction="lower_better", healthy=(None, 0.12))
+               direction="lower_better")
     out.metric("combined_change", round(combined, 4),
                direction="lower_better", healthy=(None, 0.12))
     out.metric("texture_density", round(density, 1),

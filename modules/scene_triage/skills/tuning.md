@@ -13,10 +13,19 @@ Sourced claims resolve in [sources.md](sources.md).
 
 ---
 
-## `combined_change` above 0.28
+## `combined_change` above its band
 
 **Read it as:** appearance is not stable across the set at the scale that costs
-descriptor repeatability. Threshold from the predecessor's HIGH label [S1].
+descriptor repeatability. **The band is 0.12 and it is the measured operating
+point** — scored against delivery outcome it catches most poor readings at a modest
+false-alarm rate, and it does so inside each capture family that can be read, not
+only when they are pooled [S5]. The 0.28 this section used to be titled after is the
+predecessor's HIGH label [S1], inherited and never measured here; it is far above the
+level that actually discriminates, so do not wait for it.
+
+**Read it against adjacent pairing.** Under `pairing: all` it fires on nearly every
+capture and its precision falls to the base rate — the alarm carries no signal there
+[S5].
 
 **First, decompose it.** The total is `0.45·illumination + 0.35·colour +
 0.20·exposure`, and the three have different fixes:
@@ -43,15 +52,18 @@ descriptor repeatability. Threshold from the predecessor's HIGH label [S1].
    `sfm_find_alternatives(produces='pairwise_matches/v1',
    not_consuming='features/v1')`.
 
-**Do not** treat a high total as a matcher decision on its own. Across the
-benchmark corpus this metric has never left a narrow band and has never fired, so
-it has no demonstrated discriminating power — the number that decides a family
-change is `inlier_ratio`, and this one tells you *why* it fell. (An earlier
-version of this note added "and all of them reconstruct" as supporting evidence.
-That was an assumption rather than an observation; run to a sparse model, several
-captures in that corpus do not fully reconstruct on a classical branch. It does
-not change this metric's verdict — `combined_change` is quiet on the failures too
-— but the phrase was doing unearned work and is gone.)
+**Do not** treat a high total as a matcher decision on its own — but it is not the
+inert reading this section once called it. It said this metric "has never left a
+narrow band and has never fired, so it has no demonstrated discriminating power",
+and that it was "quiet on the failures too". **Both are now measured false.** Over
+every stored reading on captures with reference geometry it fires on about half, and
+on those firings it is right about a poor delivery well above the base rate, inside
+each family that holds both classes [S5]. It is the one appearance band on this
+module with demonstrated discriminating power.
+
+What stands from the old note is the narrower point: the number that decides a
+*family change* is `inlier_ratio`, and this one tells you **why** it fell. Decompose
+before acting, because the component names the fix.
 
 **`pairing: all` is the check worth running** when the capture spans time. A set
 shot over two hours can have small consecutive deltas and a large

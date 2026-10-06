@@ -37,6 +37,17 @@ is: `illumination_change` 31%, `large_rotation_risk` 17%, `subject_complete` and
 scene stage supplies **31% of all band firings in the batch** and most of that volume
 comes from the bands at the bottom of that range.
 
+**Two of those have since been retired, and one of them was this file's own loose
+end.** `exposure_shift` is named above at 0% precision and its band was left in place
+anyway; it is now gone. `color_shift` was not on that list and needed the harder test
+to see: pooled across capture families it looked like it discriminated, and the
+families are not balanced between good and poor deliveries, so the lead was theirs
+rather than the reading's — inside the one family holding both it fires on nearly all
+of each, and in the other two it never fires. **A band that only discriminates when
+families are pooled has not discriminated.** The reading that survived the same test,
+`combined_change`, kept its band and is the one appearance alarm on that module worth
+acting on. See [`evidence/triage-bands-2026-10.md`](../evidence/triage-bands-2026-10.md).
+
 **`explains` is the subtlest.** `subject_complete` says a thin point count on part of an
 object is the *capture's* limit rather than the pipeline's. That is the reader's defence
 against blaming the wrong stage. Its band fired on 32 readings and **not once on a poor

@@ -567,6 +567,15 @@ short loads, where "adjacent" spans far more of the trajectory. This is the
 sampling dependence §1 states for this metric, and it applies to the band as much
 as to the value: a band measured at one frame count is not a band at another.
 
+**It is also the one appearance reading here that earns its band.** Scored against
+delivery outcome under adjacent pairing it catches most of the poor readings at a
+modest false-alarm rate, and it holds up inside each capture family that can be read
+rather than only when they are pooled. Its two sibling components were scored the
+same way and retired — one's apparent signal was an artifact of pooling unbalanced
+families, the other fired almost only when nothing was wrong. So read the total for
+the alarm and the components for the fix, not the other way round. The campaign is in
+[`evidence/triage-bands-2026-10.md`](../evidence/triage-bands-2026-10.md).
+
 **Decompose before acting — the dominant component names the fix, and it is not
 always the same one.** Where `illumination_change` drives the total, a studio-rig
 orbit whose backdrop swings from bright to dark reads well above the band while the

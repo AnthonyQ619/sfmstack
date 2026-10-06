@@ -1,5 +1,5 @@
 name: SceneTriage
-version: 1.5.0
+version: 1.6.0
 kind: analysis
 summary: >
   CPU scene characterisation before anything is reconstructed: photometric
@@ -54,7 +54,7 @@ description: |
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 
-image: sfmstack/scene-triage:1.5.0
+image: sfmstack/scene-triage:1.6.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -160,33 +160,41 @@ metrics:
 
   color_shift:
     direction: lower_better
-    healthy: [null, 0.12]
     meaning: >
       p75 over pairs of chroma change: LAB a/b histogram distance plus mean
       white-balance displacement. Matters more for detectors that consume colour
       than for those that convert to grayscale first.
 
-      NO DIAGNOSTIC FIRES ON THIS METRIC, and three separate readings just
-      outside the band left three readers with nowhere to go. So, stated here:
-      the ceiling is the highest value OBSERVED across a small corpus, not a
-      limit on the quantity. A reading a few percent above it means "unlike the
-      captures measured so far" -- a reason to look, not a defect.
+      THIS READING CARRIES NO BAND, and that is a measured decision rather than
+      an omission. It had a 0.12 ceiling, which was retired: scored as a
+      classifier of a poor delivery it reached its base rate and no further, and
+      the apparent lead it held when every family was pooled together came from
+      the families being unbalanced, not from the reading. Inside the one family
+      that holds both a good and a poor delivery it fires on nearly all of both;
+      in the other two it never fires at all. See
+      `skills/evidence/triage-bands-2026-10.md`.
 
-      What to do with a mild exceedance: check whether the branch you plan to run
-      consumes colour at all. The classical detectors here convert to grayscale
-      first and are indifferent to this reading, so on that branch a mild
-      exceedance changes nothing. The learned ones take RGB, and there the
-      variation this measures shows up as descriptor drift between frames -- the
-      response is exposure normalisation at detection, not anything here.
+      Report it and read it as a scene property. What to do with a high reading:
+      check whether the branch you plan to run consumes colour at all. The
+      classical detectors here convert to grayscale first and are indifferent to
+      this reading, so on that branch it changes nothing. The learned ones take
+      RGB, and there the variation this measures shows up as descriptor drift
+      between frames -- the response is exposure normalisation at detection, not
+      anything here.
 
   exposure_shift:
     direction: lower_better
-    healthy: [null, 0.12]
     meaning: >
       p75 over pairs of exposure instability: brightness change weighted with
       change in the shadow- and highlight-clipped pixel fractions. Distinct from
       `illumination_change` because clipping DESTROYS detail rather than moving
       it -- no descriptor is robust to a region that is uniformly 255.
+
+      NO BAND, and this one was retired for pointing the wrong way. Its 0.12
+      ceiling fired on a fiftieth of the readings belonging to poor deliveries
+      and on roughly a tenth of those belonging to good ones -- an alarm that
+      goes off almost only when nothing is wrong is worse than a quiet one. See
+      `skills/evidence/triage-bands-2026-10.md`.
 
   combined_change:
     direction: lower_better
@@ -195,6 +203,16 @@ metrics:
       Weighted combination of the three above (0.45 / 0.35 / 0.20). The single
       number to glance at; read the components before acting on it, because they
       have different fixes.
+
+      This is the one appearance band that earns its place, and the ceiling
+      sitting BELOW the population median is why: scored against delivery
+      outcome under the default adjacent pairing it catches most of the poor
+      readings at a modest false-alarm rate, and it holds up inside every
+      capture family that can be read rather than only when they are pooled. Do
+      not raise it because a census says most captures exceed it -- that
+      sensitivity is the thing working. Under `pairing: all` it fires on nearly
+      everything and carries no signal, so read it against adjacent pairing.
+      See `skills/evidence/triage-bands-2026-10.md`.
 
   texture_density:
     direction: higher_better
@@ -310,7 +328,7 @@ diagnostics:
       - For luminance drift, prefer a detector that normalises exposure (CLAHE, RootSIFT) before changing family.
       - If inlier_ratio then confirms the problem, resolve a detector-free matcher with sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1').
     metric: combined_change
-    see_also: tuning.md#combined_change-above-028
+    see_also: tuning.md#combined_change-above-its-band
 
   - code: repetitive_texture
     severity: warn

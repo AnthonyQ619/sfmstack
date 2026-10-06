@@ -88,10 +88,20 @@ Specifically:
   band sits at 0.75 because that is where the two known-repetitive facades fall,
   which is a description of the sample, not a validated threshold. The warn fires
   at 0.80 so that it stays rare.
-- **`combined_change` measured 0.055–0.116**, and the band's 0.12 ceiling comes
-  from the predecessor's LOW/MEDIUM cut [S1] rather than from these scenes. Nothing
-  in the sample exceeded it, so the ceiling is untested in the direction that
-  matters.
+- **`combined_change`'s 0.12 ceiling comes from the predecessor's LOW/MEDIUM cut
+  [S1]** rather than from these scenes, and it is **no longer untested**. Scored
+  against delivery outcome it discriminates, inside each capture family that holds
+  both a good and a poor delivery, and it is the only appearance band here that does
+  [S5]. Keep it where it is: the ceiling sits below the population median, and that
+  sensitivity is what makes it work. **Two bands on this module did not survive the
+  same test and have been retired** — `color_shift`, whose apparent lead came from
+  pooling unbalanced families, and `exposure_shift`, which fired almost only on good
+  deliveries [S5]. `illumination_change` was retired earlier on the same standard.
+- **The range this section's sample recorded for `combined_change` does not
+  reproduce.** Re-run on the same ten scenes at the same image count, the readings
+  come back materially higher and most of them exceed the ceiling. The band still
+  works, so this is a defect in the recorded provenance rather than in the band —
+  see [S4].
 
 Treat all of them as a reading rather than a verdict, and expect them to be
 revised from the agent-driven runs.
