@@ -91,7 +91,7 @@ better on every aggregate, so a row with fewer registered images — or fewer po
 
 **0 is not the safe default either.** Deduplication off cost TAPIR **9.86°** of
 median rotation error on a fast traverse past a glazed elevation against 1.63° with a tolerance set, and
-broke a 16-image `courtyard` reconstruction outright. Both ends fail.
+broke a 16-image masonry-courtyard reconstruction outright. Both ends fail.
 
 See [`docs/import_lessons.md`](../../../docs/import_lessons.md).
 

@@ -44,8 +44,9 @@ problem, not an SfM one.
 *Symptom:* healthy per-pair matching, but `registered_fraction` well below 1.0 and
 tracks that never reach a third view.
 
-Measured in this repo: uniformly sampling 6 of DTU scan1's 49 images (every eighth
-frame) leaves gaps SIFT cannot bridge even with exhaustive matching — 3 view-graph
+Measured in this repo: uniformly sampling 6 of a studio rig orbit's 49 images (every
+eighth frame) leaves gaps SIFT cannot bridge even with exhaustive matching —
+3 view-graph
 components and zero tracks reaching a third view, so nothing can register. Six
 *contiguous* frames connect completely.
 

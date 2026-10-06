@@ -49,8 +49,9 @@ the finished structure if PnP was what refused it.
 A sliding window of the last 8 registered cameras is refined with the two oldest
 held fixed. This is drift control: each new pose is estimated against structure
 earlier poses triangulated, so an early error becomes the frame everything later
-lives in. On the full 49-image DTU set with SuperPoint + LightGlue it is the
-difference between **34 and 48 images registered** — drift compounded until PnP ran
+lives in. On a full studio rig orbit of 49 views with SuperPoint + LightGlue
+it is the difference between **34 and 48 images registered** — drift compounded until
+PnP ran
 out of correspondences and registration stalled. On the classical stack, where
 nothing stalls, it lowers pose error ~10% and the final post-BA number not at all.
 The [tuning file](tuning.md#local-ba--what-it-buys-measured) has the full table.

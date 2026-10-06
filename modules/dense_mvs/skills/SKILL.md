@@ -49,9 +49,9 @@ search per pixel, multi-view filtering, then depth-map fusion. CUDA required —
 verifies its geometry against pixels. Everything it emits was correlated across
 views and agreed on by at least `filter_min_num_consistent` of them.
 
-**Use `DenseVGGT` when you want coverage fast.** MVS on 8 DTU views at 1200 px is
-131 s against VGGT's 2 s warm, and MVS leaves holes wherever the evidence was
-absent. **Those holes are the honest part** — see below.
+**Use `DenseVGGT` when you want coverage fast.** MVS on 8 views of a studio rig orbit
+at 1200 px is 131 s against VGGT's 2 s warm, and MVS leaves holes wherever the
+evidence was absent. **Those holes are the honest part** — see below.
 
 **It needs a `sparse_model/v1`, not just poses**, because COLMAP derives each
 view's depth search range and its source-view set from which images see which
@@ -59,8 +59,9 @@ points. The 2D coordinates are never used; the track structure is.
 
 ## Measured against DenseVGGT, same scene, same poses
 
-8 DTU views, poses from `PoseEssentialToPnP`, `SparseTriangulation` giving 4671
-verified points as the reference. Distances are in the reconstruction's units,
+8 views of a studio rig orbit, poses from `PoseEssentialToPnP`,
+`SparseTriangulation` giving 4671 verified points as the reference. Distances are in
+the reconstruction's units,
 where the object's bounding-box diagonal is 4.6 and the median camera separation
 1.7.
 

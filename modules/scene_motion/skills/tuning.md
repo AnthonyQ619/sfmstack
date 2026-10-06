@@ -54,21 +54,22 @@ pipeline [S5]. It was reporting its own threshold.
 
 1. **Against `rotation_median_deg`.** Displacement under small rotation is
    usually harmless: a rotation-invariant descriptor does not care how far a point
-   moved across the frame, it cares how much the *view* changed. ETH3D facade sits
-   at 0.118 tail with 3.1° median rotation and matches fine.
+   moved across the frame, it cares how much the *view* changed. An outdoor capture
+   walked along a textured frontage sits at 0.118 tail with 3.1° median rotation
+   and matches fine.
 2. **Against itself, across the set.** `variability` is the spread of the
    underlying per-pair series. A large tail at low variability is a uniform
-   wide-baseline capture — DTU's arc. A large tail at high variability means part
-   of the capture moved much faster than the rest, which is the case worth acting
-   on.
+   wide-baseline capture — a studio rig orbit. A large tail at high variability
+   means part of the capture moved much faster than the rest, which is the case
+   worth acting on.
 3. **Against the `motion/pair_p90` array.** It is written to the artifact, so
    "which pairs" is answerable without re-running flow, and any threshold you do
    want can be applied there rather than inherited from this module.
 
-**When the concern is real** — a large tail *and* rotation past ~20°, as ETH3D
-kicker (29.5°) and electro (23.3°) show — the problem is viewpoint change, not
-displacement. Lower `stride` if the capture supports it; otherwise prefer a
-detector-free matcher:
+**When the concern is real** — a large tail *and* rotation past ~20°, as an indoor
+walk through a low-texture interior (29.5°) and an outdoor wander around a built
+site (23.3°) show — the problem is viewpoint change, not displacement. Lower
+`stride` if the capture supports it; otherwise prefer a detector-free matcher:
 `sfm_find_alternatives(produces='pairwise_matches/v1', not_consuming='features/v1')`.
 
 ---
@@ -101,8 +102,8 @@ displacement ones it is a direct statement about how much the *view* changed.
 **Gradient:**
 
 1. Past roughly 20–30° a detector-based matcher loses correspondences to
-   viewpoint change rather than to anything tunable. Both ETH3D kicker (29.5°) and
-   electro (23.3°) sit here.
+   viewpoint change rather than to anything tunable. Both the indoor low-texture
+   walk (29.5°) and the outdoor site wander (23.3°) sit here.
 2. Lower `stride` if the capture supports it. Displacement and rotation both
    fall with it, and here it addresses the cause rather than the symptom.
 3. Otherwise this is a detector-family question. Learned descriptors are more

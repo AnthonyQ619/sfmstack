@@ -34,7 +34,7 @@ chain is scene → detect → track, three stages instead of four.
 
 ## Why reach for it: longer tracks
 
-8 DTU views, SIFT keypoints, everything downstream identical:
+8 views of a studio rig orbit, SIFT keypoints, everything downstream identical:
 
 | | tracks | `avg_track_length` | `long_track_fraction` | `track_survival_5` |
 |---|---:|---:|---:|---:|

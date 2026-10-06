@@ -20,8 +20,7 @@ captures whose registration it rescued. Two things were unmeasured:
 
 ## Part 1 — registration, against the best incremental model on the same matches
 
-Seven corpus captures at their full frame counts, each holding an incremental model
-short of its own capture.
+Seven corpus captures, each holding an incremental model short of its own capture.
 The global arm was run on **that model's own `pairwise_matches/v1` artifact**, so the
 matcher is held fixed and the reconstructor is the only thing that varies.
 
@@ -100,7 +99,7 @@ and best-fit scores of the incremental cloud.
 ## What this settles
 
 - A global reconstruction **places frames an incremental model left behind, without
-  dropping any of that model's own**, at full frame count, above the 0.7 crossing.
+  dropping any of that model's own**, above the 0.7 crossing.
   The gain is a few frames.
 - It is **not** a route to complete registration from a badly short model.
 - Its effect on a dense deliverable is **small and of either sign**, does not follow

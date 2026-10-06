@@ -33,7 +33,7 @@ through the set **as though it were video**. GPU required.
 
 ## Reach for it when tracks are breaking, not when precision matters
 
-8 DTU views, SIFT keypoints, everything else identical:
+8 views of a studio rig orbit, SIFT keypoints, everything else identical:
 
 | | tracks | `avg_track_length` | `long_track_fraction` | `track_survival_5` |
 |---|---:|---:|---:|---:|

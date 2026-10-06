@@ -31,8 +31,8 @@ them.
 Dense point cloud from VGGT's per-pixel depth, unprojected with the **supplied**
 poses. GPU required.
 
-**Use when** you want coverage fast. 8 DTU views at `stride: 2` give ~402k points
-in 22 s, most of it model load — a second run against a warm server is 2 s.
+**Use when** you want coverage fast. 8 views of a studio rig orbit at `stride: 2` give ~402k points in 22 s, most of it model load — a second run against
+a warm server is 2 s.
 
 **Prefer MVS when** you want precision. This is not MVS: no photometric
 consistency check, no cross-view fusion. Every view contributes independently, so
@@ -58,7 +58,7 @@ predicted depth at the pixel that saw it, with nothing re-triangulated. A
 parameter, whose default of 1.0 is correct only when the poses came from VGGT too.
 `depth_scale_source` on the output says which of the three the run used.
 
-Measured, 8 DTU views, classical poses:
+Measured on 8 views of a studio rig orbit, classical poses:
 
 | | `depth_scale` | `depth_scale_spread` | points |
 |---|---:|---:|---:|

@@ -9,8 +9,9 @@ curated_at: 2026-08-11
 ## Positions are coarse, and the track metrics hide it
 
 The model runs at a small square resolution and everything it predicts inherits
-that. Measured on 8 DTU views at 1024 px, against the same tracks through the same
-triangulator: 1548 points at 1.581 px with `yield` 0.566, against
+that. Measured on 8 views of a studio rig orbit at 1024 px, against the same
+tracks through the same triangulator: 1548 points at 1.581 px with `yield` 0.566,
+against
 `FeatureTrackUnionFind`'s 4671 at 0.280 px with `yield` 0.993.
 
 **Every track metric looks excellent while this is true** — `avg_track_length`

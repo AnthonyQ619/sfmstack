@@ -28,3 +28,4 @@ in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
 | the `trade_off` readings — lost cameras' structure still covered, relative-rotation change on shared cameras | direct observation in the same experiment: where the second solve corrected the model the rotation change was several degrees, where it did not it was near zero; the lost cameras whose structure was poorly covered sat at the edge of the capture |
 | 28 as the default width, 40 as the last resort | the sweep favoured 40 by a small margin and found no harm in it; 28 is the default as a cost trade-off, not a finding |
 | 5 healthy bands; numeric values in 7 parameters' advice | **nothing** — see the audit section in `tuning.md` |
+| the 49-view registration figures in `SKILL.md` and the six-view subsampling in `limitations.md` | one DTU studio rig orbit (scan1) at full and reduced view counts, isolated testing on a single capture |
