@@ -338,7 +338,8 @@ for the reason given earlier in this section.
 **So expect a small gain of either sign, and treat the one large win on record as an
 outlier rather than a template.** Where a reference-scored dense cloud is the
 deliverable, run both arms and compare the clouds — there is no reading, with or
-without the reference, that chooses for you.
+without the reference, that chooses for you. The campaign is in
+[`evidence/global-arm-2026-10.md`](../evidence/global-arm-2026-10.md).
 
 ## Delivering the verified cloud
 

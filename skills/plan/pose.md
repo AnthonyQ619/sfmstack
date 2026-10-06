@@ -70,19 +70,27 @@ an unordered collection where incremental registration cannot find a next image 
 can place. It is not in this family because it produces `sparse_model/v1`; see
 [sparse.md](sparse.md).
 
-**It is not a way to register more cameras, and short registration is not an
-indication for it.** Measured on captures delivered with cameras missing, it added
-**no** camera on any of them, and on one it registered half as many as the
-incremental model it was being compared against. Whatever it changes, it is not
-coverage — so a model that stalled is not a reason to reach for this, and the remedy
-for missing cameras remains the fill rule below.
+**It does register cameras the incremental route leaves behind, and the comparison
+has been run carefully.** Against the *best* incremental model built on the **same
+correspondences** — so the matcher is held fixed and the reconstructor is the only
+thing that changes — it added cameras on every corpus capture that had any to add,
+and **lost none on any of them**. The gain is a few frames each, not a
+transformation, and on a capture already registered whole there is nothing to add. This is the indication in the paragraph above, and it is the same
+effect the `reconstructor-decided` class in
+[`evidence/INDEX.md`](../evidence/INDEX.md) records.
 
-**The consensus reading does not select it either.** Reaching for this module because
-the two estimators put your model outside their mutual agreement was tried and
-measured: the association between that reading and whether this module produced the
-better model is indistinguishable from zero, and the two captures it did help sat at
-the extreme ends of that reading. Do not route the consensus reading to this
-decision; it is a branch-choice reading and is documented as one above.
+The campaign is in
+[`evidence/global-arm-2026-10.md`](../evidence/global-arm-2026-10.md), which also
+records that this set sits entirely above the 0.7 crossing below, and says nothing
+about the regime beneath it.
+
+**The consensus reading does not select it.** Reaching for this module because the two
+estimators put your model outside their mutual agreement was tried and measured: the
+association between that reading and which arm produced the better model was
+indistinguishable from zero, and the two captures it did help sat at the extreme ends
+of the reading. Small sample, but it errs the safe way — do not route the consensus
+reading to this decision. It is a branch-choice reading and is documented as one
+above.
 
 What it does change is the model's global **shape**, and that shows up in a
 reference-scored dense deliverable rather than in any reading the pipeline reports.

@@ -211,6 +211,31 @@ no swap performed. **`[unmeasured]`** is argument only.
   captures, and where the matching stage can be swapped instead, that is the
   better repair (see [`plan/pose.md`](../plan/pose.md) and
   [`plan/matching.md`](../plan/matching.md)). **`[observed: 7]`**
+- **How short it is decides WHICH swap, and the crossing is measured.** Two different
+  modules repair a short registration and they are not interchangeable:
+  - **Badly short — `registered_fraction` at or below about 0.7.** The feed-forward
+    estimator's own model was the better delivery on most corpus captures that reached
+    that regime, which is the bullet above. Its lever is that it poses every image or
+    none, so it does not care what the incremental route could reach.
+  - **Nearly complete — above that crossing, a handful of frames missing.** Prefer the
+    **global reconstructor on the same matches**. Run as both branches to a sparse
+    model and compared, it placed frames the incremental model had left behind on every
+    corpus capture that had any, and **dropped none of the ones that model already
+    held** — which the feed-forward swap cannot promise, because it replaces the pose
+    table wholesale rather than extending it. Above the crossing the geometric core is
+    the better delivery anyway, so this is the cheaper repair there: it keeps the
+    geometric model instead of trading it for one with worse pose accuracy.
+  - **The size of the gap, not just the fraction, decides whether it finishes the job.**
+    It closed **one to three frames whatever the gap was** — completing the captures
+    whose shortfall was already within that reach, and closing under a fifth of the
+    widest gap in the set. It is the last push on a nearly-complete model, not a route
+    out of a badly short one. Where the gap is wider than a few frames, expect it to
+    narrow the shortfall rather than close it, and plan to deliver with frames missing
+    or to fill them.
+
+  See [`plan/pose.md`](../plan/pose.md) and
+  [`evidence/global-arm-2026-10.md`](../evidence/global-arm-2026-10.md).
+  **`[measured: 7]`**
 
 ### Sparse and optimization
 
