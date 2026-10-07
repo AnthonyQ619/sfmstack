@@ -118,9 +118,10 @@ the only useful actions are about the capture, not the pipeline:
 - if all of it is, the dataset does not support reconstruction.
 
 **Sensitivity is untested on real data.** The discriminator is verified
-synthetically [S4] and has never fired above 0.09 on the ten benchmark scenes
-[S5], none of which is rotational. Its specificity is therefore demonstrated and
-its sensitivity is not.
+synthetically [S4] and has fired on a single pair on two of the ten benchmark
+scenes, at 0.0909, and never higher [S5] — and none of those scenes is
+rotational. Its specificity is therefore demonstrated and its sensitivity is
+not.
 
 ---
 

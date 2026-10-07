@@ -80,9 +80,8 @@ read `spatial_coverage` once a detector has run.
 Most `healthy` bands on this module were set from ten scenes of a studio rig and
 two outdoor sites, twelve images each [S4] — enough to see the range and not enough to
 place a boundary in it. **The appearance bands are no longer among them.** Three were
-scored against delivery outcome and two retired on that evidence; the one that
-survived, `combined_change`, now rests on [S5] rather than on the sample described
-here. Read this section as applying to what is left.
+scored against delivery outcome and two retired on that evidence; the one that survived, `combined_change`, rests on [S5] **and** on the sample described
+here, which reproduces once its subset mode is supplied [S4]. Read this section as applying to what is left.
 
 Specifically:
 
@@ -100,11 +99,11 @@ Specifically:
   same test and have been retired** — `color_shift`, whose apparent lead came from
   pooling unbalanced families, and `exposure_shift`, which fired almost only on good
   deliveries [S5]. `illumination_change` was retired earlier on the same standard.
-- **The range this section's sample recorded for `combined_change` does not
-  reproduce.** Re-run on the same ten scenes at the same image count, the readings
-  come back materially higher and most of them exceed the ceiling. The band still
-  works, so this is a defect in the recorded provenance rather than in the band —
-  see [S4].
+- **This section's sample reproduces, and names a count rather than a configuration.**
+  An image count does not determine the image set, and re-measuring at the default
+  selection rather than the contiguous one moves `combined_change` above the ceiling
+  on most of the ten. The figures are sound and the provenance was incomplete — see
+  [S4]. Read every band on this page as conditioned on how its images were chosen.
 
 Treat all of them as a reading rather than a verdict, and expect them to be
 revised from the agent-driven runs.
