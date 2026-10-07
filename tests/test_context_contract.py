@@ -27,6 +27,7 @@ import pytest
 from context_checks import (
     ALL_CHECKS,
     campaign_registration,
+    dead_anchor_links,
     dead_citations,
     dead_see_also,
     ghost_bands,
@@ -155,3 +156,30 @@ def test_control_measurement_without_a_configuration_is_detected(tmp_path):
                   .replace("`SceneLoader.sampling`", "the subset mode")
                   .replace("sampling", "selection"))
     assert any(f.startswith("scene_motion S5") for f in provenance_without_config(root))
+
+
+def test_control_dead_anchor_link_is_detected(tmp_path):
+    """A cross-directory anchor link into a fragment that does not exist.
+
+    This whole class was uncovered: the script-era check matched only same-directory
+    targets and `context_integrity` stops at the file, so nineteen links into the
+    evidence tier were read by nothing.
+    """
+    root = _tree(tmp_path)
+    p = root / "skills/health/ladder.md"
+    p.write_text(p.read_text()
+                 + "\n\nSee [pose](../plan/pose.md#this-fragment-does-not-exist).\n")
+    assert any("this-fragment-does-not-exist" in f for f in dead_anchor_links(root))
+
+
+def test_control_a_link_to_an_explicit_anchor_is_not_flagged(tmp_path):
+    """The complement, and the false positive that was actually there.
+
+    The evidence tier pins per-capture sections with `<a id="cap-...">` rather than with
+    headings. Reading only headings called all nineteen of those links dead.
+    """
+    root = _tree(tmp_path)
+    p = root / "skills/health/ladder.md"
+    p.write_text(p.read_text() + "\n\nSee [scan1]"
+                 "(../evidence/agentic-campaign-2026-09.md#cap-dtu-scan1).\n")
+    assert not any("cap-dtu-scan1" in f for f in dead_anchor_links(root))

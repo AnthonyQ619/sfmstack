@@ -20,28 +20,81 @@ from pathlib import Path
 import yaml
 
 # A direct measurement must say what it was measured WITH. These are the forms the
-# repository uses: a semantic version, or a parameter written as `key: value` /
-# `key = value` / a backticked parameter name next to a number.
+# repository uses: a semantic version, or a parameter written in backticks (`stride: 1`)
+# or in prose (`f = 800`). Both forms count -- an earlier pattern accepted only the
+# backticked one and flagged a row recording "f = 800, principal point at the image
+# centre" as having no configuration at all.
+#
+# Note what deliberately does NOT count: "at module defaults". Defaults change, which is
+# the whole lesson here, so a row that pins nothing but "defaults" pins nothing.
 VERSION = re.compile(r"\b\d+\.\d+\.\d+\b")
-# A parameter can be written in backticks (`stride: 1`) or in prose (`f = 800`), and
-# both count -- an earlier pattern accepted only the backticked form and flagged a row
-# that records its synthetic setup as "f = 800, principal point at the image centre" as
-# having no configuration at all.
 PARAM = re.compile(r"`[a-z_]+`\s*[:=]\s*\S"
                    r"|`[a-z_]+\s*[:=][^`]+`"
                    r"|\b[a-z_]{1,24}\s*=\s*-?\d"
                    r"|\b(stride|sampling|pairing)\b")
-# "this repository" alone is too loose: it also matches a row whose source is "This
-# repository's own limitations files", which cites documents rather than measuring
-# anything. Only a row that claims a MEASUREMENT owes a configuration.
-MEASURED_HERE = re.compile(r"direct measurement|measured directly", re.I)
+
+# Which rows OWE a configuration. Scope is decided by recognising the EXTERNAL sources
+# -- papers, vendor documentation, the predecessor codebase, this repo's own prose --
+# and treating everything else as a measurement taken here.
+#
+# It is written this way round on purpose. An earlier version recognised measurements
+# positively, matching only "direct measurement" and "measured directly", and silently
+# skipped the row sourced to "The seventeen-capture sweep, 35 runs at 1.1.0" -- a
+# measurement taken here, exempted from the check meant to catch exactly it. Under-
+# inclusion is the dangerous direction: it reproduces the failure this check exists for,
+# and it is invisible. Over-inclusion produces a visible finding somebody can label.
+#
+# No year pattern: "CVPR 1997" is already caught by the venue, while a year would also
+# exclude a row sourced to "Direct measurement, 2026-10 corpus run", which is ours.
+EXTERNAL_SOURCE = re.compile(
+    r"Predecessor source|documentation|Classical practice|own [a-z ]*files"
+    r"|\*[^*]+\*|CVPR|ECCV|ICCV|IJCV|NeurIPS|arXiv|et al\.|OpenCV", re.I)
+
+# Prose that explicitly says a metric has no band. A metric without a band is the
+# common case here -- most readings carry none -- so this list is what keeps the ghost
+# band check from firing on correct prose. "no ceiling" is in it because the check keys
+# on the word `ceiling` as well as `band`.
+BAND_NEGATION = re.compile(
+    r"no band|NO BAND|unbanded|retired|carries no band|without a band"
+    r"|lost its (healthy )?band|has no (healthy )?band|there is no band"
+    r"|no healthy band|band (on `?[a-z_]+`? )?was removed|no ceiling"
+    r"|is the healthy case"
+    r"|deliberately has no|not banded", re.I)
 
 
 def slug(heading: str) -> str:
-    s = heading.strip().lower()
-    s = re.sub(r"`|\*|\[|\]|\(|\)|:|,|\.|\?|'|\"|/|—|–", "", s)
-    s = re.sub(r"[^a-z0-9_\- ]", "", s)
-    return re.sub(r"\s+", "-", s.strip())
+    """A heading's anchor, by the convention the repository's own links already use.
+
+    This follows GitHub's slugger: lower-case, drop everything that is not a word
+    character, space or hyphen, then turn EACH space into a hyphen. The last part is
+    load-bearing. An earlier version collapsed runs of whitespace to one hyphen, and
+    disagreed with 32 of the repository's own anchor links -- a heading like
+    "... rather than swap — and do not refine ..." loses its em-dash and keeps both
+    surrounding spaces, so the anchor carries a DOUBLE hyphen, which is exactly how the
+    links are written.
+
+    Those links were right and this function was wrong. Trusting it would have meant
+    rewriting 32 correct links to satisfy a broken reader of the format.
+    """
+    s = re.sub(r"[^\w\s-]", "", heading.strip().lower(), flags=re.UNICODE)
+    return s.strip().replace(" ", "-")
+
+
+EXPLICIT_ANCHOR = re.compile(r"""<a\s+(?:id|name)\s*=\s*["']([^"']+)["']""")
+
+
+def anchors(path: Path) -> set[str]:
+    """Every anchor a link can target in this file: headings AND explicit anchors.
+
+    The evidence tier pins per-capture sections with `<a id="cap-dtu-scan1">` rather
+    than with headings, and one module page does the same. Reading only headings
+    reported all nineteen of those links as dead -- a checker that did not know the
+    format it was checking.
+    """
+    text = path.read_text()
+    out = {slug(m.group(1)) for m in re.finditer(r"^#{1,6}\s+(.*)$", text, re.M)}
+    out |= set(EXPLICIT_ANCHOR.findall(text))
+    return out
 
 
 def _modules(root: Path):
@@ -72,9 +125,7 @@ def dead_see_also(root: Path) -> list[str]:
                 bad.append(f"{y.parent.name}:{diag.get('code')} -> missing file {fn}")
                 continue
             if frag:
-                anchors = {slug(m.group(1)) for m in
-                           re.finditer(r"^#{1,6}\s+(.*)$", tgt.read_text(), re.M)}
-                if frag not in anchors:
+                if frag not in anchors(tgt):
                     bad.append(f"{y.parent.name}:{diag.get('code')} -> "
                                f"#{frag} not in {fn}")
     return bad
@@ -114,9 +165,10 @@ def ghost_bands(root: Path) -> list[str]:
                                        page.read_text()):
                     s = hit.group(0)
                     if re.search(r"\bband\b|\bceiling\b|\bhealthy\b", s) and not \
-                       re.search(r"no band|NO BAND|retired|carries no band|"
-                                 r"lost its healthy band|is the healthy case", s):
-                        bad.append(f"{y.parent.name}/{page.name}: '{s.strip()[:72]}'")
+                            BAND_NEGATION.search(s):
+                        bad.append(f"{y.parent.name}/{page.name}: '{s.strip()[:72]}' "
+                                   f"(if this prose is correct, the wording belongs in "
+                                   f"BAND_NEGATION, not the other way round)")
     return bad
 
 
@@ -140,6 +192,31 @@ def dead_citations(root: Path) -> list[str]:
     return bad
 
 
+def dead_anchor_links(root: Path) -> list[str]:
+    """Every `(file.md#anchor)` link in the context resolves to a real anchor.
+
+    Nothing covered this before. The script-era link check matched only same-directory
+    targets, so a `../plan/pose.md#...` link was never read, and `context_integrity`
+    checks that the FILE exists without looking at the fragment. Nineteen links into the
+    evidence tier sat unexamined between the two.
+
+    Only the fragment is judged here; a missing file is `context_integrity`'s finding and
+    reporting it twice would make two checks fail for one defect.
+    """
+    bad = []
+    pages = list((root / "skills").rglob("*.md")) + \
+        list((root / "modules").glob("*/skills/*.md"))
+    for page in sorted(pages):
+        for fn, frag in re.findall(r"\(([A-Za-z0-9_\-./]+\.md)#([^)\s]+)\)",
+                                   page.read_text()):
+            tgt = (page.parent / fn).resolve()
+            if not tgt.is_file():
+                continue
+            if frag not in anchors(tgt):
+                bad.append(f"{page.relative_to(root)} -> {fn}#{frag}")
+    return bad
+
+
 def campaign_registration(root: Path) -> list[str]:
     """Evidence campaigns are registered, and every registration resolves."""
     ev = root / "skills" / "evidence"
@@ -151,22 +228,15 @@ def campaign_registration(root: Path) -> list[str]:
     return bad
 
 
-def provenance_without_config(root: Path) -> list[str]:
-    """A row claiming a direct measurement records what it was measured WITH.
+def provenance_rows(root: Path) -> list[dict]:
+    """Every `| Sn |` row in every module's sources.md, with its scope classification.
 
-    This is the check that would have prevented the S4/S5 episode. Both rows read
-    "ten scenes at 12 images each", which is a description and not a configuration: an
-    image count does not determine the image set, `SceneLoader.sampling` does, and the
-    default changed underneath them. Three re-measurements pointed at the stated
-    description therefore measured a different set of images than the rows describe,
-    and a correct row was condemned as unreliable.
-
-    A row passes by naming a module version or at least one parameter. That is a low
-    bar on purpose -- it cannot tell whether the configuration recorded is COMPLETE,
-    only whether any was recorded at all. S5 named `stride 1`, passed this bar, and was
-    still unreproducible. The bar exists to stop the empty case, not to certify.
+    Exposed separately from the check so the test suite can pin the CLASSIFICATION
+    against hand-read labels for all of them. That matters more than it looks: if a
+    future row is mis-scoped, the fix belongs in the test's label table, never in the
+    context. A check must not be able to force a change to the thing it is checking.
     """
-    bad = []
+    out = []
     for src in sorted((root / "modules").glob("*/skills/sources.md")):
         module = src.parent.parent.name
         for line in src.read_text().splitlines():
@@ -175,18 +245,45 @@ def provenance_without_config(root: Path) -> list[str]:
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
             if len(cells) < 4:
                 continue
-            tag, kind, where = cells[0], cells[1], cells[2]
-            body = " ".join(cells[2:])
-            if not MEASURED_HERE.search(kind):
-                continue
-            if not (VERSION.search(body) or PARAM.search(body)):
-                bad.append(f"{module} {tag}: direct measurement with no version or "
-                           f"parameter recorded -- {where[:60]}")
-    return bad
+            # The WHOLE row, Source cell included. A version is often recorded there
+            # rather than in the claims -- "The seventeen-capture sweep, 35 runs at
+            # 1.1.0" pins its configuration in the Source cell, and scanning only the
+            # later cells reported that row as recording nothing.
+            body = " ".join(cells[1:])
+            out.append({
+                "key": f"{module} {cells[0]}",
+                "kind": cells[1],
+                "where": cells[2],
+                "measured_here": not bool(EXTERNAL_SOURCE.search(cells[1])),
+                "records_config": bool(VERSION.search(body) or PARAM.search(body)),
+            })
+    return out
+
+
+def provenance_without_config(root: Path) -> list[str]:
+    """A row claiming a measurement taken here records what it was measured WITH.
+
+    This is the check that would have prevented the S4/S5 episode. Both rows read
+    "ten scenes at 12 images each", which is a description and not a configuration: an
+    image count does not determine the image set, `SceneLoader.sampling` does, and the
+    default changed underneath them. Three re-measurements aimed at the stated
+    description therefore measured a different set of images than the rows describe,
+    and a correct row was condemned as unreliable for a day.
+
+    The bar is low on purpose -- any version or any parameter passes. It cannot tell
+    whether a configuration is COMPLETE, only whether one was recorded at all. S5 named
+    `stride 1`, cleared this bar, and was still unreproducible. It exists to stop the
+    empty case, not to certify a row.
+    """
+    return [f"{r['key']}: measured here, no version or parameter recorded -- "
+            f"{r['where'][:60]}"
+            for r in provenance_rows(root)
+            if r["measured_here"] and not r["records_config"]]
 
 
 ALL_CHECKS = {
     "dead_see_also": dead_see_also,
+    "dead_anchor_links": dead_anchor_links,
     "orphaned_readings": orphaned_readings,
     "ghost_bands": ghost_bands,
     "dead_citations": dead_citations,
