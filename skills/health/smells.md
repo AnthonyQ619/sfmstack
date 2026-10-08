@@ -217,6 +217,14 @@ consensus set. It is not random sampling — the RANSACs on that path were probe
 and are deterministic — so expect this wherever a multithreaded optimiser sits
 in a feedback loop, and do not expect a seed to fix it.
 
+**A seed will not fix it, but a thread count sometimes will.** Where the module
+exposes one, pinning it removes the divergence: measured on the global
+reconstructor, the same inputs registered six cameras at its default of all
+threads and seven on the next run, and registered seven twice when pinned to one
+— a camera count, not a last-decimal residual. See
+[`SparseGlobalCOLMAP` tuning](../../modules/sparse_global_colmap/skills/tuning.md#two-runs-of-one-recipe-register-different-numbers-of-cameras).
+Pin it whenever a difference between two runs is going to be read as an effect.
+
 **Why it stays hidden:** an unchanged recipe is served from the artifact store
 and never re-executed, so nothing ever runs twice to disagree with itself. And
 the obvious check does not work — an artifact id is derived from the recipe, not

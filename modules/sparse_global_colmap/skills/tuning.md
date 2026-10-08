@@ -169,6 +169,35 @@ images is 4950 pairs and a different order of magnitude. This is still the cheap
 option — the same set through incremental registration pays a bundle adjustment
 per handful of images.
 
+## Two runs of one recipe register different numbers of cameras
+
+**`num_threads` defaults to -1, and at that setting this module is not
+reproducible.** Measured A/B on one capture's matches, same scene, same
+parameters, forced to re-execute in both directions:
+
+| `num_threads` | first run | second run |
+| --- | --- | --- |
+| `-1` | **6** cameras registered | **7** cameras registered |
+| `1` | 7 | 7 |
+
+What moves is `registered_images`, not a last-decimal residual — so every reading
+denominated on the camera count moves with it, `registered_fraction` and
+`mean_reprojection_error` included, and the latter is already not comparable
+across models with different counts (below).
+
+**The mechanism is not new and is not this module's**: a multithreaded solver
+sums the same residuals in a different order, and a registration loop feeds that
+back into its next decision until it changes a consensus set. That is written up
+with its evidence in
+[`health/smells.md`](../../../skills/health/smells.md#a-difference-between-two-runs-that-is-the-pipeline-not-the-change),
+which also records that a seed does not fix it. What this module adds is that a
+seed is not the only lever: **the thread count is exposed, and pinning it works.**
+
+**So pin it whenever two runs are going to be compared** — a parameter sweep, an
+A/B between matchers, anything where a difference will be read as an effect.
+Leave it at -1 for a single delivery run, where the wall time matters and the
+comparison does not.
+
 ## Metrics that mislead
 
 **`mean_reprojection_error` is not comparable across models with different
