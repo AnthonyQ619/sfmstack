@@ -390,6 +390,73 @@ def run(ctx: Ctx):
 
     ctx.progress(0.8, f"{rec.num_reg_images()} cameras, {rec.num_points3D()} points")
 
+    # A model with cameras and no points is not a thin model, it is no model -- and
+    # until this guard existed the run did not say so. `sparse_model/v1` requires
+    # `xyz` and `rgb` at rank 2; an empty point list leaves numpy at rank 1, so the
+    # run died inside artifact validation reporting a SHAPE violation against the
+    # type. That sent the reader to the type contract to fix a payload, when what
+    # had actually happened was upstream of the payload: the solve triangulated
+    # nothing. The reshape below closes the shape trap; this raise is what reports
+    # the condition.
+    if rec.num_points3D() == 0:
+        # `num_reg_images()` counts images that carry a pose, and an image can be
+        # ORIENTED by rotation averaging and never POSITIONED, because global
+        # positioning is a later stage and is skipped when it has no tracks. Its
+        # translation then comes back NaN. Quoting the registered count alone reads
+        # as "the cameras were placed" when nothing of the kind happened, so count
+        # both.
+        oriented = sum(1 for im in rec.images.values() if im.has_pose)
+        placed = sum(
+            1 for im in rec.images.values()
+            if im.has_pose
+            and np.all(np.isfinite(np.asarray(im.cam_from_world().translation)))
+        )
+        out = ctx.output("sparse")
+        out.diagnostic(
+            "no_points_triangulated",
+            severity="error",
+            message=(
+                f"The solve oriented {oriented} image(s), positioned {placed}, and "
+                f"triangulated no points."
+            ),
+            see_also="tuning.md#the-run-fails-and-writes-no-model",
+        )
+        detail = (
+            f"the global solve triangulated NO points, so there is no model to "
+            f"write. {verified} of {len(image_pair)} pairs verified; {oriented} of "
+            f"{n_images} images oriented by rotation averaging, {placed} actually "
+            f"positioned. Those two counts differ because global positioning is a "
+            f"separate stage that is skipped when it has no tracks, and an "
+            f"unpositioned image keeps a NaN translation. "
+        )
+        if feature_index is None:
+            detail += (
+                f"The cause is in the input: these matches carry no feature_index, "
+                f"so every endpoint became its own keypoint, and COLMAP's "
+                f"correspondence graph merges by keypoint IDENTITY rather than by "
+                f"geometry -- which means it can only ever build TWO-view tracks, "
+                f"however many images see the point. Two independent gates then "
+                f"discard them: min_track_len={p.min_track_len} demands "
+                f"{p.min_track_len} views, and the retriangulation stage ignores "
+                f"two-view tracks by a default this module does not expose. "
+                f"Lowering min_track_len passes the first gate and not the second, "
+                f"so it buys a much longer run and the same empty cloud. Send "
+                f"detector-free matches through the incremental route instead -- a "
+                f"tracker, pose estimation, then triangulation -- which "
+                f"reconstructs these same matches."
+            )
+        else:
+            detail += (
+                f"The settings that discard points are "
+                f"min_track_len={p.min_track_len}, "
+                f"min_tri_angle_deg={p.min_tri_angle_deg}, "
+                f"max_angular_reproj_error_deg={p.max_angular_reproj_error_deg} and "
+                f"max_normalized_reproj_error={p.max_normalized_reproj_error}. "
+                f"Read min_frame_points and the matcher's inlier_ratio before "
+                f"moving any of them."
+            )
+        raise ValueError(detail)
+
     rec.update_point_3d_errors()  # COLMAP leaves per-point error unset until asked
 
     frame_of_name = {colmap_name[f]: f for f in range(n_images)}
@@ -415,8 +482,17 @@ def run(ctx: Ctx):
 
     point_ids = sorted(rec.points3D)
     index_of = {pid: k for k, pid in enumerate(point_ids)}
-    xyz = np.array([rec.point3D(pid).xyz for pid in point_ids], dtype=np.float64)
-    rgb = np.array([rec.point3D(pid).color for pid in point_ids], dtype=np.uint8)
+    # reshape, not bare np.array: on an empty point list numpy gives (0,) where the
+    # type wants (0, 3), and the artifact then fails validation on its RANK -- a
+    # message about the schema for a condition that has nothing to do with it. The
+    # guard above is what reports the condition; this is what stops the shape from
+    # ever being the thing a reader sees.
+    xyz = np.array(
+        [rec.point3D(pid).xyz for pid in point_ids], dtype=np.float64
+    ).reshape(-1, 3)
+    rgb = np.array(
+        [rec.point3D(pid).color for pid in point_ids], dtype=np.uint8
+    ).reshape(-1, 3)
     error = np.array([rec.point3D(pid).error for pid in point_ids], dtype=np.float64)
 
     obs_rows = []

@@ -1,5 +1,5 @@
 name: SparseGlobalCOLMAP
-version: 1.3.0
+version: 1.4.0
 kind: sparse
 summary: >
   GLOMAP-style global reconstruction: rotation averaging, global positioning,
@@ -30,7 +30,7 @@ description: |
   in the wrong place the diagnosis is in the view graph rather than in this
   module. Read the matcher's `graph_components` and `inlier_ratio` first.
 
-image: sfmstack/sparse-global-colmap:1.3.0
+image: sfmstack/sparse-global-colmap:1.4.0
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -304,6 +304,22 @@ diagnostics:
       - Lower min_num_matches, after checking the matcher's min_matches_per_pair.
       - Lower min_inlier_ratio only if the matcher's inlier_ratio is genuinely low.
     see_also: tuning.md#verified_pairs-is-zero
+
+  - code: no_points_triangulated
+    severity: error
+    message: The solve oriented images but triangulated no points.
+    suggested_actions:
+      - "Detector-free matches carry no feature_index, so every endpoint becomes
+        its own keypoint and the correspondence graph -- which merges by keypoint
+        identity, not geometry -- can only build TWO-view tracks. Two gates then
+        discard them and min_track_len passes only the first. Send those through
+        the incremental route instead."
+      - "An image can be oriented by rotation averaging and never positioned, and
+        registered_images counts the first. A NaN translation is what that looks
+        like."
+      - Otherwise min_track_len, then min_tri_angle_deg, then the two reprojection
+        bounds -- in that order, after reading the matcher's inlier_ratio.
+    see_also: tuning.md#the-run-fails-and-writes-no-model
 
   - code: graph_thinned_by_verification
     severity: warn
