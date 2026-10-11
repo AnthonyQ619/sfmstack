@@ -1,5 +1,5 @@
 name: SparseGlobalCOLMAP
-version: 1.4.0
+version: 1.4.1
 kind: sparse
 summary: >
   GLOMAP-style global reconstruction: rotation averaging, global positioning,
@@ -30,7 +30,7 @@ description: |
   in the wrong place the diagnosis is in the view graph rather than in this
   module. Read the matcher's `graph_components` and `inlier_ratio` first.
 
-image: sfmstack/sparse-global-colmap:1.4.0
+image: sfmstack/sparse-global-colmap:1.4.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -78,6 +78,12 @@ params:
       3 rather than 2, because a two-view point contributes nothing to a global
       solve that the pair's own relative pose did not already contribute. Lower to
       2 only to raise `point_count` on a set you do not intend to measure with.
+      One thing this dial cannot do: rescue an input whose tracks are ALL
+      two-view, which is what unindexed matches produce. Measured -- a second
+      gate inside retriangulation also discards two-view tracks, by a default
+      this module does not expose, so lowering this to 2 passes the first gate,
+      misses the second, and buys a longer run and the same empty cloud. That
+      case is an input problem; see limitations.md#matches-with-no-feature_index.
 
   max_epipolar_error:
     type: number
@@ -305,20 +311,30 @@ diagnostics:
       - Lower min_inlier_ratio only if the matcher's inlier_ratio is genuinely low.
     see_also: tuning.md#verified_pairs-is-zero
 
+  - code: matches_not_indexed
+    severity: error
+    message: These matches carry no feature_index, so no track can reach a third view.
+    suggested_actions:
+      - "Give the matches keypoint identity first: a module that consumes
+        pairwise_matches/v1 AND produces pairwise_matches/v1, then this module on
+        its output. Refused before the solve, because the solve cannot succeed
+        and costs minutes to prove it."
+      - "Or send them through the incremental route instead -- a tracker, pose
+        estimation, then triangulation -- which reconstructs these same matches
+        without that step, and set the tracker's merge_eps_px per its own page."
+    see_also: limitations.md#matches-with-no-feature_index
+
   - code: no_points_triangulated
     severity: error
     message: The solve oriented images but triangulated no points.
     suggested_actions:
-      - "Detector-free matches carry no feature_index, so every endpoint becomes
-        its own keypoint and the correspondence graph -- which merges by keypoint
-        identity, not geometry -- can only build TWO-view tracks. Two gates then
-        discard them and min_track_len passes only the first. Send those through
-        the incremental route instead."
       - "An image can be oriented by rotation averaging and never positioned, and
         registered_images counts the first. A NaN translation is what that looks
         like."
-      - Otherwise min_track_len, then min_tri_angle_deg, then the two reprojection
-        bounds -- in that order, after reading the matcher's inlier_ratio.
+      - min_track_len, then min_tri_angle_deg, then the two reprojection bounds --
+        in that order, after reading the matcher's inlier_ratio.
+      - "Unindexed matches are NOT this case: they are refused before the solve,
+        as matches_not_indexed."
     see_also: tuning.md#the-run-fails-and-writes-no-model
 
   - code: graph_thinned_by_verification

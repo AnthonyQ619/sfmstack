@@ -519,6 +519,14 @@ is unavailable. Use the tracker's `inconsistent_rate` instead — it is the quan
 these two were validated against over 54 paired runs, it is defined for every
 matcher, and it costs a tracker run rather than nothing.
 
+**A route to the reading does exist, and it costs a stage.** A transform that fills
+`feature_index` in — a module consuming `pairwise_matches/v1` and producing it — gives
+the three-view test something to disagree about, and both rates become measurable on
+its output. Read them against that module's own page before acting on them: they
+belong to its tolerance rather than to the matcher, and that page records what they
+do and do not predict. The tracker's `inconsistent_rate` is still the cheaper reading
+when the matcher is what you are asking about.
+
 **Read the SUM of the two when you are asking what the tracker will report, and
 each one separately when you are asking what to fix.** That distinction is measured
 and it is not a nicety. The merge rate alone was annotated as the forecast and it

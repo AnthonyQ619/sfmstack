@@ -36,6 +36,17 @@ unregisterable frame.
 That makes it the answer to a *different* problem. The other four cannot fix bad
 poses; this one replaces the way poses were obtained.
 
+**It needs matches that carry `feature_index`, and it refuses matches that do
+not.** Rotation averaging is fed by a correspondence graph that merges observations
+by keypoint identity, so correspondences carrying no identity build only two-view
+tracks and nothing survives to triangulate. This is a property of the INPUT, not of
+the capture — a matcher can return an excellent correspondence field and still land
+here. Matching has a whole family that emits no identity, and the repair is a
+transform between the two stages rather than a different reconstructor: something
+that consumes `pairwise_matches/v1` and produces `pairwise_matches/v1`, filling the
+index in. Check the field before choosing this route; the refusal is immediate and
+says the same thing.
+
 ### 3. A learned prior carries a scale, and it must be measured
 
 A model's depth is in the model's unit; the poses are in theirs. One scalar relates

@@ -70,6 +70,15 @@ PROVENANCE_LABELS = {
     "scene_triage S3":            (False, False),  # classical practice
     "scene_triage S4":            (True,  True),   # ten scenes, subset mode recorded
     "scene_triage S5":            (True,  True),   # stored readings, split by pairing
+    "match_quantize S1":          (True,  True),   # two-view components, at 1.4.0
+    "match_quantize S2":          (True,  True),   # the two gates, min_track_len named
+    "match_quantize S3":          (True,  True),   # 54 runs at 1.0.0, grid_px swept
+    "match_quantize S4":          (True,  True),   # same sweep, yield vs accuracy
+    "match_quantize S5":          (True,  True),   # the parity bound, 54 runs at 1.0.0
+    "match_quantize S6":          (False, False),  # predecessor source
+    "match_quantize S7":          (False, False),  # He et al., CVPR 2024
+    "match_quantize S8":          (False, False),  # classical practice
+    "match_quantize S9":          (True,  True),   # grid A/B at 1.0.0, grid_px named
 }
 
 # Prose that correctly states a metric carries no band. None of it is a ghost band, and

@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.0
+module_version: 1.4.1
 curated_at: 2026-08-10
 ---
 
@@ -77,6 +77,11 @@ model is this case, pairs absent is the section above.
 The mechanism of the refusal is **not recorded** for either capture, and the job
 records did not survive. Treat the frame count as the lead, not as the cause, and if
 you reproduce it, capture the failure payload — nobody has one.
+
+One cause that is NOT this section: matches carrying no `feature_index`. That is
+refused before the solve as `matches_not_indexed`, so it never reaches here —
+[limitations.md](limitations.md#matches-with-no-feature_index) has the mechanism
+and the two escapes.
 
 ## `verified_pairs` far below `pairs_matched`
 

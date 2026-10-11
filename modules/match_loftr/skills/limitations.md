@@ -39,6 +39,10 @@ mechanism than identity merging, and it will always be. A detector-free matcher
 that emitted a consistent global point identity — matching to a shared reference
 rather than pairwise — would not need it. Nothing here does that.
 
+A transform downstream can approximate identity by quantizing coordinates, which is
+not the same thing as emitting it — but it is enough for a consumer that merges by
+identity.
+
 ## Semi-dense is not dense
 
 *Symptom:* expecting a dense depth map and getting a few thousand correspondences.

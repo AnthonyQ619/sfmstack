@@ -255,6 +255,41 @@ def run(ctx: Ctx):
     if feature_index is not None:
         feature_index = np.asarray(feature_index, dtype=np.int64)
 
+    # Fail here rather than after the solve. This input cannot produce a model:
+    # with no `feature_index` every endpoint becomes its own keypoint, COLMAP's
+    # correspondence graph merges by keypoint IDENTITY rather than by geometry,
+    # and no track can reach a third view however many images see the point.
+    # Measured on 47 captures across five families: zero points, every time.
+    # The proof used to be the solve itself, which costs minutes on a ten-image
+    # capture and grows with the pair count -- paid to learn something knowable
+    # from the artifact's own file list.
+    if feature_index is None:
+        out = ctx.output("sparse")
+        out.diagnostic(
+            "matches_not_indexed",
+            severity="error",
+            message=(
+                "These matches carry no feature_index, so no track can reach a "
+                "third view and the solve would triangulate nothing."
+            ),
+            see_also="limitations.md#matches-with-no-feature_index",
+        )
+        raise ValueError(
+            "SparseGlobalCOLMAP cannot reconstruct from these matches: they carry "
+            "no feature_index, so every endpoint is its own keypoint and the "
+            "correspondence graph -- which merges by keypoint identity, not by "
+            "geometry -- can only ever build TWO-view tracks. Two independent "
+            f"gates then discard them: min_track_len={p.min_track_len} demands "
+            f"{p.min_track_len} views, and retriangulation ignores two-view "
+            "tracks by a default this module does not expose, so lowering "
+            "min_track_len passes the first gate and not the second. Give the "
+            "matches keypoint identity first, with a module that consumes "
+            "pairwise_matches/v1 and produces pairwise_matches/v1, then run this "
+            "module on its output. The incremental route -- a tracker, pose "
+            "estimation, then triangulation -- reconstructs these same matches "
+            "without that step."
+        )
+
     ctx.progress(0.05, f"{len(image_pair)} pairs, {len(xy)} matches")
 
     coords, rows = keypoint_table(xy, pair_index, image_pair, feature_index, n_images)
@@ -429,32 +464,17 @@ def run(ctx: Ctx):
             f"separate stage that is skipped when it has no tracks, and an "
             f"unpositioned image keeps a NaN translation. "
         )
-        if feature_index is None:
-            detail += (
-                f"The cause is in the input: these matches carry no feature_index, "
-                f"so every endpoint became its own keypoint, and COLMAP's "
-                f"correspondence graph merges by keypoint IDENTITY rather than by "
-                f"geometry -- which means it can only ever build TWO-view tracks, "
-                f"however many images see the point. Two independent gates then "
-                f"discard them: min_track_len={p.min_track_len} demands "
-                f"{p.min_track_len} views, and the retriangulation stage ignores "
-                f"two-view tracks by a default this module does not expose. "
-                f"Lowering min_track_len passes the first gate and not the second, "
-                f"so it buys a much longer run and the same empty cloud. Send "
-                f"detector-free matches through the incremental route instead -- a "
-                f"tracker, pose estimation, then triangulation -- which "
-                f"reconstructs these same matches."
-            )
-        else:
-            detail += (
-                f"The settings that discard points are "
-                f"min_track_len={p.min_track_len}, "
-                f"min_tri_angle_deg={p.min_tri_angle_deg}, "
-                f"max_angular_reproj_error_deg={p.max_angular_reproj_error_deg} and "
-                f"max_normalized_reproj_error={p.max_normalized_reproj_error}. "
-                f"Read min_frame_points and the matcher's inlier_ratio before "
-                f"moving any of them."
-            )
+        # `feature_index` is guaranteed present by the precondition above, so
+        # an empty cloud here is about thresholds rather than about identity.
+        detail += (
+            f"The settings that discard points are "
+            f"min_track_len={p.min_track_len}, "
+            f"min_tri_angle_deg={p.min_tri_angle_deg}, "
+            f"max_angular_reproj_error_deg={p.max_angular_reproj_error_deg} and "
+            f"max_normalized_reproj_error={p.max_normalized_reproj_error}. "
+            f"Read min_frame_points and the matcher's inlier_ratio before "
+            f"moving any of them."
+        )
         raise ValueError(detail)
 
     rec.update_point_3d_errors()  # COLMAP leaves per-point error unset until asked

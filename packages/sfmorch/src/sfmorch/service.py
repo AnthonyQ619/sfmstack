@@ -72,6 +72,19 @@ SERIES_MAX = 200
 # How many extremes survive the summary at each end.
 SERIES_EXTREMES = 8
 
+def is_transform(consumes: dict[str, str], produces: dict[str, str]) -> bool:
+    """A module that consumes a type it also produces.
+
+    The structural definition of a transform, kept as a named rule because two
+    callers need the same answer: `plan_brief`, which lists them because no stage
+    list can, and the test that asserts the listing is not empty when the registry
+    holds one. A `kind` field could not carry this -- `kind` says which stage a
+    module belongs to, and a transform belongs to the same stage as the modules it
+    repairs.
+    """
+    return bool(set(consumes.values()) & set(produces.values()))
+
+
 PLAN_SHAPE = {
     "sections": [
         "SCENE - one line: what it is, from the description's `overall`",
@@ -1557,6 +1570,42 @@ class SfmService:
                     "`resize: auto`, `target_resolution` under `resize: fixed` or "
                     "`square`; they are two parameters for two modes, not two names "
                     "for one knob."
+                ),
+            },
+            # The menu's query shape excludes a SECOND class of module, for the
+            # same structural reason `rebuild_scene` exists. A transform consumes
+            # a type it also produces; the ones that consume a scene AS WELL are
+            # already in the menu and are deliberately not repeated here, which is
+            # why this filters on menu-visibility rather than on transform-ness.
+            # What is left is the class that no list in this response can show,
+            # and it is not hypothetical: bundle adjustment is a transform and is
+            # visible, while two others consume only the type they repair and are
+            # not. The failure that follows is documented -- nine readers in a row
+            # concluded the scene producer did not exist when it was merely absent
+            # from a list -- and these are easier to miss still, because the stage
+            # each belongs to already has members and therefore looks complete.
+            # Derived from SCENE_TYPE, the same constant the menu queries on, so
+            # the two cannot drift apart.
+            "transforms": {
+                "modules": [
+                    m for m in self.list_modules()["modules"]
+                    if is_transform(m["consumes"], m["produces"])
+                    and SCENE_TYPE not in m["consumes"].values()
+                ],
+                "note": (
+                    "These consume a type they also produce and consume no scene, "
+                    "so they are in neither `menu` nor `rebuild_scene`, and no "
+                    "stage list shows them either -- a stage with members already "
+                    "looks complete without them. Reaching for one is a different "
+                    "kind of act: it does not advance the pipeline to the next "
+                    "type, it REPAIRS an artifact of a type you already hold, and "
+                    "the stage after it consumes the repaired one. The case this "
+                    "exists for: a consumer that needs a field its producer left "
+                    "empty, where the fix is neither a different producer nor a "
+                    "different consumer. Transforms that DO take a scene -- bundle "
+                    "adjustment is one -- are in `menu` already and are not "
+                    "repeated here. Read the module's own page for what it fills "
+                    "in and what that costs."
                 ),
             },
             "report_shape": PLAN_SHAPE,

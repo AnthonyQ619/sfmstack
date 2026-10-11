@@ -1,0 +1,273 @@
+name: MatchQuantize
+version: 1.0.0
+kind: matching
+summary: >
+  Gives detector-free correspondences the keypoint identity they lack, by binning
+  endpoint locations per image onto a grid. pairwise_matches/v1 in,
+  pairwise_matches/v1 out, with feature_index filled. CPU-only.
+
+description: |
+  A detector-free matcher has no keypoint table, so it emits no `feature_index`,
+  and every endpoint it produces is its own keypoint. A correspondence graph that
+  merges by keypoint IDENTITY can then only ever build TWO-VIEW tracks, however
+  many images see the point -- measured on one capture, 86,442 correspondence
+  components with not one spanning three views.
+
+  That is fatal to a consumer that needs multi-view tracks. The global
+  reconstructor is such a consumer twice over: its track filter demands three
+  views, and its retriangulation stage discards two-view tracks by a default no
+  parameter reaches. Both gates sit on the same wall, which is why lowering the
+  track-length floor buys a much longer run and the same empty cloud.
+
+  This module removes the wall one stage earlier. It bins each endpoint's location
+  to a grid of `grid_px` working-resolution pixels; every occupied cell becomes one
+  keypoint, and every match endpoint is renumbered to its cell. That is the
+  identity the correspondence graph needs, and multi-view tracks follow.
+
+  **It does not improve the correspondences, and that bound is the point.** It
+  trades sub-pixel accuracy for consistency -- the same trade the published
+  method makes, and for the same reason. Measured across nine captures and two
+  detector-free matchers it brought a route that returned NOTHING on every
+  capture to parity with the incremental route on one matcher, and to a worse but
+  working result on the other.
+
+  **What it is NOT for.** Detector-based matchers already publish exact identity;
+  replacing it with a coordinate approximation is strictly worse, and this module
+  refuses such an input rather than quietly degrading it.
+
+image: sfmstack/match-quantize:1.0.0
+entrypoint: adapter:run
+resources:
+  gpu: false
+  min_ram_gb: 4
+  # Binning is a single pass over the match table; verification is one RANSAC per
+  # pair. Cost is set by the match count, which on a semi-dense matcher is large --
+  # ~100k-200k on ten images -- and is still seconds.
+  expected_duration_s: 30
+  timeout_s: 1800
+
+consumes:
+  matches: {type: pairwise_matches/v1, required: true}
+
+produces:
+  matches: {type: pairwise_matches/v1}
+
+params:
+  grid_px:
+    type: number
+    default: 4.0
+    minimum: 0.25
+    maximum: 32.0
+    description: Grid cell size for binning endpoints, in WORKING-resolution pixels.
+    tuning: >
+      In pixels of the scene's working resolution, so it carries that resolution's
+      comparability hazard with it -- see limitations.md. The default is measured,
+      not inherited: across nine captures and two detector-free matchers, 4.0 won
+      8 of 18 capture/matcher pairs outright and dominated on the captures where
+      the choice mattered at all, while the benchmark orbits were flat to three
+      decimals under every value tried.
+
+      RAISE it when multiview_fraction is low -- that is the reading this parameter
+      exists to move. LOWER it only when cycle_merge_rate climbs, which is
+      over-merging: two scene points fused into one track, which corrupts geometry
+      rather than merely shortening a track.
+
+      **Do not tune it on the track yield.** More multi-view tracks is NOT better
+      pose accuracy and the two point in opposite directions on real captures --
+      the reading that justifies this warning is in tuning.md.
+
+  on_conflict:
+    type: string
+    default: confidence
+    enum: [confidence, drop]
+    description: What to do when one cell would match two different cells in the other image.
+    tuning: >
+      Binning can make two distinct correspondences share an endpoint cell, and
+      they cannot both be right: one cell is one keypoint, and a keypoint matches
+      at most one keypoint per pair. `confidence` keeps the highest-confidence
+      candidate and discards the rest; `drop` discards all of them.
+
+      Prefer `confidence`. `drop` is the conservative reading and costs matches on
+      exactly the dense pairs that are carrying the reconstruction. Neither is
+      silent -- `conflict_rate` reports what was resolved either way, which the
+      predecessor's last-write-wins did not.
+
+      `confidence` falls back to `drop` when the input carries no confidence
+      array, and says so with a diagnostic rather than picking arbitrarily by row
+      order.
+
+  ransac_threshold:
+    type: number
+    default: 3.0
+    minimum: 0.5
+    maximum: 20.0
+    description: Inlier distance for re-measuring inlier_ratio, in working-resolution pixels.
+    tuning: >
+      Only used to MEASURE the output, never to filter it: this module admits and
+      discards nothing on geometric grounds. The default matches the classical
+      matcher's so that the two modules' inlier_ratio readings are comparable at
+      the same threshold, which is the only way that metric can be read across a
+      stage.
+
+  ransac_confidence:
+    type: number
+    default: 0.999
+    minimum: 0.9
+    maximum: 0.99999
+    description: RANSAC confidence used when re-measuring inlier_ratio.
+
+  min_matches:
+    type: integer
+    default: 15
+    minimum: 8
+    maximum: 1000
+    description: Pairs left with fewer matches after binning are dropped from the output.
+    tuning: >
+      The algebraic floor for a fundamental matrix is 8, and a pair at that count
+      is a seven-degree-of-freedom fit with no redundancy. 15 matches the classical
+      matcher's default so the view-graph metrics are read against the same floor.
+      Binning only ever reduces a pair's count, so this can drop a pair the
+      matcher kept -- `pairs_matched` against `pairs_proposed` is where that shows.
+
+metrics:
+  # Required of every producer of pairwise_matches/v1, and re-measured on the OUTPUT:
+  # binning only ever removes matches, so a pair the matcher kept can be absent here
+  # and carrying the input's numbers forward would describe a set that no longer
+  # exists. They are readings about the MATCHER's work all the same -- nothing in this
+  # module improves a correspondence.
+  pairs_proposed:
+    meaning: >
+      Pairs on the input artifact. The denominator for pairs_matched here, which
+      together say how much of the matcher's view graph survived binning.
+    direction: neutral
+  pairs_matched:
+    meaning: >
+      Input pairs still carrying at least min_matches after binning. Zero means
+      nothing downstream can run, which is why this one keeps a floor.
+    direction: higher_better
+    healthy: [1, null]
+  matches_per_pair:
+    meaning: >
+      Mean surviving matches on kept pairs, after cell conflicts and collapsed
+      duplicates. No band: the classical matcher's cut point comes from its own
+      measurements and nothing was measured here.
+    direction: higher_better
+  min_matches_per_pair:
+    meaning: >
+      The weakest kept pair. Binning only reduces counts, so this can be below the
+      matcher's own reading on the same capture.
+    direction: higher_better
+  inlier_ratio:
+    meaning: >
+      Fraction of this artifact's matches consistent with a two-view model, measured
+      at ransac_threshold and never used to filter. No band: it is the matcher's
+      reading re-taken on a subset, so judge it against the matcher's own.
+    direction: higher_better
+  graph_components:
+    meaning: >
+      Connected components of the output view graph. Above 1 means images no track can
+      link, which binning cannot create but can expose by dropping a thin bridging
+      pair under min_matches.
+    direction: lower_better
+    healthy: [null, 1]
+  largest_component_fraction:
+    meaning: >
+      Fraction of images in the biggest component of the output graph -- what one
+      model can still cover after binning.
+    direction: higher_better
+    healthy: [1.0, null]
+  min_image_degree:
+    meaning: >
+      The fewest kept pairs any one image has. The margin graph_components does not
+      report: an image on a single edge is connected and one pair from being lost.
+    direction: higher_better
+    healthy: [2, null]
+  cycle_merge_rate:
+    meaning: >
+      Three-view chains landing more than the type's merge tolerance from the direct
+      match. **Null on the input and measurable here** -- the test needs keypoint
+      identity, and supplying it is this module's job.
+
+      **It runs high on this module's output and it is NOT an over-merge alarm.**
+      Measured on one capture at two grid sizes, it FALLS as grid_px rises -- 0.67 at
+      1.0 px against 0.39 at 4.0 px -- which is the opposite of what fusing distinct
+      points into one cell would do, and pose was unchanged across that swing (0.9744
+      against 0.9743). So on this input it reports the matcher's own pair-to-pair
+      inconsistency, which is the defect binning reduces, rather than damage binning
+      caused. No mechanism is claimed and n is one capture. Read conflict_rate for
+      the local view and the downstream reconstruction for the outcome; do not tune
+      against this.
+    direction: lower_better
+  cycle_split_rate:
+    meaning: >
+      The same test at a cell or two apart: one scene point carried on two cells. It
+      shortens tracks where the merge rate corrupts geometry, so it is the cheaper
+      failure and the one to read as a cost rather than a fault.
+    direction: lower_better
+  planarity:
+    meaning: >
+      Null, always. This module fits no homography, and measuring one here would be a
+      second opinion on the matcher's geometry rather than a reading about anything
+      this module did.
+    direction: lower_better
+
+  multiview_fraction:
+    meaning: >
+      Fraction of correspondence components that span THREE OR MORE images. The
+      reading this module exists to move, and the one that decides whether a
+      multi-view consumer can do anything at all: a global reconstructor needs
+      three views per track at its filter and more than two at its
+      retriangulation, so at 0.0 it returns no points no matter what else is
+      healthy. On the input to this module it is 0.0 by construction -- that is the
+      defect being repaired, not a property of the capture.
+    direction: higher_better
+    healthy: [0.05, null]
+  cells_per_endpoint:
+    meaning: >
+      Distinct keypoint cells divided by input endpoints. 1.0 means nothing merged
+      and the grid did nothing; near 0 means almost everything collapsed together.
+      Read it as the amount of merging actually performed, against
+      multiview_fraction for whether it bought anything and cycle_merge_rate for
+      whether it cost correctness.
+    direction: neutral
+  conflict_rate:
+    meaning: >
+      Fraction of input matches that could not survive binning because their
+      endpoint cell was already claimed, resolved by `on_conflict`. Rises with
+      `grid_px`. It is the cheap, local view of over-merging; cycle_merge_rate is
+      the three-view view and the one that sees a fused scene point.
+    direction: lower_better
+    healthy: [null, 0.2]
+
+diagnostics:
+  - code: already_indexed
+    severity: error
+    message: These matches already carry feature_index; there is nothing to quantize.
+    suggested_actions:
+      - Remove this module from the plan; the consumer can use the exact identity already present.
+      - "If the goal was to merge duplicate detections rather than to invent identity, that is the tracker's merge_eps_px, not this."
+    see_also: limitations.md#detector-based-input-is-refused
+
+  - code: no_multiview_tracks
+    severity: error
+    message: Binning produced no track spanning three or more images.
+    suggested_actions:
+      - Raise grid_px; at too fine a grid nothing merges and the output is the input renumbered.
+      - Check the view graph first -- a set with no closed triple cannot produce a three-view track at any grid size.
+    see_also: tuning.md#multiview_fraction-is-zero-or-near-it
+
+  - code: high_conflict_rate
+    severity: warn
+    message: Binning discarded a large share of matches to endpoint-cell conflicts.
+    suggested_actions:
+      - Lower grid_px; this is the first symptom of a grid coarser than the match field.
+      - Read cycle_merge_rate beside it -- conflicts are local, a fused scene point is not.
+    see_also: tuning.md#conflict_rate-is-high
+
+  - code: no_confidence_to_rank
+    severity: warn
+    message: on_conflict was confidence, but the input carries no confidence array.
+    suggested_actions:
+      - Nothing, if the fallback is acceptable; conflicts were dropped rather than ranked.
+      - Set on_conflict to drop explicitly, so the plan says what happened.
+    see_also: limitations.md#conflicts-need-a-confidence-to-rank

@@ -18,6 +18,11 @@ The tracker cannot merge by identity and must merge by proximity, which makes
 `FeatureTrackUnionFind.merge_eps_px` the parameter that decides whether tracks
 chain at all.
 
+**Unless identity is supplied.** A transform consuming `pairwise_matches/v1` and
+producing it restores identity merging downstream, which is what a pairs-consuming
+global reconstructor requires. It is an extra stage carrying its own tolerance; the
+tracker route below needs neither.
+
 Set it too tight and tracks never reach a third view; the tracker's
 `inconsistent_rate` stays excellent while registration fails, because splitting
 one point into several tracks produces no contradiction. `merge_headroom` is the

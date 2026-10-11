@@ -276,6 +276,10 @@ def build_server(service: SfmService):
           - the stage file (`skills/plan/<stage>.md`) for each pipeline stage, which is what says which
             member of that stage to reach for
           - the live menu of modules consuming `scene/v1`
+          - `rebuild_scene`, the producers the menu's query shape excludes, and
+            `transforms`, the modules that consume a type they also produce and
+            consume no scene -- so they are in no menu and no stage list. A stage
+            whose members are all present still looks complete without them
           - the shape the plan should take
 
         It does NOT decide. There is no model here; the argument is yours to

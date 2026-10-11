@@ -6,6 +6,8 @@ found in this stage so far has been a convention mismatch between two libraries 
 exactly what a fixture would have encoded rather than caught.
 """
 
+import sys
+
 import numpy as np
 import pytest
 
@@ -762,6 +764,86 @@ def test_the_global_mapper_colours_points_from_the_pixels(orch):
 
     rgb = sparse.load("points", "rgb")
     assert len(np.unique(rgb, axis=0)) > 100
+
+
+@needs_pycolmap
+def test_unindexed_matches_are_refused_before_the_solve():
+    """The NEGATIVE control for `matches_not_indexed`.
+
+    What is asserted is not that the run fails -- it failed before this guard existed,
+    after spending the whole solve to prove it. It is that the refusal happens BEFORE
+    any work: the writer below raises if anything is saved or any metric is reported,
+    so a guard that moved back after the mapper would fail here rather than pass
+    quietly. Exercised through the real `run` entry point with a stand-in Ctx, because
+    the property belongs to the function and not to the transport.
+
+    `Params` below carries ONLY the fields the precondition path reads, and that
+    minimality is the tripwire: with the guard removed, execution runs on and dies on
+    `min_inlier_ratio` at the verification loop -- which is how this control was
+    confirmed able to fail. Adding fields to `Params` to make that failure prettier
+    would also let a regression get further before anything noticed, so it is left
+    minimal on purpose.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    from dataset_paths import MODULES
+
+    spec = importlib.util.spec_from_file_location(
+        "sgc_adapter", MODULES / "sparse_global_colmap" / "adapter.py")
+    ad = importlib.util.module_from_spec(spec)
+    sys.modules["sgc_adapter"] = ad
+    spec.loader.exec_module(ad)
+
+    n = 3
+
+    class Writer:
+        def __init__(self): self.diags = []
+        def diagnostic(self, code, **kw): self.diags.append(code); return self
+        def save(self, *a, **k): raise AssertionError("must not write anything")
+        def metric(self, *a, **k): raise AssertionError("must not report anything")
+        def note(self, *a, **k): return self
+
+    class Scene:
+        def has(self, _f): return True
+        def resolve(self, pth): return Path("/tmp/images") / pth
+        def load(self, file, array=None):
+            if file == "images":
+                return {"names": [f"img{i}.jpg" for i in range(n)],
+                        "size_current": np.full((n, 2), 640),
+                        "paths": [f"img{i}.jpg" for i in range(n)]}[array]
+            return {"intrinsics": np.tile(np.eye(3), (n, 1, 1)),
+                    "distortions": np.zeros((n, 5))}
+
+    class Matches:
+        def load(self, file, array=None):
+            if file == "pairs":
+                return np.array([[0, 1], [1, 2]], dtype=np.int64)
+            # The defining property of a detector-free match table: no feature_index.
+            return {"xy": np.zeros((8, 4)),
+                    "pair_index": np.array([0, 0, 0, 0, 1, 1, 1, 1], dtype=np.int64)}
+
+    class Params:
+        min_track_len, min_num_matches = 3, 30
+        min_tri_angle_deg, max_epipolar_error = 1.0, 2.0
+        max_angular_reproj_error_deg, max_normalized_reproj_error = 1.0, 0.01
+
+    w = Writer()
+
+    class FakeCtx:
+        inputs = {"scene": Scene(), "matches": Matches()}
+        params = Params()
+        def output(self, _slot): return w
+        def progress(self, *a, **k): pass
+
+    run = getattr(ad.run, "__wrapped__", ad.run)
+    with pytest.raises(ValueError, match="no feature_index"):
+        run(FakeCtx())
+
+    assert "matches_not_indexed" in w.diags, "the refusal must leave its diagnostic"
+    assert "no_points_triangulated" not in w.diags, (
+        "this is an input refusal, not a post-solve observation -- reporting the "
+        "latter sends a reader to the thresholds section, which is the wrong page")
 
 
 @needs_gtsam

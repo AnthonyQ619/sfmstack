@@ -433,3 +433,72 @@ def test_wrong_input_type_is_refused_for_real_modules(orch):
     ).primary
     with pytest.raises(WiringError, match="expects 'scene/v1'"):
         orch.run("FeatureDetectionSIFT", run_id="it", inputs={"scene": feats.id})
+
+
+# --------------------------------------------------------------------------- #
+# Transforms: the module class no stage list can show
+# --------------------------------------------------------------------------- #
+
+
+def _transform(registry, name):
+    s = registry.get(name)
+    from sfmorch.service import is_transform
+    return is_transform({n: sl.type for n, sl in s.consumes.items()},
+                        {n: sl.type for n, sl in s.produces.items()})
+
+
+def test_some_transforms_are_invisible_in_the_planning_menu(registry):
+    """The premise behind `plan_brief`'s `transforms` list, asserted on the real
+    registry rather than assumed.
+
+    `plan_brief`'s menu is "what consumes this scene". A transform consumes a type it
+    also produces -- and the ones consuming a scene as WELL are already in the menu,
+    which is why the list filters on menu-visibility and not on transform-ness. The
+    distinction is load-bearing and was got wrong once: bundle adjustment is a
+    transform by this rule and has always been visible, so a list of every transform
+    would have been mostly redundant. What matters is the remainder.
+
+    The same shape already cost this repository once -- nine readers in a row
+    concluded the scene producer did not exist because the menu structurally excluded
+    it. These are easier to miss still, because the stage each belongs to already has
+    members and therefore looks complete.
+    """
+    from sfmorch.service import is_transform
+
+    scene_consumers = {s.name for s in registry.find(consumes="scene/v1")}
+    transforms = {
+        s.name for s in registry.find()
+        if is_transform({n: sl.type for n, sl in s.consumes.items()},
+                        {n: sl.type for n, sl in s.produces.items()})
+    }
+
+    assert transforms, "this test is vacuous if the registry holds no transform"
+    assert transforms & scene_consumers, (
+        "expected at least one transform to be visible already -- if none is, the "
+        "menu-visibility filter is doing nothing and the list should be simplified"
+    )
+    assert transforms - scene_consumers, (
+        "the list exists for transforms the menu cannot show; none here means it is "
+        "dead weight"
+    )
+
+
+def test_the_transform_rule_does_not_catch_an_ordinary_producer(registry):
+    """The NEGATIVE control for `is_transform`.
+
+    A rule that merely asked "does it produce `pairwise_matches/v1`" would sweep up
+    every matcher, which is the ambiguity this predicate exists to avoid -- and the
+    one a capability query on `produces` alone cannot resolve. So assert the matchers
+    are NOT transforms while sharing their output type with one that is.
+    """
+    producers = [s for s in registry.find(produces="pairwise_matches/v1")]
+    assert len(producers) > 2, "needs several producers of the type to be meaningful"
+
+    assert not _transform(registry, "FeatureMatchLoFTR"), "a detector-free matcher is not a transform"
+    assert not _transform(registry, "FeatureMatchLightGlue"), "a detector-based matcher is not either"
+    assert _transform(registry, "MatchQuantize"), "the one that repairs the type in place is"
+    assert _transform(registry, "BundleAdjustmentGlobal"), (
+        "bundle adjustment consumes and produces sparse_model/v1, so the rule must "
+        "catch it too -- the claim that one module was the stack's only transform "
+        "was wrong, and this asserts the corrected reading"
+    )
