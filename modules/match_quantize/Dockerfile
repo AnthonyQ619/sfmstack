@@ -1,6 +1,6 @@
 # MatchQuantize 1.0.0
 #
-#   docker build -t sfmstack/match-quantize:1.0.0 -f modules/match_quantize/Dockerfile .
+#   docker build -t sfmstack/match-quantize:1.0.1 -f modules/match_quantize/Dockerfile .
 #
 # Build context is the repository root.
 #

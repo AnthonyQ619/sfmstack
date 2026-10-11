@@ -1,6 +1,6 @@
 ---
 module: MatchQuantize
-module_version: 1.0.0
+module_version: 1.0.1
 curated_at: 2026-10-10
 ---
 
@@ -10,8 +10,11 @@ Sourced claims resolve in [sources.md](sources.md).
 
 Before any section below: **this module has one parameter that matters.** `grid_px`
 decides whether anything merges, and the other four are bookkeeping. Read
-`multiview_fraction` first, `cycle_merge_rate` second, and treat everything else as
-context for those two.
+`multiview_fraction` first and `conflict_rate` second — those two answer "did the
+merge work" and "did it cost anything", and `conflict_rate` is the one that responds to
+`grid_px`. **`cycle_merge_rate` and `cells_per_endpoint` are diagnostic context, not
+objectives**, and the section on the merge rate below says why that correction had to be
+made twice.
 
 ---
 
@@ -32,6 +35,38 @@ The mechanism is not measured and no claim is made about it. The practical rule 
 **tune against the downstream pose reading, or take the default.** A yield curve is
 not a substitute, and this module publishes `multiview_fraction` to tell you whether
 the merge *worked at all*, not to be maximised.
+
+---
+
+## `cycle_merge_rate` reads the matcher, not the outcome
+
+**Do not tune against it, and do not read a high value as contamination.** Measured at a
+fixed `grid_px` across twenty-four captures per source [S10]:
+
+| correspondence source | min | median | max |
+| --- | --- | --- | --- |
+| semi-dense matcher | 0.222 | 0.363 | 0.478 |
+| dense matcher | 0.699 | 0.774 | 0.903 |
+
+**The two ranges are disjoint** — no capture from one source reaches the other's
+nearest value. And against pose accuracy the rate correlates at **r = +0.142 over
+forty-eight paired readings**. So a value here identifies which matcher produced the
+correspondences; it does not forecast the result. It also moves with `grid_px`, so a
+reading is only comparable against another taken at the same grid.
+
+**Why this needs saying twice over.** On a detector-based matcher a high merge rate
+means severe contamination, because there the rate counts matches that pass their own
+two-view check and contradict themselves across a third view, with real keypoint
+identity to disagree about. Here the identity is a coordinate approximation this module
+created, so the same number means something else. This page previously told readers to
+protect the metric, which steers to a finer grid — the setting the yield warning above
+measures as worse [S9]. **A metric's meaning does not survive being carried into the
+module that manufactures its input.**
+
+**One thing you cannot fix from here:** the `lower_better` direction is fixed by
+`pairwise_matches/v1` for every producer of the type, so it is not settable per module.
+On this module's output "lower" is a matcher fingerprint and not a quality ordering.
+Read the direction as inherited, not as advice.
 
 ---
 

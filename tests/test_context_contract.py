@@ -31,6 +31,7 @@ from context_checks import (
     dead_citations,
     dead_see_also,
     ghost_bands,
+    stale_defaults,
     orphaned_readings,
     provenance_without_config,
 )
@@ -121,6 +122,70 @@ def test_control_ghost_band_is_detected(tmp_path):
     p = root / "modules/scene_triage/skills/tuning.md"
     p.write_text(p.read_text() + "\n\nThe `color_shift` band sits at 0.12.\n")
     assert any("color_shift" in f for f in ghost_bands(root))
+
+
+def test_control_a_default_moving_under_its_prose_is_detected(tmp_path):
+    """The NEGATIVE control for stale_defaults.
+
+    The defect it exists for: a measured default is changed in the manifest and the
+    passages quoting the old number are left behind, so the guidance states a value the
+    module no longer has. Injected the way it would really happen -- edit the manifest,
+    leave the prose.
+
+    **Parameter-agnostic on purpose.** The first version of this control named one
+    parameter, and a later rewrite of that parameter's prose removed the sentence it was
+    comparing against, so the control failed for a reason that had nothing to do with the
+    check. It now finds whichever (module, parameter) the check can actually compare and
+    perturbs that one, so rewording any single page cannot make it vacuous.
+    """
+    import re as _re
+
+    import yaml as _yaml
+
+    from context_checks import _modules
+
+    root = _tree(tmp_path)
+    assert not stale_defaults(root), "this control needs the tree to start clean"
+
+    # Find a numeric default that some page states explicitly.
+    target = None
+    for y in _modules(root):
+        spec = _yaml.safe_load(y.read_text()) or {}
+        for name, meta in (spec.get("params") or {}).items():
+            if not isinstance(meta, dict) or "default" not in meta:
+                continue
+            d = meta["default"]
+            if not isinstance(d, (int, float)) or isinstance(d, bool):
+                continue
+            for page in (y.parent / "skills").glob("*.md"):
+                if _re.search(rf"`{_re.escape(name)}`[^\n]{{0,40}}\b{_re.escape(str(d))}\b",
+                              page.read_text()):
+                    target = (y, name, d)
+                    break
+            if target:
+                break
+        if target:
+            break
+    assert target, "no page states any parameter's default, so the check has nothing to do"
+
+    y, name, d = target
+    moved = float(d) + 5.0 if float(d) != 0 else 5.0
+    y.write_text(y.read_text().replace(f"default: {d}", f"default: {moved}", 1))
+    found = stale_defaults(root)
+    assert any(name in f for f in found), (
+        f"moving {name} from {d} to {moved} left its prose behind and the check "
+        f"did not see it; found instead: {found}")
+
+
+def test_control_a_default_written_in_exponent_form_is_not_flagged(tmp_path):
+    """The guard against the false positive this check shipped with for ten minutes.
+
+    `5e-4` was matched as `5` and reported against a manifest reading 0.0005. A check
+    that cries wolf on correct prose gets switched off, so the quiet case is pinned
+    too -- this is the one existing page that writes a default in exponent form.
+    """
+    root = _tree(tmp_path)
+    assert not any("detection_threshold" in f for f in stale_defaults(root))
 
 
 def test_control_orphaned_reading_is_detected(tmp_path):

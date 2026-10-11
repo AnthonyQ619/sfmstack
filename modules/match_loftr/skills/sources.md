@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchLoFTR
-module_version: 1.7.0
+module_version: 1.7.1
 curated_at: 2026-09-07
 ---
 

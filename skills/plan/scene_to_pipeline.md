@@ -825,13 +825,18 @@ Two corollaries worth stating, because both have cost runs:
    healthy. A *diffuse* highlight is the opposite problem — drift and dropout, no
    phantom geometry — and hunting for phantom points after a diffuse reading
    wastes the effort.
-6. **A detector-free matcher costs a tuning job two stages later.** No
-   `feature_index` means the tracker merges by proximity, and `merge_eps_px` is
-   specific to the matcher *and* the working resolution. Read `inconsistent_rate`
-   and `split_rate` together. Before spending runs on the eps, read the matcher's
-   own `cycle_split_rate`: it counts points already detected twice, which is a
-   detector result no tracker tolerance reaches, so it is the floor the eps cannot
-   get under.
+6. **A detector-free matcher costs you one of two things two stages later.** No
+   `feature_index`, so there are two routes and they cost differently. **Merge by
+   proximity:** the tracker does it, controlled by `merge_eps_px`, which is specific
+   to the matcher *and* the working resolution — a tuning job, and you read
+   `inconsistent_rate` and `split_rate` together to do it. **Or supply the identity:**
+   a transform consuming `pairwise_matches/v1` and producing it fills the index in, so
+   everything downstream merges by identity and needs no tolerance — a module instead
+   of a tuning job, and the only route a pairs-consuming reconstructor accepts at all.
+   Neither is free; pick by which cost you would rather carry.
+   *(The matcher's own `cycle_split_rate` is no help choosing: it is null for exactly
+   this matcher class, because the three-view test needs an identity to disagree about.
+   An earlier version of this trap sent readers to it.)*
 7. **`heavy_downscale` bites hardest where texture is already thin.** On a capture
    whose wanted surfaces carry only faint, fine-grained signal — a built interior
    of plain painted walls is the type case — an aggressive downscale destroys the
@@ -892,22 +897,23 @@ Two corollaries worth stating, because both have cost runs:
    the conversion at one end of its range.** `max_epipolar_error`,
    `ransac_threshold`, `merge_eps_px`, `max_reprojection_error` and the rest are
    all quoted in working-resolution pixels, but what the geometry downstream
-   receives is the pixel value over the focal length in those same pixels. Every
-   calibration in this corpus is a long lens — the rig and the site captures alike
-   sit in the low thousands of pixels — so a 1.0 px tolerance has only ever been
-   read here at roughly a third of a milliradian. A wide-angle camera, which is
-   most built interiors shot to fit the room in and most handheld indoor work,
-   carries a focal length of a few hundred pixels, and there the same 1.0 px is
-   several times that slack at an identical parameter value. **Read your own
-   calibration rather than these figures**: the conversion is one division, and a
+   receives is the pixel value over the focal length in those same pixels. **The
+   corpus spans 191 to 2900 working pixels** — a 15x range — so one pixel of
+   tolerance has been read here anywhere from 0.34 to 5.2 milliradians at an
+   identical parameter value. Rig orbits sit near 2900; site walks near 880; aerial
+   and room-rig captures at 438 and 191. **So the corpus does not fix the conversion
+   at one end of its range: it spans the range.** An earlier version of this trap
+   said every capture here was a long lens and quoted a single figure, which was
+   wrong and is the reason this one carries the span instead. **Read your own
+   calibration rather than any figure here**: the conversion is one division, and a
    focal length carried across from another capture is a threshold nobody fitted. Two
    consequences. **Do not scale the pixel number down to compensate** — keypoint
    localisation error is roughly constant in pixels and does not shrink with the
    frame, so a tolerance far below a pixel rejects sound correspondences at any
    resolution. **Do price a step upward in angle rather than in pixels** — the same
-   nominal step from 1.0 to 3.0 costs well under a milliradian on a long lens and
-   several on a wide one, so advice written on this corpus to "raise it one step"
-   is a materially larger move off it. And note which quantity tells you: not
+   nominal step costs well under a milliradian on a long lens and several on a wide
+   one, so advice to "raise it one step" is a materially larger move on some
+   captures than on others, inside this corpus as much as off it. And note which quantity tells you: not
    `downscale_factor`, which reads 1.000 on a capture that was never resized and
    can still be the wide-angle case, but the focal length in the calibration.
    **This is arithmetic over the corpus calibrations, not a sweep.** Nothing here

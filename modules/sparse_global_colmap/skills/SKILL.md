@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.1
+module_version: 1.4.3
 upstream: pycolmap 4.1.1 global mapping (GLOMAP)
 curated_at: 2026-08-10
 sources: 3
@@ -66,6 +66,6 @@ so a pycolmap consumer opens the model natively.
 
 ## Provenance
 
-Exercised across **8 runs at version 1.1.0** in the seventeen-capture sweep of two
+Exercised across **8 runs at version 1.1.0 and 48 at 1.4.1** in the seventeen-capture sweep of two
 benchmark families (`evidence/CORPUS.txt`); no capture outside them.
 Claim-by-claim citations: the `sources` skill.

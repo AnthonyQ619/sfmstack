@@ -21,6 +21,39 @@ about the modules comes from the written context, reached through the tool below
    end your turn to wait for one: nothing will wake you. A long step is waited for
    with `sfmx wait`, in the foreground, as often as it takes.
 
+## Comparing two runs — read this before you attribute a difference
+
+Two rules that are easy to get wrong and cost whole measurements when you do. They live
+here rather than in a module page because they are about **running a comparison**, not
+about any one artifact, and the `skills/` tree is organised by artifact.
+
+**A re-run is not a recompute.** An artifact id is derived from the recipe — module,
+version, parameters, inputs — so asking for the same recipe hands back the artifact
+some earlier run already produced, instantly, and its provenance still records THAT
+run's device, wall clock and duration. Read as yours, those fields are simply wrong. A
+reader once concluded from `device` that their job had been placed on a GPU they were
+told not to use; they had run nothing at all. **Check `cached` on your own run result
+before you believe a timing or a device.** To make something genuinely execute twice,
+change the store, not the recipe.
+
+**A difference may be the pipeline rather than the parameter.** Running one recipe twice
+does not always return the same model. On a long incremental chain two executions
+diverged at the pose stage and finished a fraction of a percent apart; where a learned
+prior estimates the poses, two runs of one configuration were measured **0.237 apart on
+the pose metric**. So before attributing any difference to a change you made:
+
+1. Pin what can be pinned. `num_threads: 1` on the one module that exposes it, and the
+   random seed wherever one is offered.
+2. Know the floor for the composition in hand. It is **zero** for a fully pinned
+   geometric chain and emphatically not zero where a learned prior is involved — and
+   it differs between the two such estimators, so it is a per-module number.
+3. Compare against that floor, not against zero. A difference smaller than the floor is
+   not a result.
+
+**And do not let a single run rank two configurations** where the floor is large. Repeat,
+or only act on differences much bigger than the floor. `skills/health/ladder.md` and
+`skills/health/smells.md` carry the measurements; this section carries the procedure.
+
 ## The tool
 
 `sfmx` is on your PATH, and your capture is already set in the environment:

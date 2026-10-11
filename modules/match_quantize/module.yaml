@@ -1,5 +1,5 @@
 name: MatchQuantize
-version: 1.0.0
+version: 1.0.1
 kind: matching
 summary: >
   Gives detector-free correspondences the keypoint identity they lack, by binning
@@ -35,7 +35,7 @@ description: |
   replacing it with a coordinate approximation is strictly worse, and this module
   refuses such an input rather than quietly degrading it.
 
-image: sfmstack/match-quantize:1.0.0
+image: sfmstack/match-quantize:1.0.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -68,9 +68,10 @@ params:
       decimals under every value tried.
 
       RAISE it when multiview_fraction is low -- that is the reading this parameter
-      exists to move. LOWER it only when cycle_merge_rate climbs, which is
-      over-merging: two scene points fused into one track, which corrupts geometry
-      rather than merely shortening a track.
+      exists to move. Do NOT lower it on cycle_merge_rate: that metric reads the
+      correspondence source rather than the outcome on this module's output, and
+      lowering the grid to chase it steers to the setting measured as worse. Lower
+      it on conflict_rate, which responds to this parameter.
 
       **Do not tune it on the track yield.** More multi-view tracks is NOT better
       pose accuracy and the two point in opposite directions on real captures --

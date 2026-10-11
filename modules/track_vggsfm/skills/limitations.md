@@ -6,6 +6,18 @@ curated_at: 2026-08-11
 
 # What FeatureTrackVGGSfM cannot do
 
+## It is the least reliable module measured here
+
+Over a campaign of roughly three hundred runs across nineteen modules, **sixteen never
+returned nothing at all.** This module returned nothing on **8 of 46** runs — about
+one in six, and the highest rate of the three modules that ever failed.
+
+That is worth knowing for a reason beyond this page: compositions built on a learned
+pose prior were reported as the unreliable choice, and **the estimators were not what
+failed** — this tracker was. It is a separate and swappable module, so the fallback
+belongs here rather than against the whole composition. `no_tracks` is the diagnostic
+and [tuning.md](tuning.md#nothing-survives) is where it routes.
+
 ## Coverage follows the query frames
 
 Nothing is tracked *to* a frame that no query frame can see. A capture that turns a

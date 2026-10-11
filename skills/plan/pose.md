@@ -9,6 +9,20 @@ being in this family at all.
 
 ### 1. Geometric or feed-forward
 
+**How much this axis matters is a property of the capture, and which end wins is not.**
+On a **rig orbit of a single object** competent choices here land within a few
+thousandths of each other, so the axis is nearly free. On **every other capture kind
+measured** — a walk around built structure, an aerial sequence, a rig carried through a
+room — the spread between the best and the median choice is two orders of magnitude
+larger, and the axis decides the outcome. The boundary is a single controlled subject
+against a traversal; reference calibration does not put a site walk on the easy side.
+**Which end wins there is not predictable from the scene:** one capture set had the
+learned prior taking every visual-inertial capture, a second had correspondence-based
+compositions taking the majority including the highest scores, and a third case had a
+correspondence-based global composition beating both priors outright. **Probe both on a
+visual-inertial capture; infer neither.** `plan/sparse.md` section 2b carries the same
+rule from the reconstruction side.
+
 **`PoseEssentialToPnP`** needs correspondences and calibration. It picks a seed
 pair, decomposes an essential matrix, and then registers images one at a time by
 PnP against the structure built so far.

@@ -403,6 +403,81 @@ duplication and the one place the design accepts it.
 
 ---
 
+## 6b. How a claim is RETIRED — the rule, because it was broken repeatedly
+
+A claim that stops being true is **revised or deleted. It is never annotated.** This is
+written down because the opposite was done several times in one session and each time it
+produced a page that said two things at once.
+
+**The failure form, which looks responsible and is not.** Leaving the old statement in
+place and marking it: *"Superseded 2026-10-11, see the newer report."* It reads as an
+audit trail. What it actually does is put two answers in front of a reader who has no way
+to tell which is live, and the one they act on is whichever they read first. A date stamp
+is not a disambiguator — nothing in the retrieval path sorts by it, and a reader asking
+"what is `max_epipolar_error`" does not want a history.
+
+**The rule, in three parts.**
+
+1. **Delete the stale value.** Not strike it through, not footnote it, not keep it "for
+   comparison". If a number is no longer the answer, no reader should be able to quote it.
+2. **Keep the harm, if there was one.** A correction earns prose only when following the
+   old claim cost something, and then what is written is the LESSON, not the claim. Two
+   examples already in the tree, and they are the model:
+   `plan/tracking.md` keeps *"take the bands from the module manifest and never from a
+   guide"* and records that a reader followed stale prose toward a backtrack the manifest
+   forbids — without reprinting the old ceiling. `pose_incremental/tuning.md` says the
+   numbers *"described a chain that no longer existed"* and replaces them with
+   *"read for shape"* — without reprinting the numbers.
+3. **Name what not to believe only when it is re-derivable.** `judge/swap_or_build.md`
+   quotes a withdrawn claim verbatim under **WITHDRAWN** because a reader meeting the same
+   seventeen captures would otherwise derive it again, and the six counter-examples are
+   the reason not to. That is the ONLY case for quoting a dead claim: it is a guard, not a
+   record.
+
+**Which experiments a claim may cite.** The most recent measurement that bears on it, and
+nothing else. **A superseded result is not supporting evidence and is not a second
+opinion** — if a re-run exists, the re-run is the citation, and the earlier one is not
+mentioned. Two campaigns measuring the same thing differently is a finding and gets
+written as one; two campaigns where the second replaced the first is one citation. The
+point of re-running an experiment is to replace an answer, and a page that cites both has
+thrown that away.
+
+**Where the old record lives.** In the experiment tree, which no retrieval call reaches.
+That is the audit trail, and it is enough. The context is what an agent acts on, so it
+carries one answer per question.
+
+## 6c. Where a citation may point, and when the evidence file gets written
+
+**A citation in the context resolves inside this repository, or it is not a citation.**
+The evidence tier exists for this: a campaign's raw per-capture tables live in
+`skills/evidence/`, registered both ways in `EVIDENCE.md`, so a claim anywhere in the
+tree can be followed to the measurement behind it by a call the reader already has.
+
+**A path outside the repository cannot be followed by anything in the loop.**
+`sfm_workflow_skill` searches the skills tree, the repository root and `docs/`. An
+absolute path, or one under `~`, is dead on arrival — and that is worse than no
+citation, because it implies evidence a reader cannot examine. Readers have said so in
+writing about a different dead citation already.
+
+**Three exceptions, each of which states its own reason in the same sentence.** A
+pointer whose purpose is to say something is *deliberately* out of reach, as the dense
+holdout rows are. A dataset path, which is input rather than result. And the frozen
+predecessor harness, which is history rather than evidence. Nothing else.
+
+**And the sequencing rule, which is the part that was broken.** A campaign whose findings
+enter the context gets its evidence file **before** the guidance that rests on it, not
+after. The reason is not bookkeeping: writing the per-capture table is what forces the
+denominator into the open, and on the first occasion this was done properly it
+immediately falsified the guidance claim it was meant to support — a margin finding had
+grouped two capture kinds whose medians differ by 134x, and nothing but the table would
+have shown it. Four applied claims sat in that state for a whole editing window.
+
+**A corollary for which experiments may be cited.** The most recent measurement that
+bears on the claim, and nothing else. A superseded result is not supporting evidence and
+is not a second opinion; if a re-run exists, the re-run is the citation. Two campaigns
+that measured the same thing and disagree are a finding and get written as one; two
+where the second replaced the first are one citation.
+
 ## 7. What is not done
 
 Listed by how much it undermines the claims above.

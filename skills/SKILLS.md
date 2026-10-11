@@ -56,8 +56,8 @@ one) has not been asked for; the two modules' own `SKILL.md` files carry it.
   conclusion drawn from them was not.
 - **[bounce.md](health/bounce.md)** — when an unhealthy model means BUILD: the
   weakest rung of the health profile, low and immobile across the swaps and sweeps
-  already tried. Hands off to `judge/swap_or_build` §BUILD. *Skeleton until the
-  reference campaign runs.*
+  already tried. Hands off to `judge/swap_or_build` §BUILD. *Rungs 1 and 2 are live
+  against the reference corpus; rung 3 is still a judgement you make by looking.*
 
 > judge/ and health/ are human-authored, subjective, authoritative but
 > non-binding. Say when you depart from one. Distillation may *propose* edits

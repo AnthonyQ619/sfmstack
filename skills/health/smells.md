@@ -209,6 +209,15 @@ bit-identical detection, matching and tracking, and then diverged at the pose
 stage, ending a fraction of a percent apart in point count. Other captures on
 the same chain reproduced exactly.
 
+**A second magnitude, two orders larger, at a different stage.** The figure above is a
+long incremental chain. Where a **learned prior** estimates the poses, two runs of one
+configuration on one capture were measured **0.237 apart on the pose metric** (0.574 to
+0.337). That is not a fraction of a percent and it is not the same mechanism. Two
+consequences: **ranking two configurations from single runs is unsafe wherever a learned
+prior estimates the poses**, and the two estimators available differ from each other
+here — one's forced repeat is bit-identical — so this is a property of the module
+and not of the family. Pin what can be pinned, and repeat what cannot.
+
 **The mechanism, because it predicts where else to look:** the divergence came
 from a multithreaded solver inside the registration loop. The same residuals
 summed in a different order across threads differ in the last bits, and an

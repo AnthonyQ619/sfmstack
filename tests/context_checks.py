@@ -172,6 +172,56 @@ def ghost_bands(root: Path) -> list[str]:
     return bad
 
 
+def stale_defaults(root: Path) -> list[str]:
+    """Prose that states a parameter's default agrees with the manifest.
+
+    Written because a measured default was moved and the pages that quote it were
+    updated by hand: `max_epipolar_error` went from 1.0 to 2.0 and five passages now
+    assert the new number. Nothing checked that they still matched the manifest, so a
+    later change to the default would leave the guidance confidently wrong about the
+    value a reader is about to accept -- the same staleness class as a retired band
+    orphaning its reading, and the one defect kind this family did not yet cover.
+
+    Only the explicit form is matched, "`param` is 2.0" or "its 2.0 default" or
+    "`param` default 2.0", because that is prose committing to a number. A passage
+    naming a value to tune TOWARD is not a claim about the default and is left alone.
+    """
+    bad = []
+    for y in _modules(root):
+        spec = yaml.safe_load(y.read_text()) or {}
+        params = spec.get("params") or {}
+        pages = list((y.parent / "skills").glob("*.md"))
+        for name, meta in params.items():
+            if not isinstance(meta, dict) or "default" not in meta:
+                continue
+            d = meta["default"]
+            if not isinstance(d, (int, float)) or isinstance(d, bool):
+                continue
+            forms = [
+                rf"`{re.escape(name)}`\s+is\s+(\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\b",
+                rf"`{re.escape(name)}`\s+default\s+(\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\b",
+                rf"its\s+(\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\s+default\b[^\n]{{0,40}}`?{re.escape(name)}`?",
+                rf"`{re.escape(name)}`[^\n]{{0,30}}?\bdefault\b[^\n]{{0,20}}?(\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)",
+            ]
+            for page in pages:
+                text = page.read_text()
+                for pat in forms:
+                    for hit in re.finditer(pat, text):
+                        tok = hit.group(1)
+                        # A number followed by an exponent marker was matched short
+                        # -- "5" out of "5e-4" -- which is a false positive, and was
+                        # one before this guard existed.
+                        if text[hit.end(1):hit.end(1) + 1] in ("e", "E"):
+                            continue
+                        claimed = float(tok)
+                        if abs(claimed - float(d)) > 1e-9:
+                            bad.append(
+                                f"{y.parent.name}/{page.name}: prose says "
+                                f"{name} default {hit.group(1)}, manifest says {d} "
+                                f"('{hit.group(0).strip()[:60]}')")
+    return bad
+
+
 def dead_citations(root: Path) -> list[str]:
     """Every [Sn] in a module's skills resolves to a row in that module's sources.md.
 
@@ -286,6 +336,7 @@ ALL_CHECKS = {
     "dead_anchor_links": dead_anchor_links,
     "orphaned_readings": orphaned_readings,
     "ghost_bands": ghost_bands,
+    "stale_defaults": stale_defaults,
     "dead_citations": dead_citations,
     "campaign_registration": campaign_registration,
     "provenance_without_config": provenance_without_config,

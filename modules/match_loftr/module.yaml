@@ -1,5 +1,5 @@
 name: FeatureMatchLoFTR
-version: 1.7.0
+version: 1.7.1
 kind: matching
 summary: >
   Detector-free semi-dense matching straight from images. No keypoint detection
@@ -24,7 +24,7 @@ description: |
   `setting` selects between two separately trained models. Indoor and outdoor are
   not interchangeable and picking the wrong one is a common cause of thin matches.
 
-image: sfmstack/match-loftr:1.7.0
+image: sfmstack/match-loftr:1.7.1
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -60,6 +60,10 @@ params:
     tuning: >
       LoFTR is the most expensive matcher here per pair. `exhaustive` on more than
       ~15 images is a serious cost; raise `window` first.
+      `sequential` is a cost choice with a correctness consequence: pairs outside
+      the window are never proposed, so a loop closure the capture contains
+      cannot be recovered by anything downstream. Read `graph_components`
+      before accepting it.
 
   window:
     type: integer

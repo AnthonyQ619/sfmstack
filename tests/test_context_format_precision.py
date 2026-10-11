@@ -79,6 +79,7 @@ PROVENANCE_LABELS = {
     "match_quantize S7":          (False, False),  # He et al., CVPR 2024
     "match_quantize S8":          (False, False),  # classical practice
     "match_quantize S9":          (True,  True),   # grid A/B at 1.0.0, grid_px named
+    "match_quantize S10":         (True,  True),   # 24 captures x 2 sources at 1.0.0, grid named
 }
 
 # Prose that correctly states a metric carries no band. None of it is a ghost band, and

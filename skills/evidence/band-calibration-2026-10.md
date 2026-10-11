@@ -128,3 +128,18 @@ Precision is measured against a *sparse* delivery metric on twenty captures. A b
 predicts dense failure, or a band whose job is to inform a parameter rather than to judge a
 model, scores badly here and may still be doing work — `SceneMotion.large_rotation_risk`
 fires at 17% precision and is read by a tuning section and two plan files.
+
+## Added after the census: the match transform's bands, 2026-10-11
+
+Six bands arrived with a module that did not exist when the census above ran, so they
+are outside its counts. One has a denominator already, from a forty-eight-run corpus
+measurement:
+
+| band | observed | fired |
+| --- | --- | --- |
+| `multiview_fraction` floor 0.05 | minimum **0.093** over 48 runs, median 0.377 | **never** |
+
+The other five are unmeasured here. Four of the six were set as structural arguments and
+two as chosen thresholds, which the module's own page states — so a never-firing floor
+is the expected result for a structural band and not evidence against it. Recorded to
+keep `health/bands.md`'s counts honest about their scope.

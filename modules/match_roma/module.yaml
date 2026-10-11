@@ -1,5 +1,5 @@
 name: FeatureMatchRoMa
-version: 1.6.0
+version: 1.6.1
 kind: matching
 summary: >
   RoMa: dense warp plus per-pixel certainty from a DINOv2 backbone, sampled into
@@ -34,7 +34,7 @@ description: |
   planarity — is shared with the other matchers, so all six differ in exactly one
   stage.
 
-image: sfmstack/match-roma:1.6.0
+image: sfmstack/match-roma:1.6.1
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -113,7 +113,9 @@ params:
       Cost is per pair and each pair is a full dense forward pass, so `exhaustive`
       is far more expensive here than for any sparse matcher. On more than ~10
       images it is rarely the right call; raise `window` instead and read
-      graph_components.
+      graph_components — and read it as a correctness check, not a cost one: pairs
+      outside the window are never proposed, so a loop closure the capture contains
+      cannot be recovered by anything downstream.
 
   window:
     type: integer

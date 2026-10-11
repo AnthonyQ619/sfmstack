@@ -1,6 +1,6 @@
 ---
 module: MatchQuantize
-module_version: 1.0.0
+module_version: 1.0.1
 curated_at: 2026-10-10
 ---
 
@@ -36,8 +36,15 @@ get rather than a proxy for it.
 
 The three-view test needs keypoint identity to have something to disagree about, so a
 detector-free matcher reports it null. **Supplying that identity is this module's whole
-job, which makes the metric the input could not report the one that measures whether
-the job was done safely.**
+job, which is why the metric the input could not report becomes available here.**
+
+**What it turned out to measure is not what that sentence first promised.** Across
+twenty-four captures per correspondence source at one fixed grid, the two sources occupy
+**disjoint ranges** — 0.222-0.478 against 0.699-0.903 — and the rate against pose
+accuracy correlates at **r = +0.142 over forty-eight paired readings** [S10]. So it
+identifies the matcher, not the safety of the merge. `conflict_rate` is the reading that
+responds to `grid_px`; `tuning.md` carries the full correction and why it had to be made
+twice.
 
 **Do not read it as an over-merge alarm on this module's output** — that was this
 page's first reading of it and the measurement contradicts it [S9]. On one capture at

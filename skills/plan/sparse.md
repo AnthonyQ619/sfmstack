@@ -47,6 +47,78 @@ that consumes `pairwise_matches/v1` and produces `pairwise_matches/v1`, filling 
 index in. Check the field before choosing this route; the refusal is immediate and
 says the same thing.
 
+**On a visual-inertial capture, which route you choose can matter more than anything
+else in the composition.** Measured on two such captures with two different
+correspondence sources: the global route beat the incremental one by **+0.196 and
++0.266** with one source, and **+0.318 and +0.641** with the other — the same two
+captures, the same direction, both times. On every benchmark capture measured the same
+comparison was a tie. Two captures, so read this as a reason to TRY the global route on
+a visual-inertial capture, not as a rule about which wins.
+
+**The route is not equally safe for every correspondence source.** Against its own
+incremental counterpart, one source tied on three quarters of the captures measured and
+lost materially on a sixth of them; the other tied on under two thirds and lost
+materially on nearly a third, with a worst case that took a capture reading 0.974 down
+to 0.227. One such collapse has been reproduced in two separate campaigns at two
+different tolerances and is **unexplained**. So run the paired comparison against the
+same source’s incremental composition rather than assuming parity—and if you only
+have budget for one reading, that is the one to spend it on.
+
+### 2b. How much your module choices matter is a property of the capture
+
+**The scene tells you how much your choices matter — not which modules to pick.**
+
+On a **rig orbit of a single object** — a turntable or arm sweep, one subject,
+controlled lighting — competent compositions land within a few thousandths of each
+other. Whatever you assemble, if the modules suit the capture at all, the result is the
+same. **Spend your effort on getting a composition that runs, not on choosing between
+them.**
+
+On **everything else measured** — a walk around built structure, an aerial sequence, a
+rig carried through a room on fisheye lenses — the gap between the best and the median
+composition is **two orders of magnitude larger**, and the choices decide the outcome.
+The boundary is a single controlled subject against a traversal, and it is **not**
+benchmark against visual-inertial: site walks with reference calibration sit with the
+traversals, not with the orbits.
+
+**And the live decision there is a capability question, not a module-list question:**
+whether to recover structure by ray intersection from correspondences, or to infer it
+from a learned prior
+(`sfm_find_alternatives(produces='sparse_model/v1', not_consuming='poses/v1')`).
+**Which of the two wins is not predictable from the scene.** On one capture set the
+prior-based route took every visual-inertial capture; on a second, correspondence-based
+compositions took the majority including the highest scores. A later measurement added a
+third case: on one room-rig capture a correspondence-based **global** composition beat
+both prior-based estimators outright. **Probe both; do not infer one from the scene
+kind.**
+
+### 2c. Reliability belongs to a module and its input
+
+Measured over **nineteen modules and roughly three hundred runs**, counting only the
+input each module accepts:
+
+| module | returned nothing |
+| --- | --- |
+| `FeatureTrackVGGSfM` | **8 of 46** — roughly one run in six |
+| `SparseGlobalCOLMAP` | **8 of 140** |
+| `PoseEssentialToPnP` | **3 of 92** — only on captures no composition reconstructs |
+
+**Sixteen never returned nothing** — every detector, every matcher, `FeatureTrackUnionFind`,
+triangulation, bundle adjustment, the match transform, and **both learned-prior
+estimators**. A learned prior
+is not the unreliable choice: those estimators did not fail. Where that composition
+failed, what failed was a **tracker** — `FeatureTrackVGGSfM`, a separate and swappable
+module, and the least reliable one measured. The other tracker never failed, so "tracker"
+is not the risk; that one is.
+
+**The input matters more than the capture.** The global reconstructor's rate above is
+on correspondences it accepts; given correspondences that carry no keypoint index it
+returned nothing on *every* run, which is why it now refuses those before solving and
+names what repairs them.
+
+**So when a module returns nothing, ask what it was fed before reaching for a different
+module** — and plan the fallback around the module, not around the composition.
+
 ### 3. A learned prior carries a scale, and it must be measured
 
 A model's depth is in the model's unit; the poses are in theirs. One scalar relates

@@ -5,10 +5,14 @@ true depends on what the metric measures, and **four kinds of metric answer to d
 rules.** Reading a firing band without knowing its kind is how a capture comes to show
 thirteen alarms on its best possible outcome.
 
-Measured across every capture in every batch on disk: **ten bands fire on more than
+Measured across every capture in every batch on disk, **over the band population as it
+stood when the census ran**: **ten bands fire on more than
 seven readings in ten, and every one of them is at or below the base rate for a poor
 delivery.** They are not cautious; they are carrying no information. Twenty-nine more
-have never fired once. The evidence is in
+have never fired once. **Bands added since are not in those counts** — a module
+declaring new ones does not make the census wrong, it makes it incomplete, so check the
+calibration file before quoting a figure as though it covered everything. The evidence
+is in
 [`evidence/band-calibration-2026-10.md`](../evidence/band-calibration-2026-10.md).
 
 ## The four kinds

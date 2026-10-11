@@ -59,3 +59,24 @@
 # sparse model is sound and whose dense result still fails, on coverage alone.
 # See evidence/dense-saturated-2026-10.md.
 /tanks_and_temples/Meetingroom
+
+# Promoted 2026-10-11 to carry the capability-choice reading in plan/sparse.md
+# section 2b and plan/pose.md axis 1 — that on a visual-inertial capture the module
+# choices decide the outcome while WHICH capability wins is not predictable from the
+# scene. That claim's visual-inertial half contradicts what the benchmark captures
+# alone say, so its content comes entirely from these four and cannot rest on
+# anything already listed above.
+#
+# No prose in plan/ names them: the guidance tiers are scene-name-free by standing
+# rule and these entries record DERIVATION, not wording. A reading measured on one of
+# them is recall, not confirmation, which is what membership here means.
+/euroc/MH_03_medium
+/euroc/MH_04_difficult
+/euroc/V1_02_medium
+/tum_vi/room2
+
+# Promoted 2026-10-11 to carry the module-reliability reading in plan/sparse.md
+# section 2c — the third of the three modules that can return nothing, and the only
+# capture behind that claim where modules actually fail rather than merely scoring
+# poorly.
+/advio/advio-12

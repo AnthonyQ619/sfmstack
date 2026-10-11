@@ -106,7 +106,7 @@ The branch for each capture was selected on registration first and the accountin
 
 ## What the leg names mean
 
-**A leg is one end-to-end pipeline attempt on one capture.** Several were tried per capture and compared, so each needed a short label for the tables above. That label is all a leg name is: bookkeeping for this record. Nothing in the orchestrator, the module system or the skills tier reads one, and leg names appear nowhere outside this file.
+**A leg is one end-to-end pipeline attempt on one capture.** Several were tried per capture and compared, so each needed a short label for the tables above. That label is all a leg name is: bookkeeping for this record. Nothing in the orchestrator, the module system or the skills tier reads one. Several later campaign files reuse the label for their own tables — it is a convention of this record and of the ones that cite it, never an object the stack knows about.
 
 The 18 names below are built from the chain itself, in the order that decides a plan:
 

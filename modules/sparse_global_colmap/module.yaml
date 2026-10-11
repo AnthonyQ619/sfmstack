@@ -1,5 +1,5 @@
 name: SparseGlobalCOLMAP
-version: 1.4.1
+version: 1.4.3
 kind: sparse
 summary: >
   GLOMAP-style global reconstruction: rotation averaging, global positioning,
@@ -30,7 +30,7 @@ description: |
   in the wrong place the diagnosis is in the view graph rather than in this
   module. Read the matcher's `graph_components` and `inlier_ratio` first.
 
-image: sfmstack/sparse-global-colmap:1.4.1
+image: sfmstack/sparse-global-colmap:1.4.3
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -87,15 +87,29 @@ params:
 
   max_epipolar_error:
     type: number
-    default: 1.0
+    default: 2.0
     minimum: 0.1
     maximum: 20.0
     description: Inlier threshold for two-view verification, in working-resolution pixels.
     tuning: >
-      In pixels of the WORKING resolution, so scale it with the scene's resize.
-      Tighter than a matcher's usual RANSAC threshold because this verification is
-      what the whole global solve trusts. Raise toward 4 on a heavily downscaled
-      scene where `verified_pairs` is far below `pairs_matched`.
+      **This is the dial worth probing, and no value is the optimum.** Measured
+      across twelve captures at 1.0 against 2.0: 2.0 was materially better on three,
+      1.0 was materially better on three, six were ties, and the median difference
+      was +0.004. There is no winner, and NOTHING measured predicts the direction --
+      not the focal length, which was the obvious candidate and was tested and
+      falsified. 2.0 is the default because it has to be something.
+      What IS established is that this dial moves the result more than any other
+      single parameter in this module: more than 0.1 on five of those twelve
+      captures, and up to +0.465 and -0.291 in opposite directions. So **probe it
+      rather than set it** -- one run at 1.0 and one at 2.0 on the capture in hand,
+      with num_threads pinned, costs two solves and is worth more than any argument
+      from this note. Read the result, keep the winner, and do not carry it to
+      another capture.
+      In pixels of the WORKING resolution, so it scales with the scene's resize --
+      and the angle the geometry receives is this over the focal length in the same
+      pixels, which across this corpus alone ranges from 0.69 to 10.5 milliradians
+      at an identical parameter value. Going above 2.0 belongs to one case only, in
+      tuning.md: a solve with no verified pairs at all.
 
   min_inlier_ratio:
     type: number
@@ -180,6 +194,15 @@ params:
     minimum: -1
     maximum: 256
     description: CPU threads. -1 uses all of them.
+    tuning: >
+      A cost choice with a reproducibility consequence, and this is the only
+      thread count in the registry. The default -1 uses every core and makes the
+      solve NON-REPRODUCIBLE: two runs of one configuration on one input can
+      return different models, because the order threads reduce in is not fixed.
+      **Pin `num_threads: 1` whenever a reading will be compared against another**
+      -- a sweep, an A/B, a re-measurement, anything where a difference will be
+      attributed to a parameter. Leave it at -1 for a single delivery where
+      nothing will be compared to it.
 
   random_seed:
     type: integer

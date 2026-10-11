@@ -1,5 +1,5 @@
 name: FeatureMatchFLANN
-version: 1.6.0
+version: 1.6.1
 kind: matching
 summary: >
   Approximate nearest-neighbour descriptor matching via FLANN, with the same
@@ -30,7 +30,7 @@ description: |
   Binary descriptors (ORB) use an LSH index rather than a KD-tree, which is
   selected automatically from the features artifact's `binary` flag.
 
-image: sfmstack/match-flann:1.6.0
+image: sfmstack/match-flann:1.6.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -54,6 +54,10 @@ params:
     tuning: >
       Same meaning as in FeatureMatchNN. `exhaustive` is where this module earns
       its place -- the pair count is quadratic and the per-pair saving compounds.
+      `sequential` is a cost choice with a correctness consequence: pairs outside
+      the window are never proposed, so a loop closure the capture contains
+      cannot be recovered by anything downstream. Read `graph_components`
+      before accepting it.
 
   window:
     type: integer

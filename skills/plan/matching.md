@@ -522,9 +522,13 @@ matcher, and it costs a tracker run rather than nothing.
 **A route to the reading does exist, and it costs a stage.** A transform that fills
 `feature_index` in — a module consuming `pairwise_matches/v1` and producing it — gives
 the three-view test something to disagree about, and both rates become measurable on
-its output. Read them against that module's own page before acting on them: they
-belong to its tolerance rather than to the matcher, and that page records what they
-do and do not predict. The tracker's `inconsistent_rate` is still the cheaper reading
+its output. **Read them as a property of the correspondence SOURCE, and do not read
+them as a forecast.** Measured at one fixed tolerance across twenty-four captures per
+source, the two sources occupy **disjoint ranges** on the merge rate — neither
+overlaps the other at all — while the rate against pose accuracy correlates at
+**r = +0.142 over forty-eight paired readings**. It also moves with the transform's own
+tolerance, so a value is only comparable against another at the same setting. The
+transform's page carries the ranges and what they do not predict. The tracker's `inconsistent_rate` is still the cheaper reading
 when the matcher is what you are asking about.
 
 **Read the SUM of the two when you are asking what the tracker will report, and

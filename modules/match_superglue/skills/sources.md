@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchSuperGlue
-module_version: 1.6.0
+module_version: 1.6.1
 curated_at: 2026-09-07
 ---
 

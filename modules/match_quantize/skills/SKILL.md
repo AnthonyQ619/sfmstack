@@ -1,6 +1,6 @@
 ---
 module: MatchQuantize
-module_version: 1.0.0
+module_version: 1.0.1
 upstream: none -- numpy and opencv only
 curated_at: 2026-10-10
 ---

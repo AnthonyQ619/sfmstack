@@ -25,6 +25,19 @@ find(consumes="poses/v1", produces="sparse_model/v1")
 
 `SparseTriangulation` at defaults is a few seconds and gives a real number.
 
+## Two runs of one configuration can differ, and by a lot
+
+**Measured: 0.237 apart on the pose metric** (0.574 to 0.337) on one capture, from two
+executions of an identical recipe in separate stores, so both genuinely ran. That is two
+orders of magnitude larger than the divergence a long incremental chain shows, and it is
+at a different stage.
+
+**This is not a property of learned estimators as a class.** The sibling estimator's
+forced repeat on the same capture was **bit-identical**. So guidance that treats
+"feed-forward" as one class is wrong on exactly this point, and the practical rule is
+narrow: **do not rank two configurations from single runs of THIS module.** Repeat, or
+compare only differences far larger than this.
+
 ## Accuracy is initialisation-grade
 
 Measured on 12 DTU frames with identical SIFT tracks: 1.05 px against the

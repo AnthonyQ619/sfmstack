@@ -13,6 +13,18 @@ error on your scene. They are a starting point and a second opinion. **They are 
 a deliverable.** If the comparison says to take the feed-forward path, take the
 whole branch — the poses on their own are not the remedy.
 
+## Its repeat is bit-identical, and the sibling's is not
+
+Measured on one capture: a forced repeat of an identical recipe returned a
+**bit-identical** result here, while the other learned estimator moved **0.237 on the
+pose metric** between two runs of its own identical recipe. Worth stating because the
+reverse is assumed — that a learned forward pass is the non-reproducible part of a
+pipeline. On this module it is the reproducible part.
+
+Do not generalise it to the family, and do not generalise it from one capture: what it
+licenses is comparing two configurations of THIS module from single runs, which the
+sibling does not license.
+
 ## Two learned estimators can be wrong together
 
 This is the failure mode that limits the whole design, and it is worth stating

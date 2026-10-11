@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.1
+module_version: 1.4.3
 curated_at: 2026-08-10
 ---
 
@@ -37,14 +37,50 @@ For contrast, the incremental chain on the same input needs
 cloud roughly half the size — it triangulates only tracks reaching
 `min_track_len` views, where the incremental path keeps two-view points.
 
+## `max_epipolar_error` is the dial worth probing, and no value is the optimum
+
+**Measured, twelve captures, 1.0 against 2.0 with threads pinned:** 2.0 materially
+better on **three**, 1.0 materially better on **three**, **six** ties, median difference
+**+0.004**. There is no winner. 2.0 is the default because a default has to be
+something.
+
+**Nothing measured predicts the direction.** The obvious candidate was the focal length
+— the threshold is pixels and the geometry receives an angle, so a short lens should
+make the same value looser. It was tested across 191 to 2900 working pixels and
+**falsified**: median difference +0.001 above 800 px and +0.004 below, and 2.0 won at
+both 2900 and 438 px while 1.0 won at both 884 and 191 px.
+
+**What IS established is that this dial matters more than any other here.** It moved the
+result by more than 0.1 on five of those twelve captures, and by **+0.465** and
+**–0.291** in opposite directions on two of them. So:
+
+> **Probe it; do not set it.** One solve at 1.0 and one at 2.0 on the capture in hand,
+> with `num_threads: 1`, and keep the winner. Two solves is cheap against a swing that
+> size. **Do not carry the winner to another capture** — nothing in this campaign
+> transferred.
+
+**One earlier claim retracted here.** A three-capture sweep read 2.0 as the optimum and
+this page said so. Re-measured on twelve with threads pinned, one of those three
+reverses, and the reversal is on the arm that was not reproducible: the 1.0 reading
+repeated exactly and the 2.0 reading did not. Unpinned multithreading was separately
+measured moving a result by up to 0.237 on this stack, which is enough to account for
+it. **Pin the threads before you read this dial at all.**
+
+**Two dials this page's prose used to emphasise more paid less.** They moved the result
+only in combination with this one, or on the hardest capture alone. **And defaults won
+outright on a third of the captures measured — tuning is not the default move.**
+
 ## What `max_epipolar_error` actually admits
 
 The parameter is in working-resolution pixels, but rotation averaging receives the
 angle those pixels subtend — the threshold over the focal length in the same pixels.
-Every capture behind the numbers on this page is a long lens, so the 1.0 px default
-has only ever been read here at about a third of a milliradian; on a wide-angle
-camera it is several times that at the identical value, and a step upward costs
-correspondingly more. `plan/scene_to_pipeline.md` trap 11 carries the conversion,
+**This corpus spans 191 to 2900 working pixels**, so the 2.0 px default has been read
+here anywhere from **0.69 to 10.5 milliradians** at an identical parameter value, a
+15x range. An earlier version of this paragraph said every capture here was a long lens
+and fixed the conversion near a third of a milliradian; that was wrong, and three of the
+five capture families sit below 1200 px. **Read your own calibration** — the
+conversion is one division, and it is the only way to know what you are actually
+setting. `plan/scene_to_pipeline.md` trap 11 carries the conversion,
 both directions of the trade, and what rests on arithmetic rather than measurement.
 The thinning diagnostic below now reports the figure for the scene in hand.
 
@@ -53,9 +89,12 @@ The thinning diagnostic below now reports the figure for the scene in hand.
 Nothing entered the view graph, so there was nothing to average. In order:
 
 1. **`max_epipolar_error` is in WORKING-resolution pixels.** This is the usual
-   cause. 1.0 px is tight; on a scene downscaled to `max_edge: 640` real
-   correspondences land further off the epipolar line than that. Try 2–4, and read
-   the section above first for what that costs at this scene's focal length.
+   cause, and **this is the one place raising it above the 2.0 default is right** —
+   a rescue for a solve that has no pairs at all, not an optimisation of one that
+   works. On a scene downscaled to `max_edge: 640`, or a wide-angle capture, real
+   correspondences land further off the epipolar line than 2.0 admits. Try 3–4 HERE
+   and nowhere else, read the section above for what that costs at this scene's focal
+   length, and drop back to 2.0 once pairs verify.
 2. **`min_num_matches` (30) against the matcher's `min_matches_per_pair`.** If the
    matcher's weakest pair is below 30, those pairs never reach verification.
 3. **`min_inlier_ratio` (0.25)** last. Lower it only when the matcher's own
@@ -68,11 +107,13 @@ this is no artifact at all. Measured on two corpus captures at short frame loads
 run failed in **under fifteen seconds** — fast enough that the first instinct is to
 blame the harness, and on both occasions that instinct was wrong.
 
-Short loads are the common factor worth checking first. Rotation averaging needs the
-view graph to be rigid, and a dozen frames of a capture that was shot as hundreds can
-leave it connected but under-constrained, which is a different failure from the pairs
-never arriving. Read `verified_pairs` to tell the two apart: pairs present and no
-model is this case, pairs absent is the section above.
+Short loads were the common factor in both, and they are worth checking — but **do
+not read the frame count as the cause.** The one empty solve since measured in detail
+had rotation averaging finish in **0.0015 s with every image oriented**, which is the
+opposite of an under-constrained average, and its cause was the input rather than the
+frame count. So read `verified_pairs` to separate "pairs present and no model" from
+"pairs absent" (the section above), and treat a short load as a correlate rather than
+an explanation until someone captures a payload that settles it.
 
 The mechanism of the refusal is **not recorded** for either capture, and the job
 records did not survive. Treat the frame count as the lead, not as the cause, and if
@@ -115,10 +156,15 @@ two cases below it is not. Settle which case you are in before loosening anythin
   rather than assuming it, and if the model does not move, treat this as the shape
   with no parameter behind it: the damage was done in the matcher, and no setting
   in this module recovers a view graph whose wrong pairs outnumber its right ones.
-- **A heavily downscaled scene.** Raise `max_epipolar_error`.
+- **A heavily downscaled scene.** Raise `max_epipolar_error` above its 2.0 default,
+  which is the one case where the direction is not an open question: with no pairs
+  verifying there is no solve to optimise.
 - **`inlier_ratio` healthy and `planarity` low, yet pairs still dropped.** Raise
-  `max_epipolar_error` one step and watch `mean_reprojection_error`: if error
-  stays flat while `verified_pairs` rises, the threshold was too tight.
+  `max_epipolar_error` one step from 2.0 and watch `mean_reprojection_error`: if
+  error stays flat while `verified_pairs` rises, the threshold was too tight for
+  this capture. If error rises with it, put it back. **This per-capture reading is
+  the only evidence worth acting on here** — no value of this dial was measured as
+  generally better, so the capture in front of you decides it.
 
 ## `registered_fraction` below 1.0
 

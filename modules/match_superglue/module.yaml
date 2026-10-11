@@ -1,5 +1,5 @@
 name: FeatureMatchSuperGlue
-version: 1.6.0
+version: 1.6.1
 kind: matching
 summary: >
   SuperGlue: attentional GNN over both keypoint sets plus a Sinkhorn optimal
@@ -32,7 +32,7 @@ description: |
   redistribution, so the base image clones them from upstream at build time. The
   predecessor kept a copy of both in its tree.
 
-image: sfmstack/match-superglue:1.6.0
+image: sfmstack/match-superglue:1.6.1
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -109,6 +109,10 @@ params:
       forward pass per pair rather than a descriptor comparison, so the step from
       sequential to exhaustive is far more expensive than it is for FeatureMatchNN.
       Raise `window` first.
+      `sequential` is a cost choice with a correctness consequence: pairs outside
+      the window are never proposed, so a loop closure the capture contains
+      cannot be recovered by anything downstream. Read `graph_components`
+      before accepting it.
 
   window:
     type: integer
