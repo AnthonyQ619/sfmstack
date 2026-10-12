@@ -1812,11 +1812,29 @@ class SfmService:
         # A citation a reader cannot follow is worse than no citation: it implies
         # evidence that cannot be examined.
         parent = root.parent
-        candidates += [parent / topic, parent / f"{topic}.md",
-                       parent / "docs" / f"{topic}.md",
+        candidates += [parent / "docs" / f"{topic}.md",
                        parent / "docs" / "design" / f"{topic}.md"]
+        if topic.startswith(("docs/", "modules/")):
+            # Typed with its directory, as the context's own links spell it.
+            candidates += [parent / topic, parent / f"{topic}.md"]
+        # What this call may serve is bounded, and the bound is the point: the
+        # context an agent plans from is `skills/`, the design documents under
+        # `docs/`, and the module pages -- Markdown, all of it. Before this bound
+        # existed the search list held `parent / topic`, so a topic spelled as any
+        # repository path returned that file: adapter source, this service, the
+        # test checkers. No agent ever asked for one (every context read is
+        # logged, and none did), but a strict-context experiment cannot rest on
+        # nobody having tried. Resolution is unchanged; only what it will hand
+        # back is checked, and a hit outside the bound falls through to the same
+        # not-found error as a typo.
+        served = (root.resolve(), (parent / "docs").resolve(),
+                  (parent / "modules").resolve())
         for path in candidates:
             if path.is_file():
+                real = path.resolve()
+                if real.suffix != ".md" or not any(
+                        real.is_relative_to(base) for base in served):
+                    continue
                 return {"topic": topic, "path": str(path),
                         "text": path.read_text(encoding="utf-8")}
 

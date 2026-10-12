@@ -28,7 +28,7 @@ longer able to measure whether the context generalises. The old harness named fo
 
 **Every capture named anywhere in this directory is a member of
 [`skills/evidence/CORPUS.txt`](../skills/evidence/CORPUS.txt).** Keep it that way. If
-you need an example, take a corpus capture; there are nineteen.
+you need an example, take a corpus capture; `CORPUS.txt` lists them.
 
 ## What did not come across
 
@@ -49,6 +49,8 @@ copy examples back from it — it still names holdouts.
 launch.py           one isolated `claude -p` per capture; --scope, --exp, --controls, --smoke
 sfmx.py             the only tool an agent may call; every context read goes through it
 gpu_gate.py         one dense step per GPU at a time
+roots.py            which skills/ and modules/ a run reads: the repository's, unless
+                    SFM_SKILLS / SFM_MODULES name a generated view (ablation only)
 PROCEDURE.md        the agent's prompt: raw frames to a refined sparse model
 PROCEDURE_dense.md  the same, with the dense stage in scope
 bin/sfmx            the wrapper an agent's PATH points at

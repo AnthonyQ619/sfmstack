@@ -49,11 +49,18 @@ sys.path.insert(0, str(REPO / "packages" / "sfmorch" / "src"))
 sys.path.insert(0, str(REPO / "packages" / "sfmkit" / "src"))
 from sfmorch.mcp_server import build_service  # noqa: E402
 from gpu_gate import gpu_gate  # noqa: E402
+from roots import context_roots  # noqa: E402
 
 DATASETS = Path("/home/anthonyq/datasets")
 # Where capture directories live; a batch with its own root sets SFM_EXP.
 EXP = Path(os.environ.get("SFM_EXP") or "/home/anthonyq/sfm_experiments")
-CORPUS = REPO / "skills" / "evidence" / "CORPUS.txt"
+# The context this process reads. Unset, both are the repository's own trees, and
+# that is the only way an ordinary run ever executes. An ablation batch points
+# SFM_SKILLS / SFM_MODULES at a generated view (tools/build_context_view.py); the
+# corpus guard below then reads the view's own CORPUS.txt, so membership means
+# membership in what the agent can actually see.
+SKILLS, MODULES = context_roots(REPO, os.environ)
+CORPUS = SKILLS / "evidence" / "CORPUS.txt"
 # The deliverable is the refined sparse model unless SFM_SCOPE=dense, in which case
 # the dense model built on it is.
 SCOPE = os.environ.get("SFM_SCOPE", "sparse")
@@ -106,6 +113,11 @@ LOCK = HOME / "run.lock"
 RUNNING = HOME / "running.json"
 RUN_ID = CAPTURE.replace("/", "_")
 GPU = int(os.environ.get("SFM_GPU", "4"))
+# Which context this capture was driven against, written on every call so the run
+# directory says so even when no override was set.
+(HOME / "context_roots.json").write_text(json.dumps({
+    "skills": str(SKILLS), "modules": str(MODULES),
+    "default": SKILLS == REPO / "skills" and MODULES == REPO / "modules"}, indent=1))
 
 
 def emit(obj):
@@ -129,8 +141,8 @@ def log_ctx(kind, **kw):
 
 
 def service(docker=False):
-    return build_service(modules_dir=REPO / "modules", store_root=STORE,
-                         skills_dir=REPO / "skills", use_docker=docker,
+    return build_service(modules_dir=MODULES, store_root=STORE,
+                         skills_dir=SKILLS, use_docker=docker,
                          mounts=[str(DATASETS)], gpus=[GPU])
 
 

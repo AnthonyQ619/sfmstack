@@ -43,6 +43,10 @@ HARNESS = Path(__file__).resolve().parent
 # parent is the repo root; the experiment record it writes into is elsewhere and
 # has to be named. --exp overrides it, as it always did.
 EXP = Path(os.environ.get("SFM_EXP_ROOT") or Path.home() / "sfm_experiments")
+# Set from --skills / --modules for an ablation batch; None means the repository's
+# own trees, which is every ordinary run.
+SKILLS: Path | None = None
+MODULES: Path | None = None
 GOALS = {"sparse": "a refined sparse model", "dense": "a dense reconstruction"}
 PROCEDURES = {"sparse": HARNESS / "PROCEDURE.md", "dense": HARNESS / "PROCEDURE_dense.md"}
 CLAUDE = os.environ.get("CLAUDE_BIN") or max(
@@ -111,6 +115,12 @@ def environment(capture: str, gpu: int, scratch: Path, batch: str | None,
         env["SFM_BATCH"] = batch
     if control:
         env["SFM_CONTROL"] = "1"
+    # Context overrides. Absent, sfmx reads the repository's skills/ and modules/;
+    # an inherited value is dropped so a batch never reads a view by accident.
+    for var, value in (("SFM_SKILLS", SKILLS), ("SFM_MODULES", MODULES)):
+        env.pop(var, None)
+        if value:
+            env[var] = str(value)
     return env
 
 
@@ -191,10 +201,20 @@ def main() -> int:
     ap.add_argument("--controls", default="",
                     help="comma-separated captures that are in the planning corpus and run as named controls")
     ap.add_argument("--timeout-h", type=float, default=6.0, help="per attempt")
+    ap.add_argument("--skills", help="a generated context view's skills/ (ablation batches "
+                    "only; default: the repository's)")
+    ap.add_argument("--modules", help="a modules/ tree to describe modules from (ablation "
+                    "batches only; default: the repository's)")
     a = ap.parse_args()
-    global EXP
+    global EXP, SKILLS, MODULES
     if a.exp:
         EXP = Path(a.exp).expanduser().resolve()
+    if a.skills:
+        SKILLS = Path(a.skills).expanduser().resolve()
+        if not (SKILLS / "evidence" / "CORPUS.txt").is_file():
+            sys.exit(f"--skills {SKILLS}: no evidence/CORPUS.txt there, so not a context tree")
+    if a.modules:
+        MODULES = Path(a.modules).expanduser().resolve()
     controls = {c for c in a.controls.split(",") if c}
     gpus = [int(g) for g in a.gpus.split(",")]
     if a.smoke:
