@@ -347,6 +347,9 @@ def main(argv=None) -> int:
     how.add_argument("--n", type=int, help="keep the first N of --order, or N drawn with --seed")
     ap.add_argument("--order", type=Path, help="pre-registered capture order for --n")
     ap.add_argument("--seed", type=int, help="draw N captures at random from CORPUS.txt")
+    ap.add_argument("--always", type=Path,
+                    help="file of captures kept at every level and not counted in N (for a "
+                         "sparse ablation, the dense-only captures)")
     ap.add_argument("--min-support", type=float,
                     help="fraction of a claim's original support that must be kept (0, 1]; "
                          "required when reducing")
@@ -385,6 +388,11 @@ def main(argv=None) -> int:
             mode = f"n={a.n} seed:{a.seed}"
         else:
             sys.exit("--n needs --order or --seed")
+        if a.always:
+            always = [ln.strip().lstrip("/") for ln in a.always.read_text().splitlines()
+                      if ln.strip() and not ln.lstrip().startswith("#")]
+            keep = list(dict.fromkeys(keep + always))
+            mode += f" always:{a.always}"
     unknown = sorted(set(keep) - set(corpus))
     if unknown:
         sys.exit(f"not in CORPUS.txt, so not a capture this context has: {unknown}")

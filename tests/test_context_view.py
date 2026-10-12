@@ -140,6 +140,22 @@ def test_a_stricter_support_rule_prunes_at_least_as_much(small_repo, tmp_path):
     assert len(strict["campaigns_removed"]) >= len(loose["campaigns_removed"])
 
 
+def test_always_kept_captures_are_kept_at_every_level(small_repo, tmp_path):
+    corpus = prov.corpus_keys(small_repo / "skills")
+    dense_only = [k for k in corpus if k.startswith("tanks_and_temples/")]
+    assert len(dense_only) == 2
+    always = tmp_path / "always.txt"
+    always.write_text("\n".join(dense_only) + "\n")
+    order = tmp_path / "order.txt"
+    order.write_text("\n".join(k for k in corpus if k not in dense_only) + "\n")
+    for n in (0, 3):
+        build("--repo", str(small_repo), "--out", str(tmp_path / f"v{n}"), "--n", str(n),
+              "--order", str(order), "--always", str(always), "--min-support", "0.5", "--force")
+        r = report(tmp_path / f"v{n}")
+        assert set(dense_only) <= set(r["kept"]) and len(r["kept"]) == n + 2
+        assert set(dense_only) <= set(prov.corpus_keys(tmp_path / f"v{n}" / "skills"))
+
+
 def test_an_empty_keep_leaves_the_skeleton(small_repo, tmp_path):
     keep = tmp_path / "keep.txt"
     keep.write_text("")
