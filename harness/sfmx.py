@@ -194,8 +194,11 @@ cmd, args = (sys.argv[1], sys.argv[2:]) if len(sys.argv) > 1 else ("help", [])
 
 if cmd == "skills":
     topic = args[0] if args else "SKILLS"
-    log_ctx("workflow_skill", topic=topic)
-    show(service().workflow_skill(topic)["text"])
+    page = service().workflow_skill(topic)
+    # The resolved path as well as the topic, so a run's log proves which tree each
+    # read came from rather than leaving it to be inferred from the environment.
+    log_ctx("workflow_skill", topic=topic, path=page["path"])
+    show(page["text"])
 
 elif cmd == "brief":
     ch = load_chain()

@@ -15,9 +15,16 @@ Each returns a list of human-readable findings. Empty means clean.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import yaml
+
+# The provenance sidecar's addressing (paragraphs, hashes, sections) is defined once,
+# in tools/provenance.py, so this file, the drafting tool and the view builder cannot
+# disagree about what a paragraph is.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+import provenance as prov  # noqa: E402
 
 # A direct measurement must say what it was measured WITH. These are the forms the
 # repository uses: a semantic version, or a parameter written in backticks (`stride: 1`)
@@ -331,7 +338,117 @@ def provenance_without_config(root: Path) -> list[str]:
             if r["measured_here"] and not r["records_config"]]
 
 
+# ----------------------------------------------------------- the provenance sidecar
+#
+# `skills/evidence/provenance.yaml` says what every measured paragraph in the guidance
+# tiers rests on, and which captures each campaign section names. It is kept current
+# by the three checks below, which is the whole reason a sidecar can be trusted:
+# a label that lives outside the text it labels drifts silently unless something
+# fails when it does.
+
+def _sidecar(root: Path) -> dict:
+    p = root / prov.SIDECAR
+    return (yaml.safe_load(p.read_text(encoding="utf-8")) or {}) if p.is_file() else {}
+
+
+def provenance_drift(root: Path) -> list[str]:
+    """Every claim entry still addresses a paragraph that exists, unchanged.
+
+    The hash is of the paragraph's own text, so rewording, moving or deleting a labelled
+    claim fails here and names the file, anchor, hash and first words. That failure is
+    the point: an edited claim must be re-labelled, and nothing else would make anyone
+    notice."""
+    side = _sidecar(root)
+    if not side:
+        return ["no provenance sidecar at " + str(prov.SIDECAR)]
+    bad, cache = [], {}
+    for c in side.get("claims", []):
+        file, _, anchor = c["at"].partition("#")
+        path = root / "skills" / file
+        if not path.is_file():
+            bad.append(f"{c['at']}: file missing")
+            continue
+        paras = cache.setdefault(path, prov.paragraphs(path))
+        if not any(p.anchor == anchor and p.hash == c["hash"] for p in paras):
+            bad.append(f"{c['at']} {c['hash']} ({c['starts']!r}): no paragraph matches -- "
+                       "the claim was edited, moved or deleted; re-label it")
+    return bad
+
+
+def provenance_coverage(root: Path) -> list[str]:
+    """Every measured paragraph in plan/, judge/ and health/ has an entry, sourced or
+    declared unsourced, and no entry is left blank or carries both."""
+    side = _sidecar(root)
+    known = {}
+    bad = []
+    for c in side.get("claims", []):
+        known[(c["at"], c["hash"])] = c
+        has_src, has_un = bool(c.get("rests_on")), bool(c.get("unsourced"))
+        if has_src == has_un:
+            bad.append(f"{c['at']} {c['hash']}: needs exactly one of rests_on / unsourced, "
+                       f"has {'both' if has_src else 'neither (blank)'}")
+    for tier in prov.GUIDANCE:
+        for path in sorted((root / "skills" / tier).glob("*.md")):
+            rel = f"{tier}/{path.name}"
+            for p in prov.paragraphs(path):
+                if prov.MEASURED.search(p.text) and (f"{rel}#{p.anchor}", p.hash) not in known:
+                    bad.append(f"{rel}#{p.anchor} {p.hash} ({p.starts!r}): measured, no provenance entry")
+    return bad
+
+
+def provenance_targets(root: Path) -> list[str]:
+    """Every entry points at a campaign that exists and captures the corpus has; every
+    campaign file has an entry; an in-text citation agrees with the sidecar."""
+    side = _sidecar(root)
+    ev = root / "skills" / "evidence"
+    corpus = set(prov.corpus_keys(root / "skills"))
+    files = {p.stem for p in ev.glob("*-20*.md")}
+    camps = side.get("campaigns", {})
+    bad = []
+    for name, c in camps.items():
+        if name not in files and not c.get("unfiled"):
+            bad.append(f"campaigns.{name}: no such campaign file and not declared unfiled")
+            continue
+        bad += [f"campaigns.{name}: {k} not in CORPUS.txt" for k in c.get("captures", []) if k not in corpus]
+        if name in files:
+            have = prov.anchors(ev / f"{name}.md")
+            bad += [f"campaigns.{name}.sections.{a}: no such anchor" for a in c.get("sections", {}) if a not in have]
+            for a, caps in c.get("sections", {}).items():
+                bad += [f"campaigns.{name}.sections.{a}: {k} not in CORPUS.txt" for k in caps if k not in corpus]
+    bad += [f"campaign file with no sidecar entry: {f}" for f in sorted(files - set(camps))]
+    bad += [f"aliases.{k}: target {v} not in CORPUS.txt" for k, v in side.get("aliases", {}).items() if v not in corpus]
+    prof = side.get("profile", {})
+    if prof:
+        pf = ev / f"{prof.get('campaign', '')}.md"
+        if not pf.is_file():
+            bad.append(f"profile.campaign {prof.get('campaign')}: no such campaign file")
+        elif prof.get("table") not in prov.anchors(pf):
+            bad.append(f"profile.table {prof.get('table')}: no such anchor in {pf.name}")
+    cache = {}
+    for c in side.get("claims", []):
+        if not c.get("rests_on"):
+            continue
+        camp, _, anchor = c["rests_on"].partition("#")
+        if camp not in camps:
+            bad.append(f"{c['at']}: rests_on {camp}, not a sidecar campaign")
+            continue
+        if anchor and camp in files and anchor not in prov.anchors(ev / f"{camp}.md"):
+            bad.append(f"{c['at']}: rests_on {c['rests_on']}, anchor missing")
+        file, _, _ = c["at"].partition("#")
+        path = root / "skills" / file
+        if path.is_file():
+            for p in cache.setdefault(path, prov.paragraphs(path)):
+                if p.hash == c["hash"]:
+                    cited = {m[0] for m in prov.CAMPAIGN_LINK.findall(p.text)}
+                    if cited and camp not in cited:
+                        bad.append(f"{c['at']}: text cites {sorted(cited)}, sidecar says {camp}")
+    return bad
+
+
 ALL_CHECKS = {
+    "provenance_drift": provenance_drift,
+    "provenance_coverage": provenance_coverage,
+    "provenance_targets": provenance_targets,
     "dead_see_also": dead_see_also,
     "dead_anchor_links": dead_anchor_links,
     "orphaned_readings": orphaned_readings,

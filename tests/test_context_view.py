@@ -1,12 +1,15 @@
 """The context-view builder: faithful at full size, honest when reduced.
 
-Two promises, each with the check that would catch its breach:
+Promises, each with the check that would catch its breach:
 
   - built with no reduction, the view is byte-for-byte the repository's `skills/`,
     so the default context is untouched and the builder copies faithfully;
-  - built reduced, every surviving mention of a dropped capture is reported and the
-    view is marked unclean, so the harness refuses it. The negative control plants
-    a dropped capture's name in a guidance page and requires it to be found.
+  - built reduced, the sidecar drives every cut: rows, sections, whole campaigns, the
+    reference profile and measured guidance paragraphs, each by the one support rule;
+  - every surviving mention of a dropped capture is reported and the view is marked
+    unclean, so the harness refuses it. The negative control plants a dropped name
+    in a guidance page and requires it to be found;
+  - a view is never written inside the repository.
 
 Nothing in the stack calls the builder; these tests are the only routine caller.
 """
@@ -19,11 +22,13 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 REPO = Path(__file__).resolve().parents[1]
 TOOL = REPO / "tools" / "build_context_view.py"
 sys.path.insert(0, str(TOOL.parent))
 import build_context_view as bcv  # noqa: E402
+import provenance as prov  # noqa: E402
 
 
 def build(*args: str) -> tuple[int, str]:
@@ -31,66 +36,146 @@ def build(*args: str) -> tuple[int, str]:
     return r.returncode, r.stdout + r.stderr
 
 
+def report(out: Path) -> dict:
+    return json.loads((out / "VIEW.json").read_text())
+
+
 @pytest.fixture(scope="module")
 def small_repo(tmp_path_factory):
-    """skills/ copied from the repository; docs/ reduced to one file so the fixture
-    is cheap. The builder never cuts docs/, so the reduction changes nothing tested."""
+    """skills/ and docs/ copied from the repository, modules/ linked: a view links into
+    both, and a clean view has no dangling link."""
     root = tmp_path_factory.mktemp("repo")
     shutil.copytree(REPO / "skills", root / "skills")
-    (root / "docs").mkdir()
-    (root / "docs" / "import_lessons.md").write_text("# lessons\n")
+    shutil.copytree(REPO / "docs", root / "docs")
+    # The module tier is held fixed; a view links into it, so the fixture needs it.
+    (root / "modules").symlink_to(REPO / "modules", target_is_directory=True)
     return root
 
 
 def test_no_reduction_is_the_identity(small_repo, tmp_path):
     code, out = build("--repo", str(small_repo), "--out", str(tmp_path / "v"), "--all")
     assert code == 0, out
-    report = json.loads((tmp_path / "v" / "VIEW.json").read_text())
-    assert report["identical_to_source"] is True and report["clean"] is True
-    assert report["dropped"] == [] and report["rows_cut"] == {}
+    r = report(tmp_path / "v")
+    assert r["identical_to_source"] is True and r["clean"] is True
+    assert r["dropped"] == [] and r["rows_cut"] == {} and r["claims_pruned"] == []
+    assert r["dangling_links"] == []
     assert bcv.identical(small_repo / "skills", tmp_path / "v" / "skills")
+    # modules/ beside the view is the repository's, by symlink, so links into it hold.
+    assert (tmp_path / "v" / "modules").is_symlink()
+    assert (tmp_path / "v" / "modules" / "feature_sift" / "module.yaml").is_file()
 
 
-def test_a_reduced_view_cuts_rows_and_reports_what_survives(small_repo, tmp_path):
-    corpus = bcv.corpus_keys(small_repo / "skills")
+def test_a_view_is_never_written_inside_the_repository(tmp_path):
+    code, out = build("--out", str(REPO / "ctxview_should_not_exist"), "--all")
+    assert code != 0 and "inside the repository" in out
+    assert not (REPO / "ctxview_should_not_exist").exists()
+
+
+def test_reducing_without_a_support_rule_is_refused(small_repo, tmp_path):
     keep = tmp_path / "keep.txt"
-    keep.write_text("\n".join(corpus[:5]) + "\n")
+    keep.write_text(prov.corpus_keys(small_repo / "skills")[0] + "\n")
+    code, out = build("--repo", str(small_repo), "--out", str(tmp_path / "v"), "--keep", str(keep))
+    assert code != 0 and "min-support" in out
+
+
+def test_a_reduced_view_cuts_by_the_sidecar(small_repo, tmp_path):
+    corpus = prov.corpus_keys(small_repo / "skills")
+    side = yaml.safe_load((small_repo / prov.SIDECAR).read_text())
+    keep = tmp_path / "keep.txt"
+    kept = corpus[:5]
+    keep.write_text("\n".join(kept) + "\n")
     code, out = build("--repo", str(small_repo), "--out", str(tmp_path / "v"),
-                      "--keep", str(keep))
-    report = json.loads((tmp_path / "v" / "VIEW.json").read_text())
-    assert sorted(report["kept"]) == sorted(corpus[:5])
-    assert len(report["dropped"]) == len(corpus) - 5
-    view_corpus = bcv.corpus_keys(tmp_path / "v" / "skills")
-    assert sorted(view_corpus) == sorted(corpus[:5])
-    # INDEX rows and campaign rows for dropped captures are gone.
-    index = (tmp_path / "v" / "skills" / "evidence" / "INDEX.md").read_text()
-    for row_key in (bcv.first_cell_key(ln, corpus) for ln in index.splitlines()):
-        assert row_key is None or row_key in report["kept"]
-    assert report["rows_cut"].get("evidence/INDEX.md", 0) > 0
-    # The exit code says whether the view is clean, and the report says why not.
-    assert (code == 0) == report["clean"]
-    if not report["clean"]:
-        assert report["residuals"], out
+                      "--keep", str(keep), "--min-support", "0.5")
+    r = report(tmp_path / "v")
+    view = tmp_path / "v" / "skills"
+    assert sorted(r["kept"]) == sorted(kept) and len(r["dropped"]) == len(corpus) - 5
+    assert sorted(prov.corpus_keys(view)) == sorted(kept)
+    # INDEX rows for dropped captures are gone, aliases included.
+    for ln in (view / "evidence" / "INDEX.md").read_text().splitlines():
+        k = prov.first_cell_key(ln, corpus, side["aliases"])
+        assert k is None or k in kept
+    # A campaign whose support fell below the rule is gone, and nothing in the evidence
+    # tier still points at it: not its EVIDENCE.md row, not a prose link, not a row.
+    for name in r["campaigns_removed"]:
+        assert not (view / "evidence" / f"{name}.md").exists()
+        for f in (view / "evidence").glob("*.md"):
+            assert f"{name}.md" not in f.read_text() and f"[{name}]" not in f.read_text(), (name, f.name)
+    # No guidance paragraph still cites a removed campaign.
+    for tier in prov.GUIDANCE:
+        for f in (view / tier).glob("*.md"):
+            for name in r["campaigns_removed"]:
+                assert f"{name}.md" not in f.read_text(), (tier, f.name, name)
+    # Every pruned claim is a paragraph that no longer exists in the view.
+    for c in r["claims_pruned"]:
+        file, _, anchor = c["at"].partition("#")
+        assert not any(p.anchor == anchor and p.hash == c["hash"]
+                       for p in prov.paragraphs(view / file)), c
+    # Every sourced claim with enough support, whose campaign survived, still exists.
+    for c in side["claims"]:
+        if not c.get("rests_on") or c["rests_on"].partition("#")[0] in r["campaigns_removed"]:
+            continue
+        orig = prov.support(c, side) or set()
+        if bcv._enough(set(kept), orig, 0.5):
+            file, _, anchor = c["at"].partition("#")
+            assert any(p.anchor == anchor and p.hash == c["hash"]
+                       for p in prov.paragraphs(view / file)), c
+    # The profile was rebuilt from kept rows or removed, never left as the full one.
+    yml = view / "evidence" / "reference_profile.yaml"
+    if r["profile"]["rebuilt"]:
+        assert yaml.safe_load(yml.read_text())["captures"] == r["profile"]["captures"] <= 5
+        assert "REBUILT" in yml.read_text()
+    else:
+        assert not yml.exists()
+    assert (code == 0) == r["clean"]
+
+
+def test_a_stricter_support_rule_prunes_at_least_as_much(small_repo, tmp_path):
+    corpus = prov.corpus_keys(small_repo / "skills")
+    keep = tmp_path / "keep.txt"
+    keep.write_text("\n".join(corpus[:8]) + "\n")
+    build("--repo", str(small_repo), "--out", str(tmp_path / "loose"), "--keep", str(keep), "--min-support", "0.25")
+    build("--repo", str(small_repo), "--out", str(tmp_path / "strict"), "--keep", str(keep), "--min-support", "1.0")
+    loose, strict = report(tmp_path / "loose"), report(tmp_path / "strict")
+    assert len(strict["claims_pruned"]) >= len(loose["claims_pruned"])
+    assert len(strict["campaigns_removed"]) >= len(loose["campaigns_removed"])
+
+
+def test_an_empty_keep_leaves_the_skeleton(small_repo, tmp_path):
+    keep = tmp_path / "keep.txt"
+    keep.write_text("")
+    build("--repo", str(small_repo), "--out", str(tmp_path / "v"), "--keep", str(keep), "--min-support", "0.5")
+    r = report(tmp_path / "v")
+    view = tmp_path / "v" / "skills"
+    assert prov.corpus_keys(view) == []
+    side = yaml.safe_load((small_repo / prov.SIDECAR).read_text())
+    filed = [n for n in side["campaigns"] if (small_repo / "skills" / "evidence" / f"{n}.md").is_file()]
+    assert sorted(r["campaigns_removed"]) == sorted(filed)
+    assert not (view / "evidence" / "reference_profile.yaml").exists()
+    # The structure survives: every guidance file still exists with its headings.
+    for tier in prov.GUIDANCE:
+        for f in (small_repo / "skills" / tier).glob("*.md"):
+            assert (view / tier / f.name).is_file()
+            assert prov.anchors(view / tier / f.name) == prov.anchors(f)
 
 
 def test_a_dropped_name_planted_in_guidance_is_found(small_repo, tmp_path):
-    corpus = bcv.corpus_keys(small_repo / "skills")
+    corpus = prov.corpus_keys(small_repo / "skills")
     planted = tmp_path / "planted"
     shutil.copytree(small_repo, planted)
     victim = corpus[-1]
     page = planted / "skills" / "plan" / "sparse.md"
-    page.write_text(page.read_text() + f"\n\nMeasured on {victim}, which transfers.\n")
+    page.write_text(page.read_text() + f"\n\nA sentence with no number naming {victim}.\n")
     keep = tmp_path / "keep.txt"
     keep.write_text("\n".join(corpus[:-1]) + "\n")
     code, out = build("--repo", str(planted), "--out", str(tmp_path / "v"),
-                      "--keep", str(keep))
-    report = json.loads((tmp_path / "v" / "VIEW.json").read_text())
-    assert code == 1 and report["clean"] is False
-    assert any(r["capture"] == victim and r["where"].startswith("plan/sparse.md")
-               and r["kind"] == "exact" for r in report["residuals"]), report["residuals"]
+                      "--keep", str(keep), "--min-support", "0.5")
+    r = report(tmp_path / "v")
+    assert code == 1 and r["clean"] is False
+    assert any(h["capture"] == victim and h["where"].startswith("plan/sparse.md")
+               and h["kind"] == "exact" for h in r["residuals"]), r["residuals"]
 
 
-def test_the_harness_refuses_an_unclean_view(tmp_path, monkeypatch):
+def test_the_harness_refuses_an_unclean_view(tmp_path):
     sys.path.insert(0, str(REPO / "harness"))
     from roots import context_roots
     view = tmp_path / "v"
@@ -109,9 +194,9 @@ def test_the_default_is_the_repository_and_nothing_else(tmp_path):
     from roots import context_roots
     assert context_roots(REPO, {}) == (REPO / "skills", REPO / "modules")
     with pytest.raises(SystemExit):
-        context_roots(REPO, {"SFM_SKILLS": str(tmp_path)})       # not a context tree
+        context_roots(REPO, {"SFM_SKILLS": str(tmp_path)})
     with pytest.raises(SystemExit):
-        context_roots(REPO, {"SFM_MODULES": str(tmp_path)})      # not a modules tree
+        context_roots(REPO, {"SFM_MODULES": str(tmp_path)})
 
 
 def test_the_launcher_drops_an_inherited_override(monkeypatch):
