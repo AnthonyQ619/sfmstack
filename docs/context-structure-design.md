@@ -1,7 +1,7 @@
 ---
 name: context-structure-design
 description: How written context is organised so an agent can select and tune SfM modules from retrieval alone — the layout, what each file is for, what causes it to be read, and what is measured about whether that works.
-status: current as of 2026-09-07; describes exactly what is on disk
+status: current as of 2026-10-11; describes what is on disk (§6b and §6c added 2026-10-11)
 audience: for review and critique
 ---
 
@@ -75,6 +75,7 @@ skills/
     ladder.md              the constraint ladder + the SEVEN-RUNG HEALTH PROFILE
     smells.md              results that look fine numerically and are wrong
     bounce.md              weakest rung low AND immobile across attempts → BUILD
+    bands.md               what a healthy band is, which kinds of metric can fire, which have
 
   evidence/                      CHECKING OR CITING A CLAIM (scene names live here, only here)
     EVIDENCE.md            campaign index + the reliability ladder
@@ -143,6 +144,7 @@ reports only the current name, so nothing advertises names that no longer exist.
 | `health/ladder.md` | a sparse model exists | "Is this good enough? When do I stop?" | An absolute threshold. Everything in it is comparative or corpus-relative. |
 | `health/smells.md` | a sparse model exists | "It looks fine — is it?" | Anything a single metric can answer. |
 | `health/bounce.md` | a sparse model exists, unhealthy | "Can the registry fix this, or is the right next act building a tool?" | Module-level doubt — that is `judge/swap_or_build.md`, which it hands off to. |
+| `health/bands.md` | a band fired, or one is about to be written | "What does a firing band mean, and which kinds of reading can be unhealthy at all?" | A threshold to act on. It says what a band is, not where to cut. |
 | `evidence/EVIDENCE.md` | checking a claim | "Where did this come from, and how much is it worth?" | A plan. See §3.3. |
 | `evidence/INDEX.md` | planning | "Has a capture like mine been solved before, and what solved it?" | A reading to expect. It carries no measurements at all — those are one hop away in the campaign files. |
 | `distill/SKILL.md` | session ends | "I learned something. Where does it go and in what shape?" | Currently anything — it has never been executed. |
@@ -454,7 +456,8 @@ The evidence tier exists for this: a campaign's raw per-capture tables live in
 tree can be followed to the measurement behind it by a call the reader already has.
 
 **A path outside the repository cannot be followed by anything in the loop.**
-`sfm_workflow_skill` searches the skills tree, the repository root and `docs/`. An
+`sfm_workflow_skill` serves Markdown under `skills/`, `docs/` and the module pages, and
+nothing else (bounded 2026-10-11; before that any repository path resolved). An
 absolute path, or one under `~`, is dead on arrival — and that is worse than no
 citation, because it implies evidence a reader cannot examine. Readers have said so in
 writing about a different dead citation already.
@@ -673,8 +676,10 @@ mechanism that works every time.
    campaign falsified two of its rung definitions, which is evidence the process
    works — but the ground-truth check it was meant to end with turned out to be
    confounded by registration (§7.2), so no rung has been shown to order two
-   models the way truth does. The corpus is also sixteen draws from two
-   benchmark families, so a percentile is coarse and provincial at once.
+   models the way truth does. The reference distribution is also sixteen draws from
+   two benchmark families (the corpus itself has since grown to 31 captures of five
+   families, but the profile was not re-fitted), so a percentile is coarse and
+   provincial at once.
 
 4. **The refusal to name thresholds has now been tested once, and survived.** It
    is principled (§6), and it blocked trait derivation for as long as retrieval

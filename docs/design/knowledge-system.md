@@ -6,6 +6,10 @@ status: partly built, partly retired — see STATUS, measured 2026-09-02
 
 # Knowledge System
 
+> **Historical.** Written before the 2026-09 reorganisation. The tier names used
+> throughout (`judgment/`, `runs/`, `skills/workflow/`) are retired; the live layout
+> and its paths are in `skills/SKILLS.md`. Read this for the rationale, not for paths.
+
 Per-module files are specified in [module-skills.md](module-skills.md); this
 document covers the tier above them, the worked-run corpus, and the distillation
 loop.

@@ -1,7 +1,7 @@
 ---
 name: module-skills
-description: PROPOSAL (under discussion) — every containerized module ships curated knowledge alongside its metrics: how to read them, the gradient for improving them, and the limitations that mean the agent should switch modules rather than keep tuning. Curated from papers, source, and issue trackers.
-status: proposal / under discussion — not implemented
+description: The design, since implemented, for every containerized module shipping curated knowledge alongside its metrics: how to read them, the gradient for improving them, and the limitations that mean the agent should switch modules rather than keep tuning. Curated from papers, source, and issue trackers.
+status: implemented — every module under modules/ ships skills/{SKILL,tuning,limitations,artifact,sources}.md; this document is the original proposal, kept for its rationale, and `skills/SKILLS.md` is where the live conventions are stated
 ---
 
 # Module Skills

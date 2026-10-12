@@ -58,13 +58,6 @@ one) has not been asked for; the two modules' own `SKILL.md` files carry it.
   weakest rung of the health profile, low and immobile across the swaps and sweeps
   already tried. Hands off to `judge/swap_or_build` §BUILD. *Rungs 1 and 2 are live
   against the reference corpus; rung 3 is still a judgement you make by looking.*
-
-> judge/ and health/ are human-authored, subjective, authoritative but
-> non-binding. Say when you depart from one. Distillation may *propose* edits
-> there; it never writes them.
-
-## evidence/ — the record
-
 - **[bands.md](health/bands.md)** — what a `healthy` band is and what a
   firing one means. Four kinds of metric answer to different rules: a reading
   that describes the CAPTURE cannot be unhealthy, and a reading that exists to
@@ -72,6 +65,13 @@ one) has not been asked for; the two modules' own `SKILL.md` files carry it.
   seven readings in ten and every one is at or below the base rate for a poor
   delivery; twenty-nine more have never fired. Read it before adding a band or
   acting on one.
+
+> judge/ and health/ are human-authored, subjective, authoritative but
+> non-binding. Say when you depart from one. Distillation may *propose* edits
+> there; it never writes them.
+
+## evidence/ — the record
+
 - **[EVIDENCE.md](evidence/EVIDENCE.md)** — the index of campaigns, and the
   reliability ladder: when two pieces of this corpus disagree, which to believe.
   One file per campaign beside it, raw per-capture tables with scene names —

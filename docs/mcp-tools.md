@@ -1,7 +1,7 @@
 ---
 name: mcp-tools
 description: The 19 MCP tools and the exact files each one reads or writes. Where the agent's context comes from, organised by the moment tiers (plan/judge/health/evidence), and what is still unbuilt.
-status: current as of 2026-09-13
+status: tool list re-checked against the registry 2026-10-11 (19 of 19 match); the `sfm_plan_brief` row carries the `transforms` field added 2026-10-10
 ---
 
 # The tools and their context
@@ -172,7 +172,7 @@ No second call is needed to see how a step went.
 | `sfm_artifact_image` | **D** — one image sidecar's bytes, returned as an `ImageContent` block beside its provenance | — |
 | `sfm_run_summary` | **D** — `run.md`: every step attempted with params and metrics, the leaf artifacts nothing consumed, each final model's verification, and every second-solve decision | — |
 | `sfm_compare` | **D** — the manifests of the named artifacts, plus their ancestry walked back through `inputs`; for sparse models, their points and poses (error split by views per point, paired error on shared tracks, relative-rotation agreement) | — |
-| `sfm_plan_brief` | **A + C + D** — every `scene_analysis/v1` in the store whose `scene` is this one, `skills/plan/scene_to_pipeline.md`, six `skills/plan/<stage>.md`, and the 27 manifests that consume `scene/v1` | — |
+| `sfm_plan_brief` | **A + C + D** — every `scene_analysis/v1` in the store whose `scene` is this one, `skills/plan/scene_to_pipeline.md`, six `skills/plan/<stage>.md`, every manifest that consumes `scene/v1`, and under `transforms` the modules that consume only a type they produce and so appear in no menu (added 2026-10-10) | — |
 
 **`sfm_plan_brief` is the only tool that reads three stores at once**, and that is
 the point of it. Step 3 needs the measurements (**D**), the prose that ranks each
@@ -280,7 +280,7 @@ session to a first reconstruction, with the files each step opens.
    sfm_check(SceneLoader, params)      module.yaml; planned id vs store
    sfm_run(SceneLoader, ...)           container reads /module/*; seals against
                                        types/scene.yaml; writes artifacts/<id>/
-                                       and runs/dtu10/run.md
+                                       and runs/<run_id>/run.md
    -> n_images, mixed_resolution, downscale_factor, megapixels, inline
 
 2. characterise the scene            <- NEW, and previously the gap here
