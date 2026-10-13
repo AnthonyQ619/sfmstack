@@ -15,8 +15,10 @@ command takes a scene argument. Its paths come from SFM_BATCH (a JSON list of
   run      <module> <params-json> [slot=artifact_id ...]
   run      <module> --params-file <path> [slot=artifact_id ...]
                                     sfm_run; each consumed slot is wired from the chain
-                                    unless overridden. Blocks until the step finishes.
-                                    One run at a time per capture: a second waits.
+                                    unless overridden. The step runs in a detached worker;
+                                    this call blocks until it finishes or 540 s pass, and
+                                    then says it is still running. One run at a time per
+                                    capture: a second waits.
   wait     [seconds]                block until this capture's in-flight run finishes
                                     (default 540 s), then print the last recorded step
   running                           what this capture is running right now, if anything
@@ -24,7 +26,7 @@ command takes a scene argument. Its paths come from SFM_BATCH (a JSON list of
   replay   <artifact_id> [overrides-json]
                                     sfm_replay: re-run the step that produced the artifact
                                     with these parameter overrides, plus the steps built on
-                                    it; the new outputs become current. Blocks like `run`.
+                                    it; the new outputs become current. Detaches like `run`.
   pin      <slot> <artifact_id>     make an EARLIER artifact current again (backtracking)
   artifact <id>                     sfm_artifact
   image    <id> [name]              sfm_artifact_image: a PATH to open with your image reader
@@ -39,6 +41,7 @@ import fcntl
 from contextlib import nullcontext
 import json
 import os
+import subprocess
 import sys
 import time
 from contextlib import contextmanager
@@ -185,6 +188,56 @@ def kv(items):
     return dict(a.split("=", 1) for a in items)
 
 
+def follow_detached(limit: float = float(os.environ.get("SFMX_FOLLOW_S", "540"))):
+    """Run this same command in a worker outside the caller's session, and follow it.
+
+    A step used to run inside this process. The caller's tool kills a call at ten
+    minutes, and a dense step outlives that: the step died with its client, the lock
+    went with it, and `wait` then reported nothing in flight while `running` still
+    listed the job from the record the dead client never removed. The worker lives in
+    its own session, so killing the client leaves it running, holding the lock, and
+    `wait` blocks on it as the procedure says it does. Returns only in the worker.
+    SFMX_FOLLOW_S shortens the 540 s follow, for tests."""
+    if os.environ.get("SFMX_WORKER") == "1":
+        return
+    out = SCRATCH / f"worker_{cmd}_{time.time_ns()}.out"
+    with out.open("w") as fh:
+        p = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]],
+                             env={**os.environ, "SFMX_WORKER": "1"}, stdout=fh,
+                             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                             start_new_session=True)
+    try:
+        rc = p.wait(timeout=limit)
+    except subprocess.TimeoutExpired:
+        emit({"in_flight": json.loads(RUNNING.read_text()) if RUNNING.exists() else
+              {"command": sys.argv[1:], "worker_pid": p.pid},
+              "note": "still running in its own worker; call `wait` until it reports "
+                      "nothing in flight, then read the step from `state`. "
+                      "Do not re-issue the run."})
+        sys.exit(0)
+    sys.stdout.write(out.read_text())
+    sys.exit(rc)
+
+
+def in_flight():
+    """The record of the step in flight, or None. A record whose worker is gone is
+    stale -- left by a process killed before it could clean up -- and is removed
+    rather than reported, so `running` and `wait` cannot disagree."""
+    if not RUNNING.exists():
+        return None
+    rec = json.loads(RUNNING.read_text())
+    pid = rec.get("pid")
+    try:
+        if pid:
+            os.kill(int(pid), 0)
+        return rec
+    except ProcessLookupError:
+        RUNNING.unlink(missing_ok=True)
+        return None
+    except PermissionError:
+        return rec
+
+
 def last_step():
     runs = [h for h in load_chain()["history"] if h.get("action") in ("run", "replay")]
     return runs[-1] if runs else None
@@ -240,6 +293,7 @@ elif cmd == "pin":
     emit(ch["current"])
 
 elif cmd == "run":
+    follow_detached()
     module = args[0]
     if len(args) > 2 and args[1] == "--params-file":
         params, rest = json.loads(Path(args[2]).read_text()), args[3:]
@@ -277,8 +331,8 @@ elif cmd == "run":
         if missing and module != "SceneLoader":
             sys.exit(f"{module} needs {missing}, which this capture's chain does not carry. "
                      f"It has {sorted(ch['current'])}. Produce them first, or pass slot=artifact_id.")
-        RUNNING.write_text(json.dumps({"module": module, "params": params,
-                                       "inputs": inputs, "started": time.time()}))
+        RUNNING.write_text(json.dumps({"module": module, "params": params, "inputs": inputs,
+                                       "started": time.time(), "pid": os.getpid()}))
         t0 = time.time()
         # Dense steps get their GPU to themselves; see gpu_gate.py.
         gate = (gpu_gate(EXP, GPU, desc.get("kind") == "dense", f"{CAPTURE} {module}")
@@ -312,6 +366,7 @@ elif cmd == "run":
 elif cmd == "replay":
     if not args:
         sys.exit("usage: replay <artifact_id> [overrides-json]")
+    follow_detached()
     source = args[0]
     overrides = {}
     if len(args) > 1:
@@ -326,7 +381,8 @@ elif cmd == "replay":
     with capture_lock():
         ch = load_chain()
         RUNNING.write_text(json.dumps({"module": origin.module, "replay_of": source,
-                                       "overrides": overrides, "started": time.time()}))
+                                       "overrides": overrides, "started": time.time(),
+                                       "pid": os.getpid()}))
         t0 = time.time()
         # The same GPU gate `run` uses, keyed on the step being replayed.
         gate = (gpu_gate(EXP, GPU, desc.get("kind") == "dense", f"{CAPTURE} replay {origin.module}")
@@ -366,11 +422,11 @@ elif cmd == "wait":
         if free:
             emit({"in_flight": None, "last_step": last_step()})
         else:
-            emit({"in_flight": json.loads(RUNNING.read_text()) if RUNNING.exists() else None,
+            emit({"in_flight": in_flight(),
                   "note": "still running; call `wait` again. Do not re-issue the run."})
 
 elif cmd == "running":
-    emit({"in_flight": json.loads(RUNNING.read_text()) if RUNNING.exists() else None})
+    emit({"in_flight": in_flight()})
 
 elif cmd == "artifact":
     log_ctx("artifact", artifact=args[0])

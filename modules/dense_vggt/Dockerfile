@@ -1,6 +1,6 @@
-# DenseVGGT 1.0.0
+# DenseVGGT 1.2.0
 #
-#   docker build -t sfmstack/dense-vggt:1.0.0 -f modules/dense_vggt/Dockerfile .
+#   docker build -t sfmstack/dense-vggt:1.2.0 -f modules/dense_vggt/Dockerfile .
 #
 # Build context is the repository root. Shares the VGGT base with PoseVGGT and
 # SparseVGGT; each runs its own forward pass.

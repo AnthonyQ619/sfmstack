@@ -1,7 +1,7 @@
 ---
 module: SparseVerification
-module_version: 1.5.1
-curated_at: 2026-10-03
+module_version: 1.5.2
+curated_at: 2026-10-13
 ---
 
 # What held-out verification cannot tell you
@@ -69,18 +69,21 @@ one", it is one. The figures are in
 [evidence/view-graph-support-2026-09](../../../skills/evidence/view-graph-support-2026-09.md);
 do not carry a share from there as a threshold, for the reason immediately below.
 
-*Why the gate is the second component's SIZE and not the largest's share.* The
-share cannot carry a fixed floor, because it means different things at different
+*Why the gate counts the cameras outside the largest piece, not the largest's share.*
+The share cannot carry a fixed floor, because it means different things at different
 camera counts. One stray camera on a capture of a few dozen views leaves a share in
 the high nineties; the same stray on a capture of a dozen or so leaves it several
 points lower. Same situation, and any fixed floor falls between them — charging a
-small capture for being small, and passing a genuinely split large one. The second
-component's size does not move with the camera count. One camera that the agreeing
-pairs do not reach is a stray, and the corpus contains one on a capture that
-delivered; two or more cameras forming their own island is a split. Both rules
-were checked against the same twenty-four models and agree on every one — the
-scale-free one was kept because it will not diverge on a capture smaller than any
-measured here.
+small capture for being small, and passing a genuinely split large one. The number
+of cameras outside the largest piece, `supported_stray_cameras`, does not move with
+the camera count. One camera that the agreeing pairs do not reach is a stray, and the
+corpus contains one on a capture that delivered; two or more are a split, which is
+where the diagnostic fires. It counts every piece but the largest rather than the
+second piece's size alone, so it also fires when several cameras each sit off on
+their own — pieces of one, one and one, which a second-size rule reads as a single
+stray. The share rule and a component rule were checked against the same
+twenty-four models and agree on every one — the scale-free one was kept because it
+will not diverge on a capture smaller than any measured here.
 
 *What to do:*
 
@@ -217,8 +220,8 @@ and dropping it changed the result by nothing, because fifty-two of ninety camer
 were misplaced by a fraction of a metre each -- a model adrift everywhere rather than
 one with a stray.
 
-`supported_components` above 1 with a large second piece is what separates them. Read
-it before acting on this one.
+`supported_stray_cameras` at two or more is what separates them. Read it before
+acting on this one.
 
 ## The spatial reading that used to be here
 

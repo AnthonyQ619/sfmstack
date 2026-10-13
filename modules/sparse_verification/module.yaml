@@ -1,5 +1,5 @@
 name: SparseVerification
-version: 1.5.1
+version: 1.5.2
 kind: analysis
 summary: >
   A veto on finished sparse models: rejects one that contradicts the matcher's
@@ -46,7 +46,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.5.1
+image: sfmstack/sparse-verification:1.5.2
 entrypoint: adapter:run
 resources:
   gpu: false

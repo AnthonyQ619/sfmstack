@@ -97,11 +97,13 @@ as the scene description report, goes in a file and is passed with `--params-fil
 did not ask for; the service can act on its own after a step, and when it does,
 the response says so.
 
-A step can take many minutes on a shared machine. Give each `sfmx run` call a Bash
-timeout of 600000 ms. If a call times out, the step is still running: call
-`sfmx wait` until it reports nothing in flight, then read the step from
-`sfmx state`. Do not re-issue a run that is still in flight. One capture runs one
-step at a time; a second `run` waits for the first.
+A step can take many minutes on a shared machine.
+Give each `sfmx run` call a Bash timeout of 600000 ms. The step runs in its own
+worker, and `run` returns after at most nine minutes: if the step has not finished
+by then, `run` says it is still running, and it is. Call `sfmx wait` until it
+reports nothing in flight, then read the step from `sfmx state`. Do not re-issue
+a run that is still in flight. One capture runs one step at a time; a second `run`
+waits for the first.
 
 ## The pipeline
 

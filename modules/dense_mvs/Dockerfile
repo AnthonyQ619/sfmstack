@@ -1,6 +1,6 @@
-# DenseMVS 1.0.0
+# DenseMVS 1.1.0
 #
-#   docker build -t sfmstack/dense-mvs:1.0.0 -f modules/dense_mvs/Dockerfile .
+#   docker build -t sfmstack/dense-mvs:1.1.0 -f modules/dense_mvs/Dockerfile .
 #
 # Build context is the repository root.
 #

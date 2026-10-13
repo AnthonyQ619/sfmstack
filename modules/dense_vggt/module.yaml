@@ -33,7 +33,7 @@ description: |
   from four views appears four times. That is cheap and complete where MVS is
   expensive and precise, and the right tool depends on which you need.
 
-image: sfmstack/dense-vggt:1.0.0
+image: sfmstack/dense-vggt:1.2.0
 entrypoint: adapter:run
 resources:
   gpu: true

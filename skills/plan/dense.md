@@ -392,6 +392,7 @@ to stop. The route from an output you already have is one replay:
 | Question | Needs |
 | --- | --- |
 | **What a learned prior buys where MVS genuinely has nothing** | A capture whose target surface is textureless or reflective, with reference geometry. Both families have now been measured, but only on captures where MVS works well — which is the case MVS is best at and the case the prior is least needed in. Until recently the module could not be reached from a refined model at all, so this question has never actually been asked on the captures that motivate it. |
+| **Which of two dense clouds of one capture is the better one** | A reading that ranks clouds without reference geometry, checked against reference geometry over a batch. None exists: point count, view count and confidence are each published per cloud, and none of them was shown to order two clouds of one capture the way their reference scores do. Until one does, two clouds are compared through the sparse models they rest on and through the cloud views — and the comparison is reported as unranked rather than settled on a count. |
 | **The runtime curve against view count** | Cost per view is now measured across two campaigns and the resolution and check scalings with it (below). What is still unmeasured is whether cost per view is flat in the size of the set — every capture measured sat near fifty views. |
 
 **Runtime is no longer one of them.** Over a hundred timed stereo runs across two

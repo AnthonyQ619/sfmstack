@@ -38,14 +38,14 @@ def service(registry, store):
     svc.jobs.shutdown()
 
 
-def veto_windows(svc, windows):
-    """Veto every model whose poses were solved at one of `windows`."""
+def veto_windows(svc, windows, code=VETO):
+    """Veto every model whose poses were solved at one of `windows`, with `code`."""
 
     def verify(model, run_id):
         pose = svc._ancestor_of_type(model, "poses/v1")
         window = pose.manifest.produced_by.params["local_ba_window"]
         return {"status": "ran", "model": model.id, "metrics": {},
-                "diagnostics": [{"code": VETO}] if window in windows else []}
+                "diagnostics": [{"code": code}] if window in windows else []}
 
     svc._verify_model = verify
 
@@ -130,6 +130,23 @@ def test_the_last_resort_runs_only_when_the_default_is_vetoed(service):
     s = refined["second_solve"]
     assert [(a["window"], a["vetoed"]) for a in s["attempts"]] == [(28, True), (40, False)]
     assert s["status"] == "kept_second" and s["kept_window"] == 40
+
+
+def test_a_solve_its_own_evidence_does_not_connect_is_vetoed_too(service):
+    # plan/pose.md says not to keep a model carrying either error verdict; the second
+    # solve used to read only the held-out one, and kept a folded model on the other.
+    veto_windows(service, {28}, code="model_not_supported_by_its_own_evidence")
+    _, refined = chain(service)
+    s = refined["second_solve"]
+    assert [(a["window"], a["vetoed"]) for a in s["attempts"]] == [(28, True), (40, False)]
+    assert s["kept_window"] == 40
+
+
+def test_control_a_diagnostic_that_is_not_a_verdict_does_not_veto(service):
+    veto_windows(service, {28}, code="supported_stray_cameras")
+    _, refined = chain(service)
+    s = refined["second_solve"]
+    assert [(a["window"], a["vetoed"]) for a in s["attempts"]] == [(28, False)]
 
 
 def test_a_re_solve_that_fails_moves_to_the_last_resort(service):

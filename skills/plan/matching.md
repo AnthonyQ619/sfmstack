@@ -292,13 +292,17 @@ anything. On a fast capture with a repetitive subject, both halves of the usual
 argument are answering the wrong question — the graph fails before ambiguity gets
 a chance to matter. See `skills/plan/scene_to_pipeline.md` §3b.
 
-**When the graph IS safe and the subject repeats, swap only the matcher.** A
-jointly-reasoning matcher accepts classical descriptors — `FeatureMatchLightGlue`
-carries a `sift` weight set and `auto` reads the producing module off the features
-artifact — so this costs **no re-detection**, the same `features/v1` feeds both.
-Measured across fourteen captures, that swap gains on well-connected repetitive
-subjects and loses a third to a half of the model on well-connected
-non-repetitive ones, so it is worth being right about which you have.
+**When the graph IS safe and the subject repeats, try the matcher swap as an A/B —
+do not assume it.** A jointly-reasoning matcher accepts classical descriptors —
+`FeatureMatchLightGlue` carries a `sift` weight set and `auto` reads the producing
+module off the features artifact — so this costs **no re-detection**, the same
+`features/v1` feeds both. On well-connected non-repetitive subjects the swap loses
+a third to a half of the model. The gain it was once recorded as making on
+repetitive ones did not survive a seventeen-capture sweep: six counter-examples,
+one losing half its points, and the study behind the gain had left the joint
+matcher's `filter_threshold` at its default
+([judge/swap_or_build.md](../judge/swap_or_build.md#matching)). Settle that
+threshold on both branches before you compare.
 
 **"Being right about which you have" is the hard part, and the evidence says you
 often cannot be.** One capture in that set had loud object-level repetition and

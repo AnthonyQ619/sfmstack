@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.5.1
+module_version: 1.5.2
 curated_at: 2026-10-03
 ---
 

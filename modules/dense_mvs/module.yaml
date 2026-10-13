@@ -36,7 +36,7 @@ description: |
   than it looks, and it costs point count in proportion, so it is a quality trade
   rather than a way to buy time.
 
-image: sfmstack/dense-mvs:1.0.0
+image: sfmstack/dense-mvs:1.1.0
 entrypoint: adapter:run
 resources:
   gpu: true

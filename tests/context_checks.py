@@ -247,6 +247,24 @@ def stale_defaults(root: Path) -> list[str]:
     return bad
 
 
+def image_tag_drift(root: Path) -> list[str]:
+    """Every module's image tag names the version its manifest declares.
+
+    The tag is a separate field from `version`, so a bump that forgets it leaves the
+    service running an image whose name says an older version -- harmless only by
+    luck. Three dense modules carried a 1.0.0 tag past a version bump, unnoticed,
+    because nothing compared the two; a reader matching a run's image against a module
+    page had no way to know the code was current.
+    """
+    bad = []
+    for y in _modules(root):
+        spec = yaml.safe_load(y.read_text()) or {}
+        image, version = str(spec.get("image") or ""), str(spec.get("version") or "")
+        if image and version and image.rsplit(":", 1)[-1] != version:
+            bad.append(f"{y.parent.name}: version {version}, image {image}")
+    return bad
+
+
 def dead_citations(root: Path) -> list[str]:
     """Every [Sn] in a module's skills resolves to a row in that module's sources.md.
 
@@ -472,6 +490,7 @@ ALL_CHECKS = {
     "orphaned_readings": orphaned_readings,
     "ghost_bands": ghost_bands,
     "stale_defaults": stale_defaults,
+    "image_tag_drift": image_tag_drift,
     "dead_citations": dead_citations,
     "campaign_registration": campaign_registration,
     "provenance_without_config": provenance_without_config,

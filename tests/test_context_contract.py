@@ -31,6 +31,7 @@ from context_checks import (
     dead_citations,
     dead_see_also,
     ghost_bands,
+    image_tag_drift,
     stale_defaults,
     orphaned_readings,
     provenance_without_config,
@@ -109,6 +110,15 @@ def test_control_dead_see_also_in_an_adapter_is_detected(tmp_path):
     assert 'see_also="tuning.md#combined_change-above-its-band"' in t
     a.write_text(t.replace("combined_change-above-its-band", "combined_change-above-028", 1))
     assert any("adapter" in f and "combined_change-above-028" in f for f in dead_see_also(root))
+
+
+def test_control_image_tag_behind_its_version_is_detected(tmp_path):
+    root = _tree(tmp_path)
+    y = root / "modules/dense_mvs/module.yaml"
+    t = y.read_text()
+    assert "image: sfmstack/dense-mvs:1.1.0" in t
+    y.write_text(t.replace("image: sfmstack/dense-mvs:1.1.0", "image: sfmstack/dense-mvs:1.0.0", 1))
+    assert any("dense_mvs" in f for f in image_tag_drift(root))
 
 
 def test_control_dead_citation_is_detected(tmp_path):

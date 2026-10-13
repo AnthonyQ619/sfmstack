@@ -1,6 +1,6 @@
-# DenseFusion 1.0.0
+# DenseFusion 1.1.0
 #
-#   docker build -t sfmstack/dense-fusion:1.0.0 -f modules/dense_fusion/Dockerfile .
+#   docker build -t sfmstack/dense-fusion:1.1.0 -f modules/dense_fusion/Dockerfile .
 #
 # Build context is the repository root.
 #

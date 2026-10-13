@@ -25,7 +25,7 @@ description: >
   at the same settings, then run this on the replay's output. Every fusion setting
   after that is seconds. Details: the SKILL, "Before you run it".
 
-image: sfmstack/dense-fusion:1.0.0
+image: sfmstack/dense-fusion:1.1.0
 
 consumes:
   dense: {type: dense_model/v1, required: true}

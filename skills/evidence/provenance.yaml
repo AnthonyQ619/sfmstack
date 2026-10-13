@@ -668,7 +668,7 @@ claims:
   starts: '**The row this table was missing: a high `planar'
   rests_on: sweep-2026-08
 - at: plan/matching.md#which-end-to-reach-for
-  hash: 53b94507c24d
+  hash: 61da78304fa7
   starts: '**When the graph IS safe and the subject repeats'
   rests_on: branch-comparison-2026-08
 - at: plan/matching.md#which-end-to-reach-for

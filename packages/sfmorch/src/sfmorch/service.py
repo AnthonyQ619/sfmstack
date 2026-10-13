@@ -615,8 +615,14 @@ class SfmService:
     # satisfies: one capture's wrong models were measured satisfying them better
     # than its correct model did. The same compelled delivery the health digest
     # gets, at the same moment.
+    #
+    # Both of the verifier's error-severity verdicts veto, because plan/pose.md tells
+    # the agent not to keep a model carrying either. Only the first used to: a second
+    # solve whose agreeing pairs left it in disconnected pieces was kept over a
+    # connected first solve, on a capture where the pieces were a mirror fold.
     VERIFIER = "SparseVerification"
-    VETO_CODE = "contradicted_by_held_out_evidence"
+    VETO_CODES = ("contradicted_by_held_out_evidence",
+                  "model_not_supported_by_its_own_evidence")
 
     def _verify(self, result, run_id: str | None) -> dict[str, Any] | None:
         step = result.step
@@ -877,7 +883,7 @@ class SfmService:
 
     def _vetoed(self, verdict: dict[str, Any] | None) -> bool:
         return bool(verdict) and any(
-            d.get("code") == self.VETO_CODE for d in verdict.get("diagnostics") or [])
+            d.get("code") in self.VETO_CODES for d in verdict.get("diagnostics") or [])
 
     @staticmethod
     def _acceptable(entry: dict[str, Any]) -> bool:
