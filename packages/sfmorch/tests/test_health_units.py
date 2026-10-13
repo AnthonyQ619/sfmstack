@@ -1,8 +1,8 @@
 """The error rung is an angle, and the comparison helpers split error by support."""
 import numpy as np
 
-from sfmorch.health import (components, error_by_support, paired_error_by_support,
-                            rotation_agreement)
+from sfmorch.health import (centre_agreement, components, error_by_support,
+                            paired_error_by_support, rotation_agreement)
 
 
 class Art:
@@ -68,3 +68,55 @@ def test_rotation_agreement_is_zero_for_one_model_and_sees_a_turned_camera():
     assert rotation_agreement(a, a)["median_deg"] == 0.0
     turned = rotation_agreement(a, _model([0.1] * 4, yaw_deg=2.0))
     assert turned["shared_cameras"] == 3 and abs(turned["median_deg"] - 2.0) < 1e-6
+
+
+def _ring(n=12, R_of=None, centre_of=None):
+    """n cameras on a ring, each looking at the origin; hooks bend rotation or centre."""
+    cams = []
+    for k in range(n):
+        t = 2 * np.pi * k / n
+        C = np.array([4 * np.cos(t), 0.3 * np.sin(3 * t), 4 * np.sin(t)])
+        if centre_of:
+            C = centre_of(k, C)
+        z = -C / np.linalg.norm(C)
+        x = np.cross([0, 1, 0], z); x /= np.linalg.norm(x)
+        R = np.stack([x, np.cross(z, x), z])
+        if R_of:
+            R = R_of(k, R)
+        cams.append(np.hstack([R, (-R @ C)[:, None]]))
+    return Art({"poses": {"cam_from_world": np.stack(cams), "valid": np.ones(n, bool),
+                          "image_index": np.arange(n)}})
+
+
+def test_centre_agreement_is_blind_to_frame_and_scale():
+    a = _ring()
+    Q = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]], dtype=float)
+    b = _ring(centre_of=lambda k, C: 7.0 * Q @ C + np.array([3.0, -2.0, 1.0]))
+    assert centre_agreement(a, b) < 1e-9
+
+
+def test_centre_agreement_sees_cameras_turned_right_but_misplaced():
+    # The case the rotation form missed on two corpus site walks: every orientation
+    # correct, a third of the cameras in the wrong place.
+    a = _ring()
+    moved = _ring(centre_of=lambda k, C: C + (np.array([0.0, 2.0, 0.0]) if k % 3 == 0 else 0),
+                  R_of=lambda k, R: _ring().load("poses", "cam_from_world")[k][:, :3])
+    assert rotation_agreement(a, moved)["median_deg"] < 1e-6
+    assert centre_agreement(a, moved) > 0.02
+
+
+def test_control_a_rotation_fold_with_centres_in_place_reads_only_in_rotation():
+    # The other direction, so neither form can stand in for the other: half the cameras
+    # turned through 90 degrees about the vertical, centres untouched.
+    a = _ring()
+    def turn(k, R):
+        if k % 2:
+            return R @ np.array([[0, 0, 1], [0, 1, 0], [-1, 0, 0]], dtype=float)
+        return R
+    folded = _ring(R_of=turn)
+    assert centre_agreement(a, folded) < 1e-9
+    assert rotation_agreement(a, folded)["median_deg"] > 45
+
+
+def test_centre_agreement_is_null_below_six_shared_cameras():
+    assert centre_agreement(_ring(n=5), _ring(n=5)) is None

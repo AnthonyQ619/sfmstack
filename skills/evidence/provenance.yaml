@@ -264,6 +264,36 @@ campaigns:
     - ETH/meadow
     - ETH/playground
     - ETH/relief
+  estimator-outvote-2026-10:
+    captures:
+    - ETH/kicker
+    - ETH/meadow
+    - euroc/V2_01_easy
+    - tanks_and_temples/Barn
+    - tanks_and_temples/Caterpillar
+    - tanks_and_temples/Meetingroom
+    - tum_vi/room2
+    sections:
+      finding-1--the-two-forms-of-the-reading-fire-on-different-captures:
+      - ETH/kicker
+      - ETH/meadow
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-2--refining-an-estimators-model-damages-it:
+      - euroc/V2_01_easy
+      - tanks_and_temples/Meetingroom
+      - tum_vi/room2
+      finding-3--geometric-stereo-on-estimator-poses:
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-4--the-learned-dense-branch-where-the-rotation-form-fires-and-where-it-does-not:
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-5--a-fill-keeps-whatever-its-core-is:
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
   consensus-2026-09:
     captures:
     - tanks_and_temples/Barn
@@ -1188,3 +1218,27 @@ claims:
   hash: c2df05d31388
   starts: '**That evidence is from full captures, and on a '
   rests_on: agent-controls-2026-10#finding-4--the-classical-branch-on-a-sparse-capture
+- at: plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself
+  hash: dffa918dd58f
+  starts: '**Refining that model does not move it into the '
+  rests_on: estimator-outvote-2026-10#finding-2--refining-an-estimators-model-damages-it
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: 7ca978d4b7ff
+  starts: '**When it fires, the remedy is the whole feed-fo'
+  rests_on: estimator-outvote-2026-10#finding-3--geometric-stereo-on-estimator-poses
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: bb5f422d0545
+  starts: '**Do not let the verifier make that comparison.*'
+  rests_on: estimator-outvote-2026-10#finding-1--the-two-forms-of-the-reading-fire-on-different-captures
+- at: plan/pose.md#when-it-fires-fill-rather-than-swap--and-do-not-refine-the-fill
+  hash: bec72ac49587
+  starts: '**A fill keeps whatever its core is, so ask the '
+  rests_on: estimator-outvote-2026-10#finding-5--a-fill-keeps-whatever-its-core-is
+- at: plan/dense.md#delivering-the-verified-cloud
+  hash: e188b1a4e53b
+  starts: '**A good dense score does not certify the poses '
+  rests_on: estimator-outvote-2026-10#finding-3--geometric-stereo-on-estimator-poses
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: c6bf78def7b0
+  starts: '**The two forms see different failures; read eac'
+  rests_on: estimator-outvote-2026-10#finding-1--the-two-forms-of-the-reading-fire-on-different-captures

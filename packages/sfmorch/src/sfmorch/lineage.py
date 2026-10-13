@@ -167,8 +167,14 @@ POSE_HOW_TO_READ = (
     "with EACH OTHER as well and read your disagreement against their spread. A "
     "disagreement is a reason to measure the alternative, never a reason to "
     "discard a model -- two learned estimators sharing a training distribution can "
-    "agree closely and both be wrong. Entries are null where the two share fewer "
-    "than two cameras, or were built on different scenes."
+    "agree closely and both be wrong. centre_median_of_span is the same question "
+    "asked of camera POSITIONS: the median distance of the first model's centres from "
+    "the second's after a similarity fit, as a fraction of the second's extent. The "
+    "two forms fire on different failures -- rotation on a fold, centres on cameras "
+    "turned correctly but misplaced -- so read both, each against the estimators' "
+    "own spread in the same form; plan/pose names which form each finding was "
+    "measured in. Entries are null where the two share fewer than two cameras, or "
+    "were built on different scenes; the centre form is null below six."
 )
 
 SPARSE_HOW_TO_READ = (
@@ -234,7 +240,7 @@ def _pose_comparison(store: ArtifactStore, ids: list[str]) -> dict[str, Any]:
     `poses/v1` does not have -- a feed-forward estimator has no correspondences to
     measure against, which is exactly why it is worth comparing to.
     """
-    from .health import rotation_agreement
+    from .health import centre_agreement, rotation_agreement
 
     arts = {aid: store.open(aid) for aid in ids}
     pairs: dict[str, Any] = {}
@@ -242,6 +248,9 @@ def _pose_comparison(store: ArtifactStore, ids: list[str]) -> dict[str, Any]:
         for b in ids[i + 1:]:
             same_scene = (arts[a].manifest.scene
                           and arts[a].manifest.scene == arts[b].manifest.scene)
-            pairs[f"{a} vs {b}"] = (rotation_agreement(arts[a], arts[b])
-                                    if same_scene else None)
+            entry = rotation_agreement(arts[a], arts[b]) if same_scene else None
+            if entry is not None:
+                # Added key: the centre form, a's centres carried onto b's.
+                entry["centre_median_of_span"] = centre_agreement(arts[a], arts[b])
+            pairs[f"{a} vs {b}"] = entry
     return {"pairs": pairs, "how_to_read": POSE_HOW_TO_READ}

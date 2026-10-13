@@ -104,7 +104,8 @@ any threshold**, and only the ratio finds. That makes it the worked example of w
 the reading is built the way it is, rather than a capture that any formulation would
 have caught. The feed-forward branch, measured, is the better delivery on it.
 
-The remaining six captures in its family stay holdout and are not listed here.
+Captures of its family promoted later are listed in `CORPUS.txt` with the file each
+carries; the rest stay holdout and are not listed here.
 
 ## What this does not establish
 

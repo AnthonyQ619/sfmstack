@@ -80,3 +80,10 @@
 # capture behind that claim where modules actually fail rather than merely scoring
 # poorly.
 /advio/advio-12
+
+# Promoted 2026-10-13 to carry two findings in plan/pose.md: that geometric stereo on
+# an estimator's poses does not go one way (the capture where it won), and that a fill
+# keeps whatever its core is (a folded core the rotation form of the two-estimator
+# reading catches). No control reproduced either. See
+# evidence/estimator-outvote-2026-10.md, findings 3 and 5.
+/tanks_and_temples/Caterpillar

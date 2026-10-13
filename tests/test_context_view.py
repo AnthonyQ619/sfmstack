@@ -143,7 +143,7 @@ def test_a_stricter_support_rule_prunes_at_least_as_much(small_repo, tmp_path):
 def test_always_kept_captures_are_kept_at_every_level(small_repo, tmp_path):
     corpus = prov.corpus_keys(small_repo / "skills")
     dense_only = [k for k in corpus if k.startswith("tanks_and_temples/")]
-    assert len(dense_only) == 2
+    assert dense_only    # however many the corpus holds; promotion changes the count
     always = tmp_path / "always.txt"
     always.write_text("\n".join(dense_only) + "\n")
     order = tmp_path / "order.txt"
@@ -152,7 +152,7 @@ def test_always_kept_captures_are_kept_at_every_level(small_repo, tmp_path):
         build("--repo", str(small_repo), "--out", str(tmp_path / f"v{n}"), "--n", str(n),
               "--order", str(order), "--always", str(always), "--min-support", "0.5", "--force")
         r = report(tmp_path / f"v{n}")
-        assert set(dense_only) <= set(r["kept"]) and len(r["kept"]) == n + 2
+        assert set(dense_only) <= set(r["kept"]) and len(r["kept"]) == n + len(dense_only)
         assert set(dense_only) <= set(prov.corpus_keys(tmp_path / f"v{n}" / "skills"))
 
 

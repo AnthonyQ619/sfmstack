@@ -379,6 +379,13 @@ from every camera and is invisible until you leave the ring. Treat it as a check
 numbers, not as a measurement — it is framed on the bulk of the cloud and quantifies
 nothing.
 
+**A good dense score does not certify the poses under it.** On a folded control the
+cloud built on the folded model scored within 7% of a correct model's cloud, because
+the fit that places a cloud keeps the cameras that agree, and the folded half adds
+little surface ([evidence](../evidence/estimator-outvote-2026-10.md#finding-3--geometric-stereo-on-estimator-poses)). If the
+two-estimator reading in [pose.md](pose.md) fired, report it beside the dense delivery
+whatever the cloud scores.
+
 **Plan a `DenseFusion` exploration only when the capture is unlike the ones
 measured.** It needs the stereo pass kept (`keep_workspace: true`), which is large on
 disk; after that each fusion setting costs seconds, and point counts alone say where

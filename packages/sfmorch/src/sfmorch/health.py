@@ -358,6 +358,45 @@ def paired_error_by_support(a, b) -> dict | None:
     return out
 
 
+def centre_agreement(a, b, *, minimum: int = 6) -> float | None:
+    """How far `a`'s camera centres sit from `b`'s once a similarity has carried one
+    onto the other: the median residual over the cameras both registered, as a
+    fraction of the extent of `b`'s centres. Scale- and frame-free, so it compares
+    an estimator's model with a metric one. Not symmetric: `b` sets the scale.
+
+    It is the form the two-estimator reading was measured in, and it sees what
+    rotation_agreement cannot -- cameras with the right orientation in the wrong
+    place -- while missing a fold whose centres happen to land near their own."""
+    def centres(m):
+        cams = m.load("poses", "cam_from_world")
+        valid = np.asarray(m.load("poses", "valid"), dtype=bool)
+        idx = m.load("poses", "image_index")
+        out = {}
+        for r, (i, ok) in enumerate(zip(idx, valid)):
+            if ok:
+                P = np.asarray(cams[r], dtype=float)
+                out[int(i)] = -P[:3, :3].T @ P[:3, 3]
+        return out
+
+    ca, cb = centres(a), centres(b)
+    shared = sorted(set(ca) & set(cb))
+    if len(shared) < minimum:
+        return None
+    X = np.stack([ca[i] for i in shared])
+    Y = np.stack([cb[i] for i in shared])
+    mx, my = X.mean(0), Y.mean(0)
+    xs, ys = X - mx, Y - my
+    U, S, Vt = np.linalg.svd(ys.T @ xs / len(X))
+    D = np.eye(3)
+    if np.linalg.det(U) * np.linalg.det(Vt) < 0:
+        D[2, 2] = -1
+    R = U @ D @ Vt
+    scale = float(np.trace(np.diag(S) @ D) / max((xs ** 2).sum(1).mean(), 1e-12))
+    res = np.linalg.norm(scale * xs @ R.T + my - Y, axis=1)
+    span = float(np.linalg.norm(np.ptp(Y, axis=0)))
+    return round(float(np.median(res) / max(span, 1e-12)), 6)
+
+
 def rotation_agreement(a, b, *, cap: int = 400) -> dict | None:
     """How far two models' relative camera rotations disagree, over the cameras
     both registered: median and 90th percentile, in degrees. Gauge-free, and it

@@ -319,6 +319,13 @@ scored 0.756, from the same estimator draw
 it**: on any model whose cameras were registered from correspondences, a firing veto
 still ends the matter.
 
+**Refining that model does not move it into the veto's domain; it damages it.** A
+bundle adjustment fits the estimator's cameras to the same correspondences, and on
+corpus captures it lost pose accuracy on five of seven refinements and gained on none
+([evidence](../evidence/estimator-outvote-2026-10.md#finding-2--refining-an-estimators-model-damages-it)). Keep an
+estimator model's cameras fixed, and read a veto on a refined one as you would on the
+unrefined one.
+
 **A quiet verdict is not a clearance, and the asymmetry is the whole point.** Both
 vetoes are *structural*: they ask whether the pairs that agree with the model connect
 it, and whether any camera stands outside that agreement. A model can be wrong
@@ -360,8 +367,17 @@ evidence is not being read wrongly; the evidence is wrong.
 **So ask something that never saw your correspondences.** Run both
 correspondence-free estimators — `PoseVGGT` and `PoseMapAnything`, each of which
 consumes the scene and nothing else — and pass your model and both of them to
-`sfm_compare` in one call. It returns `pose_agreement`: all three pairwise rotation
-disagreements, with nothing privileged.
+`sfm_compare` in one call. It returns `pose_agreement`: all three pairwise
+disagreements, with nothing privileged, each in two forms — over relative rotations
+(`median_deg`) and over camera positions (`centre_median_of_span`).
+
+**The two forms see different failures; read each against the estimators' spread in
+the same form.** The rotation form fires on a fold — cameras turned the wrong way —
+and on corpus captures it fired on nothing else. The centre form also fires on
+cameras turned correctly but misplaced, which the rotation form cannot see, and it
+fired on two site walks whose rotations were as good as the estimators'
+([evidence](../evidence/estimator-outvote-2026-10.md#finding-1--the-two-forms-of-the-reading-fire-on-different-captures)).
+The campaign behind the table and the rates below measured the centre form.
 
 **Read your disagreement against theirs, never on its own.** This is the whole
 technique and it is easy to get wrong by leaving out the second estimator:
@@ -380,10 +396,19 @@ tightly the two estimators agree. Neither error survives having both. The second
 estimator is not a refinement; it is what supplies the scale the reading is in.
 
 **When it fires, the remedy is the whole feed-forward branch, and it is measured
-rather than assumed.** Not the poses alone — a model built from feed-forward poses
-on top of geometric depth was worse than either on every capture it was tried on, so
-a half-swap is not available here. Run the branch through to a cloud, measure both
+rather than assumed.** Not the poses alone: geometric stereo on the estimators' poses
+was measured on three captures and does not go one way — on a folded room and a sound
+outdoor structure it lost by half again or more to the geometric cloud, the folded
+one's included, because stereo needs poses tighter than an estimator's degree; on a
+compact orbited object it won ([evidence](../evidence/estimator-outvote-2026-10.md#finding-3--geometric-stereo-on-estimator-poses)).
+Do not plan a half-swap on that. Run the branch through to a cloud, measure both
 deliveries the way you would measure any two candidates, and keep the better.
+
+**Do not let the verifier make that comparison.** It scores both models against the
+matcher's correspondences — the evidence this reading has just called into question —
+and on a folded capture it vetoed the estimator model, whose rotations were right, and
+passed the folded one ([evidence](../evidence/estimator-outvote-2026-10.md#finding-1--the-two-forms-of-the-reading-fire-on-different-captures)).
+Its verdict on either model is not a measurement of which is better here.
 
 **A disagreement is a reason to measure the alternative. It is never, by itself, a
 reason to discard what you have.** The two estimators are independent of your
@@ -426,6 +451,16 @@ where the core is nearly complete, and where the core is badly short the estimat
 model on its own is ahead — which is what `registered_fraction` at about 0.7 separates
 and what the delivery table below says. The alignment is cheap and it *gains* at tight
 thresholds, because a mixed pair then has the accurate core on one side of it.
+
+**A fill keeps whatever its core is, so ask the core first.** The rule above assumes
+the cameras the verifier leaves in are right. A core can be folded and still quiet on
+every correspondence-built reading — measured on one capture, an incremental core at
+13.7° median, filled into a delivery with 72% of pairs within 5° where either estimator
+alone had all of them ([evidence](../evidence/estimator-outvote-2026-10.md#finding-5--a-fill-keeps-whatever-its-core-is)).
+Pass the core and both estimators to `sfm_compare` before `PoseFill`. If the two
+estimators agree with each other and the core sits far from both, the core is not one:
+it fired at 8.7 times the estimators' spread on that capture, and at 1.6 on a sound
+core. Treat it as the fired case above, not as a core to fill.
 
 **The chain is `PoseFill` → `SparseTriangulation` → `BundleAdjustmentGlobal`.**
 `PoseFill` fits the similarity from the feed-forward frame into the core's on the
