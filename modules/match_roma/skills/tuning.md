@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchRoMa
-module_version: 1.6.1
+module_version: 1.6.2
 curated_at: 2026-08-10
 ---
 
@@ -83,12 +83,32 @@ ambiguous. Below 0.4:
    estimate, not a matching score, so this trades count for precision cleanly.
    Watch `certainty_floor_effect`: a large fraction removed with an unchanged
    inlier ratio means the floor is discarding correspondences that were fine.
+   **A small fraction removed with an unchanged inlier ratio means something else**:
+   the low inlier ratio is coming from pairs the certainty is confident about, which
+   is the shape of the next section.
 2. **Check `planarity`.** Near 1.0 the pair is degenerate and verification is
    correct to reject it.
 3. **Check the `setting`.**
 
 Do NOT tighten `ransac_threshold` below 2 px. In a dense field that converts a low
 inlier ratio into a low match count and hides the cause.
+
+## Every pair matched, on a capture whose frames do not all overlap
+
+A dense matcher returns a field for every pair it is given, so on exhaustive pairing it
+"matches" pairs that share no content, and on a sparse capture whose frames face
+different directions those pairs verify anyway. The signature: `graph_components` 1,
+every pair carrying hundreds of correspondences or more, an inlier ratio in the 0.5s,
+and the tracker downstream reporting a high conflict rate. On three ten-frame room
+captures it read exactly so, and every route built on it scored 0.11 to 0.33 against
+reference poses.
+
+**`min_certainty` does not help here.** At 0.7 and 0.9 it removed about 6% of samples,
+every pair survived, and `mean_certainty` read 1.00 on pairs whose held-out residuals
+were over 100 px: the certainty saturates on exactly the pairs it would need to reject.
+Match the same capture with a detector-based matcher and compare the two graphs; the
+pairs it leaves unmatched are the candidates.
+[`evidence/agent-controls-2026-10.md`](../../../skills/evidence/agent-controls-2026-10.md)
 
 ## `graph_components` above 1
 

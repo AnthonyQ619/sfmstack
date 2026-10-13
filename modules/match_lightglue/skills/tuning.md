@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.1
+module_version: 1.6.2
 curated_at: 2026-08-08
 ---
 
@@ -54,6 +54,25 @@ obeying the band had no next move.
 `matches_per_pair`, not by `inlier_ratio`, and — this changed — not primarily by
 the tracker's `inconsistent_rate`. The match count going down is the intended
 effect.
+
+**So is the pair count, as long as the graph stays in one piece.** Pairs leaving as
+the dial rises are the weak edges going, and on the global route those are the ones
+rotation averaging cannot survive. Measured on a ten-view site walk, swept on the
+global route at two epipolar settings:
+
+| `filter_threshold` | 0.3 | 0.4 | **0.5** | 0.6 | 0.7 |
+| --- | --- | --- | --- | --- | --- |
+| AUC@30, `max_epipolar_error` 1.0 | 0.462 | 0.625 | **0.975** | 0.966 | 0.970 |
+| AUC@30, `max_epipolar_error` 2.0 | 0.527 | 0.489 | **0.981** | 0.976 | 0.959 |
+
+A step, not a slope, and the same at both settings. An agent on that capture swept to
+0.5 and stopped at 0.4 because 0.5 "cost 6 pairs and lowered `min_image_degree` from 4
+to 2" — it judged the dial by the graph's size on the incremental route, and delivered
+0.500. **Stop raising it when `graph_components` rises above 1 or an image reaches
+degree zero, not when the pair count falls**; and where the reconstructor is global,
+carry at least two settings either side of the first one that cleans the cycle terms to
+a model, because the step can sit between two adjacent values.
+[`evidence/agent-controls-2026-10.md`](../../../skills/evidence/agent-controls-2026-10.md#the-meadow-isolation)
 
 `inlier_ratio` is actively misleading here: it read 0.93-0.99 on every run that
 still needed tightening, and it *rises* as you tighten, so it confirms whatever you

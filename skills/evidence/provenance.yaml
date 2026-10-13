@@ -24,6 +24,124 @@ fixed:
 - modules/
 - docs/
 campaigns:
+  agent-controls-2026-10:
+    captures:
+    - DTU/scan1
+    - DTU/scan10
+    - DTU/scan15
+    - DTU/scan23
+    - DTU/scan33
+    - DTU/scan4
+    - DTU/scan48
+    - DTU/scan75
+    - DTU/scan77
+    - DTU/scan9
+    - ETH/courtyard
+    - ETH/delivery_area
+    - ETH/electro
+    - ETH/facade
+    - ETH/kicker
+    - ETH/meadow
+    - ETH/office
+    - ETH/playground
+    - ETH/relief
+    - advio/advio-07
+    - advio/advio-12
+    - euroc/MH_03_medium
+    - euroc/MH_04_difficult
+    - euroc/MH_05_difficult
+    - euroc/V1_02_medium
+    - euroc/V2_01_easy
+    - tum_vi/room2
+    - tum_vi/room3
+    - tum_vi/room4
+    sections:
+      the-seven:
+      - DTU/scan77
+      - ETH/kicker
+      - ETH/meadow
+      - ETH/relief
+      - euroc/V1_02_medium
+      - euroc/V2_01_easy
+      - tum_vi/room2
+      finding-1--a-complete-detector-free-view-graph-is-not-evidence-of-overlap:
+      - euroc/V1_02_medium
+      - euroc/V2_01_easy
+      - tum_vi/room2
+      finding-2--the-pixel-veto-fires-on-an-estimators-own-cameras-by-construction:
+      - euroc/V2_01_easy
+      finding-3--the-two-joint-matchers-trade-places-and-neither-was-considered:
+      - DTU/scan1
+      - DTU/scan10
+      - DTU/scan15
+      - DTU/scan23
+      - DTU/scan33
+      - DTU/scan4
+      - DTU/scan48
+      - DTU/scan75
+      - DTU/scan77
+      - DTU/scan9
+      - ETH/courtyard
+      - ETH/delivery_area
+      - ETH/electro
+      - ETH/facade
+      - ETH/kicker
+      - ETH/meadow
+      - ETH/office
+      - ETH/playground
+      - ETH/relief
+      - advio/advio-07
+      - advio/advio-12
+      - euroc/MH_03_medium
+      - euroc/MH_04_difficult
+      - euroc/MH_05_difficult
+      - euroc/V1_02_medium
+      - euroc/V2_01_easy
+      - tum_vi/room2
+      - tum_vi/room3
+      - tum_vi/room4
+      finding-4--the-classical-branch-on-a-sparse-capture:
+      - DTU/scan1
+      - DTU/scan10
+      - DTU/scan15
+      - DTU/scan23
+      - DTU/scan33
+      - DTU/scan4
+      - DTU/scan48
+      - DTU/scan75
+      - DTU/scan77
+      - DTU/scan9
+      - ETH/courtyard
+      - ETH/delivery_area
+      - ETH/electro
+      - ETH/facade
+      - ETH/kicker
+      - ETH/meadow
+      - ETH/office
+      - ETH/playground
+      - ETH/relief
+      - euroc/MH_03_medium
+      - euroc/MH_04_difficult
+      - euroc/MH_05_difficult
+      - euroc/V1_02_medium
+      - euroc/V2_01_easy
+      - tum_vi/room2
+      - tum_vi/room3
+      - tum_vi/room4
+      finding-5--a-camera-on-one-or-two-thin-pairs-is-placed-against-its-own-evidence:
+      - ETH/kicker
+      - euroc/V1_02_medium
+      finding-6--one-filled-camera-leaves-the-second-gate-with-nothing-to-read:
+      - ETH/kicker
+      finding-7--an-index-row-describes-its-capture-at-the-frame-count-it-ran-at:
+      - DTU/scan77
+      - ETH/relief
+      the-meadow-isolation:
+      - ETH/meadow
+      what-this-does-not-establish:
+      - ETH/meadow
+    note: findings 3 and 4 rest on the corpus record of sparse-compositions-2026-10, not only on the seven
+      run here
   agentic-campaign-2026-09:
     captures:
     - DTU/scan1
@@ -1050,3 +1168,23 @@ claims:
   hash: 1fffe1b71b1b
   starts: '**A second magnitude, two orders larger, at a di'
   rests_on: sparse-compositions-2026-10
+- at: plan/detection.md#which-end-to-reach-for
+  hash: c9fec4651bd1
+  starts: '> **Driven cold on full captures the same move w'
+  rests_on: agent-controls-2026-10#finding-4--the-classical-branch-on-a-sparse-capture
+- at: plan/matching.md#1-detector-based-or-detector-free--and-what-it-costs-downstream
+  hash: 2ee5677dc044
+  starts: '**A complete graph is not evidence that the fram'
+  rests_on: agent-controls-2026-10#finding-1--a-complete-detector-free-view-graph-is-not-evidence-of-overlap
+- at: plan/matching.md#2-independent-or-joint
+  hash: 76500b85fe60
+  starts: '**Once a joint matcher is the choice, there are '
+  rests_on: agent-controls-2026-10#finding-3--the-two-joint-matchers-trade-places-and-neither-was-considered
+- at: plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself
+  hash: 006638a21a4d
+  starts: '**The veto''s domain is cameras that claim to res'
+  rests_on: agent-controls-2026-10#finding-2--the-pixel-veto-fires-on-an-estimators-own-cameras-by-construction
+- at: plan/scene_to_pipeline.md#textureless_fraction--meaningless-without-empty_regions
+  hash: c2df05d31388
+  starts: '**That evidence is from full captures, and on a '
+  rests_on: agent-controls-2026-10#finding-4--the-classical-branch-on-a-sparse-capture

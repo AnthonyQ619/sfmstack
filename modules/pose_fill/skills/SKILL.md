@@ -1,6 +1,6 @@
 ---
 module: PoseFill
-module_version: 1.1.0
+module_version: 1.1.1
 upstream: none -- a similarity fit, implemented here
 curated_at: 2026-09-25
 sources: 2

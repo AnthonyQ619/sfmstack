@@ -32,6 +32,15 @@ corpus, and a plan built on it should say so. This caution is stronger here than
 the one on the range tables in `plan/`: there, a corpus member recognises its own
 *reading*; here, it recognises its own *answer*.
 
+**A row describes its capture at the frame count it was run at, which for most rows
+is every frame.** The same capture subsampled to a handful of far-apart views is a
+different problem, and the decisive move does not carry over: one row records the
+cheap classical branch registering everything, and at ten views that branch broke into
+three pieces; another records two models the profile ranked wrongly, and at ten views
+they agreed to three hundredths of a degree
+([`agent-controls-2026-10`](agent-controls-2026-10.md#finding-7--an-index-row-describes-its-capture-at-the-frame-count-it-ran-at)).
+Check the frame count before treating a row as a precedent.
+
 **A capture from the same source as a row is not a cold match either.** Another
 scan off the same rig, or another walk around the same campus, will match a row on
 nearly every trait and will do so legitimately — that is within-family

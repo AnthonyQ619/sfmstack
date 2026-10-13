@@ -481,7 +481,7 @@ def run(ctx: Ctx):
                 "sfm_find_alternatives(produces='pairwise_matches/v1', "
                 "not_consuming='features/v1').",
             ],
-            see_also="tuning.md#combined_change-above-028",
+            see_also="tuning.md#combined_change-above-its-band",
         )
 
     # 0.80 rather than the band's 0.75: a warn that fires on most scenes is noise,

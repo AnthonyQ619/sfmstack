@@ -1,5 +1,5 @@
 name: FeatureMatchRoMa
-version: 1.6.1
+version: 1.6.2
 kind: matching
 summary: >
   RoMa: dense warp plus per-pixel certainty from a DINOv2 backbone, sampled into
@@ -34,7 +34,7 @@ description: |
   planarity — is shared with the other matchers, so all six differ in exactly one
   stage.
 
-image: sfmstack/match-roma:1.6.1
+image: sfmstack/match-roma:1.6.2
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -84,9 +84,13 @@ params:
     description: Drop sampled correspondences whose certainty is below this.
     tuning: >
       0.0 relies on certainty-weighted sampling alone, which is the authors'
-      intended use. Raise to 0.5-0.7 when inlier_ratio is poor: RoMa's certainty is
-      calibrated well enough that this trades count for precision cleanly, and it
-      is the first thing to try before touching the geometric threshold.
+      intended use. Raise to 0.5-0.7 when inlier_ratio is poor on a capture whose
+      frames overlap: there it trades count for precision, and it is the first thing
+      to try before touching the geometric threshold. It does NOT remove pairs between
+      frames that share no content: on sparse room captures, 0.7 and 0.9 removed about
+      6% of samples, every pair survived, and mean certainty read 1.00 on pairs whose
+      held-out residuals were over 100 px (evidence/agent-controls-2026-10.md,
+      finding 1). Certainty saturates there; a detector-based graph is the check.
 
   use_custom_corr:
     type: boolean

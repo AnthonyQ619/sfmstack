@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.3
+module_version: 1.4.4
 curated_at: 2026-09-07
 ---
 

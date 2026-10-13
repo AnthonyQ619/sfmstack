@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.1
+module_version: 1.6.2
 produces: pairwise_matches/v1
 curated_at: 2026-08-08
 ---

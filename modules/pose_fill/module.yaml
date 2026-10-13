@@ -1,5 +1,5 @@
 name: PoseFill
-version: 1.1.0
+version: 1.1.1
 kind: pose
 summary: >
   One pose table out of two: the geometric core's cameras kept as they are, and the
@@ -43,7 +43,7 @@ description: |
   effect in the campaign that produced this rule. Pass the filled indices to
   `BundleAdjustmentGlobal`'s `fixed_image_indices` and refine the core only.
 
-image: sfmstack/pose-fill:1.1.0
+image: sfmstack/pose-fill:1.1.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -210,8 +210,11 @@ metrics:
     nullable: true
     meaning: >
       Median relative-rotation disagreement between the two estimators, **restricted
-      to the frames being filled**. Null when no second estimator was supplied or
-      nothing was filled.
+      to the frames being filled**. Null when no second estimator was supplied,
+      nothing was filled, or **exactly one frame was filled**: it compares the two
+      estimators' relative rotations among the filled frames, and one frame has no
+      pair. So the commonest fill -- one stray camera -- gets no second gate at all;
+      read that camera's own verifier residual after the chain instead.
 
       **This is the reading `shared_residual` cannot give.** That one is computed on
       cameras both tables already place, so it says whether the two frames were put

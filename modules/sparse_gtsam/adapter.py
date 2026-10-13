@@ -144,7 +144,8 @@ def run(ctx: Ctx):
     names = scene.load("images", "names")
     n_images = len(names)
 
-    if not scene.has("calibration"):
+    from_poses = poses_art.has("intrinsics")
+    if not scene.has("calibration") and not from_poses:
         out = ctx.output("sparse")
         out.diagnostic(
             "uncalibrated_scene",
@@ -157,7 +158,21 @@ def run(ctx: Ctx):
             "Pass calibration_path to SceneLoader."
         )
 
-    K_all, dist_all = per_image_intrinsics(scene, n_images)
+    # Poses win when they carry intrinsics, exactly as in SparseTriangulation, of which
+    # this is meant to be a drop-in: a correspondence-free estimator estimated K jointly
+    # with its poses, and triangulating those poses with the scene's K mixes two cameras.
+    if from_poses:
+        est = poses_art.load("intrinsics")
+        K_raw = np.asarray(est["K"], dtype=np.float64)
+        cam_index = est.get("camera_index")
+        cam_index = (
+            np.arange(n_images) if cam_index is None and len(K_raw) == n_images
+            else (np.zeros(n_images, int) if cam_index is None else np.asarray(cam_index, int))
+        )
+        K_all = K_raw[cam_index]
+        dist_all = np.zeros((n_images, 5))
+    else:
+        K_all, dist_all = per_image_intrinsics(scene, n_images)
 
     pose_data = poses_art.load("poses")
     cam_from_world = np.asarray(pose_data["cam_from_world"], dtype=np.float64)
@@ -383,6 +398,10 @@ def run(ctx: Ctx):
         valid=valid,
         image_index=image_index.astype(np.int32),
     )
+    # The intrinsics this model was built with travel with it when they were not the
+    # scene's, so the bundle adjuster refines the same camera (sparse_model/v1).
+    if from_poses:
+        out.save("intrinsics", K=K_all, camera_index=np.arange(n_images, dtype=np.int32))
 
     # The PER-POINT mean, not the per-observation mean. `residuals` is one row
     # per observation, so averaging it directly weights long tracks by their

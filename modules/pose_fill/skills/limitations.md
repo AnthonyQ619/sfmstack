@@ -1,6 +1,6 @@
 ---
 module: PoseFill
-module_version: 1.1.0
+module_version: 1.1.1
 curated_at: 2026-09-25
 ---
 
@@ -42,6 +42,15 @@ it: the estimators' relative-rotation disagreement restricted to the filled indi
 
 Without `poses_b` the reading is null, and the fill rests on one opinion about the
 frames that matter most. That is allowed and it is worth knowing you are doing it.
+
+**It is also null when exactly one frame is filled, with `poses_b` supplied.** The
+reading compares the two estimators' relative rotations *among the filled frames*,
+and one frame has no pair to compare. That is the commonest fill — a single stray
+camera — so the second gate is absent precisely there. Measured on a site walk: two
+fills of one camera each, both null
+([`evidence/agent-controls-2026-10.md`](../../../skills/evidence/agent-controls-2026-10.md#finding-6--one-filled-camera-leaves-the-second-gate-with-nothing-to-read)).
+Price a single filled camera after the chain, on the verifier's per-camera residual,
+not on this reading.
 
 ## It cannot tell you whether the estimator is right
 

@@ -19,7 +19,7 @@ from .errors import (
     SfmkitError,
     ValidationError,
 )
-from .manifest import Diagnostic, Manifest, Metric, Provenance, artifact_id
+from .manifest import Diagnostic, Manifest, Metric, Provenance, artifact_id, recipe_inputs
 from .module import Ctx, Params, module, run_module
 from .geometry import scene_intrinsics, trifocal_transfer
 from .ply import read_ply_header, write_ply
@@ -61,6 +61,7 @@ __all__ = [
     "TypeSchema",
     "ValidationError",
     "artifact_id",
+    "recipe_inputs",
     "module",
     "parse_schema",
     "registry",

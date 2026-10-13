@@ -901,3 +901,61 @@ def test_the_landmark_distance_bound_only_removes_points(orch):
     assert bounded.metric("point_count") < unbounded.metric("point_count")
     assert bounded.metric("rejected_distance") > 0
     assert unbounded.metric("rejected_distance") == 0
+
+
+def _poses_with_intrinsics(orch, poses, scene, scale):
+    """A copy of `poses` carrying an estimated K, as a correspondence-free estimator
+    writes one: the scene's K with the focal length scaled."""
+    from sfmkit import Provenance
+    K = scene.load("calibration", "intrinsics")
+    K = np.array(K if len(K) > 1 else np.repeat(K, len(scene.load("images", "names")), axis=0), dtype=np.float64)
+    K[:, 0, 0] *= scale
+    K[:, 1, 1] *= scale
+    w = orch.store.writer(artifact_id=f"art_estk{int(scale * 1000):06d}", type="poses/v1",
+                          provenance=Provenance(module="EstimatorStandIn", module_version="1.0.0"),
+                          inputs=[scene.id])
+    d = poses.load("poses")
+    w.save("poses", cam_from_world=d["cam_from_world"], valid=d["valid"], image_index=d["image_index"])
+    w.save("intrinsics", K=K)
+    w.metric("registered_fraction", 1.0, direction="higher_better")
+    return w.seal()
+
+
+@needs_pycolmap
+def test_a_triangulated_model_carries_the_intrinsics_it_was_built_with(orch):
+    """Triangulation took an estimator's K from the poses and did not write it into the
+    model, so bundle adjustment fell back to the scene's K and refined a different
+    camera. The error going in must be the error the triangulator reported."""
+    built = build(orch, upto="poses")
+    scene = built["scene"]
+    est = _poses_with_intrinsics(orch, built["poses"], scene, scale=1.08)
+    sparse = orch.run("SparseTriangulation", run_id="rc",
+                      inputs={"scene": scene.id, "tracks": built["tracks"].id,
+                              "poses": est.id}).primary
+    assert sparse.has("intrinsics"), "the estimator's K did not travel with the model"
+    K = sparse.load("intrinsics", "K")
+    assert np.allclose(K[0, 0, 0], est.load("intrinsics", "K")[0, 0, 0])
+    ba = orch.run("BundleAdjustmentGlobal", run_id="rc",
+                  inputs={"scene": scene.id, "sparse": sparse.id}).primary
+    before = ba.metric("reprojection_error_before")
+    assert before == pytest.approx(sparse.metric("mean_reprojection_error"), rel=0.05, abs=0.05)
+
+
+def test_a_model_triangulated_on_the_scenes_calibration_carries_no_intrinsics(orch):
+    """The other half of the contract: nothing is written when the scene's K was used,
+    so every existing model and cache entry is unchanged."""
+    assert not build(orch)["sparse"].has("intrinsics")
+
+
+@needs_gtsam
+def test_the_gtsam_triangulator_also_uses_and_carries_the_poses_intrinsics(orch):
+    """It is documented as a drop-in for SparseTriangulation, and it ignored an
+    estimator's K: it triangulated those poses with the scene's calibration."""
+    built = build(orch, upto="poses")
+    scene = built["scene"]
+    est = _poses_with_intrinsics(orch, built["poses"], scene, scale=1.08)
+    common = {"scene": scene.id, "tracks": built["tracks"].id, "poses": est.id}
+    g = orch.run("SparseTriangulationGTSAM", run_id="rc", inputs=common).primary
+    o = orch.run("SparseTriangulation", run_id="rc", inputs=common).primary
+    assert g.has("intrinsics")
+    assert np.allclose(g.load("intrinsics", "K"), o.load("intrinsics", "K"))

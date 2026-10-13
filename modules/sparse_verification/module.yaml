@@ -1,5 +1,5 @@
 name: SparseVerification
-version: 1.5.0
+version: 1.5.1
 kind: analysis
 summary: >
   A veto on finished sparse models: rejects one that contradicts the matcher's
@@ -46,7 +46,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.5.0
+image: sfmstack/sparse-verification:1.5.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -273,6 +273,13 @@ metrics:
     meaning: >
       The registered camera whose held-out pairs disagree with the model most, by
       median residual. Null when no camera had a scorable pair.
+
+      **It can only name a camera that HAS a scored pair.** A camera held by pairs too
+      thin to leave anything held out is never a candidate, however wrong, and the
+      index then names the worst of the cameras that could be scored -- a different
+      one. Before acting on it, check `pairs_scored` per camera in the series: a camera
+      at zero is unpriced by this reading, and the residual of its pairs on ALL
+      correspondences is the one that shows it.
 
       **This is the reading the drop remedy needs.** `plan/pose.md` says to drop the
       cameras a model cannot support and fill them, and until this was published the

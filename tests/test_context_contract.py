@@ -100,6 +100,17 @@ def test_control_dead_see_also_is_detected(tmp_path):
     assert any("no-such-heading" in f for f in dead_see_also(root))
 
 
+def test_control_dead_see_also_in_an_adapter_is_detected(tmp_path):
+    """The blind spot this closed: the check read manifests only, and the link a reader
+    is handed at run time is the adapter's."""
+    root = _tree(tmp_path)
+    a = root / "modules/scene_triage/adapter.py"
+    t = a.read_text()
+    assert 'see_also="tuning.md#combined_change-above-its-band"' in t
+    a.write_text(t.replace("combined_change-above-its-band", "combined_change-above-028", 1))
+    assert any("adapter" in f and "combined_change-above-028" in f for f in dead_see_also(root))
+
+
 def test_control_dead_citation_is_detected(tmp_path):
     root = _tree(tmp_path)
     p = root / "modules/scene_motion/skills/tuning.md"

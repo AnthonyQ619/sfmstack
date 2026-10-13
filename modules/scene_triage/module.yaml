@@ -1,5 +1,5 @@
 name: SceneTriage
-version: 1.7.0
+version: 1.7.1
 kind: analysis
 summary: >
   CPU scene characterisation before anything is reconstructed: photometric
@@ -54,7 +54,7 @@ description: |
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 
-image: sfmstack/scene-triage:1.7.0
+image: sfmstack/scene-triage:1.7.1
 entrypoint: adapter:run
 resources:
   gpu: false

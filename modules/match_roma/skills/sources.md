@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchRoMa
-module_version: 1.6.1
+module_version: 1.6.2
 curated_at: 2026-09-07
 ---
 
@@ -16,6 +16,7 @@ in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
 | robustness to illumination/viewpoint largely inherited from the backbone — why RoMa outperforms LoFTR exactly where a detector fails | DINOv2 — Oquab et al., 2023 |
 | `match()` takes paths or PIL images → `(warp, certainty)`; `sample(num=)` re-samples an already-computed field, so `num` costs nothing upstream; `to_pixel_coordinates` maps into whatever size it is told — passing the SCENE's working resolution is load-bearing | `romatch` 0.1.2, verified |
 | **`use_custom_corr` defaults True on Linux** and needs a compiled `local_corr` CUDA extension pip does not install — constructs fine, raises `ModuleNotFoundError` on first forward. Defaulted False here | observed against `romatch` 0.1.2 |
+| **non-overlapping pairs verify, and certainty does not catch them** | measured at 1.6.1 on three ten-frame corpus room captures in an agent batch: all 45 pairs matched, `min_certainty` 0.7 and 0.9 removed about 6% of samples with every pair surviving and `mean_certainty` 1.00, routes scoring 0.11 to 0.33 against reference poses. [`evidence/agent-controls-2026-10.md`](../../../skills/evidence/agent-controls-2026-10.md) |
 | sibling positioning: same detector-free premise as LoFTR, far costlier, more robust under large viewpoint change | both papers |
 | view graph as a parameter; `use_custom_corr` exposed; per-correspondence certainty emitted; merge tolerance belongs to the tracker, not carried in a matched-point container | predecessor `sfmcore/featurematching.py`, RoMa matcher |
 | **behaviour in a real pipeline** | measured. 90 runs across the seventy-five-capture pose batch, and a head-to-head against LoFTR on the seven corpus captures spanning `studio`/`indoor`/`outdoor` at both weight settings: a complete view graph on twelve of twelve configurations that completed, median ~3100 correspondences per pair, and a refusal on both interior captures at `setting: outdoor`. [`evidence/detector-free-2026-10.md`](../../../skills/evidence/detector-free-2026-10.md) |

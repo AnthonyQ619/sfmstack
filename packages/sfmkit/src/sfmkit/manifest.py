@@ -12,7 +12,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import yaml
 
@@ -241,6 +241,27 @@ def _canonical(value: Any) -> Any:
     if isinstance(value, float) and value.is_integer():
         return int(value)
     return value
+
+
+def recipe_inputs(inputs: Mapping[str, Any]) -> list[str]:
+    """The input half of a recipe: one entry per input artifact, from {slot: Artifact}.
+
+    Input ids are sorted into the recipe, so the slot an artifact was given to is lost.
+    That is harmless while every input has a different type -- the type pins the slot --
+    and wrong when two inputs share one: swapping them produced the same id, and the
+    cache handed back whichever order had run first. `PoseFill` takes two `poses/v1`
+    (`poses`, the primary, and `poses_b`, the second opinion), and an agent swapped them
+    and was given the other run, marked cached.
+
+    So an input whose TYPE repeats among the inputs is recorded as `slot=id`; every
+    other input stays a bare id. Every recipe without a repeated type -- all of them
+    but a two-estimator fill -- therefore hashes exactly as it always has, and no cache
+    entry is invalidated by the fix.
+    """
+    types = [a.type for a in inputs.values()]
+    repeated = {t for t in types if types.count(t) > 1}
+    return [f"{slot}={a.id}" if a.type in repeated else a.id
+            for slot, a in inputs.items()]
 
 
 def artifact_id(

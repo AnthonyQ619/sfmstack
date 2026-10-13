@@ -1,5 +1,5 @@
 name: SparseGlobalCOLMAP
-version: 1.4.3
+version: 1.4.4
 kind: sparse
 summary: >
   GLOMAP-style global reconstruction: rotation averaging, global positioning,
@@ -23,14 +23,16 @@ description: |
   This is the module to reach for when `PoseEssentialToPnP` reports a low
   `registered_fraction` on an unordered set. Incremental registration stalls when
   the next image has too few correspondences with what is already built; global
-  positioning has no such notion and either places a camera or does not.
+  positioning has no such notion and either places a camera or does not -- which
+  includes placing a camera on one or two thin pairs, against its own evidence, with
+  registered_fraction reading 1.0 (limitations.md#a-placed-camera-is-not-a-supported-one).
 
   What it gives up: the incremental pipeline's per-image evidence. There is no
   `min_pnp_inliers` to relax, no seed pair to inspect, and when a camera comes out
   in the wrong place the diagnosis is in the view graph rather than in this
   module. Read the matcher's `graph_components` and `inlier_ratio` first.
 
-image: sfmstack/sparse-global-colmap:1.4.3
+image: sfmstack/sparse-global-colmap:1.4.4
 entrypoint: adapter:run
 resources:
   gpu: false

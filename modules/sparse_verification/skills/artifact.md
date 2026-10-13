@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.5.0
+module_version: 1.5.1
 produces: custom/verification/v1
 ---
 
@@ -98,6 +98,14 @@ so — and the remedy depends on knowing which. One report put the problem exact
 which."*
 
 `worst_camera_index` names it and `worst_camera_residual_px` is its reading.
+
+**It names the worst camera it could SCORE, which is not always the worst camera.** A
+held-out reading needs held-out pairs, and a camera held by one or two thin pairs may
+have none left after the split. That camera is then never a candidate, however far off
+it sits, and the index names a different one — the remedy then drops a sound camera and
+keeps the bad one. Read `pairs_scored` per camera first: at zero the camera is unpriced
+here, and the residual of its pairs on all correspondences is what shows it. This
+follows from the definition; it needs no capture to establish.
 
 **A bad camera is not always a stray.** It can sit inside the largest agreeing
 component, add nothing to `supported_stray_cameras`, and still be the camera every

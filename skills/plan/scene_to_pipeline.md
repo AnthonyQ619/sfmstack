@@ -381,6 +381,18 @@ above frames it as the remedy for the hardest recoverable case; the evidence is
 that it is worth trying wherever the wanted surface is flat and unclipped,
 which is a wider set.
 
+**That evidence is from full captures, and on a sparse one the order reverses.**
+Normalisation buys keypoints; it does not buy shared content between frames that are
+far apart. On the corpus at ten views each, the better of the two classical
+compositions finished more than 0.2 below the best composition on **14 of 27
+captures** — 2 of 10 controlled-subject orbits, 4 of 9 site walks, and every one of 8
+traversals — and on one orbit an agent following this paragraph took the
+normalised classical branch, watched it fragment into three pieces, and delivered
+0.745 where the learned and detector-free compositions reached 0.94 to 0.97
+([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-4--the-classical-branch-on-a-sparse-capture)).
+So with a handful of frames, ask §3b's connectivity question first and let it win;
+normalisation is the move once the graph holds.
+
 > **It does not work alone, and this is the part that is easy to miss.**
 > Normalising raises the number of keypoints the detector *would* return, so on
 > a capture where the cap was already binding the extra keypoints are simply

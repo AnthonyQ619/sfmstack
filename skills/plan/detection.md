@@ -345,7 +345,10 @@ ones.
 >
 > So the boundary `matching.md` gives the detector-free matchers applies here
 > too: **reach for the learned pair where the cheap branch has FAILED, not where
-> it is STRUGGLING.** And the motion reading that sends you here no longer
+> it is STRUGGLING.** On a sparse capture — a handful of frames, far apart — expect
+> the cheap branch to be the one failing: at ten views it finished more than 0.2
+> below the best composition on 14 of 27 corpus captures, every traversal among
+> them ([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-4--the-classical-branch-on-a-sparse-capture)). And the motion reading that sends you here no longer
 > carries a clean separation at full frame count — see
 > `plan/scene_to_pipeline.md` §3b.2, which now states it as a ranking heuristic
 > and withdraws the published band.

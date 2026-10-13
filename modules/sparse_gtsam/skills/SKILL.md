@@ -1,6 +1,6 @@
 ---
 module: SparseTriangulationGTSAM
-module_version: 1.1.0
+module_version: 1.1.1
 upstream: GTSAM 4.2.2 triangulatePoint3 (LOST estimator)
 curated_at: 2026-08-10
 sources: 3

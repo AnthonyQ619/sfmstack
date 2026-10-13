@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from sfmkit import Artifact, ArtifactStore, artifact_id
+from sfmkit import Artifact, ArtifactStore, artifact_id, recipe_inputs
 
 from .errors import ExecutionError, WiringError
 from .lineage import compare as _compare
@@ -169,7 +169,7 @@ class Orchestrator:
     ) -> dict[str, str]:
         """The ids this step will produce. Computed the same way `Ctx.output`
         does, so a cache hit here is authoritative."""
-        input_ids = [a.id for a in inputs.values()]
+        input_ids = recipe_inputs(inputs)
         return {
             slot: artifact_id(
                 type=payload_type,

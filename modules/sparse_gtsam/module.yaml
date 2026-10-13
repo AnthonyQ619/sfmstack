@@ -1,5 +1,5 @@
 name: SparseTriangulationGTSAM
-version: 1.1.0
+version: 1.1.1
 kind: sparse
 summary: >
   Triangulates tracks against known poses using GTSAM's LOST estimator with
@@ -29,7 +29,7 @@ description: |
   that created it; an angle threshold catches most of those and a distance bound
   catches the rest.
 
-image: sfmstack/sparse-gtsam:1.1.0
+image: sfmstack/sparse-gtsam:1.1.1
 entrypoint: adapter:run
 resources:
   gpu: false

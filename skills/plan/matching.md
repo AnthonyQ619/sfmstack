@@ -31,6 +31,21 @@ allows — where three completed and only one of those was usable. **An image at
 zero cannot register at all**, so this is a structural difference, not a quality
 preference.
 
+**A complete graph is not evidence that the frames overlap, and on a sparse capture
+it is often the opposite.** That comparison ran on captures whose frames do share
+content. On a ten-frame capture of a room whose frames face different walls, the same
+matcher still "matched" all 45 pairs with hundreds to thousands of correspondences on
+the weakest, the pairs sharing nothing verified anyway, and every route built on them
+came out far from the estimators' agreement — 0.11 to 0.33 against reference poses on
+three such captures. **Its certainty does not separate those pairs**: raised to 0.7
+and 0.9, the floor removed about 6% of the samples, every pair survived, and mean
+certainty read 1.00 on pairs whose held-out residuals were over a hundred pixels
+([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-1--a-complete-detector-free-view-graph-is-not-evidence-of-overlap)).
+So where the frames are few and point in different directions, read a complete
+detector-free graph as a reason to check it against a detector-based one, which
+leaves the non-overlapping pairs unmatched — not as the strength it is on a capture
+that overlaps.
+
 LoFTR remains the right thing to try where RoMa will not run or runs out of memory,
 and it is roughly three times faster. But it is not the stronger matcher on this
 corpus, and a capture that is fragmenting is not a reason to reach for it. The campaign
@@ -88,6 +103,18 @@ reads *high* for a purely geometric reason. It is dominated by viewing geometry
 rather than by ambiguity, and the hazard here is *between-image* ambiguity, which
 it cannot see at all. `repetition_notes` from `SceneDescription` is the reading to
 act on.
+
+**Once a joint matcher is the choice, there are two of them, and they are not
+interchangeable.** `FeatureMatchLightGlue` and `FeatureMatchSuperGlue` take the same
+learned keypoints, and on the corpus record they trade places: across the captures run
+through both on the global route, SuperGlue led by more than 0.05 on five and LightGlue
+on eight, by up to 0.29 and 0.43 on one capture, both directions on site walks and on
+traversals alike, and no capture-kind label sorts the winners. On a single controlled
+subject they mostly agree. So on a walk or a traversal, **carry both to a model** rather
+than letting the first one stand for the pair — the comparison costs one matching run on
+the detection you already have. In a fourteen-session batch driven from this context, no
+session considered the second one at all
+([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-3--the-two-joint-matchers-trade-places-and-neither-was-considered)).
 
 ### 3. Pairing is a graph decision priced as a matcher parameter
 

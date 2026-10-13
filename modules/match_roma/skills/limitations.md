@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchRoMa
-module_version: 1.6.1
+module_version: 1.6.2
 curated_at: 2026-08-10
 ---
 

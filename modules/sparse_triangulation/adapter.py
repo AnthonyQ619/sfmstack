@@ -144,7 +144,8 @@ def run(ctx: Ctx):
 
     # Poses win when they carry intrinsics: a module that estimated K did so
     # jointly with the poses, and mixing its poses with the scene's K is wrong.
-    if poses_art.has("intrinsics"):
+    from_poses = poses_art.has("intrinsics")
+    if from_poses:
         est = poses_art.load("intrinsics")
         K_raw = np.asarray(est["K"], dtype=np.float64)
         cam_index = est.get("camera_index")
@@ -319,6 +320,14 @@ def run(ctx: Ctx):
     _filled = filled_mask(ctx.inputs["poses"], n_images)
     if _filled is not None:
         out.save("fill", filled=_filled)
+    # The intrinsics this model was triangulated with travel WITH it whenever they did
+    # not come from the scene. Without this, a model built on an estimator's poses and
+    # its estimated K was refined against the scene's calibration instead: bundle
+    # adjustment reads the model's intrinsics first and the scene's otherwise, so it
+    # silently solved a different camera. Measured on an estimator chain: 1.19 px out
+    # of this module, 14.33 px into the bundle adjuster, on the same points.
+    if from_poses:
+        out.save("intrinsics", K=K_all, camera_index=np.arange(n_images, dtype=np.int32))
 
     mean_err = float(np.mean(kept_error))
     mean_len = len(obs_table) / len(xyz)

@@ -30,7 +30,7 @@ from typing import Any, Callable
 
 from .artifact import Artifact, ArtifactWriter
 from .errors import InputError
-from .manifest import Provenance, artifact_id
+from .manifest import Provenance, artifact_id, recipe_inputs
 from .store import ArtifactStore
 
 
@@ -153,7 +153,7 @@ class Ctx:
             module_version=self.module_version,
             slot=name,
             params=self.params.as_dict(),
-            inputs=[a.id for a in self.inputs.values()],
+            inputs=recipe_inputs(self.inputs),
         )
 
         writer = self.store.writer(

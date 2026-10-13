@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.1
+module_version: 1.6.2
 curated_at: 2026-09-07
 ---
 
@@ -20,4 +20,5 @@ in `tuning.md`; the re-check rule is the one global rule in `SKILLS.md`.
 | `filter_threshold`'s criterion moved from the tracker's `inconsistent_rate` to this module's own `cycle_merge_rate + cycle_split_rate`: the old instrument read flat across the deciding range twice (cycle sum fell 7.7× vs 1.17×; 0.005 movement across a 5→30-frame registration change), and it cost a tracker run per sweep point. Two measured limits on the replacement: the merge term alone is not the forecast (0.0016 beside a 17% self-contradictory table), and the sum prices a difference within a capture, never a level across captures (the constant varies ~4×) | measured across the seventeen-capture sweep; family statement in [`skills/plan/matching.md`](../../../skills/plan/matching.md) |
 | pinned git install (predecessor vendored the source); `detector` inferred from provenance and cross-checked against descriptor width (predecessor's free-text default would run SuperPoint weights on SIFT features silently); exhaustive pairing available (predecessor sequential-only) | predecessor `sfmcore/featurematching.py`, `FeatureMatchLightGluePair` |
 | every measured band and episode | **75 runs** at 1.6.0 in the seventeen-capture sweep — the most-run matcher; scope pinned by `evidence/CORPUS.txt` |
+| the `filter_threshold` step on the global route, and pair count as the wrong stopping signal | measured at 1.6.1 on one ten-view corpus site walk, `pairing: exhaustive`, the global reconstructor at `num_threads: 1` and `max_epipolar_error` 1.0 and 2.0, swept 0.3–0.7 and scored against reference poses. [`evidence/agent-controls-2026-10.md`](../../../skills/evidence/agent-controls-2026-10.md#the-meadow-isolation) |
 | 6 healthy bands; numeric values in `window`, `filter_threshold`, `n_layers`, `depth_confidence`, `width_confidence` advice | **nothing** — see the audit section in `tuning.md` |

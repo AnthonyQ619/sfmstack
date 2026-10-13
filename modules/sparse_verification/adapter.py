@@ -176,8 +176,8 @@ def nearest_point(index_f, q: np.ndarray) -> np.ndarray:
     return best
 
 
-def component_sizes(nodes, edges) -> list[int]:
-    """Sizes of the connected components `edges` induce on `nodes`, largest first.
+def component_labels(nodes, edges) -> dict[int, int]:
+    """{node: component root} for the components `edges` induce on `nodes`.
 
     Union-find rather than a graph library: the module's only dependencies are numpy
     and OpenCV, and this is twenty lines.
@@ -198,9 +198,13 @@ def component_sizes(nodes, edges) -> list[int]:
         ra, rb = find(a), find(b)
         if ra != rb:
             parent[ra] = rb
+    return {v: find(k) for v, k in at.items()}
+
+
+def component_sizes(nodes, edges) -> list[int]:
+    """Sizes of the connected components `edges` induce on `nodes`, largest first."""
     sizes: dict[int, int] = {}
-    for a in range(len(at)):
-        r = find(a)
+    for r in component_labels(nodes, edges).values():
         sizes[r] = sizes.get(r, 0) + 1
     return sorted(sizes.values(), reverse=True)
 
@@ -424,6 +428,20 @@ def run(ctx: Ctx):
     out.metric("supported_stray_cameras", strays,
                direction="lower_better", healthy=(None, 1))
     if strays >= 2:
+        # What joins the pieces, said from the data rather than assumed. The message
+        # used to state that the pieces "are joined across pairs the model
+        # contradicts" every time; on a capture whose frames fall into separate
+        # co-visibility clusters NO pair joins them, and a reader took the sentence as
+        # a description of their evidence. Count the cross-piece pairs instead.
+        label = component_labels(graph_nodes, agreeing[:, :2].astype(np.int64))
+        cross = sum(1 for i, j in arr[:, :2].astype(np.int64)
+                    if int(i) in label and int(j) in label
+                    and label[int(i)] != label[int(j)])
+        joined = (f"they are joined only across {cross} pair{'s' if cross != 1 else ''} "
+                  f"the model contradicts"
+                  if cross else
+                  "no pair of the evidence joins them at all, so how the pieces sit "
+                  "relative to each other rests on nothing the model was given")
         out.diagnostic(
             "model_not_supported_by_its_own_evidence",
             severity="error",
@@ -433,8 +451,8 @@ def run(ctx: Ctx):
                 f"{largest:.0%} of the {len(graph_nodes)} cameras that rest on correspondences "
                 f"(sizes {', '.join(str(s) for s in sizes[:6])}"
                 f"{', ...' if len(sizes) > 6 else ''}). Every piece is internally "
-                f"consistent and they are joined across pairs the model contradicts, "
-                f"so registration and reprojection error cannot see this."
+                f"consistent and {joined}, so registration and reprojection error "
+                f"cannot see this."
             ),
             suggested_actions=[
                 "Read the per-pair array: the pairs bridging two pieces are where the "

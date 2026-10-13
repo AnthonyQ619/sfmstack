@@ -1,6 +1,6 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.3
+module_version: 1.4.4
 curated_at: 2026-08-10
 ---
 
@@ -71,6 +71,22 @@ stricter here than a matcher's own thresholds.
 relative pose. It fails the same way incremental does, but the error spreads
 further. Raise `min_inlier_ratio` toward 0.5 on such scenes and check the
 matcher's `planarity`.
+
+## A placed camera is not a supported one
+
+Global positioning places every camera the view graph reaches, and a camera the graph
+reaches by one or two thin pairs is placed all the same. Nothing in this module says
+whether those pairs agree with where it put it. Measured on two corpus captures: one
+camera held by a single verified pair sat 133 px off that pair's held-out
+correspondences, and another held by pairs of 8 to 16 matches sat 163 to 192 px off its
+own. `registered_fraction` read 1.0 on both. On the first, replacing that camera with a
+fill raised the model from 0.795 to 0.995 against reference poses.
+[`evidence/agent-controls-2026-10.md`](../../../skills/evidence/agent-controls-2026-10.md#finding-5--a-camera-on-one-or-two-thin-pairs-is-placed-against-its-own-evidence)
+
+So after a global solve, read the verifier's per-camera residual before you read the
+registration as complete, and look hardest at the cameras with the lowest degree in the
+matcher's graph. Where one camera is off its own evidence, the escape is the fill chain
+in `plan/pose.md`: drop that camera and place it from an estimator.
 
 ## No per-image evidence
 

@@ -301,6 +301,24 @@ self-consistent wrong model wins on. If a veto leaves you with no model, that is
 information about the capture — say so and deliver the smaller verified model, or
 fill it by the section below. It is never grounds to keep the vetoed one.
 
+**The veto's domain is cameras that claim to rest on correspondences, and an
+estimator's model on its own has none.** The verifier already leaves out cameras a
+fill *placed*, for exactly this reason: they were never solved against the evidence
+it tests, so testing them against it measures the estimator's error in pixels, which
+on a short-focal camera a few degrees makes large. A model built from an estimator's
+poses alone — the delivery the table below prescribes when the core is too small or
+the fill is refused — is the same case with every camera unmarked, and the px veto
+fires on it by construction. It is therefore not a test that model can fail; read it
+as `nothing_held_out` is read, **unverified, not verified**, deliver it marked as the
+estimator's model, and price it on the two-estimator consensus instead. Measured on a
+visual-inertial capture whose core held three of ten: the estimator's model, vetoed at
+3.88 px, scored 0.849 against reference poses; the variant built to pass the veto
+scored 0.756, from the same estimator draw
+([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-2--the-pixel-veto-fires-on-an-estimators-own-cameras-by-construction)).
+**This is a statement about which models the veto can judge, not a licence to overrule
+it**: on any model whose cameras were registered from correspondences, a firing veto
+still ends the matter.
+
 **A quiet verdict is not a clearance, and the asymmetry is the whole point.** Both
 vetoes are *structural*: they ask whether the pairs that agree with the model connect
 it, and whether any camera stands outside that agreement. A model can be wrong

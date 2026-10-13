@@ -1,6 +1,6 @@
 ---
 module: FeatureMatchRoMa
-module_version: 1.6.1
+module_version: 1.6.2
 curated_at: 2026-08-10
 ---
 
@@ -33,7 +33,8 @@ resolution-agnostic.
 RoMa regresses a per-pixel certainty as part of its output. It is closer to a
 calibrated uncertainty than LightGlue's matchability score, which is why
 `min_certainty` is a usable dial rather than a guess. It is still self-reported
-and not comparable across methods.
+and not comparable across methods, and it saturates at 1.00 on pairs between frames
+that share no content, so it is no test of overlap — see `tuning`.
 
 ## What is NOT here
 

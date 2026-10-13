@@ -135,6 +135,24 @@ def dead_see_also(root: Path) -> list[str]:
                 if frag not in anchors(tgt):
                     bad.append(f"{y.parent.name}:{diag.get('code')} -> "
                                f"#{frag} not in {fn}")
+    # The adapters emit see_also too, and those links are what a reader actually
+    # receives at run time. Reading only the manifests left one dead for weeks:
+    # SceneTriage's illumination alarm pointed at a heading named after a threshold
+    # that had since moved, and this check stayed green. A link built at run time
+    # (an f-string with a placeholder) cannot be resolved here and is skipped.
+    for y in _modules(root):
+        adapter = y.parent / "adapter.py"
+        if not adapter.is_file():
+            continue
+        for m in re.finditer(r"""see_also\s*=\s*(f?)["']([^"']+)["']""", adapter.read_text()):
+            if m.group(1) and "{" in m.group(2):
+                continue
+            fn, _, frag = m.group(2).partition("#")
+            tgt = y.parent / "skills" / fn
+            if not tgt.is_file():
+                bad.append(f"{y.parent.name}:adapter -> missing file {fn}")
+            elif frag and frag not in anchors(tgt):
+                bad.append(f"{y.parent.name}:adapter -> #{frag} not in {fn}")
     return bad
 
 
