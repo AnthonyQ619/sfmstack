@@ -1,7 +1,7 @@
 ---
 module: DenseFusion
-module_version: 1.1.0
-curated_at: 2026-09-16
+module_version: 1.1.1
+curated_at: 2026-10-13
 ---
 
 # Tuning DenseFusion
@@ -52,7 +52,7 @@ default gives a cleaner cloud and erodes whatever is seen from few views.
 **And when the deliverable names neither, it is accuracy** — see
 [SKILL.md](SKILL.md), step 3. That resolves what reads as a conflict with `DenseMVS`:
 its "Delivering a dense cloud" names one step below the default, and this file's
-coverage branch names the lowest step the rule allows. They are not two rules for one
+coverage rule names the lowest step the rule allows. They are not two rules for one
 situation. **The delivery anchor is `DenseMVS`'s**, and this file's stepping is how to
 explore around it once coverage has actually been asked for. Two captures reached the
 two settings by those two routes and had nothing to choose between them.

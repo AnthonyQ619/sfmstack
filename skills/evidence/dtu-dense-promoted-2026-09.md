@@ -43,7 +43,7 @@ on the reading shown in bold, by between two and three times.
 ### scan48 — the cheap chain does not always register a rig orbit
 
 The corpus block says every studio-rig orbit ships a classical detector, a ratio-test
-matcher and an incremental reconstructor, and that the alternative branch only changes
+matcher and an incremental reconstructor, and that the alternative modules only change
 density. On this capture the incremental chain reached **38 of 49 frames** with either
 matcher, 44 at best; only a global reconstructor registered all 49.
 
@@ -81,7 +81,7 @@ The context names the learned densifier as the escape for a specular subject. It
 be reached from a refined model: it consumes `poses/v1`, which only the incremental and
 learned **pose** stages produce, and every stage after triangulation — triangulation,
 the global reconstructor, both bundle adjusters — produces `sparse_model/v1`. On the
-global branch no `poses/v1` exists at any point. So on the exact capture kind the escape
+global reconstructor no `poses/v1` exists at any point. So on the exact capture kind the escape
 is prescribed for, the escape is unreachable, and an agent discovers this only by trying.
 
 Its delivered `depth_map_completeness` is **0.123**, below the module's own band, on a
@@ -89,7 +89,7 @@ cloud that was sound. The reading is a whole-frame fraction, and roughly two thi
 every frame here is clipped backdrop, so the denominator is mostly not surface. Nothing
 in the module said the reading dilutes that way.
 
-It is also the second refutation of the cheap-branch rule, and it points the **other
+It is also the second refutation of the cheap-modules rule, and it points the **other
 way** from scan48: here the ratio test returned the smaller, weaker model — 5 009 points
 against 7 651, and a worst-frame point count of 16 against 170 — and the joint matcher
 shipped.

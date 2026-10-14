@@ -1,7 +1,7 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.2
-curated_at: 2026-08-08
+module_version: 1.6.3
+curated_at: 2026-10-13
 ---
 
 # When LightGlue is not the answer
@@ -32,7 +32,7 @@ length — and with a tracker conflict rate nearly two orders of magnitude lower
 
 *The trap this sets:* every metric available at the matching stage prefers this
 module on such a capture, and the disagreement only becomes visible after bundle
-adjustment. **Do not read a matching-stage win as settling it.** Both branches share
+adjustment. **Do not read a matching-stage win as settling it.** Both module choices share
 one detection artifact, so the A/B costs no re-detection; run it, and if you must
 choose before the outcome exists, say which reading you chose on.
 
@@ -124,14 +124,14 @@ advantages has something to act on:
 - **Repeated structure** — a facade of identical bays, tiling, a row of castings.
 - **Sparsely sampled**, so adjacent frames are far enough apart that a classical
   descriptor fails across the baseline. `match_nn`'s limitations file records such
-  a case, where thinning a set until the baseline widened left the classical branch
+  a case, where thinning a set until the baseline widened left the classical detector and matcher
   in three disconnected components; this module should win that decisively.
 
 Since the original writing, the direction has held on captures of the second and
 third kinds: on fast, widely-spaced captures the joint matcher roughly doubled the
 surviving pair count and lifted every image off a single-edge connection, where the
 ratio test left two images one pair from being lost. So the split is not
-"LightGlue is worse" — it is that **the two branches win on different capture
+"LightGlue is worse" — it is that **the two module choices win on different capture
 properties, and the matching stage's own metrics only see one of the two.**
 
 I expect the ordering to reverse on all three. It has not been measured.

@@ -1,7 +1,7 @@
 ---
 name: swap_or_build
 description: When to stop tuning a module and change it, and when nothing in the registry fits and a new one is warranted. Organised by family.
-status: mostly structural — one branch comparison has been run over fourteen captures; those rows are tagged [measured]. Claims are stated as scene properties, never scene names; raw per-capture numbers are in skills/evidence/branch-comparison-2026-08.md.
+status: mostly structural — one detector/matcher comparison has been run over fourteen captures; those rows are tagged [measured]. Claims are stated as scene properties, never scene names; raw per-capture numbers are in skills/evidence/detector-matcher-2026-08.md.
 ---
 
 # Tune, swap, or build
@@ -48,7 +48,7 @@ Module names go stale. Capability queries do not.
 
 Ordered by how confident the claim is. **`[structural]`** follows from where a
 family's numbers come from and holds regardless of dataset. **`[measured: N]`**
-was tested by running both branches to a sparse model over N scenes and comparing
+was tested by running both module choices to a sparse model over N scenes and comparing
 — the strongest tag here, and until 2026-08-18 nothing carried it.
 **`[observed: N]`** is weaker: a *reading* on N scenes supported the claim, with
 no swap performed. **`[unmeasured]`** is argument only.
@@ -77,7 +77,7 @@ no swap performed. **`[unmeasured]`** is argument only.
   sparse model, the highest-motion captures are exactly the ones whose view graph
   fragments under a classical detector and ratio-test matcher, dropping between a
   quarter and three quarters of their frames, with a clean gap separating them
-  from the captures that complete. A learned branch restored full or near-full
+  from the captures that complete. A learned detector and matcher restored full or near-full
   registration on every one of them, while finding FEWER keypoints — it recovers
   marginal pairs rather than enriching good ones.
   The mechanism: this measures adjacent-frame overlap, and a capture that covers
@@ -115,7 +115,7 @@ no swap performed. **`[unmeasured]`** is argument only.
   against tuned classical matching, and reported it as a property of the modules.
 
   Treat repetition as a reason to RUN the comparison, not as a prediction of its
-  result, and settle the matcher's threshold on both branches before comparing. `FeatureMatchLightGlue` takes a `sift` weight
+  result, and settle the matcher's threshold on both module choices before comparing. `FeatureMatchLightGlue` takes a `sift` weight
   set and `auto` reads the producing module off the features artifact, so this
   costs **no re-detection** — the same `features/v1` feeds both.
   **Ask this question second, after connectivity.** On a fast capture the graph
@@ -192,7 +192,7 @@ no swap performed. **`[unmeasured]`** is argument only.
   `min_track_len` defaults. At a matched floor the global solver returns MORE
   points, not fewer. Compare at matched settings.)*
 
-  **The general lesson, worth more than the specific one:** *a branch comparison
+  **The general lesson, worth more than the specific one:** *a module comparison
   can only settle a question whose failure mode is visible in the metrics you
   collect.* Connectivity failures are visible — a frame either registered or it
   did not. Degeneracy failures are not. Check which kind you have before spending
@@ -218,7 +218,7 @@ no swap performed. **`[unmeasured]`** is argument only.
     that regime, which is the bullet above. Its lever is that it poses every image or
     none, so it does not care what the incremental route could reach.
   - **Nearly complete — above that crossing, a handful of frames missing.** Prefer the
-    **global reconstructor on the same matches**. Run as both branches to a sparse
+    **global reconstructor on the same matches**. Run as both reconstructors to a sparse
     model and compared, it placed frames the incremental model had left behind on every
     corpus capture that had any, and **dropped none of the ones that model already
     held** — which the feed-forward swap cannot promise, because it replaces the pose
@@ -234,7 +234,7 @@ no swap performed. **`[unmeasured]`** is argument only.
     or to fill them.
 
   See [`plan/pose.md`](../plan/pose.md) and
-  [`evidence/global-arm-2026-10.md`](../evidence/global-arm-2026-10.md).
+  [`evidence/global-rebuild-2026-10.md`](../evidence/global-rebuild-2026-10.md).
   **`[measured: 7]`**
 
 ### Sparse and optimization
@@ -251,7 +251,7 @@ no swap performed. **`[unmeasured]`** is argument only.
   models differed by a point-retention rule, because deleting short tracks raises
   the median angle without improving any surviving geometry. Where a swap changes
   what a module *keeps* rather than what it *computes*, read a yield term beside
-  the angle; where it changes the branch, the angle was right every time. See
+  the angle; where it changes the module choice, the angle was right every time. See
   [`health/ladder.md`](../health/ladder.md). **`[observed: 17 model pairs]`**
 - **Small baseline against a shallow subject** → everything will look excellent.
   `inlier_ratio` and reprojection error both stay healthy while triangulation
@@ -319,7 +319,7 @@ not written yet.
 **Almost nothing here has been measured end to end.** The observed counts refer
 to scenes where a *reading* supported the claim, not to swaps that were performed
 and compared, **with one exception, now recorded.** Six scenes have been run
-through three detector+matcher branches to a sparse model with everything
+through three detector+matcher pairs, each to a sparse model with everything
 downstream held identical — see `plan/scene_to_pipeline.md` §4a. What it settled:
 
 - **A learned detector is not a way to get more points.** SuperPoint's keypoint
@@ -330,14 +330,14 @@ downstream held identical — see `plan/scene_to_pipeline.md` §4a. What it sett
   points on well-connected captures whose subject repeats. That is the "repeated
   OBJECTS" row under **Matching** above.
 - **The trap in the row below is real.** SIFT+NN reported *better* reprojection
-  error than a learned branch while building a model with worse triangulation
-  angles. Judged on error alone the wrong branch wins.
+  error than a learned detector and matcher while building a model with worse triangulation
+  angles. Judged on error alone the wrong module choice wins.
 
 One caution that is itself a finding: the first run of that experiment passed no
 parameters and so measured the matchers at their `pairing: sequential` default
 rather than the `exhaustive` every plan specified. It produced a clean, plausible
 and entirely wrong result — half-registered models and a texture band that does
-not exist. **A swap comparison is only evidence if both branches run the
+not exist. **A swap comparison is only evidence if both module choices run the
 configuration the plan actually names.**
 
 The claims marked `[structural]` do not need that evidence — they follow from

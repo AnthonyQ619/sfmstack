@@ -38,7 +38,7 @@ frames into a single tensor and track across the stack — so a capture the load
 delivered at mixed sizes stops them at the first step, and the fix is upstream: run
 the loader again with a fixed resize. Check this before choosing a predictive
 tracker, because nothing downstream reveals it and the refusal costs the whole
-branch.
+module chain.
 Nothing truncates the track, because there is no view graph to have a hole in. But
 the observations are predictions, and the precision floor is set by THE MODEL'S
 OWN WORKING RESOLUTION RELATIVE TO THE SCENE -- which is a fact about the module,
@@ -105,7 +105,7 @@ the check did not run, and these two counts are the only readings that say so, w
 is why a capture can ship with no transfer verdict and nothing flagging it. A small
 but nonzero count makes the median soft, and soft is the regime where the span test
 above will fail on any margin you care about. Read it before you read the median,
-and read it on both arms: a comparison where one arm measured an order of magnitude
+and read it on both models: a comparison where one model measured an order of magnitude
 more held-out observations than the other is not a comparison.
 
 The ordering is not a coincidence of one dataset. Predicting rather than matching
@@ -290,11 +290,11 @@ a reason to prefer chaining.
 
 ---
 
-## Two preconditions the predictive branch has that the chaining branch does not
+## Two preconditions the predictive tracker has that the chaining tracker does not
 
 Neither is a tuning question and neither shows up in any metric, because a module
 that refuses an input publishes no metrics at all. Check both before planning a
-predictive leg.
+predictive tracker.
 
 **Every image must be the same size.** Both predictive trackers stack the capture
 into a single tensor and track across the stack, so a capture whose frames differ
@@ -302,7 +302,7 @@ in resolution is refused outright — measured on both modules, on the same
 mixed-resolution capture, with each naming the constraint in its error. Benchmark
 collections are a common source: a set assembled from more than one camera or one
 crop convention looks uniform in a file listing and is not. The fix is upstream,
-at the loader's resize, and it changes the scene artifact — so a predictive leg
+at the loader's resize, and it changes the scene artifact — so a predictive tracker
 planned as a swap against an existing chaining run is **not a one-stage swap**
 unless the scene was already loaded at a fixed size.
 
@@ -310,11 +310,11 @@ unless the scene was already loaded at a fixed size.
 exhausted a 44 GB device on a fifty-frame capture at its defaults. Its memory
 chunk parameter is documented as affecting throughput only and not the result;
 lowering it by a factor of eight produced a complete reconstruction of the same
-capture. That documented claim held, so an out-of-memory failure on this branch
+capture. That documented claim held, so an out-of-memory failure on this tracker
 is not evidence that the capture is too large — reach for the chunk dial before
 reaching for fewer frames, which would change the problem.
 
-## What the predictive branch was worth, measured against truth
+## What the predictive tracker was worth, measured against truth
 
 On an ordered orbit of a compact subject, swapping the chaining tracker for the
 SfM-derived predictive one — nothing else changed — registered every frame, as
@@ -334,7 +334,7 @@ parallax and reprojection filters. The reading that exposed it is
 `trifocal_transfer_px`, which is what this file already says to confirm on, and
 which read several times the corpus's range. The full case is in
 [`health/smells.md`](../health/smells.md). One capture is not a ranking between
-the two modules; what it does show is that on this branch **track-quality
+the two modules; what it does show is that on this tracker **track-quality
 readings and geometric-agreement readings can point in opposite directions, and
 only the geometric ones survive contact with a triangulator.**
 

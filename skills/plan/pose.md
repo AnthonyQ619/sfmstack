@@ -94,16 +94,16 @@ effect the `reconstructor-decided` class in
 [`evidence/INDEX.md`](../evidence/INDEX.md) records.
 
 The campaign is in
-[`evidence/global-arm-2026-10.md`](../evidence/global-arm-2026-10.md), which also
+[`evidence/global-rebuild-2026-10.md`](../evidence/global-rebuild-2026-10.md), which also
 records that this set sits entirely above the 0.7 crossing below, and says nothing
 about the regime beneath it.
 
 **The consensus reading does not select it.** Reaching for this module because the two
 estimators put your model outside their mutual agreement was tried and measured: the
-association between that reading and which arm produced the better model was
+association between that reading and which choice produced the better model was
 indistinguishable from zero, and the two captures it did help sat at the extreme ends
 of the reading. Small sample, but it errs the safe way — do not route the consensus
-reading to this decision. It is a branch-choice reading and is documented as one
+reading to this decision. It is a module-choice reading and is documented as one
 above.
 
 What it does change is the model's global **shape**, and that shows up in a
@@ -161,7 +161,7 @@ rescues costs an afternoon. Where `registered_fraction` is low, run it before
 you spend a single run tuning the matcher.
 
 **Where the trade flips is a reading, and it is `registered_fraction`.** The paragraph
-below says the damage scales with how much the geometric branch had already done; the
+below says the damage scales with how much the geometric modules had already done; the
 crossing is at about **0.7**. At or below it, the estimator's own model was the better
 delivery on most of the corpus captures that reached it, and on one of them by a wide
 margin. Above it the finding reverses, which is the same result from the other side:
@@ -188,7 +188,7 @@ escape, and the report should name which model was delivered and why.
 **What it does not automatically buy is accuracy, and the trade is sharp.**
 Against ground truth, the fully-registered feed-forward model was *worse* per
 pair on six of the seven, and the damage scaled with how much the geometric
-branch had already been doing: on a capture it had registered around
+modules had already been doing: on a capture they had registered around
 three-quarters of, at good accuracy, the swap completed the registration and cost
 roughly two orders of magnitude of pose error. Part of that gap is the confound
 in [`health/ladder.md`](../health/ladder.md) — an error over the frames a stalled
@@ -395,7 +395,7 @@ misses captures whose disagreement is small in absolute terms but large against 
 tightly the two estimators agree. Neither error survives having both. The second
 estimator is not a refinement; it is what supplies the scale the reading is in.
 
-**When it fires, the remedy is the whole feed-forward branch, and it is measured
+**When it fires, the remedy is the feed-forward modules, end to end, and it is measured
 rather than assumed.** Not the poses alone: geometric stereo on the estimators' poses
 was measured on three captures and does not go one way — on a folded room and a sound
 outdoor structure it lost by half again or more to the geometric cloud, the folded
@@ -439,7 +439,7 @@ The campaign is in
 
 ### When it fires, fill rather than swap — and do not refine the fill
 
-Where the reading fires *and* the geometric branch is holding cameras its own
+Where the reading fires *and* the geometric model is holding cameras its own
 matcher cannot justify, the remedy measured to work is narrower than the wholesale
 swap above.
 
@@ -571,7 +571,7 @@ the rest of the stack is obliged to reject what you built.
 **And do not reach for this every time the reading fires.** One of the two captures
 promoted into [CORPUS.txt](../evidence/CORPUS.txt) is there to be the counter-example:
 a wide-FOV room capture that the verifier flags on both readings, that was **already
-good**, and that the hybrid made distinctly worse. Where the geometric branch is
+good**, and that the hybrid made distinctly worse. Where the geometric model is
 holding its cameras on evidence it actually has, filling is a downgrade. The trigger
 is the reading *together with* cameras the view graph cannot justify — not the
 reading alone.
@@ -602,13 +602,13 @@ A geometric estimator that stalls on a scene whose view graph is already fragmen
 is not the pose stage's failure. Fix the graph.
 
 **The choice is one-sided in what it can prove, and that is worth knowing before
-you spend a run on the alternative.** The feed-forward branch's reprojection
+you spend a run on the alternative.** The feed-forward model's reprojection
 metrics are null by construction, so its artifact contains nothing that answers
 "is this right", and the first reading that does is a triangulator's yield one
-stage later. So at this stage the geometric branch can be shown to have *worked*
-and the feed-forward branch cannot be shown to have failed. Running it anyway is
+stage later. So at this stage the geometric model can be shown to have *worked*
+and the feed-forward model cannot be shown to have failed. Running it anyway is
 still worth it on a calibrated scene for one reason: `estimated_focal_ratio` is a
-free, independent check on the calibration the geometric branch depends on, and
+free, independent check on the calibration the geometric modules depend on, and
 nothing else in the pipeline performs it.
 
 ---
@@ -721,9 +721,9 @@ settled negatively or not at all; none was settled in favour.
 
 **And an upstream verdict can be exactly wrong until this stage sees it.** On one
 capture, four of five matching- and tracking-stage quality readings preferred the
-branch that the pose stage then showed produced 41% fewer points at 38% worse
+module choice that the pose stage then showed produced 41% fewer points at 38% worse
 error, from a seed with a third of the parallax. The upstream readings were not
-misreported — the losing branch really was cleaner — it had bought that cleanliness
+misreported — the losing choice really was cleaner — it had bought that cleanliness
 by discarding most of its correspondences, which only shows up once something tries
 to build a model. **So a matcher question that could not be settled at tracking is
 worth carrying forward rather than closing.**
@@ -742,7 +742,7 @@ angle is usually buying a smaller, easier model rather than a better one.
 | Question | Needs |
 | --- | --- |
 | **Absolute pose accuracy of either** | ~~Ground-truth extrinsics.~~ **Measured.** Relative pose error against reference extrinsics, per capture, over the images each model registered. What it settled is above and in [`health/ladder.md`](../health/ladder.md); what it could not is that an error over the frames a stalled model kept is not comparable to one over a whole capture, so absolute *rankings* between models of unequal registration remain unavailable. **AUC at fixed angle thresholds has since been computed** over five families at a fixed view count, charging every unanswered pair as a miss so that models of unequal registration become comparable after all — see [`evidence/sparse-pose-2026-09.md`](../evidence/sparse-pose-2026-09.md). The shape it found: the geometric chain wins at the tight threshold on four families of five and loses at the loose one, which is the coverage-for-accuracy trade above, measured. |
-| ~~**What feed-forward buys where geometric stalls**~~ | **Measured** twice. On seven captures where it genuinely stalled: full registration on all seven, worse per-pair accuracy on six. And again as a *fill* rather than a swap, on the worst captures of that campaign, where it beat both branches at every threshold provided the filled cameras were left out of the refinement. Both above. |
+| ~~**What feed-forward buys where geometric stalls**~~ | **Measured** twice. On seven captures where it genuinely stalled: full registration on all seven, worse per-pair accuracy on six. And again as a *fill* rather than a swap, on the worst captures of that campaign, where it beat both the geometric model and the estimator alone at every threshold provided the filled cameras were left out of the refinement. Both above. |
 | **How far in-loop local BA carries** | Sequence length against drift, on captures long enough for drift to dominate. The mechanism is understood; the length at which it stops being enough is not. |
 | **Whether the delivered-model reading matters on a dense chain** | It was tested on thirty-five captures that had been driven to a dense cloud and did not predict dense quality there at all. But every one of those was a capture with dense overlap and full registration, which is the regime where this reading is silent on the sparse path too — so what that tests is the population, not the reading. **Nothing has driven a thin capture to a dense cloud**, which is the only condition under which it could say anything. The module runs on both paths regardless — the question is only where to act on what it says. Until one does: act on it here, record it there. |
 | **Whether estimated intrinsics are usable** | `estimated_focal_ratio` says whether a model agrees with a calibration. Whether its estimate is good enough to reconstruct with, on a scene with no calibration at all, is a different question and untested. |

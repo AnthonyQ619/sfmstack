@@ -29,7 +29,7 @@ Three numbers per capture: how far the two estimators sit from **each other**
 (`spread`), how far the delivered model sits from them (`ours`, the median of the
 two), and the **ratio** of the second to the first.
 
-Nothing outside the agent's reach enters the reading. The evaluation arms that score
+Nothing outside the agent's reach enters the reading. The evaluation baselines that score
 these batches were deliberately *not* used: the agent cannot run them, and they are
 the baselines it is measured against, so a delivery decision taken on them would be
 circular. An earlier version of this check did use them and was discarded for that
@@ -37,7 +37,7 @@ reason.
 
 ## The result
 
-"True" below means the feed-forward branch, run through to a cloud, actually
+"True" below means the feed-forward modules, run through to a cloud, actually
 improved the delivered result when measured.
 
 | configuration | fires | true | false | missed |
@@ -75,7 +75,7 @@ estimators agree tightly and both disagree with the delivered model by a wide ma
 
 **The reading is correct.** Those poses are the worst in their batch against
 reference extrinsics, by a clear margin over the next worst. What is wrong is the
-step from there to a swap: the delivered cloud beats the feed-forward branch on both
+step from there to a swap: the delivered cloud beats the feed-forward cloud on both
 accuracy and completeness, because dense vegetation is outside the training
 distribution of the learned dense path as well. The two estimators are independent of
 the matcher; they are not independent of each other.
@@ -102,7 +102,7 @@ pipeline without any reading firing.
 It is promoted because it is the capture that **neither estimator catches alone at
 any threshold**, and only the ratio finds. That makes it the worked example of why
 the reading is built the way it is, rather than a capture that any formulation would
-have caught. The feed-forward branch, measured, is the better delivery on it.
+have caught. The feed-forward cloud, measured, is the better delivery on it.
 
 Captures of its family promoted later are listed in `CORPUS.txt` with the file each
 carries; the rest stay holdout and are not listed here.

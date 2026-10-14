@@ -1,5 +1,5 @@
 name: SceneMotion
-version: 1.4.0
+version: 1.4.1
 kind: analysis
 summary: >
   Dense optical flow between image pairs, summarised into camera-motion scores
@@ -68,7 +68,7 @@ description: |
   so far -- see `evidence/INDEX`). The `healthy` bands here
   are this module's own advisory reading.
 
-image: sfmstack/scene-motion:1.4.0
+image: sfmstack/scene-motion:1.4.1
 entrypoint: adapter:run
 resources:
   gpu: true
@@ -152,7 +152,7 @@ params:
   # THAT JUSTIFICATION WAS WRONG and is recorded here rather than quietly fixed.
   # No pipeline had been run at the time; the scenes were assumed to reconstruct
   # because they are standard benchmarks. Run to a sparse model, the highest-motion
-  # captures do NOT fully reconstruct on a classical branch -- they drop between a
+  # captures do NOT fully reconstruct with a classical detector and matcher -- they drop between a
   # quarter and three quarters of their frames. The flag was reporting something
   # real and was cut for firing too often, which is a threshold complaint dressed
   # as a validity one.
@@ -249,7 +249,7 @@ metrics:
       Still no band declared, because the separating value is a property of the
       corpus rather than of the algorithm and n is small. But read a high value as
       a prediction that the graph will be sparse: plan exhaustive pairing, budget
-      for a learned detector and matcher, and treat the cheap classical branch as
+      for a learned detector and matcher, and treat the cheap classical modules as
       something to verify rather than assume. See skills/plan/scene_to_pipeline.md.
 
   high_motion_tail:

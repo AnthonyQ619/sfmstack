@@ -1,7 +1,7 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.4
-curated_at: 2026-08-10
+module_version: 1.4.5
+curated_at: 2026-10-13
 ---
 
 # Tuning SparseGlobalCOLMAP
@@ -61,7 +61,7 @@ result by more than 0.1 on five of those twelve captures, and by **+0.465** and
 
 **One earlier claim retracted here.** A three-capture sweep read 2.0 as the optimum and
 this page said so. Re-measured on twelve with threads pinned, one of those three
-reverses, and the reversal is on the arm that was not reproducible: the 1.0 reading
+reverses, and the reversal is on the setting that was not reproducible: the 1.0 reading
 repeated exactly and the 2.0 reading did not. Unpinned multithreading was separately
 measured moving a result by up to 0.237 on this stack, which is enough to account for
 it. **Pin the threads before you read this dial at all.**

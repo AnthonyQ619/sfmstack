@@ -37,7 +37,7 @@ alarms".
   translation is gauge-free in direction only. `pose_error = max(rotation error,
   translation direction error)` in degrees, and `AUC@t` is the normalised area under
   the cumulative curve to `t` degrees. A pair touching a camera the model never
-  registered is charged as a miss over all 45 pairs, because the feed-forward arms
+  registered is charged as a miss over all 45 pairs, because the feed-forward baselines
   compared against always answer all 45.
 - **Frames.** One family ships body-frame ground truth; its metric composes the
   camera-to-body rotation only and drops the lever arm, which is unrecoverable from
@@ -55,9 +55,9 @@ alarms".
 ## What the five families delivered
 
 Pooled over every pair, with three feed-forward pose estimators run over the
-identical frames as reference arms.
+identical frames as reference baselines.
 
-| family | n | mean reg /10 | arm | AUC@3 | AUC@5 | AUC@10 | AUC@30 |
+| family | n | mean reg /10 | source | AUC@3 | AUC@5 | AUC@10 | AUC@30 |
 |---|---|---|---|---|---|---|---|
 | phone walk | 23 | 4.1 | **agent** | **0.0044** | 0.0090 | 0.0201 | 0.0669 |
 | | | 10.0 | best feed-forward | 0.0086 | 0.0208 | 0.0473 | 0.1349 |
@@ -212,7 +212,7 @@ Seven captures — five over-registered and two deliberate false alarms — were
 with the pose stage instructed differently. Prompt-level only; nothing in `skills/`
 was touched for these runs.
 
-| arm | AUC@3 | AUC@5 | AUC@10 | AUC@30 |
+| delivery | AUC@3 | AUC@5 | AUC@10 | AUC@30 |
 |---|---|---|---|---|
 | as delivered | 0.1258 | 0.2005 | 0.2774 | 0.3674 |
 | stop at what the graph supports | 0.1406 | 0.2008 | 0.2709 | 0.3454 |
@@ -304,7 +304,7 @@ the reason is measured rather than assumed.
 ## What happened when this file's rules were first put into the context
 
 The five waves were re-run with everything above written into `plan/pose.md` and
-`health/ladder.md`, the same captures, the same arms and the same scorer. It is
+`health/ladder.md`, the same captures, the same baselines and the same scorer. It is
 recorded here because the result is mixed and the failure is instructive.
 
 **The failure mode these rules target got better.** Captures delivering a median
@@ -350,7 +350,7 @@ applied to this campaign's own follow-up. The corrected text has not been re-run
   shallow-relief captures in this campaign are exactly where that blind spot lives,
   and it is why they read clean while being genuinely excellent: this reading cannot
   tell those two cases apart by itself.
-- **The feed-forward arms are not a controlled comparison of estimators.** They ran
+- **The feed-forward baselines are not a controlled comparison of estimators.** They ran
   at their own native input handling rather than the pipeline's working resolution,
   and letterboxing against resizing alone moves them by several degrees on these
   captures. They are here as a reference level, not as a ranking of models.

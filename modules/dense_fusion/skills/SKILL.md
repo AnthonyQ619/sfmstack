@@ -1,8 +1,8 @@
 ---
 module: DenseFusion
-module_version: 1.1.0
+module_version: 1.1.1
 upstream: colmap/colmap stereo fusion, via pycolmap-cuda12 4.1.1
-curated_at: 2026-09-16
+curated_at: 2026-10-13
 sources: 3
 ---
 

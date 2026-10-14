@@ -1,7 +1,7 @@
 ---
 module: DenseVGGT
-module_version: 1.2.0
-curated_at: 2026-08-11
+module_version: 1.2.1
+curated_at: 2026-10-13
 ---
 
 # What DenseVGGT cannot do
@@ -78,7 +78,7 @@ same capture returns one surface. Nothing in the numbers distinguishes the two.
 `browse/cloud_views.png` is what distinguishes them: its third panel looks down the
 camera ring's axis, and duplicated surfaces separate along exactly that direction
 because they differ in depth from the cameras. Look at it before shipping this
-module's cloud as a deliverable rather than as a coverage arm.
+module's cloud as a deliverable rather than as a coverage baseline.
 
 **Escape:** a real MVS module.
 

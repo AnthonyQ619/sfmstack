@@ -647,7 +647,7 @@ the host.
 This was invisible for as long as passthrough was broken: the request for a device
 succeeded, `--gpus` then failed, and the run fell back to CPU either way. The first
 run after the toolkit landed, a comparison I had set up with `devices=[]` as the
-CPU arm, leased GPUs 0 and 1 and produced two GPU timings I nearly reported as
+CPU run, leased GPUs 0 and 1 and produced two GPU timings I nearly reported as
 "CPU is the same speed as GPU". The identical numbers are what gave it away.
 
 Now `gpus if gpus is not None else GpuBroker()`. An empty broker refuses a

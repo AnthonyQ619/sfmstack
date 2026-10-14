@@ -37,7 +37,7 @@ against it says which pipeline ran rather than how healthy a model is.
 >
 > **The matcher is not the one the planning guide would pick for most of these
 > captures.** `plan/scene_to_pipeline.md` §3b.4 says to take the cheap
-> ratio-test branch on a well-conditioned capture. Driven that way, ten of the
+> ratio-test matcher on a well-conditioned capture. Driven that way, ten of the
 > eleven well-conditioned captures here returned between 1.4× and 6.5× the
 > structure at equal or better registration, and on six of seven controlled-rig
 > captures they were also **more accurate against ground truth**. See

@@ -30,7 +30,7 @@ weights.
 
 ### 1. Registration is a precondition, not a tiebreak
 
-Every frame the capture can support should be in the model. A branch that
+Every frame the capture can support should be in the model. A module choice that
 registers a fraction of the images has not produced a worse model of the scene;
 it has produced a model of a *different, smaller* scene, and its metrics describe
 that smaller scene.
@@ -105,7 +105,7 @@ construction* rather than because it is good. On a two-view-dominated cloud a
 large share of the mean is made of numbers that could not have been anything
 else, and the headline reads better than the model is.
 
-This is the rung that most often flips a decision. A branch with a visibly better
+This is the rung that most often flips a decision. A model with a visibly better
 mean error has been measured losing on inspection, because most of its advantage
 was composition: two-view points it had kept and the other had not.
 
@@ -288,7 +288,7 @@ includes cases where the alternate genuinely wins.
 Taking every pair of models of one capture where both registered the whole
 capture gives **seventeen comparisons**, and each rung can be scored on whether
 it ranked the pair the way ground truth did
-([`evidence/alternate-legs-2026-09`](../evidence/alternate-legs-2026-09.md)):
+([`evidence/single-stage-swaps-2026-09`](../evidence/single-stage-swaps-2026-09.md)):
 
 | Rung | ranked correctly | of |
 | --- | --- | --- |
@@ -311,7 +311,7 @@ nothing in it fooled either.
 Driving the whole loop over every capture at full frame count produced a further
 twenty comparable pairs
 ([`evidence/agentic-campaign-2026-09`](../evidence/agentic-campaign-2026-09.md)).
-Excluding one capture on which every branch failed — all its models are broken
+Excluding one capture on which every module choice failed — all its models are broken
 and comparing two broken models measures nothing — fourteen clean pairs remain:
 
 | Rung | ranked correctly | of |
@@ -327,7 +327,7 @@ campaigns. Coverage is on thirty-one of thirty-six, and its misses are not
 scattered — see the next section, which gives them a mechanism.
 
 Conditioning's better showing here is the split below working as designed: these
-pairs are nearly all genuine branch changes rather than point-retention rules,
+pairs are nearly all genuine module changes rather than point-retention rules,
 which is the half of that table where it reads correctly.
 
 ### Coverage is a selection effect too, and the selector is the DETECTOR
@@ -340,7 +340,7 @@ A detector that spreads a fixed budget evenly across the frame — suppression,
 or a learned detector's own non-maximum policy — hands the reconstruction points
 in more of the grid cells coverage counts, whether or not those points are
 better. Measured on two captures where two pipelines each registered the whole
-capture: in both, the branch with the higher detector-stage `spatial_coverage`
+capture: in both, the model with the higher detector-stage `spatial_coverage`
 produced the higher model-level coverage rung, **and was the less accurate model
 against ground truth**, by a factor of two on one of them.
 
@@ -354,7 +354,7 @@ qualified rather than ranked on:
 
 **The error rung barely beat a coin flip overall, and lost badly where it
 mattered.** Ten of seventeen is not a signal at this sample size, and on the
-eight comparisons that cross *branches* rather than optimizers it was right
+eight comparisons that cross *modules* rather than optimizers it was right
 **twice** — actively anti-correlated with truth on the comparisons a planner
 would actually be making. The composition adjustment did not rescue it:
 restricting the median to points seen
@@ -372,12 +372,12 @@ models, and these two rungs stop looking unreliable and start looking
 | | conditioning | composition |
 | --- | --- | --- |
 | pairs differing by a **point-retention rule** (an optimizer that deletes short tracks) | 1 of 9 | **0 of 9** |
-| pairs differing by an actual **change of branch** (detector, matcher, tracker, pose) | **8 of 8** | 6 of 8 |
+| pairs differing by an actual **change of module** (detector, matcher, tracker, pose) | **8 of 8** | 6 of 8 |
 
 One mechanism explains both halves. **Both rungs rise when short,
 weakly-triangulated points are discarded** — the median widest angle rises
 because the low tail left, the over-determined share rises because the two-view
-points left — and nothing about the surviving geometry improved. One leg drove
+points left — and nothing about the surviving geometry improved. One swap drove
 composition to a flawless **1.000 on every capture it ran**, by removing every
 two-view point from a model that was otherwise a strict subset of the one it was
 being compared against, and which was worse against truth almost every time.
@@ -390,7 +390,7 @@ whole reason yield is in the profile:
 | | composition & conditioning | yield | truth |
 | --- | --- | --- | --- |
 | a filter removed the weak points | rose | **fell** | worse |
-| the branch produced better tracks | rose | **held** | better |
+| the new module produced better tracks | rose | **held** | better |
 
 **So never read composition or conditioning without reading yield beside them.**
 With yield falling, either is a measure of what a model threw away, dressed as a
@@ -412,24 +412,24 @@ matching stage at all — a point tracker run straight off a detector — has
 nothing to compare its final poses against and the rung reports unevaluable.
 That is the two missing comparisons. The rung with the best independent record
 is absent exactly where the profile has fewest other defences, because a
-matcherless branch also has no matcher diagnostics upstream.
+matcherless module chain also has no matcher diagnostics upstream.
 
 ### Two limits that apply to all of the above
 
 **Seventeen comparisons is a small sample, and they are not independent.** Nine
 of them are one capture against one optimizer swap, repeated across the corpus,
 so they contribute one mechanism nine times rather than nine mechanisms. The
-eight cross-branch comparisons come from three captures. A rung scoring 17 of 17
+eight cross-module comparisons come from three captures. A rung scoring 17 of 17
 here has not been shown to be reliable in general; it has been shown not to have
 failed yet, on a corpus this small.
 
 And **percentiles saturate outside the reference corpus.** Several alternate
 models fall below the corpus's observed range on the error rung and read 0
 together, so the weakest-rung scalar stops ordering them. The corpus is one
-pipeline's distribution; an alternate leg is out of distribution for it, and the
+pipeline's distribution; an alternate module is out of distribution for it, and the
 scalar degrades to a tie exactly where the vector still separates.
 
-### The profile has a hole, and it is on the branch that rescues registration
+### The profile has a hole, and it is on the modules that rescue registration
 
 **Both yield rungs are unevaluable on a model whose poses came from a global
 reconstructor**, because that module consumes matches and produces a
@@ -465,7 +465,7 @@ observation count — and say in the plan that the vector was short a rung.
 the model, how many connected components they leave on the registered cameras, and
 how big the second largest is.
 It needs only poses and matches, both of which a global reconstructor has, so
-unlike the yield rungs it is evaluable on exactly the branch that opens this gap.
+unlike the yield rungs it is evaluable on exactly the modules that open this gap.
 Across every corpus capture that delivered, all but one read a single component
 containing every camera; the exception read two, the second of them a lone camera.
 
@@ -498,7 +498,7 @@ Three things to keep straight about it:
   held-out residual carries.
 
 **Take the residual here too, and take it as an angle.** This hole opens on the
-branch that rescues registration, and that is precisely the branch measured
+modules that rescue registration, and those are precisely the modules measured
 delivering a fully-registered model wrong by more than a right angle while every
 rung in this file read healthy and the module's own pixel veto said consistent. Its
 angular residual did not. A pixel tolerance is a different amount of geometry on

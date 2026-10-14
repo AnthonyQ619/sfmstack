@@ -1,8 +1,8 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.4
+module_version: 1.4.5
 upstream: pycolmap 4.1.1 global mapping (GLOMAP)
-curated_at: 2026-08-10
+curated_at: 2026-10-13
 sources: 3
 ---
 

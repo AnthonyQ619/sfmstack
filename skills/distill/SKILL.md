@@ -18,11 +18,11 @@ by the same kind of writing.
 | --- | --- | --- |
 | asked | once, before anything runs | repeatedly, after each run |
 | answered by | a scalar reading of the whole capture | a claim about a *region or a frame* |
-| best carried as | an **ordered question with a mechanism** | a **branch indexed by observed metric state, with a prediction attached** |
+| best carried as | an **ordered question with a mechanism** | a **conditional rule indexed by observed metric state, with a prediction attached** |
 | fails by | ties, or a rule applied out of order | moving a number that was not the constraint |
 
 Getting the shape wrong is the most common way good knowledge fails to transfer.
-A mechanism written as a threshold does not survive a new capture. A tuning branch
+A mechanism written as a threshold does not survive a new capture. A tuning rule
 written as a general principle gives no way to tell whether it applied.
 
 ---
@@ -82,14 +82,14 @@ about the capture rather than leaving a number that merely "did not help".
   destroyed detail" from a description's claim to a measured fact — at the cost of
   one run.
 
-Write the prediction into the context too. A tuning branch that says *raise this
+Write the prediction into the context too. A tuning rule that says *raise this
 and expect the count to roughly double while coverage stays flat* is checkable. One
 that says *raise this to improve results* is not.
 
 **And state what a metric is a function of.** The single most common wasted first
 run in this stack was reading a number that was mostly a default. Where a metric
 can be pinned by a parameter, the context must say so at the top of the section
-rather than in a branch — otherwise the reader compares two settings, or two
+rather than in one of its conditions — otherwise the reader compares two settings, or two
 modules, and is really comparing their defaults.
 
 ---
@@ -205,7 +205,7 @@ landed in as unwanted; rejected on a third because the description said the empt
 region was destroyed rather than dark, which the run then confirmed.
 
 **The reason is structural, not incidental.** A scalar over the frame has no
-region. A parameter acts on a region. So a scalar can rank two branches but can
+region. A parameter acts on a region. So a scalar can rank two candidates but can
 never say *where* a change will land — and "where" is the whole question at tuning
 time. This is why the descriptive pass earns its cost, and why its fields should be
 written as claims that a later run can confirm or refute rather than as prose.
@@ -238,7 +238,7 @@ Distinguish three states and use the words consistently:
 
 | | meaning |
 | --- | --- |
-| **measured** | both branches were run and compared on the outcome that matters |
+| **measured** | both options were run and compared on the outcome that matters |
 | **observed** | a reading supported the claim; no swap was performed |
 | **structural** | an argument from how the algorithm works; no data |
 | **unknowable here** | the evidence does not exist at this stage — say where it does |

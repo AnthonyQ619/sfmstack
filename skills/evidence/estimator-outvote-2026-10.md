@@ -95,17 +95,17 @@ within 7% of a correct model's on the same capture: the fit that places a cloud 
 the cameras that agree with each other, and the folded half added little surface. Only
 the pose reading said anything was wrong.
 
-## Finding 4 — the learned dense branch, where the rotation form fires and where it does not
+## Finding 4 — the learned dense module, where the rotation form fires and where it does not
 
-`DenseVGGT` at its defaults on `PoseVGGT`'s poses — the branch as the predecessor ran it.
+`DenseVGGT` at its defaults on `PoseVGGT`'s poses — the module as the predecessor ran it.
 
-| capture | rotation form | geometric delivery | learned branch, as placed | best fit |
+| capture | rotation form | geometric delivery | `DenseVGGT`, as placed | best fit |
 | --- | --- | --- | --- | --- |
 | Meetingroom | 66.2 — fires | 107.8 | **89.9** | 65.0 |
 | Barn | 1.51 — quiet | 88.3 | 84.8 | 69.0 |
 | Caterpillar | 1.08 on the delivery — quiet | 77.1 | 91.0 | 75.7 |
 
-Where the reading fires, the learned branch beat the folded delivery and the earlier
+Where the reading fires, the learned dense module beat the folded delivery and the earlier
 correct-model record. Where it is quiet it tied on one capture and lost on the other.
 
 ## Finding 5 — a fill keeps whatever its core is

@@ -150,7 +150,7 @@ Four consequences worth knowing without doing any of that work:
 - **Past roughly 0.99 the metric is exhausted, not healthy.** An 8×8 grid has 64
   states, so differences under about 0.016 are less than one cell per image. Two runs
   or two detectors separated by less than that are not separated. On a well-textured
-  capture both branches reach that band under mild tuning and coverage stops being
+  capture both detectors reach that band under mild tuning and coverage stops being
   able to compare anything.
 - **Its healthy floor is a smoke test, not a target.** Observed readings sit far
   above it on everything except a genuinely starved capture, and on the captures
@@ -249,7 +249,7 @@ kinds of capture that arrive unsaturated are the ones where something *upstream*
 the cap already binds: a dim or low-contrast capture where the contrast filter cuts
 candidates first, a heavily downscaled one with little detail left to find, or a
 subject shot tight enough that there is simply not much in frame. On those, raising
-the cap is not the move and the tuning file's low-count branch is.
+the cap is not the move and the tuning file's low-count rule is.
 
 Do not read the majority result as a promise. An earlier version of this section
 said *every* capture arrives saturated; the first captures analysed outside the set
@@ -337,18 +337,18 @@ fewer keypoints**: it recovers the marginal pairs rather than enriching the good
 ones.
 
 > **Driven cold on full captures the same move went two for five, and the two
-> losses were large.** It rescued both captures whose classical branch had
+> losses were large.** It rescued both captures whose classical detector and matcher had
 > collapsed to almost nothing. On two that were *partly* working it cost most of
 > the registration they already had, and on both of those a classical detector
 > with exposure normalisation beat it comfortably. The fifth was unchanged,
 > because that capture's problem was downstream of detection entirely.
 >
 > So the boundary `matching.md` gives the detector-free matchers applies here
-> too: **reach for the learned pair where the cheap branch has FAILED, not where
+> too: **reach for the learned pair where the cheap modules have FAILED, not where
 > it is STRUGGLING.** On a sparse capture — a handful of frames, far apart — expect
-> the cheap branch to be the one failing: at ten views it finished more than 0.2
+> the cheap modules to be the ones failing: at ten views they finished more than 0.2
 > below the best composition on 14 of 27 corpus captures, every traversal among
-> them ([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-4--the-classical-branch-on-a-sparse-capture)). And the motion reading that sends you here no longer
+> them ([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-4--classical-detection-and-matching-on-a-sparse-capture)). And the motion reading that sends you here no longer
 > carries a clean separation at full frame count — see
 > `plan/scene_to_pipeline.md` §3b.2, which now states it as a ranking heuristic
 > and withdraws the published band.
@@ -375,7 +375,7 @@ resembles the captures that fragmented" into "this capture's non-adjacent pairs
 share little, and here is where that starts". The first is a correlation you are
 borrowing; the second is the mechanism, observed.
 
-**And know what you are paying.** On a well-connected capture the learned branch
+**And know what you are paying.** On a well-connected capture the learned detector and matcher
 returned the SMALLEST model of the three on ten of fourteen — often by a factor of
 two. Buy it for connectivity and robustness, not for point count.
 
@@ -388,7 +388,7 @@ back with substantially **more** keypoints than the classical one on more than o
 capture, and with fewer on others; which way it goes depends on whether the
 classical detector's contrast filter is starving on a dim or heavily downscaled
 capture, not on either module's cap. **A smaller final model is not explained by
-fewer keypoints.** The likelier account is what §3b.1 records — the learned branch
+fewer keypoints.** The likelier account is what §3b.1 records — the learned detector and matcher
 recovers marginal *pairs* rather than enriching good ones — but that is an argument,
 not a measurement, and it is not settled here.
 

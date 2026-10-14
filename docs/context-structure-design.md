@@ -491,7 +491,7 @@ Listed by how much it undermines the claims above.
 the strict-context holdout in the standing three-step plan — rather than
 overlooked.
 
-Ten others were in this list until the alternate-leg campaign, and their prose
+Ten others were in this list until the single-stage-swap campaign, and their prose
 was from isolated testing or carried from the predecessor codebase.
 Each one's provenance line says so on every describe call — but **saying so is
 not testing it**. The argument for running them: every correction in the current
@@ -537,8 +537,8 @@ cannot see what a model discarded — which vindicates the vector-with-registrat
 first design and disqualifies the cross-capture correlation as a test.
 
 Validating a rung needs two models of the same capture at equal registration.
-That is what the alternate legs were shaped to produce, and **they have now run**
-— `evidence/alternate-legs-2026-09`. Two conditions supplied comparable models:
+That is what the single-stage swaps were shaped to produce, and **they have now run**
+— `evidence/single-stage-swaps-2026-09`. Two conditions supplied comparable models:
 a swap at or after the pose stage cannot add or drop a camera, and several
 captures ended with three or four *different* pipelines each registering the
 capture in full. Seventeen comparisons resulted, and each rung was scored on
@@ -549,10 +549,10 @@ ranked six.** Conditioning and composition turn out to be *conditional* readings
 rather than rungs: both rise when short, weakly-triangulated points are
 discarded, so on the nine comparisons where the two models differed only by a
 point-retention rule they were right once and never; on the eight where the
-difference was a genuine change of branch, conditioning was right eight times.
+difference was a genuine change of module, conditioning was right eight times.
 Yield is the reading that says which case you are in, which is the argument
 yield was put in the profile to make, now measured on both sides. The error rung
-was right twice of eight across branches. Pose agreement ranked fourteen of the
+was right twice of eight across modules. Pose agreement ranked fourteen of the
 fifteen it could be computed on — and is unevaluable on a pipeline with no
 matching stage, since its two-view estimates are re-derived from a matches
 artifact.
@@ -564,7 +564,7 @@ punishes truncating long tracks.
 
 What is still not settled is whether the rungs discriminate *within* a healthy
 band. Every comparison here is between models that differ visibly, and a corpus
-of one pipeline means an alternate leg is scored against a distribution that
+of one pipeline means an alternate module is scored against a distribution that
 never contained its kind — the weakest-rung scalar saturates and ties exactly
 where the vector still separates.
 
@@ -643,7 +643,7 @@ Phase A/B giving the never-run modules real numbers.
 
 At least one falsified claim was corrected by adding a caveat where it needs an
 experiment — the detector-recovery finding in `plan/scene_to_pipeline.md` §3b,
-observed on a subset of frames and needing both branches re-run at full frame
+observed on a subset of frames and needing both module choices re-run at full frame
 count on the same captures. A caveat is honest and it is not a result.
 
 ### 7.7 All 28 `SKILL.md` files exceed the size cap they were designed to
@@ -699,7 +699,7 @@ mechanism that works every time.
 6. **Nothing measures whether the context is *right*, only whether it is read.**
    The read log says which files were opened. It does not say whether the
    decision that followed was better than the decision an agent with no context
-   would have made. There is no control arm.
+   would have made. There is no control group.
 
 7. **The corrections are self-graded.** The claims that were falsified were
    falsified by reading agents who were themselves working from this context.

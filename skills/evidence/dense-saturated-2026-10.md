@@ -42,9 +42,9 @@ ninety cameras align; nothing in the pose stage is failing.
 
 ## Where it actually fails: coverage, and only coverage
 
-Protocol B on the same capture, our MVS cloud against the three feed-forward arms:
+Protocol B on the same capture, our MVS cloud against the three feed-forward evaluation baselines:
 
-| arm | accuracy (median) | completeness (median) | normal consistency | **coverage** |
+| cloud | accuracy (median) | completeness (median) | normal consistency | **coverage** |
 |---|---|---|---|---|
 | **our MVS cloud** | **0.203** | 0.158 | 0.546 | **0.319** |
 | mapanything | 0.331 | 0.284 | 0.565 | 0.990 |
@@ -83,9 +83,9 @@ kept median **and** an absolute floor. The floor is the only fixed part. So the
 effective cutoff is `max(3 × kept median, floor)`, which each model sets for itself —
 and a model with a poor kept median is judged against a looser cutoff than a good one.
 
-Three arms on the same 90 cameras of this capture, same aligner, same floor:
+Three models on the same 90 cameras of this capture, same aligner, same floor:
 
-| arm | cameras kept | kept median | the cutoff that produced it | within the floor | within 0.5 m | median | worst |
+| model | cameras kept | kept median | the cutoff that produced it | within the floor | within 0.5 m | median | worst |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | delivered (incremental + global BA) | **36** | 0.032 m | 0.100 m | **36** | 60 | 0.212 m | 1.229 m |
 | a feed-forward estimator | **83** | 0.214 m | **0.641 m** | **7** | 80 | 0.227 m | 0.944 m |
@@ -109,7 +109,7 @@ be re-run for the per-camera residuals, which is why the batch now stores them.
 
 ## What the two error shapes are, and why neither is a repair for the other
 
-At a fixed distance the arms above do not order each other — they differ in **shape**:
+At a fixed distance the models above do not order each other — they differ in **shape**:
 
 - The delivered incremental model has a **tight core and a long tail**: 36 cameras
   inside the floor, and a worst camera at 1.229 m. That is accumulated drift, and

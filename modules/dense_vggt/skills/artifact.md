@@ -1,7 +1,7 @@
 ---
 module: DenseVGGT
-module_version: 1.2.0
-curated_at: 2026-08-11
+module_version: 1.2.1
+curated_at: 2026-10-13
 ---
 
 # Reading a DenseVGGT artifact

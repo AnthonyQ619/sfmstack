@@ -1,5 +1,5 @@
 name: SceneLoader
-version: 1.1.0
+version: 1.1.1
 kind: source
 summary: >
   Reads a directory of images and an optional calibration file into a scene/v1,
@@ -20,7 +20,7 @@ description: |
   from a single image and applied it to the whole set; ETH3D courtyard alone
   mixes 6208x4134 and 6205x4135, so that was silently wrong there.
 
-image: sfmstack/scene-loader:1.1.0
+image: sfmstack/scene-loader:1.1.1
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -68,10 +68,10 @@ params:
 
       Measured: the same capture loaded whole rather than at a twelve-frame cap
       returned more than twice the structure and four times the cameras, and a
-      capture that dropped a quarter of its frames on a classical branch at
-      twelve frames registered thirty of thirty-one on the SAME branch once every
+      capture that dropped a quarter of its frames with a classical detector and matcher at
+      twelve frames registered thirty of thirty-one with the SAME modules once every
       frame was loaded. Graph density is quadratic in frame count, so loading the
-      capture is itself a remedy for the fragmentation that motivates most branch
+      capture is itself a remedy for the fragmentation that motivates most module
       swaps.
 
       Set it only to make something deliberately cheap -- a smoke test, or a

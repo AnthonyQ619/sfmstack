@@ -123,7 +123,7 @@ them:
   removed with it, because a path pointing at nothing is what manufactured the 24
   misses. `SKILLS.md` carries the redirect table so the retirement is discoverable
   rather than silent.
-- `runs/` — **DONE, split 2026-09-02.** The trait table and the branch-comparison
+- `runs/` — **DONE, split 2026-09-02.** The trait table and the detector-matcher
   evidence table were sharing a file and answer incompatible questions: one wants a
   row you match your capture against, the other exists to be cited and explicitly
   must not be matched. They are now `runs/INDEX.md` and `runs/EVIDENCE.md`.

@@ -1,6 +1,6 @@
 ---
 module: PoseMapAnything
-module_version: 1.2.1
+module_version: 1.2.2
 curated_at: 2026-10-13
 ---
 
@@ -11,7 +11,7 @@ curated_at: 2026-10-13
 These poses are trained to be right about geometry, not to minimise reprojection
 error on your scene. They are a starting point and a second opinion. **They are not
 a deliverable.** If the comparison says to take the feed-forward path, take the
-whole branch — the poses on their own are not the remedy.
+feed-forward modules end to end — the poses on their own are not the remedy.
 
 ## Its repeat is bit-identical, and the sibling's is not
 

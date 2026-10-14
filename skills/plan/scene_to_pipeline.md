@@ -344,7 +344,7 @@ is precisely what makes it a hard-but-attackable scene instead of an impossible
 one. Higher working resolution and exposure normalisation at detection are live
 options on the third and pointless on the first two.
 
-**Check that the branch you are on can execute that advice before you plan around
+**Check that the modules you are on can execute that advice before you plan around
 it.** Exposure normalisation at detection exists as `grayscale_clahe`, and
 `grayscale_clahe` exists on the classical detector and on none of the learned ones.
 So on a capture where §3b's connectivity question sends you to a learned detector
@@ -387,9 +387,9 @@ far apart. On the corpus at ten views each, the better of the two classical
 compositions finished more than 0.2 below the best composition on **14 of 27
 captures** — 2 of 10 controlled-subject orbits, 4 of 9 site walks, and every one of 8
 traversals — and on one orbit an agent following this paragraph took the
-normalised classical branch, watched it fragment into three pieces, and delivered
+normalised classical detector and matcher, watched it fragment into three pieces, and delivered
 0.745 where the learned and detector-free compositions reached 0.94 to 0.97
-([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-4--the-classical-branch-on-a-sparse-capture)).
+([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-4--classical-detection-and-matching-on-a-sparse-capture)).
 So with a handful of frames, ask §3b's connectivity question first and let it win;
 normalisation is the move once the graph holds.
 
@@ -551,7 +551,7 @@ that co-occurrence breaks:
   joint matcher *lost* — the geometry inflated the reading without the ambiguity
   being harder.
 - **A vegetation-dominated capture** reads at the very bottom and the classical
-  branch collapsed outright — see the detector entry below, which is a different
+  detector and matcher collapsed outright — see the detector entry below, which is a different
   failure altogether.
 
 So: let it nudge you, never let it decide. Where it and `repetition_notes`
@@ -615,7 +615,7 @@ rubric v3 for exactly that reason.
   matching to be under stress" and attributed that to `detection.md`, **which
   states no such number**. It was invented here. It also does not survive
   measurement: two captures reading identically on this metric take different
-  branches, and another pair sitting a fraction of a degree apart also differ. No
+  module choices, and another pair sitting a fraction of a degree apart also differ. No
   threshold on this axis reproduces any observed outcome. See §3
   the trap list in §3 ("a module run at its defaults") and §2's detector entry.
 
@@ -652,7 +652,7 @@ configuration that produces this, and it now has two independent instances.
 different fixes, and
 **`SceneMotion` has already done that separation** — which is the one place a
 measured number reaches a module choice directly. When the reading is the planar
-branch — real baseline, flat structure — the response is to avoid a two-view
+case — real baseline, flat structure — the response is to avoid a two-view
 bootstrap: `SparseGlobalCOLMAP` solves the view graph globally, or keep the
 incremental route and raise `init_min_angle_deg`.
 
@@ -877,7 +877,7 @@ Two corollaries worth stating, because both have cost runs:
    removed on the grounds that it fired on every benchmark capture measured,
    "every one of which reconstructs" — an assumption, made because they were
    standard benchmarks, that nobody had checked. Run to a sparse model, the
-   high-displacement captures do **not** fully reconstruct on a classical branch;
+   high-displacement captures do **not** fully reconstruct with a classical detector and matcher;
    they drop between a quarter and three quarters of their frames. The flag was
    reporting something real and was cut for a threshold complaint dressed as a
    validity one. **"It fires on everything" and "it is measuring nothing" are
@@ -887,7 +887,7 @@ Two corollaries worth stating, because both have cost runs:
    `FeatureMatchNN` both default to `pairing: sequential`, which on a 12-image
    scene is 11 pairs. Every plan in §4 specifies `exhaustive`, which is 66. The
    first run of the swap experiment below passed no parameters and therefore
-   measured sequential: the classical branch registered half the frames on two
+   measured sequential: the classical detector and matcher registered half the frames on two
    well-connected rig captures and appeared to collapse, and the write-up nearly
    recorded a texture band that does not exist. Re-run at the pairing the plans
    actually specify, **those two captures register in full, the phantom texture band
@@ -895,9 +895,9 @@ Two corollaries worth stating, because both have cost runs:
    default is a decision somebody else made.
 
    **What the re-run did *not* do is make fragmentation go away, and an earlier
-   version of this trap said it did.** It read "every branch registers 12 of 12 on
+   version of this trap said it did.** It read "every module choice registers 12 of 12 on
    every scene", which is false against this repository's own evidence table: at
-   exhaustive pairing the classical branch still drops between a quarter and three
+   exhaustive pairing the classical detector and matcher still drop between a quarter and three
    quarters of the frames on the fastest captures in the corpus. Taken literally the
    old sentence erased §3b — the finding this file calls its strongest signal, and
    the finding every detector choice downstream of it rests on. It was caught by a
@@ -934,10 +934,10 @@ Two corollaries worth stating, because both have cost runs:
 
 ---
 
-## 3b. What the branch comparison established
+## 3b. What the detector/matcher comparison established
 
 Everything else in this file is a reading. This is a measurement: fourteen
-captures run through three detector+matcher branches to a sparse model, everything
+captures run through three detector+matcher pairs, each to a sparse model, everything
 downstream held identical and all matchers at `pairing: exhaustive`. It is the
 first swap in this repository carried through and compared —
 `judge/swap_or_build.md` was written admitting none existed. The per-capture
@@ -968,16 +968,16 @@ points to the pairs that already worked. On all four fragmenting captures it
 restored full or near-full registration.
 
 > **But read what the mechanism actually says: the problem is GRAPH DENSITY, and
-> the learned branch is not the only lever on it.** Frame count is the other one,
+> the learned detector and matcher are not the only lever on it.** Frame count is the other one,
 > and it is free. Every capture in this comparison was a twelve-frame head
 > sample; pairs grow quadratically with frames, so the same capture loaded in
 > full presents a far denser graph before any module is changed.
 >
 > Measured once, and only once so far: a capture that dropped a quarter of its
-> frames on the classical branch at twelve frames registered **30 of 31 on the
-> same classical branch** when every frame was loaded. One observation is not a
+> frames with the classical detector and matcher at twelve frames registered **30 of 31 on the
+> same classical modules** when every frame was loaded. One observation is not a
 > law, and it is enough to change the order of operations — **load all the frames
-> first, then ask whether the graph still fragments.** A branch swap made to fix
+> first, then ask whether the graph still fragments.** A module swap made to fix
 > a fragmentation that a full capture would not have had is a swap made for
 > nothing, and this file has been recommending it since before anyone ran a full
 > capture.
@@ -996,7 +996,7 @@ count, and this section has been rewritten around what does.**
 #### What the refit found
 
 Every corpus capture, at its full frame count, scored against the outcome on the
-branch this rule is about — a classical detector and a ratio-test matcher — over
+modules this rule is about — a classical detector and a ratio-test matcher — over
 seven candidate statistics and two definitions of "fragmented". Separation
 measured as the probability that a fragmenting capture reads higher than a
 complete one:
@@ -1033,10 +1033,10 @@ it is missing half the quantity.
 
 #### So how to use it
 
-> **Rank, then verify.** A high reading says *try the robust branch first and
-> expect to check it*, not *the cheap branch will fail*. Carry both to a model
+> **Rank, then verify.** A high reading says *try the robust modules first and
+> expect to check it*, not *the cheap modules will fail*. Carry both to a model
 > where the cost allows — which is what §5 and `matching.md` already say is the
-> only thing that settles a branch choice.
+> only thing that settles a module choice.
 
 Read `high_motion_tail` beside `overall_magnitude` and divide by the square root
 of the frame count when you compare two captures of different length. Locate
@@ -1124,26 +1124,26 @@ Two consequences, and neither of them overturns the reading:
 **Read it this way:**
 
 - **Low** — adjacent frames overlap heavily, the graph will be dense, and the
-  cheap CPU branch is very likely to complete. This is most benchmark object
+  cheap CPU modules are very likely to complete. This is most benchmark object
   captures.
 - **High** — expect the view graph to be sparse. The capture is not necessarily
   bad; it is *fast*, and it needs to be matched more carefully than a slow one.
   Plan for `pairing: exhaustive`, plan to spend on the matcher, and treat a
-  classical ratio-test branch as the thing to verify rather than the default.
+  classical ratio-test matcher as the thing to verify rather than the default.
 
 **What to do when it reads high, in order:**
 
 1. **Budget for a learned detector and matcher — as the first thing to TRY, not
    as the decision.** On every fragmenting capture in the fourteen this was
-   fitted on, that branch restored full or near-full registration, and it did so
+   fitted on, those modules restored full or near-full registration, and they did so
    with *fewer* keypoints, by recovering marginal pairs rather than enriching
-   good ones. **Driven cold on full captures it went two for five**: it rescued
-   the two whose classical branch had collapsed outright and it *cost* two
+   good ones. **Driven cold on full captures they went two for five**: they rescued
+   the two whose classical detector and matcher had collapsed outright and they *cost* two
    others most of their registration, where the classical detector with exposure
-   normalisation beat it comfortably. So the reading buys an ordering, and the
+   normalisation beat them comfortably. So the reading buys an ordering, and the
    ordering is settled by carrying both to a model. See the boundary in
    [matching.md](matching.md), which is the same shape: reach for the robust
-   branch where the cheap one has **failed**, not where it is **struggling**.
+   modules where the cheap ones have **failed**, not where they are **struggling**.
 2. **Choose `pairing: exhaustive`.** A sequential window is what a sparse graph
    can least afford, and the module default is sequential.
 3. **Raise `stride` on `SceneMotion` and read it again** — but read the *direction
@@ -1212,16 +1212,16 @@ Two consequences, and neither of them overturns the reading:
 
 ### 3. A learned detector is not a way to get more points
 
-On ten of the fourteen the learned branch produced the **smallest** model of the
+On ten of the fourteen the learned detector and matcher produced the **smallest** model of the
 three — often by a factor of two or more. (This sentence used to continue "because
 its keypoint budget is capped where a classical detector's is not." That explanation
 is refuted: at caps neither detector binds on, the learned detector has returned
 *more* keypoints than the classical one on several captures. The point-count result
 stands; its cause is open. See `plan/detection.md`.) That is not an argument against it: on the
-fragmenting captures it was the only branch that finished. **It is an argument
+fragmenting captures it was the only choice that finished. **It is an argument
 against reaching for it by default.** Buy it for connectivity and robustness, and
 expect to pay for that in point count; if the graph was never in danger, the cheap
-CPU branch usually returns a larger model.
+CPU modules usually return a larger model.
 
 ### 4. The two questions are ordered, and connectivity comes first
 
@@ -1233,7 +1233,7 @@ order:
 that covers ground quickly will produce a sparse graph, and a classical detector
 with a ratio-test matcher may drop frames from it. **When this reads high, try
 the learned detector AND matcher first, whatever the repetition looks like — and
-carry the cheap branch alongside it, because this reading ranks the risk and
+carry the cheap modules alongside them, because this reading ranks the risk and
 does not settle it (§3b.2).**
 
 > **The exception this rule needs, and it is not about motion at all.** A block
@@ -1244,7 +1244,7 @@ does not settle it (§3b.2).**
 > anything across the break, so it reports only the frames it *could* match.
 > The symptom is `min_image_degree` healthy for most frames and collapsing for
 > a contiguous block. **On such a capture this rule is inverted and the learned
-> branch is the fragile one.** [matching.md](matching.md) carries the full case
+> modules are the fragile ones.** [matching.md](matching.md) carries the full case
 > and the remedy; it is named here because this is where the decision is made.
 
 **Second, only if the graph is safe: will the matches be ambiguous?** Read
@@ -1252,7 +1252,7 @@ does not settle it (§3b.2).**
 corroboration. If the subject repeats, keep the classical detector and swap only
 the matcher for a jointly-reasoning one — no re-detection needed.
 
-**Otherwise take the cheap branch.** A classical detector and a ratio test
+**Otherwise take the cheap modules.** A classical detector and a ratio test
 returns the largest model of the three on a well-conditioned capture, and costs
 no GPU.
 
@@ -1260,18 +1260,18 @@ no GPU.
 shown what happens when it does not hold.** Both were controlled rig orbits — the
 kind this rule is safest on — and both broke it, in opposite directions. On one, a
 smooth glaze whose only texture was a band repeating around the subject, with the
-rig appearing in reflection and moving with the viewpoint, the cheap branch could
+rig appearing in reflection and moving with the viewpoint, the cheap modules could
 not register the capture at all on *either* matcher; the global reconstructor did.
-On the other, a faceted metal subject, the cheap branch registered everything but
+On the other, a faceted metal subject, the cheap modules registered everything but
 returned the weaker model — well under half the points and a worst-frame count an
 order of magnitude lower — and the joint matcher shipped. The shared signature is
 visible before the dense stage and after the first solve: **a sparse model that
 comes back an order of magnitude thinner than the capture kind usually gives.**
-When that happens, the branch question is still open; carry the alternative rather
+When that happens, the module question is still open; carry the alternative rather
 than accepting the cheap model because the rule named it.
 
-**Asked in that order, this reproduces the best-performing branch on thirteen of
-the fourteen captures measured** — the miss being a marginal one where two branches
+**Asked in that order, this reproduces the best-performing module choice on thirteen of
+the fourteen captures measured** — the miss being a marginal one where two module choices
 finished within a sixth of each other. Asked in the other order it fails on every
 fast capture whose subject does not repeat, because the ambiguity question sends
 you to the classical detector precisely where connectivity cannot afford it.
@@ -1311,7 +1311,7 @@ of the two, and means neither can be leaned on here.
 So read this move as: *cheap enough to try, reversible in one run, and not a thing
 to assume.* The revert is `FeatureMatchNN` at exhaustive on the same keypoints,
 which costs no re-detection either. If you are spending a run on the swap, spend the
-run on the comparison rather than on the assumption — the two branches share their
+run on the comparison rather than on the assumption — the two module choices share their
 detection artifact, so the A/B is nearly free and it is the only thing that settles
 it. `[measured: 14, one counter-case]`
 
@@ -1319,7 +1319,7 @@ it. `[measured: 14, one counter-case]`
 
 Fourteen captures, two dataset families, one parameter set, one downstream chain,
 **no ground truth**. "Largest model" is not "best model": point count and median
-triangulation angle disagree in direction on most captures, and a branch that
+triangulation angle disagree in direction on most captures, and a module choice that
 returns fewer points may be returning fewer wrong ones. Registration completeness
 is the one axis here that is unambiguous — a frame that did not register is
 simply absent — which is why the connectivity finding above is stated with more

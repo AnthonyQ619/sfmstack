@@ -1,5 +1,5 @@
 name: PoseVGGT
-version: 1.2.0
+version: 1.2.1
 kind: pose
 summary: >
   Feed-forward camera poses and intrinsics from images alone, via VGGT's camera
@@ -32,7 +32,7 @@ description: |
   Accuracy is initialisation-grade rather than final. Follow it with
   `SparseTriangulation` and `BundleAdjustmentGlobal` when precision matters.
 
-image: sfmstack/pose-vggt:1.2.0
+image: sfmstack/pose-vggt:1.2.1
 entrypoint: adapter:run
 resources:
   gpu: true

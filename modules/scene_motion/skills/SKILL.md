@@ -1,8 +1,8 @@
 ---
 module: SceneMotion
-module_version: 1.4.0
+module_version: 1.4.1
 upstream: ported from scene_agent/breadth_agent/src/agent/core/utility/optical_flow.py
-curated_at: 2026-08-14
+curated_at: 2026-10-13
 sources: 5
 ---
 

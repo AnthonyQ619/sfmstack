@@ -1,5 +1,5 @@
 name: FeatureMatchLightGlue
-version: 1.6.2
+version: 1.6.3
 kind: matching
 summary: >
   Learned sparse matcher with adaptive depth and width. Reasons about the whole
@@ -26,7 +26,7 @@ description: |
   planarity -- is identical to the classical matchers, so all three are directly
   comparable and only the correspondence step differs.
 
-image: sfmstack/match-lightglue:1.6.2
+image: sfmstack/match-lightglue:1.6.3
 entrypoint: adapter:run
 resources:
   gpu: true

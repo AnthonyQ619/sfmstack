@@ -1,8 +1,8 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.2
+module_version: 1.6.3
 produces: pairwise_matches/v1
-curated_at: 2026-08-08
+curated_at: 2026-10-13
 ---
 
 # Reading a FeatureMatchLightGlue artifact

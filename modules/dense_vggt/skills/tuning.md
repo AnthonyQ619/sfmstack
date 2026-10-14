@@ -1,7 +1,7 @@
 ---
 module: DenseVGGT
-module_version: 1.2.0
-curated_at: 2026-08-11
+module_version: 1.2.1
+curated_at: 2026-10-13
 ---
 
 # Tuning DenseVGGT
@@ -99,4 +99,4 @@ have no diagnostic reading them — descriptions of the captures measured so far
 not judgements on yours. The numbers in the `stride`, `min_confidence`,
 `depth_scale` and `write_ply` advice are settings that worked in isolated
 testing, not published results — and this module has run in a real pipeline only
-as a comparison arm, never as a delivered dense stage; see `sources`.
+as a comparison baseline, never as a delivered dense stage; see `sources`.

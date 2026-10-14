@@ -1,7 +1,7 @@
 ---
 module: FeatureTrackUnionFind
-module_version: 1.5.0
-curated_at: 2026-09-07
+module_version: 1.5.1
+curated_at: 2026-10-13
 ---
 
 # Where FeatureTrackUnionFind's claims come from

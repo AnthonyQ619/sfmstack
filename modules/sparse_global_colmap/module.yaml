@@ -1,5 +1,5 @@
 name: SparseGlobalCOLMAP
-version: 1.4.4
+version: 1.4.5
 kind: sparse
 summary: >
   GLOMAP-style global reconstruction: rotation averaging, global positioning,
@@ -32,7 +32,7 @@ description: |
   in the wrong place the diagnosis is in the view graph rather than in this
   module. Read the matcher's `graph_components` and `inlier_ratio` first.
 
-image: sfmstack/sparse-global-colmap:1.4.4
+image: sfmstack/sparse-global-colmap:1.4.5
 entrypoint: adapter:run
 resources:
   gpu: false

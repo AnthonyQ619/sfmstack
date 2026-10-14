@@ -219,7 +219,7 @@ lineage, eighty-five of ninety cameras aligned in all three. Its placement error
 independent models says the sparse stage is not the constraint, and three batches had
 already been spent improving it. **If two deliveries of a capture give the same dense
 number, stop looking upstream** — read accuracy and coverage separately and look at the
-dense policy instead. That capture's cloud was the *most accurate* of four arms and
+dense policy instead. That capture's cloud was the *most accurate* of four clouds and
 covered a third of the surface the reference holds. The campaign is in
 [`evidence/dense-saturated-2026-10.md`](../evidence/dense-saturated-2026-10.md).
 
@@ -294,7 +294,7 @@ higher on it.** The robust aligner keeps a camera unless its residual exceeds bo
 multiple of the kept median and an absolute floor, so the effective cutoff is set by the
 model's own residuals: a model whose cameras are uniformly mediocre is judged against a
 looser cutoff than a good one and keeps more of them. Measured on one corpus capture, a
-feed-forward arm kept more than twice as many cameras as the delivered model while
+feed-forward model kept more than twice as many cameras as the delivered model while
 having a fifth as many inside the floor. **Never compare the count between two models,
 and never set a target on it** — a plan that asks for more aligned cameras can be
 satisfied by making the reconstruction worse.
@@ -329,7 +329,7 @@ not more optimisation.
 candidate is measured dead: the size of the gain does **not** follow how much the
 model's placement costs it against a reference. Across a protocol's captures with that
 cost spanning more than a threefold range, the association with the gain is slightly
-**negative**, the arm was better on about half of them, and the capture with the large
+**negative**, the global reconstructor was better on about half of them, and the capture with the large
 gain carried a *lower* placement cost than any of the captures that gained nothing.
 Nor does anything the pipeline report predict it: a search over every metric the stack
 reports found nothing that beats chance. The alignment count cannot stand in either,
@@ -337,9 +337,9 @@ for the reason given earlier in this section.
 
 **So expect a small gain of either sign, and treat the one large win on record as an
 outlier rather than a template.** Where a reference-scored dense cloud is the
-deliverable, run both arms and compare the clouds — there is no reading, with or
+deliverable, run both reconstructors and compare the clouds — there is no reading, with or
 without the reference, that chooses for you. The campaign is in
-[`evidence/global-arm-2026-10.md`](../evidence/global-arm-2026-10.md).
+[`evidence/global-rebuild-2026-10.md`](../evidence/global-rebuild-2026-10.md).
 
 ## Delivering the verified cloud
 

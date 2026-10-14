@@ -101,7 +101,7 @@ The
 reference corpus contains three captures that satisfy rungs 1 and 2 as clearly
 as anything could: registration is the minimum-percentile rung, it sits at the
 very bottom of the corpus, and the other rungs do not. On a low reading alone,
-all three read as bounce candidates. The alternate-leg campaign then gave the
+all three read as bounce candidates. The single-stage-swap campaign then gave the
 registry its chance at them — a detector-free matcher, a learned
 detector/matcher pair, and a feed-forward pose estimator, one stage swapped each
 time — and **every one of the three swaps registered between 0.88 and 1.00 of

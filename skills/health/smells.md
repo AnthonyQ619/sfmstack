@@ -12,7 +12,7 @@ that argues with you.
 
 ## The upstream metrics all agree and the model is a fraction of the capture
 
-**The smell:** a branch wins on inlier ratio, track conflict, trifocal transfer
+**The smell:** a module choice wins on inlier ratio, track conflict, trifocal transfer
 and reprojection error, and registers a third of the images.
 
 **Measured:** a configuration swept *five of five* upstream quality readings and
@@ -27,7 +27,7 @@ correspondences — which is exactly what starves the view graph. They answer "a
 these matches good", and the question is "is there enough here to reconstruct".
 
 **What to do:** registration is a precondition, not a tiebreak
-([ladder.md](ladder.md)). For a branch choice, carry both branches to a model
+([ladder.md](ladder.md)). For a module choice, carry both choices to a model
 — the stage-local comparison has been wrong every time it was checked.
 
 **A second shape of the same smell: nothing upstream separated the failures from
@@ -53,7 +53,7 @@ is not an argument for a better upstream metric; it is the reason the health
 profile is read *after* the sparse step. The failure is only visible in the
 object the failure is about.
 
-**And the collapse was not a property of the captures.** The alternate-leg
+**And the collapse was not a property of the captures.** The single-stage-swap
 campaign put each of those three captures through three different single-stage
 swaps — a detector-free semi-dense matcher, a learned sparse detector/matcher
 pair, and a feed-forward pose estimator — and **every one of the nine runs
@@ -86,7 +86,7 @@ model.
 
 **Measured**, on an orbit rig driven by a point tracker instead of a match
 graph. The tracker reported tracks an order of magnitude longer than the
-match-graph branch produced on the same capture, almost all of them long, a
+match-graph tracker produced on the same capture, almost all of them long, a
 **zero** inconsistency rate, and near-total five-frame survival. The pose stage
 registered every frame and seeded on the widest initial pair anywhere in the
 corpus. Then triangulation rejected **every single track** — none behind a
@@ -122,7 +122,7 @@ mistake with the numbers reversed.
 **The smell:** two models, one with a visibly better mean, and nobody has checked
 what the two clouds are made of.
 
-**Measured:** a branch reporting 0.278 px was rejected in favour of one at 0.665
+**Measured:** a model reporting 0.278 px was rejected in favour of one at 0.665
 px because its `two_view_fraction` was 0.648. A two-view point is exactly
 determined — four residuals, three unknowns — so its residual is near zero *by
 construction*. On a two-view-dominated cloud a large share of the mean is made of

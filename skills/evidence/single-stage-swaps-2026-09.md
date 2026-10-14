@@ -1,14 +1,14 @@
-# Campaign: alternate-legs-2026-09 — every module the reference pipeline never ran
+# Campaign: single-stage-swaps-2026-09 — every module the reference pipeline never ran
 
 **This is a raw evidence table. Cite it; do not plan from it.** The reasoning built on these rows lives in [`health/ladder.md`](../health/ladder.md), [`health/smells.md`](../health/smells.md), [`plan/pose.md`](../plan/pose.md) and [`judge/swap_or_build.md`](../judge/swap_or_build.md), stated as capture properties rather than as scene names.
 
 ## Protocol
 
-Every leg is the reference pipeline of [reference-pipeline-2026-09](reference-pipeline-2026-09.md) with **one stage replaced**, run against the reference campaign's own artifact store. Every stage upstream of the swap is recipe-identical and served from the cache, so the two models differ in exactly one module and the difference is attributable to it.
+Every swap is the reference pipeline of [reference-pipeline-2026-09](reference-pipeline-2026-09.md) with **one stage replaced**, run against the reference campaign's own artifact store. Every stage upstream of the swap is recipe-identical and served from the cache, so the two models differ in exactly one module and the difference is attributable to it.
 
 That shape buys the thing the reference campaign could not have: **models of one capture that can legitimately be compared against ground truth.** True pose error is measured over the images a model registered, so it is comparable between two models only when they registered the same ones. Two conditions give that. A swap at or after the pose stage cannot add or drop a camera, so it registers exactly what the reference did. And several captures ended with three or four *different* pipelines each registering the capture in full — which is the stronger set, because unlike the first it contains comparisons the alternate wins.
 
-Image drift was verified before the campaign started and every module image matched its source. 44 rows completed; 7 legs failed, and the failures are recorded below because a module refusing an input is a reading about the module.
+Image drift was verified before the campaign started and every module image matched its source. 44 rows completed; 7 swaps failed, and the failures are recorded below because a module refusing an input is a reading about the module.
 
 ## The rung validation — 17 comparisons between models of one capture, all fully registered
 
@@ -29,7 +29,7 @@ Two models that each registered 100% of a capture contain the same images, so gr
 
 Split by **what differs between the two models** — a bundle adjuster that deletes short tracks differs from its comparand by a point-retention rule and by nothing else, and the rungs that are selection effects behave completely differently on those pairs:
 
-| Rung | differing by a point filter | differing by a change of branch |
+| Rung | differing by a point filter | differing by a change of module |
 | --- | --- | --- |
 | coverage | 9 of 9 | 8 of 8 |
 | yield_obs | 9 of 9 | 8 of 8 |
@@ -115,11 +115,11 @@ Split by **what differs between the two models** — a bundle adjuster that dele
 | superglue | 0.103 | 0.501 | 2391 | 9.04 | 0.381 | 0.680 | 0.666 | 0.790 | 0.716 |
 | pose_vggt | 2.166 | 6.661 | 745 | 8.65 | 0.219 | 0.281 | 0.527 | 0.573 | 1.872 |
 
-## Every leg, against its reference row
+## Every swap, against its reference row
 
-`reg`, `pts`, `comp`, `cov`, `err`, `y_obs`, `pose` are the profile components; the arrow is reference → leg. `GT rot°` and `GT trn°` are median relative pose error against the dataset's own poses, over the images each model registered — **not comparable across differing registration**, which is most of this table.
+`reg`, `pts`, `comp`, `cov`, `err`, `y_obs`, `pose` are the profile components; the arrow is reference → swap. `GT rot°` and `GT trn°` are median relative pose error against the dataset's own poses, over the images each model registered — **not comparable across differing registration**, which is most of this table.
 
-| leg | capture | reg | pts | comp | cov | err | y_obs | pose_agr | GT rot° | GT trn° | imgs w/ GT | s |
+| swap | capture | reg | pts | comp | cov | err | y_obs | pose_agr | GT rot° | GT trn° | imgs w/ GT | s |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ba_local | DTU/scan1 | 1.00→1.00 | 5273→1922 | 0.364→1.000 | 0.594→0.500 | 0.395→0.591 | 0.816→0.434 | 0.175→0.234 | 0.572→0.589 | 0.825→0.805 | 49→49 | 6.9 |
 | ba_local | DTU/scan10 | 0.90→0.90 | 1902→611 | 0.321→1.000 | 0.383→0.234 | 0.340→0.856 | 0.496→0.238 | 0.394→0.936 | 0.530→1.840 | 0.867→1.543 | 44→44 | 7.0 |
@@ -162,7 +162,7 @@ Split by **what differs between the two models** — a bundle adjuster that dele
 | vggsfm | ETH/playground | 0.50→0.95 | 3677→1465 | 0.268→0.961 | 0.766→0.219 | 0.510→0.807 | 0.267→0.229 | 0.150→— | 0.137→1.838 | 0.327→7.509 | 19→36 | 55.4 |
 | vggsfm_chunked | DTU/scan33 | 1.00→1.00 | 3031→2306 | 0.410→0.990 | 0.422→0.500 | 0.180→0.248 | 0.767→0.767 | 0.213→— | 0.608→0.565 | 0.695→0.731 | 49→49 | 132.1 |
 
-## The detection leg, driven cold
+## The detection swap, driven cold
 
 `FeatureDetectionORB` had no readings anywhere in this corpus. Run on the captures [detection-phase-2026-08](detection-phase-2026-08.md) drove cold, at the module default, beside the reference campaign's SIFT row for the same capture and the same frames.
 
@@ -175,7 +175,7 @@ Split by **what differs between the two models** — a bundle adjuster that dele
 
 ## What refused to run, and what the refusal says
 
-| leg | capture | failed at | the refusal |
+| swap | capture | failed at | the refusal |
 | --- | --- | --- | --- |
 | ba_local | ETH/electro | — | RuntimeError: BundleAdjustmentLocal: ExecutionError: module 'BundleAdjustmentLocal' failed: RuntimeError: ValueError: no point survived min_track_len=3. This module defaults to 3 rather than 2, because a two-view point inside a window contributes nothing… |
 | ba_local | ETH/meadow | — | RuntimeError: BundleAdjustmentLocal: ExecutionError: module 'BundleAdjustmentLocal' failed: RuntimeError: ValueError: no point survived min_track_len=3. This module defaults to 3 rather than 2, because a two-view point inside a window contributes nothing… |
@@ -212,4 +212,4 @@ A version tag does not pin behaviour. These digests do.
 
 ---
 
-*Generated by `tools/phase_b_report.py`; the driver is `tools/phase_b.py`, which carries the leg definitions and the reason each capture was chosen for each leg. Both are in this repository. The artifact store it read is **not retained** — the rows above are the record, and a path to a store nobody can open would imply evidence that cannot be examined.*
+*Generated by `tools/phase_b_report.py`; the driver is `tools/phase_b.py`, which carries the swap definitions and the reason each capture was chosen for each swap. Both are in this repository. The artifact store it read is **not retained** — the rows above are the record, and a path to a store nobody can open would imply evidence that cannot be examined.*

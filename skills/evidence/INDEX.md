@@ -26,7 +26,7 @@ they run it.
 member of [CORPUS.txt](CORPUS.txt), and `sfm_plan_brief` reports
 `in_planning_corpus` for exactly this reason. If it says your capture is a member,
 then finding "the row like mine" is not retrieval — you have been handed your own
-answer key, including the pipeline that was chosen for it and the branches that
+answer key, including the pipeline that was chosen for it and the alternatives that
 were rejected. That is worth strictly less than a row matched from outside the
 corpus, and a plan built on it should say so. This caution is stronger here than
 the one on the range tables in `plan/`: there, a corpus member recognises its own
@@ -35,7 +35,7 @@ the one on the range tables in `plan/`: there, a corpus member recognises its ow
 **A row describes its capture at the frame count it was run at, which for most rows
 is every frame.** The same capture subsampled to a handful of far-apart views is a
 different problem, and the decisive move does not carry over: one row records the
-cheap classical branch registering everything, and at ten views that branch broke into
+cheap classical detector and matcher registering everything, and at ten views the same modules broke into
 three pieces; another records two models the profile ranked wrongly, and at ten views
 they agreed to three hundredths of a degree
 ([`agent-controls-2026-10`](agent-controls-2026-10.md#finding-7--an-index-row-describes-its-capture-at-the-frame-count-it-ran-at)).
@@ -116,13 +116,13 @@ separated the kept model from the best alternative that failed.
 
 | Outcome | What it means | What it tells you to do |
 | --- | --- | --- |
-| `density-decided` | Every branch tried registered the whole capture. The choice between them was about how much structure came back, not whether the capture was solved. | Your capture is probably not at risk. Compare finished models by the procedure in [ladder](../health/ladder.md#comparing-two-finished-models) and stop; do not go looking for a rescue you do not need. |
+| `density-decided` | Every module choice tried registered the whole capture. The choice between them was about how much structure came back, not whether the capture was solved. | Your capture is probably not at risk. Compare finished models by the procedure in [ladder](../health/ladder.md#comparing-two-finished-models) and stop; do not go looking for a rescue you do not need. |
 | `matcher-decided` | Registration was rescued by changing the matching stage — a ratio test to a joint matcher, or either to a detector-free one. | If a capture of this kind is fragmenting, change the matcher before the detector. On repeated parts especially, a better detector makes the wrong match *more* confident. See [matching](../plan/matching.md). |
 | `reconstructor-decided` | Registration was rescued by changing which module produced the poses — seed-and-grow to a global reconstructor. | Stop tuning seed-and-grow. If `graph_components` is 1 and registration is still short, the failure may be the growth strategy itself. `sfm_find_alternatives(produces='sparse_model/v1', consumes='pairwise_matches/v1')`. See [pose](../plan/pose.md). |
 | `resolution-decided` | Registration was rescued by working resolution or by detection preprocessing, with the module set unchanged. | Before swapping modules, check what the loader is feeding them. More failures trace to loader parameters than to any module — see [swap_or_build](../judge/swap_or_build.md#when-to-build). |
-| `consensus-decided` | Every rung was quiet and every branch tied. What separated the delivered model from a better one was a reading taken OUTSIDE its own correspondences — two independent estimators agreeing with each other and not with it. | Rungs cannot rescue you here; they were all satisfied. Before delivering a capture of this kind, run both correspondence-free estimators and read your disagreement against theirs — see [pose](../plan/pose.md). A tie on every rung is not evidence that the choice did not matter. |
-| `profile-misled` | A branch registered the whole capture, the health profile selected it, and reference geometry says a rejected branch was far better. | **Read this row before trusting a profile-based choice on a capture like yours.** The profile is an ordering over models, not a measurement of correctness, and this is where it is known to fail. |
-| `unsolved` | No branch registered the capture. | Rule out the three cheaper answers, then check whether the registry has the shape the problem needs at all: a capability query coming back empty is the signal to build. See [swap_or_build](../judge/swap_or_build.md#when-to-build). |
+| `consensus-decided` | Every rung was quiet and every module choice tied. What separated the delivered model from a better one was a reading taken OUTSIDE its own correspondences — two independent estimators agreeing with each other and not with it. | Rungs cannot rescue you here; they were all satisfied. Before delivering a capture of this kind, run both correspondence-free estimators and read your disagreement against theirs — see [pose](../plan/pose.md). A tie on every rung is not evidence that the choice did not matter. |
+| `profile-misled` | A module choice registered the whole capture, the health profile selected it, and reference geometry says a rejected one was far better. | **Read this row before trusting a profile-based choice on a capture like yours.** The profile is an ordering over models, not a measurement of correctness, and this is where it is known to fail. |
+| `unsolved` | No module choice registered the capture. | Rule out the three cheaper answers, then check whether the registry has the shape the problem needs at all: a capability query coming back empty is the signal to build. See [swap_or_build](../judge/swap_or_build.md#when-to-build). |
 
 **Two of these six have no rows**, which is worth saying plainly because an
 empty category is easy to mistake for an impossible one.
@@ -146,7 +146,7 @@ more failures trace to loader parameters than to any module.
 
 ## The rows
 
-Shipped pipeline per capture, with the branches that were tried and rejected.
+Shipped pipeline per capture, with the alternatives that were tried and rejected.
 `→` reads as the stage order. Link each row to its measurements through the
 capture name.
 
@@ -168,8 +168,8 @@ capture name.
 | [ETH/facade](agentic-campaign-2026-09.md#cap-eth-facade) | `outdoor` · `along-a-path` | `single-subject-cropped` | `textured` | `reflective-coherent` · `movers` | SIFT → LightGlue → global reconstructor → BA | the same detector and matcher into seed-and-grow; and SIFT with a ratio-test matcher into seed-and-grow at both resolutions | `reconstructor-decided` |
 | [ETH/kicker](agentic-campaign-2026-09.md#cap-eth-kicker) | `indoor` · `along-a-path` | `no-single-subject` | `low-texture` | `reflective-diffuse` | SIFT+CLAHE → LightGlue → global reconstructor → BA | seed-and-grow with and without CLAHE, at both resolutions; SuperPoint+SuperGlue | `reconstructor-decided` |
 | [ETH/meadow](agentic-campaign-2026-09.md#cap-eth-meadow) | `outdoor` · `along-a-path` | `single-subject-cropped` | `low-texture` | `reflective-coherent` · `movers` | RoMa (detector-free, outdoor weights) → union-find → incremental → triangulate → BA | SIFT → NN and SIFT → LightGlue, both nearly total failures; two other learned matchers also registered fully and returned less structure | `matcher-decided` |
-| [ETH/office](agentic-campaign-2026-09.md#cap-eth-office) | `indoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | `reflective-coherent` | SuperPoint → LightGlue → global reconstructor → BA | every seed-and-grow branch tried, classical and learned and detector-free alike | `reconstructor-decided` |
-| [ETH/playground](agentic-campaign-2026-09.md#cap-eth-playground) | `outdoor` · `wander-around-a-site` | `no-single-subject` | `textured` | `reflective-coherent` · `movers` | SIFT+CLAHE → LightGlue → global reconstructor → BA | five seed-and-grow branches, none past half the capture | `reconstructor-decided` |
+| [ETH/office](agentic-campaign-2026-09.md#cap-eth-office) | `indoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | `reflective-coherent` | SuperPoint → LightGlue → global reconstructor → BA | every seed-and-grow composition tried, classical and learned and detector-free alike | `reconstructor-decided` |
+| [ETH/playground](agentic-campaign-2026-09.md#cap-eth-playground) | `outdoor` · `wander-around-a-site` | `no-single-subject` | `textured` | `reflective-coherent` · `movers` | SIFT+CLAHE → LightGlue → global reconstructor → BA | five seed-and-grow compositions, none past half the capture | `reconstructor-decided` |
 | [ETH/relief](agentic-campaign-2026-09.md#cap-eth-relief) | `indoor` · `along-a-path` | `no-single-subject` | `low-texture` | `reflective-diffuse` | SIFT → NN → union-find → incremental → triangulate → BA, at higher resolution, re-solved at a wider window | the same chain at lower resolution with a ratio-test and a joint matcher; **and a global reconstructor that also registered every frame and that truth ranked far above this chain's first solve** | `profile-misled` |
 | [EUROC/V2_01_easy](sparse-pose-2026-09.md#the-wrong-models) | `indoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | — | SuperPoint (dense threshold) → LightGlue → global reconstructor → BA | the same chain at the detector's default (half the capture); seed-and-grow on the same matches (two and three frames) | `reconstructor-decided` |
 | [TUM_VI/room4](sparse-pose-2026-09.md#what-to-do-when-the-reading-fires) | `indoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | `reflective-diffuse` | RoMa (detector-free, indoor weights) → union-find → incremental → triangulate → BA | SuperPoint → LightGlue into seed-and-grow, short of half the capture; the same into a global reconstructor, short by two frames and **cleaner on pose agreement**; a tighter RoMa re-run, vetoed | `matcher-decided` |
@@ -177,7 +177,7 @@ capture name.
 | [ADVIO/advio-07](short-core-2026-10.md#advioadvio-07--the-exception) | `indoor` · `along-a-path` | `no-single-subject` | `low-texture` | `reflective-coherent` · `movers` | LightGlue at a loose ratio → global reconstructor → BA, delivered at seven of ten frames | the same chain at a tighter ratio, equal on registration and far thinner on structure (344 points against 750, `min_frame_points` 5 against 78); the fill, refused by its gates; both estimators' own models, which scored **zero** — this is the capture where the short core was right | `density-decided` |
 | [TUM_VI/room3](short-core-2026-10.md#tum_viroom3--the-row-the-table-left-open) | `indoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | `reflective-diffuse` | RoMa (detector-free, indoor weights) → global reconstructor, delivered at five of ten frames | the only 10/10 candidate, vetoed by `SparseVerification`; the global model on SuperPoint+LightGlue, rejected because both correspondence-free estimators agreed with the core and sat ~104° from it; **the fill, not attempted because the core shared too few cameras — the row that then sent it to the core** | `consensus-decided` |
 | [TT/Barn](consensus-2026-09.md#the-capture-promoted-to-the-corpus) | `outdoor` · `around-a-subject` | `single-subject` | `textured` | — | SIFT → LightGlue → union-find → incremental → triangulate → BA → MVS | the same chain on NN matches, tied on every rung and preferred on neither | `consensus-decided` |
-| [TT/Meetingroom](dense-saturated-2026-10.md#the-capture) | `indoor` · `loop-inside-an-enclosure` | `no-single-subject` | `low-texture` | `reflective-coherent` · `movers` | SuperPoint → LightGlue → global reconstructor → BA → MVS, 85 of 90 cameras aligned | nothing, on the sparse side — three batches delivered three different sparse models and Protocol A could not separate them; the failure is dense COVERAGE against every learned-prior dense branch, at the best accuracy of the four. Figures in the campaign file | `density-decided` |
+| [TT/Meetingroom](dense-saturated-2026-10.md#the-capture) | `indoor` · `loop-inside-an-enclosure` | `no-single-subject` | `low-texture` | `reflective-coherent` · `movers` | SuperPoint → LightGlue → global reconstructor → BA → MVS, 85 of 90 cameras aligned | nothing, on the sparse side — three batches delivered three different sparse models and Protocol A could not separate them; the failure is dense COVERAGE against every learned-prior dense baseline, at the best accuracy of the four. Figures in the campaign file | `density-decided` |
 
 ---
 
@@ -208,7 +208,7 @@ which you are looking at.
 
 **The `studio-rig` rows were unanimous, and that turned out to be the sampling and
 not the rig.** Seven orbits of an object on a controlled backdrop all shipped the
-same pipeline, with the alternative branch changing only density. A block of
+same pipeline, with the alternative modules changing only density. A block of
 identical rows is weak evidence, not strong — it is one capture kind sampled seven
 times — and when three more orbits were added from the holdout, two of them broke
 the block, in opposite directions.
@@ -236,7 +236,7 @@ restores registration is not thereby a rescue that produced a good model**, and 
 a capture of this kind the outcome column is telling you what unstuck the run, not
 that the run ended well. Read the delivered model's own evidence before delivering
 it — [pose](../plan/pose.md) says which reading and what to do when it fires — and
-note that on the losing branch of the `matcher-decided` row the *rejected* model was
+note that on the losing side of the `matcher-decided` row the *rejected* model was
 the cleaner one on pose agreement while being short two frames, which is rung 1
 working as designed and is the reason these two are both here.
 
@@ -245,7 +245,7 @@ whose target is dim, nearly featureless polished plaster, and whose viewpoints
 fall into disconnected clusters, produced two models that both registered every
 frame. The profile preferred the one with more points; reference geometry says the
 other is better by a wide margin. Both facts are true at once, and the rung that
-would have separated them cannot be computed on the branch that won against truth.
+would have separated them cannot be computed on the model that won against truth.
 
 ---
 
@@ -273,7 +273,7 @@ question you are actually asking.
 
 | You want | Go to |
 | --- | --- |
-| The numbers behind a row — its profile, its rejected branches, its error against reference geometry | the capture link in the row, which lands on that capture's row in [agentic-campaign-2026-09](agentic-campaign-2026-09.md) |
+| The numbers behind a row — its profile, its rejected alternatives, its error against reference geometry | the capture link in the row, which lands on that capture's row in [agentic-campaign-2026-09](agentic-campaign-2026-09.md) |
 | What a healthy model of this kind looks like, and how to compare two finished ones | [health/ladder.md](../health/ladder.md), whose reference distribution is [reference_profile.yaml](reference_profile.yaml) |
 | Whether to stop, or to keep turning a dial | [ladder — when to stop turning a dial](../health/ladder.md#when-to-stop-turning-a-dial) |
 | Whether the answer is a different module, or a module that does not exist yet | [judge/swap_or_build.md](../judge/swap_or_build.md) |

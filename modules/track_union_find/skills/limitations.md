@@ -1,7 +1,7 @@
 ---
 module: FeatureTrackUnionFind
-module_version: 1.5.0
-curated_at: 2026-08-07
+module_version: 1.5.1
+curated_at: 2026-10-13
 ---
 
 # When to stop tuning FeatureTrackUnionFind and switch
@@ -149,6 +149,6 @@ advise: the cycle terms fell by up to fifty times while `inconsistent_rate` stay
 flat, and on one capture it *rose* as pairs were removed. The cycle terms and this
 rate are not measuring the same thing, and the matcher dial moves only the first. When
 the rate is high and the dial will not move it, stop spending runs on the dial: carry
-both branches to a finished model and let the verifier and the comparison in
+both module choices to a finished model and let the verifier and the comparison in
 [ladder](../../../skills/health/ladder.md#comparing-two-finished-models) settle it,
 which is what worked on all three.

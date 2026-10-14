@@ -1,5 +1,5 @@
 name: DenseFusion
-version: 1.1.0
+version: 1.1.1
 kind: dense
 summary: >
   Re-fuse a DenseMVS stereo pass at different fusion settings in seconds, without
@@ -25,7 +25,7 @@ description: >
   at the same settings, then run this on the replay's output. Every fusion setting
   after that is seconds. Details: the SKILL, "Before you run it".
 
-image: sfmstack/dense-fusion:1.1.0
+image: sfmstack/dense-fusion:1.1.1
 
 consumes:
   dense: {type: dense_model/v1, required: true}
@@ -140,7 +140,7 @@ metrics:
 
   fusion_min_num_pixels:
     direction: neutral
-    meaning: The setting this cloud was fused at, so two arms can be told apart.
+    meaning: The setting this cloud was fused at, so two clouds can be told apart.
 
   ply_megabytes:
     direction: neutral

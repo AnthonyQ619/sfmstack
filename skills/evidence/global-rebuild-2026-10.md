@@ -1,9 +1,9 @@
-# Campaign: global-arm-2026-10 — what a global reconstruction adds to a short model, and what it does not add to a dense one
+# Campaign: global-rebuild-2026-10 — what a global reconstruction adds to a short model, and what it does not add to a dense one
 
 **This is a raw evidence table. Cite it; do not plan from it.** The rules it supports
 live in [`plan/pose.md`](../plan/pose.md) §4, on when to reach for
 `SparseGlobalCOLMAP` against a model that registered part of a capture, and in
-[`plan/dense.md`](../plan/dense.md), on what that arm is and is not worth to a dense
+[`plan/dense.md`](../plan/dense.md), on what the global reconstructor is and is not worth to a dense
 deliverable.
 
 ## The question
@@ -21,13 +21,13 @@ captures whose registration it rescued. Two things were unmeasured:
 ## Part 1 — registration, against the best incremental model on the same matches
 
 Seven corpus captures, each holding an incremental model short of its own capture.
-The global arm was run on **that model's own `pairwise_matches/v1` artifact**, so the
+The global reconstructor was run on **that model's own `pairwise_matches/v1` artifact**, so the
 matcher is held fixed and the reconstructor is the only thing that varies.
 
 **The control is the HIGHEST-registering incremental model built on those same
 matches**, not the first one found. This matters: picking the shortest incremental
 model in each store instead inflated two of these rows, one of them by a factor of
-fourteen, because it compared the global arm against a branch nobody would have
+fourteen, because it compared the global reconstructor against a model nobody would have
 delivered.
 
 Placed-image sets were compared element-wise, so *added* and *lost* are counted and
@@ -60,8 +60,8 @@ not inferred from a total.
 ## Part 2 — the dense deliverable, and the reading that does not predict it
 
 Ten captures, each with a dense cloud built on the incremental model and a second
-built on the global arm from the same matches, reusing the capture's own `DenseMVS`
-parameters so the sparse arm is the only variable. Scored under each dataset's
+built on the global reconstructor's model from the same matches, reusing the capture's own `DenseMVS`
+parameters so the sparse model is the only variable. Scored under each dataset's
 protocol, as-placed and after a best-fit similarity, with the similarity into the
 reference frame fitted from camera centres alone.
 
@@ -84,7 +84,7 @@ and best-fit scores of the incremental cloud.
 
 - **Spearman −0.286** within the protocol carrying eight of the ten, against a
   pre-registered threshold of +0.65. Not met, **and the sign is inverted.** Pooled over
-  all ten, −0.406. The arm was better on 4 of 8 and on 6 of 10.
+  all ten, −0.406. The global reconstructor's model was better on 4 of 8 and on 6 of 10.
 - **The capture with much the largest gain carries a lower drift penalty than any of
   the captures that gained nothing**, and the capture with the highest penalty got
   worse. The hypothesis is not merely unsupported.
@@ -103,11 +103,11 @@ and best-fit scores of the incremental cloud.
   The gain is a few frames.
 - It is **not** a route to complete registration from a badly short model.
 - Its effect on a dense deliverable is **small and of either sign**, does not follow
-  the drift penalty, and has **no agent-side trigger** — run both arms and compare the
+  the drift penalty, and has **no agent-side trigger** — run both reconstructors and compare the
   clouds.
 
 ## What this does not settle
 
 - The regime **below** the 0.7 crossing. No capture here sits there.
-- Whether the consensus reading selects this arm. It is not measured here.
+- Whether the consensus reading selects this reconstructor. It is not measured here.
 - Why the one large dense gain is so much larger than the rest.

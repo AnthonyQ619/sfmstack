@@ -34,7 +34,7 @@ is the contrast filter binding, not the cap; see the next section.
 each analysed cold, every one came back partly or fully saturated at the module
 default, and most of them then settled on nothing more than the raised cap. Treat
 "raise the cap until saturation is zero, then read the numbers" as the entry
-condition for reading this file at all, rather than as one of its branches.
+condition for reading this file at all, rather than as one of its rules.
 
 ### Observed
 

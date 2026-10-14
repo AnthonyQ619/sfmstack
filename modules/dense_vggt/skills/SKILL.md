@@ -1,8 +1,8 @@
 ---
 module: DenseVGGT
-module_version: 1.2.0
+module_version: 1.2.1
 upstream: facebookresearch/vggt @ a288dd0, depth head
-curated_at: 2026-08-11
+curated_at: 2026-10-13
 sources: 2
 ---
 
@@ -78,7 +78,7 @@ nothing at 0.9 and everything at, say, 0.99 of the wrong scale. Read
 
 ## Provenance
 
-**Run as a comparison arm in one dense batch, and measured against reference
+**Run as a comparison baseline in one dense batch, and measured against reference
 geometry for the first time** — see `limitations` and
 `skills/evidence/dense-batch-2026-09.md`. No capture in that batch shipped this
 module's cloud as its deliverable, so everything about its behaviour as a delivered

@@ -13,7 +13,7 @@ architecture is the way it is*. This file logs *what the experiments said*.
 **The question.** How much worse are feed-forward poses than classical ones, and
 does bundle adjustment absorb the difference?
 
-**What was run.** A full reconstruction on both branches, not a pose-error
+**What was run.** A full reconstruction on both models, not a pose-error
 comparison — DTU's `calibration_DTU_new.npz` has `baseline_ext: None`, so there
 are no ground-truth extrinsics to compare against.
 
@@ -26,7 +26,7 @@ SceneLoader (DTU scan1, 12 images, sampling: head, max_edge: 1024)
                  └─ PoseVGGT            ─┴─ SparseTriangulation → BundleAdjustmentGlobal
 ```
 
-Both branches consumed **the same tracks artifact** — literally the same id, since
+Both models consumed **the same tracks artifact** — literally the same id, since
 the recipe is identical — and the same triangulator and bundle adjuster at
 defaults. The only variable is the pose source.
 
@@ -38,7 +38,7 @@ defaults. The only variable is the pose source.
 | `PoseVGGT` | 21.5 s | 12/12 | *null* | 5899 | 1.051 px | **0.841** | 5899 | 0.2274 | 374 |
 
 Both bundle adjustments converged, but only after raising `max_iterations` — at
-the default 300 the VGGT branch reported `converged=0` at the cap.
+the default 300 the VGGT-posed model reported `converged=0` at the cap.
 
 **Conclusions.**
 
@@ -49,7 +49,7 @@ the default 300 the VGGT branch reported `converged=0` at the cap.
 
 2. **The post-BA errors are NOT comparable.** 0.2274 on 5899 points against
    0.2508 on 6900. The smaller model is the easier one, and ~1000 of the classical
-   branch's points are ones VGGT's poses could not support. Reading "VGGT wins
+   model's points are ones VGGT's poses could not support. Reading "VGGT wins
    after BA" from that would repeat the exact trap already recorded twice in this
    repository — error is never comparable across differing model sizes.
 
@@ -384,10 +384,10 @@ a real rule?
 
 **Why this needed four experiments.** Deduplication changes how many points exist,
 and reprojection error over different point sets is not comparable — the trap
-already recorded twice in this file. Each arm below is blind to a different
+already recorded twice in this file. Each test below is blind to a different
 confound, and no single one of them would have answered the question.
 
-### Arm A — structure only, poses held fixed
+### Test A — structure only, poses held fixed
 
 DTU `scan1` and `scan24`, 8 images, `max_edge: 1024`. One pose set per scene, from
 a chain the sweep does not touch:
@@ -413,7 +413,7 @@ so the point-count trap does not apply.
 every outcome. `scan1`/TAPIR is the only mixed case (err @ 5 obs bottoms at eps 3.0,
 err @ 3 obs at 2.0, `yield` at 0).
 
-### Arm B — poses, against ground truth
+### Test B — poses, against ground truth
 
 ETH3D `courtyard`, 12 images (`DSC_0286`–`DSC_0297`), `resize: fixed [1024, 682]` —
 both learned trackers stack the set into one tensor and ETH3D's captures are
@@ -426,9 +426,9 @@ SceneLoader → SIFT → tracker(dedupe_eps_px) → PoseEssentialToPnP
             → SparseTriangulation → BundleAdjustmentGlobal   → vs ground truth
 ```
 
-This is the only arm that can see the actual argument for deduplication — *a
+This is the only test that can see the actual argument for deduplication — *a
 duplicated point enters bundle adjustment once per copy* — because camera poses are
-a fixed-size output whatever the merge does. **Arm A is structurally blind to it.**
+a fixed-size output whatever the merge does. **Test A is structurally blind to it.**
 
 | VGGSfM, after BA | 0 | 0.5 | 1.0 | 1.5 | 2.0 | 3.0 | 4.0 | 6.0 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -447,7 +447,7 @@ dedupe knob at all.
 The estimator is deterministic here, so differences between eps values are real
 functions of the input rather than sampling noise.
 
-### Arm C — synthetic, where the duplicates are known
+### Test C — synthetic, where the duplicates are known
 
 1200 points, 8 cameras on an arc, 45% of points split into two tracks, every
 observation the true projection plus N(0, σ). Merges scored by pair-counting
@@ -462,7 +462,7 @@ from "real duplicates are not what the rule assumes".
 | 2.00 | 5.348 | 1.50 | 0.75 | 0.28 | 0.526 |
 | 4.00 | 10.392 | 2.00 | 0.50 | 0.19 | 0.263 |
 
-### Arm D — replication
+### Test D — replication
 
 At 8 images the effect is mixed (rotation 0.101 → 0.092 → 0.084 → 0.104 across eps
 0/1.5/3/6; translation 0.149 → 0.164 → 0.155 → 0.191). At 16 images `eps=0` produced
@@ -494,7 +494,7 @@ they agree in against how many frames they share.
    a transfer of 0.58, which no positive c produces. The ratio is not constant across
    trackers, scenes, or outcome.
 
-2. **Arm C says the rule scales in the wrong direction, not merely with the wrong
+2. **Test C says the rule scales in the wrong direction, not merely with the wrong
    constant.** The best tolerance grows *sub-linearly* in the noise — roughly √σ —
    so the ratio the rule assumes fixed falls 2.8× over the range tested. And the
    achievable merge quality collapses: at σ = 4 the *best possible* F1 is 0.26. A
@@ -526,14 +526,14 @@ they agree in against how many frames they share.
    does. The claim above is about the evidence behind the merges, not about a
    downstream win.
 
-**Next — and this runs BEFORE the first agent-driven MCP session.** The one arm
-worth repeating is Arm B, on three ETH3D scenes rather than one. All 13 are already
+**Next — and this runs BEFORE the first agent-driven MCP session.** The one test
+worth repeating is Test B, on three ETH3D scenes rather than one. All 13 are already
 on disk under `datasets/ETH/` with ground-truth `images.txt`; `courtyard`,
 `electro` and `delivery_area` are the natural three. Protocol: ≥12 images each,
 full chain to bundle adjustment, relative pose against ground truth, both learned
 trackers, the same eps grid — **and discard any eps row whose `registered` count
 differs from the others**, because half of what looked like signal in the
-replication arms was registration changing underneath the comparison.
+replication tests was registration changing underneath the comparison.
 
 The decision rule, fixed in advance:
 

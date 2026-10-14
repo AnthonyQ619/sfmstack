@@ -411,7 +411,7 @@ something points at them — and nothing compelled the health moment.
 | `judge/` | `swap_or_build`, `tradeoffs` | `sfm_workflow_skill` | populated |
 | `health/` | `ladder`, `smells`, `bounce` | the run payload's health digest anchors here; `sfm_workflow_skill` | populated; digest unevaluable until the reference campaign |
 | `evidence/EVIDENCE.md` | index + reliability ladder | `sfm_workflow_skill` | populated |
-| `evidence/<campaign>.md` | 5 campaigns | `sfm_workflow_skill` | populated; the 17-capture sweep's record was not preserved — the reference, alternate-leg and agentic campaigns close that gap |
+| `evidence/<campaign>.md` | 5 campaigns | `sfm_workflow_skill` | populated; the 17-capture sweep's record was not preserved — the reference, single-stage-swap and agentic campaigns close that gap |
 | `evidence/INDEX.md` | 16 precedent rows | `sfm_workflow_skill` | populated; keyed on observed capture kind from a `SceneDescription` reading, not on derived traits — no measurements, each row links to its campaign rows |
 | `evidence/CORPUS.txt` | 1 | read as a file; scopes `in_planning_corpus` | populated |
 | `distill/SKILL.md` | 1 (now incl. the recording protocol, §9) | `sfm_workflow_skill` | written; the loop it describes has never run |

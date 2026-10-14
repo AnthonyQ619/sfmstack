@@ -1,7 +1,7 @@
 ---
 module: PoseMapAnything
-module_version: 1.2.1
-curated_at: 2026-09-25
+module_version: 1.2.2
+curated_at: 2026-10-13
 ---
 
 # Tuning

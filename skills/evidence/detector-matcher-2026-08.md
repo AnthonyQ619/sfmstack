@@ -1,4 +1,4 @@
-# Campaign: branch-comparison-2026-08 — detector/matcher branches to a sparse model
+# Campaign: detector-matcher-2026-08 — detector/matcher pairs, each to a sparse model
 
 **This is a raw evidence table. Cite it; do not plan from it.** The lessons drawn
 from it live in [`plan/scene_to_pipeline.md`](../plan/scene_to_pipeline.md) §3b and
@@ -7,7 +7,7 @@ rather than scene names — a plan for a new capture cannot use a row from this
 table, only the reasoning built on it. The names are here so a claim can be traced
 back and re-run.
 
-Fourteen captures, three branches, downstream held identical
+Fourteen captures, three detector/matcher pairs, downstream held identical
 (`FeatureTrackUnionFind` → `PoseEssentialToPnP` → `SparseTriangulation`), all
 matchers at `pairing: exhaustive`, 12 images each, `sampling: head`.
 
@@ -32,8 +32,8 @@ surviving verification, of 66 possible.
 | electro | 0.309 | 0.748 | 7/12 · 763 · 27 | 10/12 · 1505 · 27 | 12/12 · 2639 · 44 |
 
 **The four captures at the top of the `overall_mag` column are the four whose
-view graph fragments under the classical branch**, with a clear gap below them.
-That separation, and the fact that a learned branch restores registration on
+view graph fragments under the classical detector and matcher**, with a clear gap below them.
+That separation, and the fact that a learned detector and matcher restore registration on
 all four, is the finding — not the individual rows.
 
 ## What §3b keeps as derived claims, traced to these rows
@@ -47,7 +47,7 @@ mapping, so a reader can check any of them without re-deriving all of them:
 - *"`overall_magnitude` predicts it"* — the ordering of this table; the four
   fragmenting captures are the top four rows by that metric.
 - *"a learned detector is not a way to get more points"* — the `pts` columns:
-  the learned branches deliver *fewer* points nearly everywhere they deliver
+  the learned pairs deliver *fewer* points nearly everywhere they deliver
   more registration.
 - *"swapping the matcher while keeping the detector is the cheap middle move"* —
   the SIFT+NN vs SIFT+LightGlue columns on the four fragmenting captures.

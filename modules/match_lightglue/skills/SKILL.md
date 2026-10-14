@@ -1,8 +1,8 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.2
+module_version: 1.6.3
 upstream: cvg/LightGlue
-curated_at: 2026-08-08
+curated_at: 2026-10-13
 sources: 3
 ---
 

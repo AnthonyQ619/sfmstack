@@ -1,8 +1,8 @@
 ---
 module: SceneTriage
-module_version: 1.7.1
+module_version: 1.7.2
 upstream: ported from scene_agent/breadth_agent/src/agent/core/utility/illumination_analysis.py
-curated_at: 2026-10-05
+curated_at: 2026-10-13
 sources: 5
 ---
 

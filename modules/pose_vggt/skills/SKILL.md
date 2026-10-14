@@ -1,8 +1,8 @@
 ---
 module: PoseVGGT
-module_version: 1.2.0
+module_version: 1.2.1
 upstream: facebookresearch/vggt @ a288dd0, VGGT-1B checkpoint
-curated_at: 2026-08-10
+curated_at: 2026-10-13
 sources: 3
 ---
 
@@ -43,10 +43,10 @@ follow it with bundle adjustment when precision matters.
 metrics are null by construction, so nothing in its own artifact answers "is this
 right" — the first number that does is a triangulator's yield, one stage later.
 Across a seventeen-capture sweep every reader that ran both chose the geometric
-branch on exactly that asymmetry, and none of them could have refuted the choice
+model on exactly that asymmetry, and none of them could have refuted the choice
 at the pose stage. What running this module IS reliably worth on a calibrated
 scene is `estimated_focal_ratio`: a free, independent check on the calibration the
-whole geometric branch rests on.
+whole geometric model rests on.
 
 **It fills `poses/v1` and only `poses/v1`.** The same forward pass also produces
 point maps and depth; those are `SparseVGGT` and `DenseVGGT`. Three modules, three

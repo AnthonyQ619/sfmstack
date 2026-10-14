@@ -20,8 +20,8 @@ images each, `sampling: head`. 37 detector runs plus 2 `SceneMotion` re-reads.
 
 **The fifth row is not a corpus capture and is not named.** It was the only one
 outside the fourteen-capture corpus of
-[branch-comparison-2026-08](branch-comparison-2026-08.md) and the only one the
-connectivity question sent to the learned branch, so it was the first out-of-sample
+[detector-matcher-2026-08](detector-matcher-2026-08.md) and the only one the
+connectivity question sent to the learned detector and matcher, so it was the first out-of-sample
 application of that rule. Its readings are kept because the mechanism they show is
 the point, and its identity is withheld so the capture stays cold.
 

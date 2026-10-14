@@ -1,5 +1,5 @@
 name: SceneTriage
-version: 1.7.1
+version: 1.7.2
 kind: analysis
 summary: >
   CPU scene characterisation before anything is reconstructed: photometric
@@ -54,7 +54,7 @@ description: |
   as "repetitive" does not mean re-running analysis. The `healthy` bands below are
   this module's own advisory reading and are not that vocabulary.
 
-image: sfmstack/scene-triage:1.7.1
+image: sfmstack/scene-triage:1.7.2
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -175,9 +175,9 @@ metrics:
       `skills/evidence/triage-bands-2026-10.md`.
 
       Report it and read it as a scene property. What to do with a high reading:
-      check whether the branch you plan to run consumes colour at all. The
+      check whether the modules you plan to run consume colour at all. The
       classical detectors here convert to grayscale first and are indifferent to
-      this reading, so on that branch it changes nothing. The learned ones take
+      this reading, so on those modules it changes nothing. The learned ones take
       RGB, and there the variation this measures shows up as descriptor drift
       between frames -- the response is exposure normalisation at detection, not
       anything here.

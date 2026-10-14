@@ -4,13 +4,13 @@
 
 ## Protocol
 
-Steps 0–6 of the tool loop over every capture in [CORPUS.txt](CORPUS.txt), at **full frame count**, with every module and parameter chosen from retrievable context alone. Ground truth was computed once at the end by a separate script; no plan, parameter or branch choice saw it.
+Steps 0–6 of the tool loop over every capture in [CORPUS.txt](CORPUS.txt), at **full frame count**, with every module and parameter chosen from retrievable context alone. Ground truth was computed once at the end by a separate script; no plan, parameter or module choice saw it.
 
-62 pipeline legs. Two working resolutions appear: the campaign opened at `max_edge: 1024`, inherited from the reference driver, and moved to the loader's own default of 1600 once that was noticed — the `px` column says which.
+62 end-to-end compositions. Two working resolutions appear: the campaign opened at `max_edge: 1024`, inherited from the reference driver, and moved to the loader's own default of 1600 once that was noticed — the `px` column says which.
 
 ## The model shipped for each capture
 
-The branch for each capture was selected on registration first and the accounting rungs second, the rule in `health/ladder.md`. Each row is the model the current service keeps on that branch; where points escaped the pose stage, that is the second solve ([second-solve-2026-09](second-solve-2026-09.md#the-final-re-run)).
+The composition for each capture was selected on registration first and the accounting rungs second, the rule in `health/ladder.md`. Each row is the model the current service keeps on that composition; where points escaped the pose stage, that is the second solve ([second-solve-2026-09](second-solve-2026-09.md#the-final-re-run)).
 
 | capture | pipeline | px | reg | points | GT rot° | GT trn° | solve |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -33,11 +33,11 @@ The branch for each capture was selected on registration first and the accountin
 
 **DTU rotations are corrected**; translations are not. See [the ground-truth section](#the-ground-truth-these-were-scored-against).
 
-**Two captures where that selection rule and ground truth disagree, and the rule loses.** On a shallow-relief subject two branches both registered the whole capture and the rule preferred the one whose first solve truth ranked roughly sixty times worse; that branch's second solve, shown above, closes the gap. On a dim built interior the rule preferred a model with more points and better coverage that is worse against truth on both axes. In both cases the branch the rule declined was the one whose poses came from a global reconstructor, on which the yield rungs cannot be computed at all — so the tiebreak fell to coverage and point count alone. This is the hazard `health/ladder.md` now records.
+**Two captures where that selection rule and ground truth disagree, and the rule loses.** On a shallow-relief subject two compositions both registered the whole capture and the rule preferred the one whose first solve truth ranked roughly sixty times worse; that composition's second solve, shown above, closes the gap. On a dim built interior the rule preferred a model with more points and better coverage that is worse against truth on both axes. In both cases the composition the rule declined was the one whose poses came from a global reconstructor, on which the yield rungs cannot be computed at all — so the tiebreak fell to coverage and point count alone. This is the hazard `health/ladder.md` now records.
 
-## Every leg
+## Every composition
 
-| capture | leg | px | reg | points | coverage | yield_obs | error px | GT rot° | GT trn° |
+| capture | composition | px | reg | points | coverage | yield_obs | error px | GT rot° | GT trn° |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DTU/scan1 | `sift+lightglue/incr@1024` | 1024 | 1.00 | 5273 | 0.594 | 0.816 | 0.395 | 0.094 | 0.775 |
 | DTU/scan1 | `sift+nn/incr@1024` | 1024 | 1.00 | 19235 | 0.750 | 0.867 | 0.266 | 0.108 | 0.709 |
@@ -102,11 +102,11 @@ The branch for each capture was selected on registration first and the accountin
 | ETH/relief | `sift+nn/incr@1024` | 1024 | 0.84 | 4262 | 0.641 | 0.814 | 0.150 | 0.059 | 0.091 |
 | ETH/relief | `sift+lightglue/incr@1024` | 1024 | 0.71 | 1746 | 0.586 | 0.520 | 0.217 | 0.135 | 0.133 |
 
-<a id="what-the-leg-names-mean"></a>
+<a id="what-the-composition-names-mean"></a>
 
-## What the leg names mean
+## What the composition names mean
 
-**A leg is one end-to-end pipeline attempt on one capture.** Several were tried per capture and compared, so each needed a short label for the tables above. That label is all a leg name is: bookkeeping for this record. Nothing in the orchestrator, the module system or the skills tier reads one. Several later campaign files reuse the label for their own tables — it is a convention of this record and of the ones that cite it, never an object the stack knows about.
+**A composition is one end-to-end attempt on one capture.** Several were tried per capture and compared, so each needed a short label for the tables above. That label is all a composition name is: bookkeeping for this record. Nothing in the orchestrator, the module system or the skills tier reads one. Several later campaign files reuse the label for their own tables — it is a convention of this record and of the ones that cite it, never an object the stack knows about.
 
 The 18 names below are built from the chain itself, in the order that decides a plan:
 
@@ -120,7 +120,7 @@ A detector-free matcher consumes the scene directly and so has no detector half.
 
 Every row is read back out of the artifacts — each one records the module, the version and the resolved parameters that produced it — so this is what ran, not a transcription of what a script says should have run.
 
-| leg | was called | on these captures | the chain that ran |
+| composition | was called | on these captures | the chain that ran |
 | --- | --- | --- | --- |
 | `loftr-indoor/incr@1024` | `loftr` | ETH/office | `FeatureMatchLoFTR [pairing=exhaustive, setting=indoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_len=2]` |
 | `loftr-outdoor/incr@1024` | `loftr` | ETH/electro, ETH/meadow | `FeatureMatchLoFTR [pairing=exhaustive, setting=outdoor, min_matches=30, resize_long_edge=840]` → `FeatureTrackUnionFind [merge_eps_px=2.0, min_track_len=2, on_conflict=drop]` → `PoseEssentialToPnP [min_track_len=2, local_ba_window=8, max_iterations=10000]` → `SparseTriangulation` → `BundleAdjustmentGlobal [max_iterations=300, min_track_len=2]` |
@@ -145,9 +145,9 @@ Each name above resolves to exactly one chain. The triangulator control further 
 
 ## The connectivity rule, refitted on full captures
 
-The rule in `plan/scene_to_pipeline.md` §3b was fitted on fourteen captures at twelve frames with `sampling: head`, and states a clean gap in `overall_magnitude` between the captures that fragment and those that do not. These are the readings and the outcomes at full frame count, scored against the branch the rule is about — a classical detector and a ratio-test matcher.
+The rule in `plan/scene_to_pipeline.md` §3b was fitted on fourteen captures at twelve frames with `sampling: head`, and states a clean gap in `overall_magnitude` between the captures that fragment and those that do not. These are the readings and the outcomes at full frame count, scored against the modules the rule is about — a classical detector and a ratio-test matcher.
 
-| capture | imgs | reg on the cheap branch | `overall_magnitude` full | `high_motion_tail` full | `overall_magnitude` at the 12-frame head |
+| capture | imgs | reg on the cheap classical modules | `overall_magnitude` full | `high_motion_tail` full | `overall_magnitude` at the 12-frame head |
 | --- | --- | --- | --- | --- | --- |
 | ETH/office | — | 0.077 | 0.2290 | 0.2740 | 0.2690 |
 | ETH/meadow | — | 0.200 | 0.2064 | 0.2652 | 0.2049 |
@@ -243,9 +243,9 @@ Identical poses and tracks, matched track-length floor, only the triangulator sw
 
 ## A learned detector on three captures a classical one solved
 
-Every leg below ran at `saturation: 0.0`, so the cap is not what is being measured.
+Every composition below ran at `saturation: 0.0`, so the cap is not what is being measured.
 
-| capture | leg | reg | points | coverage | GT rot° | GT trn° |
+| capture | composition | reg | points | coverage | GT rot° | GT trn° |
 | --- | --- | --- | --- | --- | --- | --- |
 | ETH/kicker | `superpoint+lightglue/global@1600` | 1.00 | 5037 | 0.672 | 0.092 | 0.123 |
 | ETH/kicker | `superpoint+lightglue/incr@1600` | 0.97 | 5619 | 0.766 | 0.076 | 0.120 |
@@ -262,7 +262,7 @@ Every leg below ran at `saturation: 0.0`, so the cap is not what is being measur
 
 **DTU rotations carry the fitted correction below; DTU translations do not.** So a DTU pose column is bounded by its uncorrected translation term and understates those models — the rotation columns beside it are the fair reading for that family.
 
-| capture | leg | pairs | median rot° | median trn° | AUC@5 pose | AUC@30 pose | AUC@5 rot | AUC@30 rot |
+| capture | composition | pairs | median rot° | median trn° | AUC@5 pose | AUC@30 pose | AUC@5 rot | AUC@30 rot |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DTU/scan1 | `sift+nn/incr@1024` | 1176 | 0.108 | 0.709 | 0.856 | 0.976 | 0.977 | 0.996 |
 | DTU/scan4 | `sift+nn/incr@1024` | 1176 | 0.092 | 0.725 | 0.847 | 0.975 | 0.980 | 0.997 |
@@ -368,7 +368,7 @@ Both wrong models register every frame, and both report **lower** mean reproject
 
 **Nothing shipped was replaced.** These runs produced new artifacts beside the originals, which still exist unchanged with the point counts in the shipped table above.
 
-**The gap.** The four shipped models built by the global reconstructor were never recompute-checked, so nothing here says whether that branch reproduces. One of the twelve above was also nearly missed for a reason worth repeating: an earlier spot check re-ran that capture on its *global* branch, which is not the branch it shipped, and the sweep that followed then treated it as covered. Checking that a re-run used the pipeline the capture actually shipped is not automatic.
+**The gap.** The four shipped models built by the global reconstructor were never recompute-checked, so nothing here says whether that reconstructor reproduces. One of the twelve above was also nearly missed for a reason worth repeating: an earlier spot check re-ran that capture with its *global* reconstructor, which is not the composition it shipped, and the sweep that followed then treated it as covered. Checking that a re-run used the pipeline the capture actually shipped is not automatic.
 
 <a id="the-ground-truth-these-were-scored-against"></a>
 

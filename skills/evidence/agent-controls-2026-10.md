@@ -83,7 +83,7 @@ Both directions occur on site walks and on traversals, and one rig orbit (`DTU/s
 favours LightGlue by 0.122; the other nine rig orbits are within 0.03. No capture-kind
 label sorts the winners.
 
-## Finding 4 — the classical branch on a sparse capture
+## Finding 4 — classical detection and matching on a sparse capture
 
 On `DTU/scan77` at ten views the ratio-test matcher left three components, the
 incremental route registered 3 of 10, and the agent's best classical build reached
@@ -109,8 +109,8 @@ On `ETH/kicker`, with `poses_b` supplied and exactly one camera filled,
 
 ## Finding 7 — an INDEX row describes its capture at the frame count it ran at
 
-`DTU/scan77`'s INDEX row records the cheap classical branch registering everything; at
-ten views that branch fragmented. `ETH/relief`'s row records the profile misleading the
+`DTU/scan77`'s INDEX row records the cheap classical detector and matcher registering everything; at
+ten views the same modules fragmented. `ETH/relief`'s row records the profile misleading the
 choice between two models; at ten views the two agreed to 0.03°. Both rows were written
 from full captures.
 

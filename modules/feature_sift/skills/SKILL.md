@@ -1,8 +1,8 @@
 ---
 module: FeatureDetectionSIFT
-module_version: 1.1.0
+module_version: 1.1.1
 upstream: OpenCV 5.x cv2.SIFT_create
-curated_at: 2026-08-08
+curated_at: 2026-10-13
 sources: 4
 ---
 

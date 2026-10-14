@@ -31,18 +31,18 @@ nearly free" that is true: a joint matcher can consume a classical detector's
 ## When to spend
 
 **Spend on the A/B, not on the prediction.** The corpus's predictive claims about
-which branch wins have failed repeatedly (the reliability ladder in [evidence/EVIDENCE.md](../evidence/EVIDENCE.md)), and the
+which module choice wins have failed repeatedly (the reliability ladder in [evidence/EVIDENCE.md](../evidence/EVIDENCE.md)), and the
 comparison has been right every time it was carried to a model. An hour of
-matching is cheap against shipping the wrong branch.
+matching is cheap against shipping the wrong module choice.
 
-**Buy the cheaper form of the A/B first.** Both branches on a restricted pairing,
+**Buy the cheaper form of the A/B first.** Both module choices on a restricted pairing,
 compared on `min_image_degree` and on how match count decays with frame
-separation, answers the branch question at a fraction of the cost. Buy the full
+separation, answers the module question at a fraction of the cost. Buy the full
 pair set only when those disagree.
 
 **Spend on frames before spending on modules.** Loading the whole capture is free
 and increases graph density quadratically. Fragmentation that motivates an
-expensive branch swap has been measured disappearing when every frame was loaded.
+expensive module swap has been measured disappearing when every frame was loaded.
 
 **Do not spend on a metric at its ceiling.** If a reading will not move across a
 real sweep, the next run will not move it either ([health/smells.md](../health/smells.md)).

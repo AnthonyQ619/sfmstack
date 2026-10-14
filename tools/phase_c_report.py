@@ -65,7 +65,7 @@ def shipped_table(legs) -> list[str]:
 
 
 def band_table(band) -> list[str]:
-    out = ["| capture | imgs | reg on the cheap branch | `overall_magnitude` full | "
+    out = ["| capture | imgs | reg on the cheap classical modules | `overall_magnitude` full | "
            "`high_motion_tail` full | `overall_magnitude` at the 12-frame head |",
            "| --- | --- | --- | --- | --- | --- |"]
     for r in sorted(band, key=lambda x: x["reg_nn"] if x["reg_nn"] is not None else -1):
@@ -106,10 +106,10 @@ def main(argv=None) -> int:
     w("Steps 0–6 of the tool loop over every capture in "
       "[CORPUS.txt](CORPUS.txt), at **full frame count**, with every module and "
       "parameter chosen from retrievable context alone. Ground truth was computed "
-      "once at the end by a separate script; no plan, parameter or branch choice "
+      "once at the end by a separate script; no plan, parameter or module choice "
       "saw it.")
     w("")
-    w(f"{len(legs)} pipeline legs. Two working resolutions appear: the campaign "
+    w(f"{len(legs)} end-to-end compositions. Two working resolutions appear: the campaign "
       "opened at `max_edge: 1024`, inherited from the reference driver, and moved "
       "to the loader's own default of 1600 once that was noticed — the `px` column "
       "says which.")
@@ -130,14 +130,14 @@ def main(argv=None) -> int:
       "the whole capture and the rule preferred the one truth ranks roughly sixty "
       "times worse. On a dim built interior the rule preferred a model with more "
       "points and better coverage that is worse against truth on both axes. In "
-      "both cases the branch the rule declined was the one whose poses came from "
+      "both cases the composition the rule declined was the one whose poses came from "
       "a global reconstructor, on which the yield rungs cannot be computed at "
       "all — so the tiebreak fell to coverage and point count alone. This is the "
       "hazard `health/ladder.md` now records.")
     w("")
-    w("## Every leg")
+    w("## Every composition")
     w("")
-    w("| capture | leg | px | reg | points | coverage | yield_obs | error | "
+    w("| capture | composition | px | reg | points | coverage | yield_obs | error | "
       "GT rot° | GT trn° |")
     w("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for r in sorted(legs, key=lambda x: (x["capture"], -x["profile"]["registration"])):
@@ -150,16 +150,16 @@ def main(argv=None) -> int:
     w("")
     leg = load(d, "legend.json")
     if leg:
-        w('<a id="what-the-leg-names-mean"></a>')
+        w('<a id="what-the-composition-names-mean"></a>')
         w("")
-        w("## What the leg names mean")
+        w("## What the composition names mean")
         w("")
         n_names = len({r["leg"] for r in leg["rows"]})
-        w("**A leg is one end-to-end pipeline attempt on one capture.** Several "
+        w("**A composition is one end-to-end attempt on one capture.** Several "
           "were tried per capture and compared, so each needed a short label for "
-          "the tables above. That label is all a leg name is: bookkeeping for "
+          "the tables above. That label is all a composition name is: bookkeeping for "
           "this record. Nothing in the orchestrator, the module system or the "
-          "skills tier reads one, and leg names appear nowhere outside this "
+          "skills tier reads one, and composition names appear nowhere outside this "
           "file.")
         w("")
         w(f"The {n_names} names below are built from the chain itself, in the "
@@ -196,7 +196,7 @@ def main(argv=None) -> int:
           "this is what ran, not a transcription of what a script says should "
           "have run.")
         w("")
-        w("| leg | was called | on these captures | the chain that ran |")
+        w("| composition | was called | on these captures | the chain that ran |")
         w("| --- | --- | --- | --- |")
         for r in sorted(leg["rows"], key=lambda x: x["leg"]):
             caps = ", ".join(r["captures"])
@@ -219,7 +219,7 @@ def main(argv=None) -> int:
       "at twelve frames with `sampling: head`, and states a clean gap in "
       "`overall_magnitude` between the captures that fragment and those that do "
       "not. These are the readings and the outcomes at full frame count, scored "
-      "against the branch the rule is about — a classical detector and a "
+      "against the modules the rule is about — a classical detector and a "
       "ratio-test matcher.")
     w("")
     L.extend(band_table(band))
@@ -288,11 +288,11 @@ def main(argv=None) -> int:
     w("")
     w("## A learned detector on three captures a classical one solved")
     w("")
-    w("Every leg below ran at `saturation: 0.0`, so the cap is not what is being "
+    w("Every composition below ran at `saturation: 0.0`, so the cap is not what is being "
       "measured.")
     w("")
     if extra.get("spswap"):
-        w("| capture | leg | reg | points | coverage | GT rot° | GT trn° |")
+        w("| capture | composition | reg | points | coverage | GT rot° | GT trn° |")
         w("| --- | --- | --- | --- | --- | --- | --- |")
         for r in extra["spswap"]:
             w(f"| {r['capture']} | `{r['leg']}` | {num(r['reg'], 2)} | "
@@ -320,7 +320,7 @@ def main(argv=None) -> int:
           "translation term and understates those models — the rotation columns "
           "beside it are the fair reading for that family.")
         w("")
-        w("| capture | leg | pairs | median rot° | median trn° | AUC@5 pose | "
+        w("| capture | composition | pairs | median rot° | median trn° | AUC@5 pose | "
           "AUC@30 pose | AUC@5 rot | AUC@30 rot |")
         w("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
         for r in auc["rows"]:
@@ -351,7 +351,7 @@ def main(argv=None) -> int:
         w("First, one capture is not like the others: the shallow-relief "
           "interior sits near half on AUC@5 where every other model is above "
           "0.8, and it is the same model the selection rule preferred over a "
-          "branch truth ranks far better. The rung table said the two were "
+          "composition truth ranks far better. The rung table said the two were "
           "close; the error distribution says they are not.")
         w("")
         w("Second, **a median can be excellent while the distribution has a "
@@ -515,10 +515,10 @@ def main(argv=None) -> int:
       "in the shipped table above.")
     w("")
     w("**The gap.** The four shipped models built by the global reconstructor "
-      "were never recompute-checked, so nothing here says whether that branch "
+      "were never recompute-checked, so nothing here says whether that reconstructor "
       "reproduces. One of the twelve above was also nearly missed for a reason "
-      "worth repeating: an earlier spot check re-ran that capture on its "
-      "*global* branch, which is not the branch it shipped, and the sweep that "
+      "worth repeating: an earlier spot check re-ran that capture with its "
+      "*global* reconstructor, which is not the composition it shipped, and the sweep that "
       "followed then treated it as covered. Checking that a re-run used the "
       "pipeline the capture actually shipped is not automatic.")
     w("")

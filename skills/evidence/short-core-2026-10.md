@@ -9,7 +9,7 @@ of the fill section and in the paragraph on where the swap trade flips.
 [sparse-pose-2026-09](sparse-pose-2026-09.md) established that stopping at what the
 view graph supports loses overall, because the pairs a short model declines to answer
 are charged against it, and that filling the missing frames from a feed-forward
-estimator beats both branches on the captures where the fill's trigger fires. It left
+estimator beats both the geometric model and the estimator alone on the captures where the fill's trigger fires. It left
 one case unmeasured: what to deliver when the fill is **not** available — the gates
 refuse it, or the core shares too few cameras with the estimator to fit a similarity
 at all.

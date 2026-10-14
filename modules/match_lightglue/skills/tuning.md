@@ -1,7 +1,7 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.2
-curated_at: 2026-08-08
+module_version: 1.6.3
+curated_at: 2026-10-13
 ---
 
 # Tuning FeatureMatchLightGlue

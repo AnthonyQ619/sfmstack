@@ -302,18 +302,18 @@ repetitive ones did not survive a seventeen-capture sweep: six counter-examples,
 one losing half its points, and the study behind the gain had left the joint
 matcher's `filter_threshold` at its default
 ([judge/swap_or_build.md](../judge/swap_or_build.md#matching)). Settle that
-threshold on both branches before you compare.
+threshold on both module choices before you compare.
 
 **"Being right about which you have" is the hard part, and the evidence says you
 often cannot be.** One capture in that set had loud object-level repetition and
 still lost roughly 40% of its points to the swap. On it the `repetitiveness` metric
 read low and was right, while the description read the repetition as severe and was
-wrong — the opposite of the general pattern. Since the two branches share one
+wrong — the opposite of the general pattern. Since the two module choices share one
 detection artifact, the A/B is nearly free: **run both and compare rather than
 predicting.** That is the one thing here that settles it, and it costs less than
 being wrong does.
 
-**Where the classical branch collapses, changing the correspondences is the
+**Where classical detection and matching collapses, changing the correspondences is the
 strongest move available — and it has been measured against ground truth.**
 Three captures in the reference corpus registered under a seventh of their
 frames through a classical detector and a joint matcher. Swapping only the
@@ -332,7 +332,7 @@ and off artifacts already on disk — but at markedly worse pose accuracy (see
 is the cheap diagnostic; the matcher swap is the repair.
 
 **The same move on a capture that was already half-working cost two-thirds of
-the model.** On a capture the classical branch registered half of, the
+the model.** On a capture the classical detector and matcher registered half of, the
 detector-free matcher registered a sixth — while producing more matches per pair
 and near-perfect spatial coverage on the frames it kept. Semi-dense
 correspondence is not a strictly better input; it is a different one, and its
@@ -340,7 +340,7 @@ proximity-merged tracks can fragment a view graph that keypoint identity was
 holding together.
 
 **So the rule keeps its direction and gains a boundary.** Reach for detector-free
-where the classical branch has *failed*, not where it is *struggling*. There is
+where classical detection and matching has *failed*, not where it is *struggling*. There is
 still no threshold — but "registered a majority of the frames" is now a measured
 case where the swap made things much worse, and "registered almost none" is a
 measured case where it fixed them completely.
@@ -364,7 +364,7 @@ frames, which is a matcher-stage symptom, one stage after the damage.
 **Why it matters at this stage rather than at detection.** Descriptor invariance
 is the whole question. A rotation-invariant classical descriptor matches across
 the break; several learned detectors are trained upright and do not, which
-inverts the usual advice — the learned branch is the fragile one here.
+inverts the usual advice — the learned detector and matcher are the fragile ones here.
 
 **What to do.**
 
@@ -380,32 +380,32 @@ inverts the usual advice — the learned branch is the fragile one here.
    `min_image_degree` from 3 to 9.
 
 **This used to live in exactly one file** — one learned detector's limitations
-page — where a reader choosing a branch would reach it only after already having
+page — where a reader choosing a module would reach it only after already having
 chosen. It is stated here because the decision it informs is made here.
 
 ## Choosing between two matchers: carry the A/B to a MODEL
 
-**The stage-local metrics do not predict which branch produces the better
+**The stage-local metrics do not predict which module produces the better
 reconstruction, and on these captures they were actively misleading.** This is
 the most replicated procedural finding in the corpus and it overrides the
 temptation to settle the question cheaply.
 
 Measured across a seventeen-capture sweep:
 
-- A branch swept **five of five** upstream quality readings — best inlier ratio,
+- A module choice swept **five of five** upstream quality readings — best inlier ratio,
   best track conflict, best trifocal transfer, best reprojection error — and
   registered **8 of 26 images**.
-- A branch that looked better at the matcher on inlier ratio (0.983 against
+- A module choice that looked better at the matcher on inlier ratio (0.983 against
   0.926) was **33x worse one stage later** on the tracker's `inconsistent_rate`,
   with nine fewer pairs and image degree cut from 10 to 6.
 - On another, *every* matching-stage metric preferred the joint matcher and the
-  classical branch won after bundle adjustment, by 49% more points and 16% lower
+  classical detector and matcher won after bundle adjustment, by 49% more points and 16% lower
   error at equal registration.
 
 Every reader who chose from matcher metrics chose wrong. Every reader who carried
-both branches through to a reconstruction chose right. So:
+both module choices through to a reconstruction chose right. So:
 
-> **Run both branches to a sparse model before choosing.** Compare at equal
+> **Run both module choices to a sparse model before choosing.** Compare at equal
 > registration, join on `track_id`, and split the error by observation count so
 > that a difference in two-view composition is not read as a difference in
 > quality.
@@ -419,7 +419,7 @@ precisely on the captures where the choice matters.
 
 **The one cheap check that IS predictive** is not a quality metric at all:
 `min_image_degree`, because it measures the graph's margin rather than the
-matches' agreement. A branch that drops it toward 1 is starving a frame no
+matches' agreement. A module choice that drops it toward 1 is starving a frame no
 matter how clean its inlier ratio looks.
 
 ## What the comparison costs, so you can budget it
@@ -440,10 +440,10 @@ What has been measured, as orders of magnitude rather than promises:
   well as with pairs, and it runs on the GPU rather than the CPU, so the two do
   not trade off the same way. Raising a detector's cap raises its cost faster
   than it raises the classical matcher's.
-- **The cheapest honest A/B is not the full pair set.** Both branches on a
+- **The cheapest honest A/B is not the full pair set.** Both module choices on a
   restricted pairing, compared on `min_image_degree` and on the decay of match
-  count with frame separation, answers the branch question at a fraction of the
-  cost — and if the two branches disagree there, that is when the full comparison
+  count with frame separation, answers the module question at a fraction of the
+  cost — and if the two choices disagree there, that is when the full comparison
   is worth buying.
 
 None of this is a model of runtime, and it should not be read as one. It is
@@ -610,6 +610,6 @@ scene → detect → track with no matcher. See [tracking.md](tracking.md).
 | Question | Needs |
 | --- | --- |
 | **How much a learned matcher buys on repetitive structure** | A repetitive scene. Everything measured here so far is a well-textured object with no repetition, where the ratio test is not under stress. |
-| **Where detector-free overtakes detector-based** | ~~A sweep along texture strength.~~ Still no threshold, but both sides are now measured: total rescue where the classical branch registered almost nothing, and a two-thirds loss where it registered half. Above. A sweep along texture strength would turn those two points into a boundary. |
+| **Where detector-free overtakes detector-based** | ~~A sweep along texture strength.~~ Still no threshold, but both sides are now measured: total rescue where the classical detector and matcher registered almost nothing, and a two-thirds loss where it registered half. Above. A sweep along texture strength would turn those two points into a boundary. |
 | **Whether `merge_eps_px` can be derived rather than tuned** | Its right value is known to depend on matcher and resolution. Whether it is predictable *from* the matcher's own reported precision is open, and would remove a manual step. |
 | **The cost of an exhaustive sweep against what it recovers** | Loop closures found per extra pair, on a sequential capture. This decides pairing on every large set and is currently a guess. |

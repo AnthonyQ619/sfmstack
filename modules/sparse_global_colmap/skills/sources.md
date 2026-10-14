@@ -1,7 +1,7 @@
 ---
 module: SparseGlobalCOLMAP
-module_version: 1.4.4
-curated_at: 2026-09-07
+module_version: 1.4.5
+curated_at: 2026-10-13
 ---
 
 # Where SparseGlobalCOLMAP's claims come from

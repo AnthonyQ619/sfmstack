@@ -1,8 +1,8 @@
 ---
 module: PoseMapAnything
-module_version: 1.2.1
+module_version: 1.2.2
 upstream: facebook/map-anything, MapAnything package 1.1.4 @ 3d10cf7
-curated_at: 2026-09-25
+curated_at: 2026-10-13
 sources: 4
 ---
 

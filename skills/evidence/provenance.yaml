@@ -100,7 +100,7 @@ campaigns:
       - tum_vi/room2
       - tum_vi/room3
       - tum_vi/room4
-      finding-4--the-classical-branch-on-a-sparse-capture:
+      finding-4--classical-detection-and-matching-on-a-sparse-capture:
       - DTU/scan1
       - DTU/scan10
       - DTU/scan15
@@ -183,7 +183,7 @@ campaigns:
       - ETH/electro
       - ETH/meadow
       - ETH/relief
-  alternate-legs-2026-09:
+  single-stage-swaps-2026-09:
     captures:
     - DTU/scan1
     - DTU/scan10
@@ -213,7 +213,7 @@ campaigns:
       - ETH/delivery_area
       - ETH/meadow
       - ETH/office
-      the-detection-leg-driven-cold:
+      the-detection-swap-driven-cold:
       - DTU/scan10
       - DTU/scan15
       - DTU/scan33
@@ -248,7 +248,7 @@ campaigns:
     - tanks_and_temples/Barn
     note: the twenty captures carrying reference poses; the file scores readings, not captures, so it
       names none
-  branch-comparison-2026-08:
+  detector-matcher-2026-08:
     captures:
     - DTU/scan1
     - DTU/scan15
@@ -287,7 +287,7 @@ campaigns:
       - tanks_and_temples/Barn
       - tanks_and_temples/Caterpillar
       - tanks_and_temples/Meetingroom
-      finding-4--the-learned-dense-branch-where-the-rotation-form-fires-and-where-it-does-not:
+      finding-4--the-learned-dense-module-where-the-rotation-form-fires-and-where-it-does-not:
       - tanks_and_temples/Barn
       - tanks_and_temples/Caterpillar
       - tanks_and_temples/Meetingroom
@@ -390,7 +390,7 @@ campaigns:
     - advio/advio-07
     - euroc/V2_01_easy
     - tum_vi/room3
-  global-arm-2026-10:
+  global-rebuild-2026-10:
     captures:
     - DTU/scan1
     - DTU/scan10
@@ -654,7 +654,7 @@ claims:
   starts: '**Measured end to end, there is very little to p'
   rests_on: dense-batch-2026-09
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
-  hash: 5c9ec707a804
+  hash: 72904a556e7e
   starts: '**And there is a cheap way to tell before you sp'
   rests_on: dense-saturated-2026-10
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
@@ -662,7 +662,7 @@ claims:
   starts: '**Triangulation and refinement: `min_track_len` '
   rests_on: dense-batch-2026-09
 - at: plan/detection.md#3-coverage-beats-count-but-only-once-you-supply-the-denominator
-  hash: 8aaba71b0139
+  hash: e9d0632c2333
   starts: '- **A coverage number that will not move under a'
   rests_on: detection-phase-2026-08
 - at: plan/detection.md#3-coverage-beats-count-but-only-once-you-supply-the-denominator
@@ -678,17 +678,17 @@ claims:
   starts: '**The check belongs to a CONFIGURATION, not to a'
   rests_on: sweep-2026-08
 - at: plan/detection.md#5-a-cap-is-not-a-result
-  hash: 16b8da04939c
+  hash: 5e64b511f6f0
   starts: '**The check is mandatory; its outcome is not.** '
   rests_on: sweep-2026-08
 - at: plan/detection.md#which-end-to-reach-for
   hash: 92a7fde70a4c
   starts: '**Learned** when the VIEW GRAPH is at risk — thi'
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/detection.md#which-end-to-reach-for
-  hash: bd15fcb16a7f
+  hash: 65f792490d91
   starts: '**And know what you are paying.** On a well-conn'
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/matching.md#1-detector-based-or-detector-free--and-what-it-costs-downstream
   hash: 9d2474b968ff
   starts: '**Between the two, reach for `FeatureMatchRoMa` '
@@ -702,24 +702,24 @@ claims:
   starts: '**The row this table was missing: a high `planar'
   rests_on: sweep-2026-08
 - at: plan/matching.md#which-end-to-reach-for
-  hash: 61da78304fa7
+  hash: 2a2de76ccc96
   starts: '**When the graph IS safe and the subject repeats'
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/matching.md#which-end-to-reach-for
-  hash: 60551cee8ce8
+  hash: 93f495176128
   starts: '**"Being right about which you have" is the hard'
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/matching.md#which-end-to-reach-for
-  hash: b9a6f9303e1d
-  starts: '**Where the classical branch collapses, changing'
-  rests_on: alternate-legs-2026-09
+  hash: 585192ae257c
+  starts: '**Where classical detection and matching collaps'
+  rests_on: single-stage-swaps-2026-09
 - at: plan/matching.md#choosing-between-two-matchers-carry-the-ab-to-a-model
   hash: f3de4cfc23d0
   starts: 'Measured across a seventeen-capture sweep:'
   rests_on: sweep-2026-08
 - at: plan/matching.md#choosing-between-two-matchers-carry-the-ab-to-a-model
-  hash: a196e6fba882
-  starts: '- A branch swept **five of five** upstream quali'
+  hash: 6a1d2faaaf56
+  starts: '- A module choice swept **five of five** upstrea'
   rests_on: sweep-2026-08
 - at: plan/matching.md#reading-the-per-pair-counts
   hash: 4b6112d22d39
@@ -756,7 +756,7 @@ claims:
 - at: plan/optimization.md#reading-the-output--the-trap-that-defines-this-family
   hash: 6d724930a118
   starts: '**And it drives the composition rung to a perfec'
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: plan/optimization.md#which-end-to-reach-for
   hash: 9ed94a36ff82
   starts: '**On `converged`, and this paragraph used to say'
@@ -778,11 +778,11 @@ claims:
   starts: On an uncalibrated scene that is the whole point
   unsourced: 'definitional: what estimated_focal_ratio means, no measurement of its own'
 - at: plan/pose.md#4-the-third-option-no-pose-module-at-all
-  hash: 49dbf9770c8d
-  starts: The campaign is in [`evidence/global-arm-2026-10
-  rests_on: global-arm-2026-10
+  hash: b1fe4e7b96e5
+  starts: 'The campaign is in [`evidence/global-rebuild-202'
+  rests_on: global-rebuild-2026-10
 - at: plan/pose.md#which-end-to-reach-for
-  hash: 84264ff81abd
+  hash: 69c1a7180ff8
   starts: '**Where the trade flips is a reading, and it is '
   rests_on: short-core-2026-10
 - at: plan/pose.md#which-end-to-reach-for
@@ -834,11 +834,11 @@ claims:
   starts: '**It can refute an upstream choice. It cannot co'
   rests_on: sweep-2026-08
 - at: plan/pose.md#what-this-stage-can-and-cannot-settle-about-the-stages-above-it
-  hash: cfd816450a8d
+  hash: 5fd085ada69b
   starts: '**And an upstream verdict can be exactly wrong u'
   rests_on: sweep-2026-08
 - at: plan/pose.md#what-has-not-been-measured
-  hash: c96c259a42df
+  hash: 76b5627179c2
   starts: '| Question | Needs | | --- | --- | | **Absolute '
   rests_on: sparse-pose-2026-09
 - at: plan/scene_to_pipeline.md#reading-a-scene-into-a-pipeline
@@ -898,7 +898,7 @@ claims:
   starts: Minimum over median of per-frame Laplacian varia
   unsourced: restates the manifest band, which stale_defaults checks against module.yaml
 - at: plan/scene_to_pipeline.md#overall_magnitude-variability-rotation_median_deg--what-the-camera-did
-  hash: 299c25c870da
+  hash: 4bf5c766ec97
   starts: '- **`overall_magnitude` 0.032–0.309**, a tenfold'
   rests_on: sweep-2026-08
 - at: plan/scene_to_pipeline.md#planar_dominance-and-pure_rotation_risk--rare-and-act-immediately
@@ -922,33 +922,33 @@ claims:
   starts: Measured across one stage on eight captures, thr
   rests_on: sweep-2026-08
 - at: plan/scene_to_pipeline.md#0-read-the-bands-not-the-diagnostics
-  hash: 8d34b956e12a
-  starts: 1. **A textureless reading is meaningless alone.
+  hash: 4d76c307ef59
+  starts: '1. **A textureless reading is meaningless alone.'
   rests_on: sweep-2026-08
 - at: plan/scene_to_pipeline.md#0-read-the-bands-not-the-diagnostics
-  hash: 3ada991ea113
+  hash: 71f038136421
   starts: '**What the re-run did *not* do is make fragmenta'
-  rests_on: branch-comparison-2026-08
-- at: plan/scene_to_pipeline.md#3b-what-the-branch-comparison-established
-  hash: 8ce74d48d1a5
+  rests_on: detector-matcher-2026-08
+- at: plan/scene_to_pipeline.md#3b-what-the-detectormatcher-comparison-established
+  hash: e1d0832d90dd
   starts: 'Everything else in this file is a reading. This '
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/scene_to_pipeline.md#1-the-failure-that-actually-costs-you-frames-is-view-graph-fragmentation
   hash: 400711370d55
   starts: 'Four of the fourteen registered **less than the '
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/scene_to_pipeline.md#1-the-failure-that-actually-costs-you-frames-is-view-graph-fragmentation
   hash: ad02f4a01141
   starts: '> **That pair-fraction rule has since failed in '
   rests_on: reference-pipeline-2026-09
 - at: plan/scene_to_pipeline.md#1-the-failure-that-actually-costs-you-frames-is-view-graph-fragmentation
-  hash: a4bba69e2f58
+  hash: 5c842cde316c
   starts: '> **But read what the mechanism actually says: t'
   rests_on: reference-pipeline-2026-09
 - at: plan/scene_to_pipeline.md#2-adjacent-frame-motion-ranks-the-risk-it-does-not-gate-it
   hash: 9fa827732e21
   starts: Sorted across the fourteen twelve-frame captures
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/scene_to_pipeline.md#what-the-refit-found
   hash: 997685cf75de
   starts: '| statistic | any frame lost | a quarter or more'
@@ -962,29 +962,29 @@ claims:
   starts: Measured across the corpus, the full capture rea
   rests_on: reference-pipeline-2026-09
 - at: plan/scene_to_pipeline.md#the-stride-sweep-still-has-a-job-and-it-is-a-different-one
-  hash: 7e733bc807f5
-  starts: 1. **Budget for a learned detector and matcher —
+  hash: c181a0e2c04d
+  starts: '1. **Budget for a learned detector and matcher —'
   rests_on: agentic-campaign-2026-09
 - at: plan/scene_to_pipeline.md#the-stride-sweep-still-has-a-job-and-it-is-a-different-one
   hash: 9f0112500f47
   starts: '**`graph_components` and `largest_component_frac'
   rests_on: sweep-2026-08
 - at: plan/scene_to_pipeline.md#3-a-learned-detector-is-not-a-way-to-get-more-points
-  hash: 08631d28c964
-  starts: On ten of the fourteen the learned branch produc
-  rests_on: branch-comparison-2026-08
+  hash: 557278de377a
+  starts: 'On ten of the fourteen the learned detector and '
+  rests_on: detector-matcher-2026-08
 - at: plan/scene_to_pipeline.md#4-the-two-questions-are-ordered-and-connectivity-comes-first
-  hash: 1b8e74ba5791
+  hash: 5541adc3dfa8
   starts: '**Asked in that order, this reproduces the best-'
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/scene_to_pipeline.md#5-swapping-the-matcher-while-keeping-the-detector-is-the-cheap-middle-move
   hash: bf4477ac25d2
   starts: '**And it is not unanimous. There is a counter-ca'
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: plan/scene_to_pipeline.md#what-this-does-not-establish
-  hash: 8a0dbb287610
-  starts: Fourteen captures, two dataset families, one par
-  rests_on: branch-comparison-2026-08
+  hash: a8c344f6b45c
+  starts: 'Fourteen captures, two dataset families, one par'
+  rests_on: detector-matcher-2026-08
 - at: plan/sparse.md#2-whether-poses-are-an-input-or-an-output
   hash: a9d40d91a2e4
   starts: '**On a visual-inertial capture, which route you '
@@ -1042,11 +1042,11 @@ claims:
   starts: '**And beware the shape of the failure**, which i'
   rests_on: sweep-2026-08
 - at: judge/swap_or_build.md#
-  hash: 1e000e1a66d0
+  hash: 9d727f85614a
   starts: '--- name: swap_or_build description: When to sto'
-  rests_on: branch-comparison-2026-08
+  rests_on: detector-matcher-2026-08
 - at: judge/swap_or_build.md#detection
-  hash: 4b5a2dab9617
+  hash: 63abcc0c99c4
   starts: '- **`texture_density` an order of magnitude belo'
   rests_on: sweep-2026-08
 - at: judge/swap_or_build.md#matching
@@ -1058,7 +1058,7 @@ claims:
   starts: 'There is also a methodological objection to the '
   rests_on: sweep-2026-08
 - at: judge/swap_or_build.md#pose
-  hash: c5fe4e435ae9
+  hash: 418e911e29b1
   starts: '**The general lesson, worth more than the specif'
   unsourced: a general lesson about what a branch comparison can settle; the measurements are in the rows
     above
@@ -1107,9 +1107,9 @@ claims:
   starts: '**The reference corpus exists**, so rungs 1 and '
   rests_on: reference-pipeline-2026-09
 - at: health/bounce.md#what-works-now-and-what-this-still-waits-on
-  hash: 08eb4e389167
+  hash: 351c84b17428
   starts: '**But it has now been tested by hand, and it is '
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#1-registration-is-a-precondition-not-a-tiebreak
   hash: 1d32a0a75354
   starts: '**And the fraction''s denominator is the frames t'
@@ -1125,39 +1125,39 @@ claims:
 - at: health/ladder.md#what-the-controlled-comparisons-said-about-each-rung
   hash: 59ac3589bff5
   starts: A comparison is legitimate when the two models c
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#what-the-controlled-comparisons-said-about-each-rung
-  hash: e82aa1ff2fc6
-  starts: Taking every pair of models of one capture where
-  rests_on: alternate-legs-2026-09
+  hash: 3ab3cecc5037
+  starts: 'Taking every pair of models of one capture where'
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#a-second-campaign-widened-the-set-and-coverage-did-not-hold
-  hash: 6c8ffb2d9ebb
-  starts: Driving the whole loop over every capture at ful
+  hash: a496e192a81d
+  starts: 'Driving the whole loop over every capture at ful'
   rests_on: agentic-campaign-2026-09
 - at: health/ladder.md#a-second-campaign-widened-the-set-and-coverage-did-not-hold
   hash: 02e7248d9e5b
   starts: '**Observation-yield survives as the rung to lean'
   rests_on: agentic-campaign-2026-09
 - at: health/ladder.md#coverage-is-a-selection-effect-too-and-the-selector-is-the-detector
-  hash: 8d005ee1632c
+  hash: d5a9d86025ee
   starts: '**The error rung barely beat a coin flip overall'
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#composition-and-conditioning-are-conditional-readings-not-rungs-you-can-read-alone
   hash: ae3458aa84f7
   starts: Split the same seventeen comparisons by what act
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#composition-and-conditioning-are-conditional-readings-not-rungs-you-can-read-alone
-  hash: 3e1a105cb9ea
+  hash: 63a1346d599e
   starts: '| | conditioning | composition | | --- | --- | -'
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#composition-and-conditioning-are-conditional-readings-not-rungs-you-can-read-alone
-  hash: ac90960919a9
-  starts: One mechanism explains both halves. **Both rungs
-  rests_on: alternate-legs-2026-09
+  hash: edad1190e9d3
+  starts: 'One mechanism explains both halves. **Both rungs'
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#two-limits-that-apply-to-all-of-the-above
-  hash: 75b31fff06cf
+  hash: 9c59832dbd7c
   starts: '**Seventeen comparisons is a small sample, and t'
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/ladder.md#stop-when-the-movement-is-smaller-than-the-thing-you-are-comparing-against
   hash: 1fffe1b71b1b
   starts: '**A second magnitude, two orders larger, at a di'
@@ -1171,20 +1171,20 @@ claims:
   starts: '- **The view graph was a single connected compon'
   rests_on: reference-pipeline-2026-09
 - at: health/smells.md#the-upstream-metrics-all-agree-and-the-model-is-a-fraction-of-the-capture
-  hash: 418e85d74dc4
+  hash: 549e9f90ca03
   starts: '**And the collapse was not a property of the cap'
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/smells.md#the-upstream-metrics-all-agree-and-the-model-is-a-fraction-of-the-capture
   hash: f54d8d28e434
   starts: '**The pose swap is the one that settles it.** It'
-  rests_on: alternate-legs-2026-09
+  rests_on: single-stage-swaps-2026-09
 - at: health/smells.md#every-frame-registered-every-track-long-and-clean-and-no-structure-at-all
   hash: f3dbc3972c9f
   starts: '**The smell:** the tracking stage reports the be'
   rests_on: sweep-2026-08
 - at: health/smells.md#a-better-mean-reprojection-error-on-a-differently-composed-cloud
-  hash: 95dd51e14e52
-  starts: '**Measured:** a branch reporting 0.278 px was re'
+  hash: 0b4960a79806
+  starts: '**Measured:** a model reporting 0.278 px was rej'
   rests_on: sweep-2026-08
 - at: health/smells.md#a-connected-graph-that-is-held-together-by-one-edge
   hash: 725e2a4e82c8
@@ -1203,9 +1203,9 @@ claims:
   starts: '**A second magnitude, two orders larger, at a di'
   rests_on: sparse-compositions-2026-10
 - at: plan/detection.md#which-end-to-reach-for
-  hash: c9fec4651bd1
+  hash: 7878e1301b1a
   starts: '> **Driven cold on full captures the same move w'
-  rests_on: agent-controls-2026-10#finding-4--the-classical-branch-on-a-sparse-capture
+  rests_on: agent-controls-2026-10#finding-4--classical-detection-and-matching-on-a-sparse-capture
 - at: plan/matching.md#1-detector-based-or-detector-free--and-what-it-costs-downstream
   hash: 2ee5677dc044
   starts: '**A complete graph is not evidence that the fram'
@@ -1219,16 +1219,16 @@ claims:
   starts: '**The veto''s domain is cameras that claim to res'
   rests_on: agent-controls-2026-10#finding-2--the-pixel-veto-fires-on-an-estimators-own-cameras-by-construction
 - at: plan/scene_to_pipeline.md#textureless_fraction--meaningless-without-empty_regions
-  hash: c2df05d31388
+  hash: e342627f2747
   starts: '**That evidence is from full captures, and on a '
-  rests_on: agent-controls-2026-10#finding-4--the-classical-branch-on-a-sparse-capture
+  rests_on: agent-controls-2026-10#finding-4--classical-detection-and-matching-on-a-sparse-capture
 - at: plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself
   hash: dffa918dd58f
   starts: '**Refining that model does not move it into the '
   rests_on: estimator-outvote-2026-10#finding-2--refining-an-estimators-model-damages-it
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
-  hash: 25702d2d2a07
-  starts: '**When it fires, the remedy is the whole feed-fo'
+  hash: a09d567d52a0
+  starts: '**When it fires, the remedy is the feed-forward '
   rests_on: estimator-outvote-2026-10#finding-3--geometric-stereo-on-estimator-poses
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
   hash: bb5f422d0545

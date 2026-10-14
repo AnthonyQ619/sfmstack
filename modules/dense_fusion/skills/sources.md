@@ -1,7 +1,7 @@
 ---
 module: DenseFusion
-module_version: 1.1.0
-curated_at: 2026-09-16
+module_version: 1.1.1
+curated_at: 2026-10-13
 ---
 
 # Where DenseFusion's claims come from

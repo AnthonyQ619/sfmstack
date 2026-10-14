@@ -1,8 +1,8 @@
 ---
 module: FeatureTrackUnionFind
-module_version: 1.5.0
+module_version: 1.5.1
 produces: tracks/v1
-curated_at: 2026-08-07
+curated_at: 2026-10-13
 ---
 
 # Reading a FeatureTrackUnionFind artifact

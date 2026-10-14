@@ -1,7 +1,7 @@
 ---
 module: FeatureMatchLightGlue
-module_version: 1.6.2
-curated_at: 2026-09-07
+module_version: 1.6.3
+curated_at: 2026-10-13
 ---
 
 # Where FeatureMatchLightGlue's claims come from
