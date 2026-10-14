@@ -115,10 +115,41 @@ median — and the fill kept the core's cameras and placed only the rest: 72% of
 100% for either estimator alone. Read on the core before filling, the rotation form
 fires at 8.7. On Barn's sound core it reads 1.6, and the fill there delivered 1.00.
 
+## Finding 6 — every fired model the agents built, not only the delivered ones
+
+The stores hold every model an agent built. Each end-of-chain model on which the
+rotation form fired at 2 or more — up to three per capture — was densified with
+`DenseMVS` at the capture's delivered parameters, against `DenseVGGT` on `PoseVGGT`'s
+poses for the same scene. Overall distance in mm as placed, lower is better; a win or
+loss needs 5%.
+
+| capture | rotation form | geometric cloud on the fired model | feed-forward cloud | result |
+| --- | --- | --- | --- | --- |
+| `/tanks_and_temples/Meetingroom` | 66.2 | 107.8 | 89.9 | win |
+| `/tanks_and_temples/Meetingroom` | 66.1 | 101.0 | 89.9 | win |
+| `/tanks_and_temples/Meetingroom` | 66.0 | 103.2 | 89.9 | win |
+| `/tanks_and_temples/Barn` | 9.7 | 93.7 | 84.8 | win |
+| `/tanks_and_temples/Barn` | 2.9 | 75.7 | 84.8 | **loss** |
+| `/tanks_and_temples/Barn` | 2.7 | 118.3 | 84.8 | win |
+| `/tanks_and_temples/Caterpillar` | 51.7 | 87.1 | 91.0 | tie |
+| `/tanks_and_temples/Caterpillar` | 42.0 | 83.8 | 91.0 | **loss** |
+| `/tanks_and_temples/Caterpillar` | 24.6 | 140.9 | 91.0 | win |
+
+Six wins, two losses and one tie over nine models; by capture, two wins and a tie. The
+median feed-forward cloud is about a tenth better, and the worst loss is 12%. No ETH3D
+or DTU corpus capture fired.
+
+**Nothing available to the agent predicts the losses.** Checked against wins and losses,
+each of these overlaps: the rotation form's size, the centre form, the estimators'
+spread, the model's own disagreement, the verifier's verdict and stray count, and every
+reading either dense module publishes — point counts and their ratio, depth-map
+completeness, fusion ratio, points per view, depth confidence. A loss is a fired model
+whose geometric cloud is still good, and only reference geometry shows that.
+
 ## What this does not establish
 
-- **One corpus fire of the rotation form on a delivered model, and one on a core.**
-  These are reasons to read the rotation form, not rates.
+- **Three corpus captures, nine fired models.** A rate, but a small one, all from one
+  dataset.
 - **Nothing about centre error as a rule.** That column was added after the
   pre-registered verdict.
 - **Caterpillar was a holdout when the batch ran** and was promoted to carry findings 3

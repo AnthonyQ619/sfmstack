@@ -294,6 +294,10 @@ campaigns:
       finding-5--a-fill-keeps-whatever-its-core-is:
       - tanks_and_temples/Barn
       - tanks_and_temples/Caterpillar
+      finding-6--every-fired-model-the-agents-built-not-only-the-delivered-ones:
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
   consensus-2026-09:
     captures:
     - tanks_and_temples/Barn
@@ -1223,7 +1227,7 @@ claims:
   starts: '**Refining that model does not move it into the '
   rests_on: estimator-outvote-2026-10#finding-2--refining-an-estimators-model-damages-it
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
-  hash: 7ca978d4b7ff
+  hash: 25702d2d2a07
   starts: '**When it fires, the remedy is the whole feed-fo'
   rests_on: estimator-outvote-2026-10#finding-3--geometric-stereo-on-estimator-poses
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
@@ -1242,3 +1246,15 @@ claims:
   hash: c6bf78def7b0
   starts: '**The two forms see different failures; read eac'
   rests_on: estimator-outvote-2026-10#finding-1--the-two-forms-of-the-reading-fire-on-different-captures
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: 81910d32d103
+  starts: '**When the rotation form fires, deliver the feed'
+  rests_on: estimator-outvote-2026-10#finding-6--every-fired-model-the-agents-built-not-only-the-delivered-ones
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: fb83033b55b5
+  starts: '**When only the centre form fires, keep the geom'
+  rests_on: consensus-2026-09
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: 91bba866db85
+  starts: '**On the centre form alone, a disagreement is a '
+  rests_on: consensus-2026-09

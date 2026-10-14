@@ -1,7 +1,7 @@
 ---
 module: PoseMapAnything
-module_version: 1.2.0
-curated_at: 2026-09-25
+module_version: 1.2.1
+curated_at: 2026-10-13
 ---
 
 # What it cannot tell you
@@ -25,22 +25,23 @@ Do not generalise it to the family, and do not generalise it from one capture: w
 licenses is comparing two configurations of THIS module from single runs, which the
 sibling does not license.
 
-## Two learned estimators can be wrong together
+## The estimators and the learned dense module share a training distribution
 
 This is the failure mode that limits the whole design, and it is worth stating
 plainly here because it is not obvious from the module's purpose.
 
 `PoseMapAnything` and `PoseVGGT` are independent of the *matcher*. They are not
-independent of *each other*: they share a training distribution, and on a scene far
-outside it they can agree tightly and both be wrong. Measured on a vegetated
-exterior: the two estimators sat within a few per cent of each other and both
-disagreed with the delivered model by an order of magnitude more — and the
-delivered model was the better reconstruction, beating the feed-forward branch on
-both accuracy and completeness.
+independent of *each other*, or of the learned dense module built on the same kind of
+data. Measured on a vegetated exterior: the two estimators sat within a few per cent
+of each other and both disagreed with the delivered model's camera *positions* by an
+order of magnitude more, while its rotations were as good as theirs — and the
+geometric cloud still beat the learned dense module on both accuracy and completeness
+([evidence](../../../skills/evidence/estimator-outvote-2026-10.md#finding-1--the-two-forms-of-the-reading-fire-on-different-captures)).
+Two agreeing estimators say the poses are probably right; they say nothing about how
+the learned dense module will do on that scene.
 
-So a disagreement is a reason to **measure the alternative**, never a reason to
-discard what you have. `plan/pose.md` carries the rule; this is the module-level
-reason it exists.
+`plan/pose.md` carries the delivery rule. It keeps the geometric cloud when only the
+camera-position form of the reading fires, which is this capture's case.
 
 ## Chunking does not stitch
 

@@ -401,8 +401,7 @@ was measured on three captures and does not go one way — on a folded room and 
 outdoor structure it lost by half again or more to the geometric cloud, the folded
 one's included, because stereo needs poses tighter than an estimator's degree; on a
 compact orbited object it won ([evidence](../evidence/estimator-outvote-2026-10.md#finding-3--geometric-stereo-on-estimator-poses)).
-Do not plan a half-swap on that. Run the branch through to a cloud, measure both
-deliveries the way you would measure any two candidates, and keep the better.
+Do not plan a half-swap on that.
 
 **Do not let the verifier make that comparison.** It scores both models against the
 matcher's correspondences — the evidence this reading has just called into question —
@@ -410,14 +409,30 @@ and on a folded capture it vetoed the estimator model, whose rotations were righ
 passed the folded one ([evidence](../evidence/estimator-outvote-2026-10.md#finding-1--the-two-forms-of-the-reading-fire-on-different-captures)).
 Its verdict on either model is not a measurement of which is better here.
 
-**A disagreement is a reason to measure the alternative. It is never, by itself, a
-reason to discard what you have.** The two estimators are independent of your
-matcher; they are not independent of each other. They share a training distribution,
-and on a scene far outside it — dense vegetation is the measured case — they agree
-tightly and are *both* wrong, while the geometric model is the better reconstruction.
-The reading is still true there: those poses really do disagree with everything. What
-is false is the inference from disagreement to swap. Acting on the reading directly
-costs you that capture; acting on the measurement costs you one run.
+**When the rotation form fires, deliver the feed-forward result.** For a dense
+deliverable that is `DenseVGGT` on `PoseVGGT`'s poses; for a sparse one, the estimators'
+model, unrefined and marked as theirs (the veto-domain paragraph above). Build the
+geometric cloud as well, and report it beside the delivery as the alternative, with the
+three disagreements as the reason it exists. Over every fired model on corpus captures,
+the feed-forward cloud won six of nine, lost two and tied one, about a tenth better at
+the median, and its worst loss was 12%
+([evidence](../evidence/estimator-outvote-2026-10.md#finding-6--every-fired-model-the-agents-built-not-only-the-delivered-ones)).
+**Nothing available to you predicts the losses** — no pose reading, no verifier
+verdict, no dense reading — so do not go looking for one to overrule the rule on a
+particular capture; report the alternative instead.
+
+**When only the centre form fires, keep the geometric delivery and report the fire.**
+On corpus captures it fired on two site walks whose rotations were right, and the
+feed-forward result was the better cloud on one and the worse on the other — the
+vegetated case below. Nothing available to you separates them.
+
+**On the centre form alone, a disagreement is a reason to look, not to swap.** The
+two estimators are independent of your matcher; they are not independent of each other,
+and the learned dense module shares their training distribution. On a vegetated site
+walk the centre form fired, the estimators' poses were the better poses, and the
+geometric cloud was still the better reconstruction, because dense vegetation was
+outside the learned dense module's distribution. That is the case the rule above keeps
+the geometric delivery for; the rotation form stayed quiet there.
 
 The campaign is in
 [`evidence/consensus-2026-09.md`](../evidence/consensus-2026-09.md).

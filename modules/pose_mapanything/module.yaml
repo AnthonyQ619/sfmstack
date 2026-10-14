@@ -1,5 +1,5 @@
 name: PoseMapAnything
-version: 1.2.0
+version: 1.2.1
 kind: pose
 summary: >
   Feed-forward camera poses and intrinsics from images alone, via MapAnything's
@@ -42,7 +42,7 @@ description: |
   per-image diagnostic, and `mean_reprojection_error` null because there are no
   correspondences to measure against. Accuracy is initialisation-grade.
 
-image: sfmstack/pose-mapanything:1.2.0
+image: sfmstack/pose-mapanything:1.2.1
 entrypoint: adapter:run
 resources:
   gpu: true
