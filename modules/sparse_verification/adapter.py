@@ -221,6 +221,50 @@ def weighted_median(values, weights) -> float:
 # --------------------------------------------------------------------------- #
 
 
+# Modules that place cameras without correspondences, and modules that register them
+# from correspondences (PoseFill's core is registered; its filled cameras carry their
+# own mark and are handled where `placed` is built).
+ESTIMATORS = ("PoseVGGT", "PoseMapAnything", "SparseVGGT", "SparseMapAnything")
+REGISTRARS = ("PoseEssentialToPnP", "SparseGlobalCOLMAP", "PoseFill")
+
+
+def placed_by_estimator(store, model) -> str | None:
+    """The estimator that placed every camera of `model`, or None.
+
+    A model built on an estimator's poses alone has no camera that rests on
+    correspondences, so the pixel veto fires on it by construction: it measures the
+    estimator's error in pixels, not a contradiction. `plan/pose.md` says so, and this
+    module's own message said "contradicted, solve again" on the same artifact -- two
+    sources giving opposite advice, reported by two agents of one batch. Read from the
+    model's lineage, so it costs nothing and needs no parameter.
+    """
+    seen, frontier, estimator, registered = set(), [model], None, False
+    while frontier:
+        art = frontier.pop()
+        if art.id in seen:
+            continue
+        seen.add(art.id)
+        made = art.manifest.produced_by
+        name = made.module if made else ""
+        registered = registered or name in REGISTRARS
+        if name in ESTIMATORS and estimator is None:
+            estimator = name
+        for parent in art.manifest.inputs or []:
+            try:
+                frontier.append(store.open(parent))
+            except Exception:
+                continue
+    return estimator if estimator and not registered else None
+
+
+def by_construction(estimator: str) -> str:
+    return (f"Every camera in this model was placed by {estimator}, a correspondence-free "
+            f"estimator; none was registered from correspondences, so this reading fires "
+            f"on it by construction -- it measures the estimator's error in pixels. It is "
+            f"not a test this model can fail: read it as `nothing_held_out` is read, "
+            f"unverified rather than contradicted. ")
+
+
 @module
 def run(ctx: Ctx):
     scene = ctx.inputs["scene"]
@@ -245,6 +289,10 @@ def run(ctx: Ctx):
     valid = np.asarray(model.load("poses", "valid"), dtype=bool)
     image_index = np.asarray(model.load("poses", "image_index"), dtype=np.int64)
     pose = {int(i): cam[r] for r, (i, ok) in enumerate(zip(image_index, valid)) if ok}
+    try:
+        estimator = placed_by_estimator(ctx.store, model)
+    except Exception:
+        estimator = None
 
     image_pair = np.asarray(matches.load("pairs", "image_pair"), dtype=np.int64)
     xy = np.asarray(matches.load("matches", "xy"), dtype=np.float64)
@@ -446,6 +494,7 @@ def run(ctx: Ctx):
             "model_not_supported_by_its_own_evidence",
             severity="error",
             message=(
+                (by_construction(estimator) if estimator else "") +
                 f"The pairs whose held-out correspondences agree with this model do "
                 f"not connect it: they leave {len(sizes)} pieces, the largest holding "
                 f"{largest:.0%} of the {len(graph_nodes)} cameras that rest on correspondences "
@@ -454,7 +503,9 @@ def run(ctx: Ctx):
                 f"consistent and {joined}, so registration and reprojection error "
                 f"cannot see this."
             ),
-            suggested_actions=[
+            suggested_actions=([
+                "Do not solve again or discard this model on this reading; price it on the "
+                "two-estimator consensus instead (plan/pose.md, the veto's domain)."] if estimator else []) + [
                 "Read the per-pair array: the pairs bridging two pieces are where the "
                 "model and its evidence part company, and they are candidates for "
                 "wrong correspondences that verified anyway.",
@@ -493,6 +544,7 @@ def run(ctx: Ctx):
             "contradicted_by_held_out_evidence",
             severity="error",
             message=(
+                (by_construction(estimator) if estimator else "") +
                 f"Correspondences this model was never fit on sit {reading:.2f}px "
                 f"from its epipolar lines, against a {p.inlier_threshold_px:.1f}px "
                 f"inlier threshold. Worst pairs: "
@@ -500,7 +552,9 @@ def run(ctx: Ctx):
                 + ". The model's own reprojection error cannot see this; it was "
                   "minimised on the other evidence."
             ),
-            suggested_actions=[
+            suggested_actions=([
+                "Do not solve again or discard this model on this reading; price it on the "
+                "two-estimator consensus instead (plan/pose.md, the veto's domain)."] if estimator else []) + [
                 "If the pose stage reported escaped points, the service has already "
                 "re-solved this chain at a wider window: read `second_solve` on the "
                 "same result before doing anything else. Otherwise solve again from "
@@ -539,4 +593,6 @@ def run(ctx: Ctx):
         f"those pairs were not used by the model and served as the test set. "
         f"Consistency with held-out evidence is not accuracy: an error every pair's "
         f"correspondences allow reads clean here."
+        + (f" Every camera was placed by {estimator}, so a firing veto here is by "
+           f"construction, not a contradiction." if estimator else "")
     )

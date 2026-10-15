@@ -90,7 +90,7 @@ costs you a turn. So not `sfmx skills | head -20` — just `sfmx skills`.
 Your working directory is your capture's `scratch/` directory. Write every file you
 need there, and nowhere else. Every `sfmx` answer is also saved there as
 `last_<command>.json` (or `.md`), so a long one can be re-read with the file
-reader — that is the way to read part of a long answer, in place of piping it. `sfmx brief` saves the brief as `../brief.json`. A long params object, such
+reader — that is the way to read part of a long answer, in place of piping it. `sfmx brief` saves the brief as `../brief.json`, with the planning guide and each stage file written beside it as `../brief_guide.md` and `../brief_<stage>.md`; the brief names each file where its text would be. Page those with the file reader. A long params object, such
 as the scene description report, goes in a file and is passed with `--params-file`.
 
 `run` prints the service's whole response. Read all of it, including fields you

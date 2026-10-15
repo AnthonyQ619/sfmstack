@@ -274,7 +274,7 @@ question you are actually asking.
 | You want | Go to |
 | --- | --- |
 | The numbers behind a row — its profile, its rejected alternatives, its error against reference geometry | the capture link in the row, which lands on that capture's row in [agentic-campaign-2026-09](agentic-campaign-2026-09.md) |
-| What a healthy model of this kind looks like, and how to compare two finished ones | [health/ladder.md](../health/ladder.md), whose reference distribution is [reference_profile.yaml](reference_profile.yaml) |
+| What a healthy model of this kind looks like, and how to compare two finished ones | [health/ladder.md](../health/ladder.md), whose reference distribution is `reference_profile.yaml` (read by the health digest, not by a call) |
 | Whether to stop, or to keep turning a dial | [ladder — when to stop turning a dial](../health/ladder.md#when-to-stop-turning-a-dial) |
 | Whether the answer is a different module, or a module that does not exist yet | [judge/swap_or_build.md](../judge/swap_or_build.md) |
 | What a trait implies for a pipeline, before any of this | [plan/scene_to_pipeline.md](../plan/scene_to_pipeline.md) |

@@ -242,6 +242,15 @@ def test_workflow_skill_reads_the_knowledge_base(service):
     assert "Knowledge Index" in doc["text"]
 
 
+def test_workflow_skill_serves_the_corpus_list_and_nothing_else_plain(service):
+    """The context links `evidence/CORPUS.txt` and tells the reader to check it, so it
+    is served; the bound otherwise stays Markdown, so the YAML beside it is not."""
+    doc = service.workflow_skill("evidence/CORPUS.txt")
+    assert doc["path"].endswith("evidence/CORPUS.txt")
+    with pytest.raises(Exception):
+        service.workflow_skill("evidence/provenance.yaml")
+
+
 def test_workflow_skill_resolves_moment_tiers_on_a_bare_topic(service):
     """`ladder` finds health/ladder.md the way `stopping` used to find
     judgment/stopping.md -- the bare-topic search follows the tiers."""

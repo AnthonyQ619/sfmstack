@@ -481,7 +481,50 @@ def provenance_targets(root: Path) -> list[str]:
     return bad
 
 
+def unreachable_links(root: Path) -> list[str]:
+    """Every link from a context page to a file in `skills/` or `docs/` can be fetched.
+
+    Existence is not reachability. An agent reads the context through one call,
+    `workflow_skill`, and that call serves a bounded set of files; the link checks above
+    test that a target exists on disk. `evidence/CORPUS.txt` existed, was linked from the
+    skills index and the evidence index, and could not be fetched by any agent for as
+    long as the bound served Markdown only -- three agents of one batch said so, and
+    every check stayed green. So this asks the resolver itself, on this root, rather than
+    restating its rules here, where they would drift from it.
+    """
+    from types import SimpleNamespace
+    from sfmorch.service import SfmService as Service
+
+    skills, docs = (root / "skills").resolve(), (root / "docs").resolve()
+    resolver = SimpleNamespace(config=SimpleNamespace(skills_dir=root / "skills"),
+                               _MOVED_TOPICS=Service._MOVED_TOPICS)
+    pages = list((root / "skills").rglob("*.md")) + \
+        list((root / "modules").glob("*/skills/*.md"))
+    bad, seen = [], {}
+    for page in sorted(pages):
+        for target in re.findall(r"\]\(([^)\s#:]+)(?:#[^)\s]*)?\)", page.read_text()):
+            tgt = (page.parent / target).resolve()
+            if not tgt.is_file():
+                continue
+            if tgt.is_relative_to(skills):
+                topic = tgt.relative_to(skills).as_posix()
+            elif tgt.is_relative_to(docs):
+                topic = "docs/" + tgt.relative_to(docs).as_posix()
+            else:
+                continue
+            if topic not in seen:
+                try:
+                    got = Service.workflow_skill(resolver, topic)
+                    seen[topic] = Path(got["path"]).resolve() == tgt
+                except Exception:
+                    seen[topic] = False
+            if not seen[topic]:
+                bad.append(f"{page.relative_to(root)} -> {target}")
+    return bad
+
+
 ALL_CHECKS = {
+    "unreachable_links": unreachable_links,
     "provenance_drift": provenance_drift,
     "provenance_coverage": provenance_coverage,
     "provenance_targets": provenance_targets,

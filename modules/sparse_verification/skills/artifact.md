@@ -1,6 +1,6 @@
 ---
 module: SparseVerification
-module_version: 1.5.2
+module_version: 1.5.3
 produces: custom/verification/v1
 ---
 

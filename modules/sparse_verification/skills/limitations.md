@@ -1,7 +1,7 @@
 ---
 module: SparseVerification
-module_version: 1.5.2
-curated_at: 2026-10-13
+module_version: 1.5.3
+curated_at: 2026-10-15
 ---
 
 # What held-out verification cannot tell you
@@ -146,6 +146,23 @@ as it.
 correspondences were never in this model's objective at all, so every one of them
 is held out. Lowering `min_held_out_per_pair` also produces a reading, but one
 whose pairs rest on a handful of correspondences each.
+
+## On an estimator's own model it fires by construction
+
+*Symptom:* either error-severity verdict, with a message that begins "Every camera in
+this model was placed by" a correspondence-free estimator.
+
+A model whose cameras all came from such an estimator, triangulated and refined with
+those cameras held, has no camera that rests on correspondences. What this module reads
+is then the estimator's own error expressed in pixels, and on a short-focal camera a few
+degrees is many pixels, so the veto fires whatever the model's quality. The module reads
+the model's lineage and says so in the message.
+
+*What to do:* read the verdict as `nothing_held_out` is read, unverified, and price the
+model on the two-estimator consensus
+([plan/pose.md](../../../skills/plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself)).
+A model with any camera registered from correspondences is not this case, and the
+message will not say it is: there a firing veto still ends the matter.
 
 ## It cannot see an error the evidence allows
 

@@ -291,6 +291,39 @@ def test_a_failing_module_is_recorded_and_seals_nothing(orch, scene, monkeypatch
     assert orch.store.list(type="features/v1") == []
 
 
+def test_a_failed_step_leaves_no_staged_files_at_its_output_path(orch, scene, monkeypatch):
+    """A container that wrote a kept workspace and then died left gigabytes under the
+    output's `.staging/`, and on a full disk every later command failed on it. The
+    host clears what has no manifest; a module image need not be rebuilt for it."""
+    seen = {}
+
+    def stage_then_die(self, job, store):
+        ids = orch._planned_ids(job.spec, job.inputs, job.params)
+        path = store.path_for(next(iter(ids.values())))
+        (path / ".staging" / "workspace").mkdir(parents=True)
+        (path / ".staging" / "workspace" / "depth.bin").write_bytes(b"\0" * 1024)
+        seen["path"] = path
+        raise ExecutionError(job.spec.name, RuntimeError("Disk quota exceeded"))
+
+    monkeypatch.setattr(type(orch.runner), "run", stage_then_die)
+    with pytest.raises(ExecutionError):
+        orch.run("FakeDetector", run_id="run_test", inputs={"scene": scene.id})
+    assert not seen["path"].exists()
+
+
+def test_a_failed_step_never_removes_a_sealed_artifact(orch, scene, monkeypatch):
+    """The control: a forced re-run that fails at an id already sealed keeps it."""
+    first = orch.run("FakeDetector", run_id="run_test", inputs={"scene": scene.id}).primary
+
+    def die(self, job, store):
+        raise ExecutionError(job.spec.name, RuntimeError("lost contact"))
+
+    monkeypatch.setattr(type(orch.runner), "run", die)
+    with pytest.raises(ExecutionError):
+        orch.run("FakeDetector", run_id="run_test", inputs={"scene": scene.id}, force=True)
+    assert orch.store.exists(first.id)
+
+
 def test_a_truncated_run_record_does_not_poison_the_run_id(orch, scene):
     """A crashed write used to make a run_id permanently unusable.
 

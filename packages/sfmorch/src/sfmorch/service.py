@@ -1184,7 +1184,11 @@ class SfmService:
             "how_to_read": (
                 "Percentiles locate this model in the reference corpus; they are "
                 "an ordering over observed readings, not a score and not a pass "
-                "mark. With this many reference draws they move in coarse steps."
+                "mark. With this many reference draws they move in coarse steps. "
+                "Every rung runs the same way: higher is healthier. A rung whose "
+                "raw value is better low is inverted before it is ranked, so 0 "
+                "means less healthy than every corpus model on that rung and 100 "
+                "healthier than every one; `weakest_rung` is the lowest."
             ),
             "read": read_note,
         }
@@ -1833,12 +1837,24 @@ class SfmService:
         # nobody having tried. Resolution is unchanged; only what it will hand
         # back is checked, and a hit outside the bound falls through to the same
         # not-found error as a typo.
-        served = (root.resolve(), (parent / "docs").resolve(),
+        #
+        # One plain-text file belongs to the context too: `evidence/CORPUS.txt`, the
+        # list of captures the guidance was fitted on, which the skills index and the
+        # evidence index both link and tell the reader to check. The Markdown-only bound
+        # made that link dead for every agent from the day it was added -- three said so
+        # in one batch -- while the link checks, which test that a file exists rather
+        # than that this call will hand it over, stayed green. So `.txt` is served from
+        # `skills/` (nowhere else), and `unreachable_links` in the context checks now
+        # asks this method itself.
+        skills_root = root.resolve()
+        served = (skills_root, (parent / "docs").resolve(),
                   (parent / "modules").resolve())
         for path in candidates:
             if path.is_file():
                 real = path.resolve()
-                if real.suffix != ".md" or not any(
+                readable = real.suffix == ".md" or (
+                    real.suffix == ".txt" and real.is_relative_to(skills_root))
+                if not readable or not any(
                         real.is_relative_to(base) for base in served):
                     continue
                 return {"topic": topic, "path": str(path),

@@ -242,6 +242,27 @@ class ArtifactWriter:
         self._notes.append(text.strip())
         return self
 
+    def discard(self) -> None:
+        """Remove whatever this writer staged, when the job that owned it failed.
+
+        A sidecar is written to disk as the module runs, long before the seal, so a
+        job that raises leaves it behind: a DenseMVS stereo workspace, gigabytes of it,
+        under the artifact's `.staging/`. On a full disk that residue is what the next
+        command trips over -- one agent could not even ask what was running. A sealed
+        artifact is never touched, and neither is a directory that already holds a
+        manifest: only what this writer put there and never finished.
+        """
+        if self._sealed:
+            return
+        if self._staged_sidecars.exists():
+            shutil.rmtree(self._staged_sidecars, ignore_errors=True)
+        holding = self._staged_sidecars.parent.with_name(
+            self._staged_sidecars.parent.name + ".sidecars")
+        if holding.exists():
+            shutil.rmtree(holding, ignore_errors=True)
+        if self.root.exists() and not (self.root / MANIFEST_NAME).exists():
+            shutil.rmtree(self.root, ignore_errors=True)
+
     # ------------------------------------------------------------------- seal
 
     def seal(self) -> Artifact:

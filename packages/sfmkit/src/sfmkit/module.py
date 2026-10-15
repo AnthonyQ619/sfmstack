@@ -184,6 +184,11 @@ class Ctx:
                 return art.manifest.scene
         return ""
 
+    def discard_all(self) -> None:
+        """Drop everything the failed job staged; see `ArtifactWriter.discard`."""
+        for writer in self._writers.values():
+            writer.discard()
+
     def seal_all(self) -> dict[str, Artifact]:
         elapsed = time.monotonic() - self._started
         sealed = {}
@@ -209,7 +214,13 @@ def run_module(fn: Callable[[Ctx], None], ctx: Ctx) -> dict[str, Artifact]:
     """Invoke a module function and seal whatever it produced.
 
     If `fn` raises, nothing is sealed and no artifact appears in the store. A
-    failed job leaves no half-written output to confuse a later run.
+    failed job leaves no half-written output to confuse a later run -- including
+    what a writer staged on disk before the failure, which is discarded here, and
+    what a seal that failed partway had written.
     """
-    fn(ctx)
-    return ctx.seal_all()
+    try:
+        fn(ctx)
+        return ctx.seal_all()
+    except BaseException:
+        ctx.discard_all()
+        raise

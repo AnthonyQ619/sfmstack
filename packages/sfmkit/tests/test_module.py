@@ -215,3 +215,30 @@ def test_a_hand_built_artifact_is_not_bound_by_the_metric_contract(store):
     w = store.writer(artifact_id="art_byhand", type="tracks/v1")
     w.save("observations", obs=np.zeros((4, 4), np.float32), track_count=np.int64(1))
     assert w.seal().type == "tracks/v1"
+
+
+@module
+def stage_then_fail(ctx: Ctx):
+    """Writes a native sidecar to disk, as DenseMVS's kept workspace does, then fails."""
+    out = ctx.output("tracks")
+    (out.sidecar_dir("workspace") / "depth.bin").write_bytes(b"\0" * 1024)
+    raise RuntimeError("disk quota exceeded")
+
+
+def test_a_failed_job_leaves_nothing_it_staged(store, scene):
+    """The docstring's promise, including what was staged before the failure: a kept
+    workspace left in `.staging/` is what blocked every later command on a full disk."""
+    ctx = make_ctx(store, scene)
+    with pytest.raises(RuntimeError):
+        run_module(stage_then_fail, ctx)
+    writer = ctx._writers["tracks"]
+    assert not writer.root.exists()
+    assert writer.root.name not in store.list()
+
+
+def test_discarding_never_touches_a_sealed_artifact(store, scene):
+    """The control: a writer that fails at the same path as a sealed artifact leaves it."""
+    sealed = run_module(build_tracks, make_ctx(store, scene))["tracks"]
+    writer = store.writer(artifact_id=sealed.id, type="tracks/v1")
+    writer.discard()
+    assert store.open(sealed.id).load("observations", "obs").shape == (12, 4)

@@ -264,6 +264,15 @@ campaigns:
     - ETH/meadow
     - ETH/playground
     - ETH/relief
+  agent-rerun-2026-10:
+    captures:
+    - ETH/meadow
+    - tanks_and_temples/Caterpillar
+    sections:
+      finding-1--the-reading-caught-a-fold-when-it-was-taken-and-nothing-else-did:
+      - tanks_and_temples/Caterpillar
+      finding-2--on-the-centre-form-alone-a-rebuilt-geometric-model-was-the-right-one:
+      - ETH/meadow
   estimator-outvote-2026-10:
     captures:
     - ETH/kicker
@@ -1251,10 +1260,18 @@ claims:
   starts: '**When the rotation form fires, deliver the feed'
   rests_on: estimator-outvote-2026-10#finding-6--every-fired-model-the-agents-built-not-only-the-delivered-ones
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
-  hash: fb83033b55b5
-  starts: '**When only the centre form fires, keep the geom'
+  hash: 5bd566d2ce71
+  starts: '**When only the centre form fires, keep a geomet'
   rests_on: consensus-2026-09
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
   hash: 91bba866db85
   starts: '**On the centre form alone, a disagreement is a '
   rests_on: consensus-2026-09
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: 7309f6f40c1c
+  starts: '**Rebuild before you deliver the model the centr'
+  rests_on: agent-rerun-2026-10#finding-2--on-the-centre-form-alone-a-rebuilt-geometric-model-was-the-right-one
+- at: health/ladder.md#comparing-two-finished-models
+  hash: ce8e57939b5c
+  starts: '**Before any step below, take the two-estimator '
+  rests_on: agent-rerun-2026-10#finding-1--the-reading-caught-a-fold-when-it-was-taken-and-nothing-else-did

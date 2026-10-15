@@ -421,10 +421,20 @@ the median, and its worst loss was 12%
 verdict, no dense reading — so do not go looking for one to overrule the rule on a
 particular capture; report the alternative instead.
 
-**When only the centre form fires, keep the geometric delivery and report the fire.**
+**When only the centre form fires, keep a geometric delivery and report the fire.**
 On corpus captures it fired on two site walks whose rotations were right, and the
 feed-forward result was the better cloud on one and the worse on the other — the
 vegetated case below. Nothing available to you separates them.
+
+**Rebuild before you deliver the model the centre form fired on.** The fire says the
+cameras are turned right and placed wrong, and a geometric rebuild can move them where a
+swap would trade one unmeasured risk for another. On a ten-view site walk whose two
+estimators agreed with each other, the model the centre form fired on scored 0.529
+against reference poses; the rebuild at a tighter matcher threshold, which the reading
+then passed, scored 0.977
+([evidence](../evidence/agent-rerun-2026-10.md#finding-2--on-the-centre-form-alone-a-rebuilt-geometric-model-was-the-right-one)).
+Report both models and which the reading passed. This holds only where the two
+estimators agree with each other; where they do not, the reading carries no signal.
 
 **On the centre form alone, a disagreement is a reason to look, not to swap.** The
 two estimators are independent of your matcher; they are not independent of each other,

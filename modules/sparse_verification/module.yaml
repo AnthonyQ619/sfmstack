@@ -1,5 +1,5 @@
 name: SparseVerification
-version: 1.5.2
+version: 1.5.3
 kind: analysis
 summary: >
   A veto on finished sparse models: rejects one that contradicts the matcher's
@@ -46,7 +46,7 @@ description: |
   ancestor, which the service wires automatically, or another matcher's output,
   which was never in the model's objective at all.
 
-image: sfmstack/sparse-verification:1.5.2
+image: sfmstack/sparse-verification:1.5.3
 entrypoint: adapter:run
 resources:
   gpu: false
@@ -405,6 +405,7 @@ diagnostics:
     severity: error
     message: Correspondences the model was never fit on sit beyond the inlier threshold from its epipolar lines.
     suggested_actions:
+      - "If the message says every camera was placed by a correspondence-free estimator, this fires by construction: read it as unverified, not contradicted, and price the model on the two-estimator consensus."
       - "If the pose stage reported escaped points, the service has already re-solved this chain at a wider window: read `second_solve` on the same result before doing anything else. Otherwise solve again from the same inputs before changing anything. A capture can have more than one stable answer, and a second solve that reads clean here is the model to keep."
       - "Do not choose between models on reprojection error or registration. A wrong model that is self-consistent satisfies both, and has been measured satisfying them better than the correct one."
       - "Read the per-pair residual_px array: a contradiction confined to the pairs across one part of the capture says where the solve went wrong."
@@ -413,6 +414,7 @@ diagnostics:
     severity: error
     message: The pairs that agree with the model do not connect it; it is internally consistent pieces joined across pairs it contradicts.
     suggested_actions:
+      - "If the message says every camera was placed by a correspondence-free estimator, this fires by construction: read it as unverified, not contradicted, and price the model on the two-estimator consensus."
       - "Read the per-pair residual_px array: the pairs bridging two pieces are where the model and its evidence part company, and they are the candidates for wrong correspondences that verified anyway."
       - "On a scene with repeated or instanced structure this is the expected shape of a self-matching failure. Rotation averaging distributes one wrong relative pose over the whole graph, so the remedy is upstream in the matcher rather than in a threshold here."
       - "Compare against another matcher's pairwise_matches of the same scene. If the pieces persist across matchers the capture is at fault; if they move, the matcher is."

@@ -260,6 +260,24 @@ elif cmd == "brief":
                  f"{PATHS['image_dir']} and its calibration_path is {PATHS['calibration_path']}.")
     log_ctx("plan_brief")
     brief = service().plan_brief(ch["current"]["scene"])
+    # The brief inlines the planning guide and every stage file, each as one JSON
+    # string, so the answer ran to 300 KB with single lines up to 92 KB -- longer than
+    # the file reader will page. All fourteen agents of one batch said they could not
+    # read it and fetched the files one by one instead. Each long text is written beside
+    # brief.json as Markdown, which pages by line, and the brief names the file in its
+    # place. Nothing is dropped: the same words, in a form that can be read.
+    def saved(text, name):
+        (HOME / name).write_text(text)
+        return {"saved_as": f"../{name}", "lines": text.count("\n") + 1,
+                "read": "page it with the file reader"}
+    guide = brief.get("how_to_read")
+    if isinstance(guide, dict) and isinstance(guide.get("text"), str):
+        brief["how_to_read"] = {**{k: v for k, v in guide.items() if k != "text"},
+                                **saved(guide["text"], "brief_guide.md")}
+    if isinstance(brief.get("families"), dict):
+        brief["families"] = {stage: saved(text, f"brief_{stage}.md")
+                             if isinstance(text, str) else text
+                             for stage, text in brief["families"].items()}
     (HOME / "brief.json").write_text(json.dumps(brief, indent=1, default=str))
     emit(brief)
 

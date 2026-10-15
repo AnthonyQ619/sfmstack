@@ -261,6 +261,7 @@ class Orchestrator:
         try:
             outputs = self.runner.run(job, self.store)
         except ExecutionError as e:
+            self._discard_unsealed(planned)
             run.add(
                 Step(
                     index=-1,
@@ -283,6 +284,25 @@ class Orchestrator:
             )
         )
         return RunResult(step=step, outputs=outputs, cached=False)
+
+    def _discard_unsealed(self, planned: dict[str, str]) -> None:
+        """Remove what a failed step left at its output paths without sealing.
+
+        A module writes native sidecars into the store while it runs -- DenseMVS's
+        kept stereo workspace is gigabytes -- and a job that dies leaves them under the
+        artifact's directory with no manifest. On a full disk that residue is what the
+        next command fails on: one agent could not even ask what was running. The
+        module side discards on failure too (`sfmkit.run_module`), but only in an image
+        built after that change, and a container that is killed never reaches it; this
+        side runs on the host whatever the image. A directory holding a manifest is a
+        sealed artifact and is never touched.
+        """
+        import shutil
+        for aid in planned.values():
+            path = self.store.path_for(aid)
+            if path.exists() and not (path / "artifact.md").exists():
+                shutil.rmtree(path, ignore_errors=True)
+                shutil.rmtree(path.with_name(path.name + ".sidecars"), ignore_errors=True)
 
     @staticmethod
     def _bind_scene(run: Run, outputs: dict[str, Artifact]) -> None:

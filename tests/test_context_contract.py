@@ -35,6 +35,7 @@ from context_checks import (
     stale_defaults,
     orphaned_readings,
     provenance_without_config,
+    unreachable_links,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -269,3 +270,25 @@ def test_control_a_link_to_an_explicit_anchor_is_not_flagged(tmp_path):
     p.write_text(p.read_text() + "\n\nSee [scan1]"
                  "(../evidence/agentic-campaign-2026-09.md#cap-dtu-scan1).\n")
     assert not any("cap-dtu-scan1" in f for f in dead_anchor_links(root))
+
+
+def test_control_a_link_no_call_can_fetch_is_detected(tmp_path):
+    """A linked file that exists on disk but that `workflow_skill` will not serve.
+
+    The defect this check exists for: `evidence/CORPUS.txt` was linked from two index
+    pages, existed, and could not be fetched by any agent while the bound served
+    Markdown only. A YAML file beside it is still outside the bound.
+    """
+    root = _tree(tmp_path)
+    (root / "skills/evidence/notes.yaml").write_text("a: 1\n")
+    p = root / "skills/evidence/INDEX.md"
+    p.write_text(p.read_text() + "\n\nSee [the notes](notes.yaml).\n")
+    assert any(f.endswith("-> notes.yaml") for f in unreachable_links(root))
+
+
+def test_control_the_corpus_list_is_reachable(tmp_path):
+    """The complement: the one plain-text file the context links is served."""
+    root = _tree(tmp_path)
+    p = root / "skills/evidence/INDEX.md"
+    p.write_text(p.read_text() + "\n\nSee [the corpus](CORPUS.txt).\n")
+    assert not any("CORPUS.txt" in f for f in unreachable_links(root))
