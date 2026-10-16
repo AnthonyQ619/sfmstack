@@ -598,6 +598,17 @@ rule and they are opposites:**
 | fewer frames, `PoseFill` refuses or either gate fires, and **`registered_fraction` is at or below about 0.7** | **deliver the estimator's model on its own**, marked as such. The core alone was the wrong delivery on most of the captures this row fired on, and on one of them by a wide margin. If no estimator will run, deliver the core and say the capture was not solved |
 | **a core too small to fill at all** — fewer than a handful of cameras shared with the estimator | there is nothing to fit a frame onto, and this is not a swap. **Deliver the estimator's model on its own**, marked as such. Every capture measured at this row delivered the core instead, and the estimator's model was the better delivery on nearly all of them — a core of two to five cameras is not the conservative delivery, it is most of the capture missing. Deliver the core only where the estimators are themselves unusable, and say so. Do **not** lower `min_shared_cameras` to get a fill through: a residual computed on four cameras is a fit to four points, and an agent that tried it had the fill caught by the other gate anyway |
 
+**When the delivery is the estimator's model, nothing measured says which estimator's.**
+Over nineteen corpus captures at ten views, each estimator's own model was ahead of the
+other's by more than the learned estimator's repeat noise on five, by up to half the score,
+and no capture kind decided it
+([evidence](../evidence/sparse-compositions-2026-10.md#7-the-two-correspondence-free-estimators-against-each-other)).
+The ladder's rungs did not decide it either: chosen on coverage and yield, one delivery was
+the worse of the two by 0.037
+([evidence](../evidence/agent-rerun-2026-10.md#finding-3--choosing-between-the-two-estimators-models-nothing-decided-it)).
+Deliver one, report the other beside it as the alternative, and say the choice was not
+measured.
+
 **One consequence of a successful fill to keep in view:** `registered_fraction`
 reaches 1.0, so the rules below that key on *low* registration — global
 reconstruction, for one — stop applying. That is correct, because the capture is

@@ -1,7 +1,7 @@
 ---
 module: PoseFill
-module_version: 1.1.1
-curated_at: 2026-09-25
+module_version: 1.1.2
+curated_at: 2026-10-15
 ---
 
 # What one similarity cannot absorb
@@ -51,6 +51,18 @@ fills of one camera each, both null
 ([`evidence/agent-controls-2026-10.md`](../../../skills/evidence/agent-controls-2026-10.md#finding-6--one-filled-camera-leaves-the-second-gate-with-nothing-to-read)).
 Price a single filled camera after the chain, on the verifier's per-camera residual,
 not on this reading.
+
+**And it does not read where the filled frames sit relative to the core.** It compares
+the estimators *among* the filled frames only. Where the frames to fill form their own
+cluster — no verified pair joins them to the core — the two estimators can agree on that
+cluster's inside and disagree about where the whole cluster sits, and this reading passes.
+Measured on a traversal split into clusters of six and four: 2.8° among the four filled
+frames, about 80° on every pair between a filled frame and the core, 24 of the 45 pairs,
+and both gates passed
+([`evidence/agent-rerun-2026-10.md`](../../../skills/evidence/agent-rerun-2026-10.md#finding-4--a-fill-passed-both-gates-while-the-estimators-disputed-where-it-sat)).
+Before delivering such a fill, compare the two estimators on the pairs that cross from
+the core to the filled frames; if they disagree there, the fill rests on one estimator's
+opinion of where the cluster is, and the report should say which.
 
 ## It cannot tell you whether the estimator is right
 

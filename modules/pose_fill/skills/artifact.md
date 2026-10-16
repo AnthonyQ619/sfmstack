@@ -1,6 +1,6 @@
 ---
 module: PoseFill
-module_version: 1.1.1
+module_version: 1.1.2
 curated_at: 2026-09-25
 ---
 

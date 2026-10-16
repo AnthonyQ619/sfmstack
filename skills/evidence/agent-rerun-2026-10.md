@@ -67,6 +67,35 @@ each other to 0.002 of span. The best any registry module has reached on this st
 [meadow isolation](agent-controls-2026-10.md#the-meadow-isolation) found offline; here
 the centre form found it, where no reading of the matcher's graph had.
 
+## Finding 3 — choosing between the two estimators' models, nothing decided it
+
+`/euroc/V2_01_easy`, ten views, sparse deliverable. The geometric core held five cameras,
+too few to fill, and the global model folded 67–70° against both estimators, so the
+delivery was the estimator's model, as the delivery table prescribes. The session built
+both estimators' models on the same tracks and chose between them on the ladder's rungs:
+`PoseVGGT`'s for higher coverage (0.469 against 0.414) and observation yield.
+
+| model | AUC@30 against reference poses |
+| --- | --- |
+| `PoseVGGT`'s, delivered | 0.849 |
+| `PoseMapAnything`'s, built and not chosen | **0.886** |
+
+Over the corpus the two are ahead about equally often
+([sparse-compositions-2026-10](sparse-compositions-2026-10.md#7-the-two-correspondence-free-estimators-against-each-other)).
+
+## Finding 4 — a fill passed both gates while the estimators disputed where it sat
+
+`/euroc/V1_02_medium`, ten views. The view graph split into two clusters of six and four
+frames with no verified pair between them (a second joint matcher found none either). The
+core held the six; the fill placed the four from an estimator. Both `PoseFill` gates passed:
+the estimators agreed with each other to 2.8° on the relative rotations among the four
+filled frames — the pairs `filled_agreement_deg` reads — while they disagreed by about 80°
+on every pair between a filled frame and the core, 24 of the 45 pairs, which it does not
+read. Each estimator was stable against itself (0.2° and 0.15° on a repeat), so the
+dispute was systematic. The delivery scored 0.573 against reference poses; the best any
+registry module has reached on this staging is 0.583. The gate did not see the dispute; on
+this capture the estimator the session chose happened to place the cluster well.
+
 ## What this does not establish
 
 One capture for each finding, one draw each. Finding 1 does not show how often a fold

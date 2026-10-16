@@ -32,6 +32,8 @@ fixed message, the same for every agent, so no resume carries anything else.
 import argparse
 import json
 import os
+import re
+from datetime import datetime
 import subprocess
 import sys
 import time
@@ -145,6 +147,66 @@ def paths_for(capture: str, batch: str | None, control: bool = False) -> dict:
             "calibration_path": f"{base}/dslr_calibration_undistorted/calibration_ETH_new.npz"}
 
 
+def transcript_dir(scratch: Path, projects: Path | None = None) -> Path:
+    """Where Claude Code keeps a session's transcript: the working directory, every
+    character that is not a letter or digit turned into a hyphen."""
+    root = projects or Path.home() / ".claude" / "projects"
+    return root / re.sub(r"[^A-Za-z0-9]", "-", str(scratch))
+
+
+def brief_topic(name: str) -> str | None:
+    """`brief_guide.md` is the planning guide, `brief_<stage>.md` that stage's file."""
+    m = re.fullmatch(r"brief_(\w+)\.md", name)
+    if not m:
+        return None
+    return "plan/scene_to_pipeline" if m.group(1) == "guide" else f"plan/{m.group(1)}"
+
+
+def record_brief_reads(capture_dir: Path, session_ids: list, projects: Path | None = None) -> int:
+    """Append the agent's file-reader reads of the brief's Markdown to context_reads.jsonl.
+
+    `sfmx brief` writes the planning guide and each stage file beside brief.json so the
+    reader can page them, and agents read them there -- the guide in nine sessions of ten,
+    the pose stage in seven -- through the file reader, which no `sfmx` call sees. The
+    context log, which every reading analysis counts from, recorded `plan/pose` in one
+    session of those ten. The transcript has each read; this copies them across, one
+    entry per page read, under the topic the file stands for.
+    """
+    tdir = transcript_dir(capture_dir / "scratch", projects)
+    rows = []
+    for sid in [s for s in session_ids if s]:
+        path = tdir / f"{sid}.jsonl"
+        if not path.is_file():
+            continue
+        for line in path.read_text().splitlines():
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            for part in (msg.get("message") or {}).get("content") or []:
+                if not (isinstance(part, dict) and part.get("type") == "tool_use"
+                        and part.get("name") == "Read"):
+                    continue
+                target = Path(str((part.get("input") or {}).get("file_path", "")))
+                topic = brief_topic(target.name)
+                if topic is None or target.parent != capture_dir:
+                    continue
+                stamp = msg.get("timestamp", "")
+                try:
+                    t = datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+                except ValueError:
+                    t = None
+                rows.append({"t": t, "kind": "file_read", "topic": topic,
+                             "path": str(target), "via": "brief file",
+                             "offset": part["input"].get("offset"),
+                             "limit": part["input"].get("limit")})
+    if rows:
+        with open(capture_dir / "context_reads.jsonl", "a") as fh:
+            for r in sorted(rows, key=lambda r: r["t"] or 0):
+                fh.write(json.dumps(r) + "\n")
+    return len(rows)
+
+
 def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
           timeout: float = 6 * 3600, scope: str = "sparse", control: bool = False) -> dict:
     capture_dir = EXP / capture
@@ -185,6 +247,9 @@ def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
             break
     log["finished"] = time.time()
     log["report_written"] = (capture_dir / "agent_report.json").exists()
+    if prompt != SMOKE:
+        log["brief_reads"] = record_brief_reads(
+            capture_dir, [a.get("session_id") for a in log["attempts"]])
     (capture_dir / "agent_log.json").write_text(json.dumps(log, indent=1))
     return log
 

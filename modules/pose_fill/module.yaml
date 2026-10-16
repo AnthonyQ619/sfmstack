@@ -1,5 +1,5 @@
 name: PoseFill
-version: 1.1.1
+version: 1.1.2
 kind: pose
 summary: >
   One pose table out of two: the geometric core's cameras kept as they are, and the
@@ -43,7 +43,7 @@ description: |
   effect in the campaign that produced this rule. Pass the filled indices to
   `BundleAdjustmentGlobal`'s `fixed_image_indices` and refine the core only.
 
-image: sfmstack/pose-fill:1.1.1
+image: sfmstack/pose-fill:1.1.2
 entrypoint: adapter:run
 resources:
   gpu: false

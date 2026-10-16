@@ -267,8 +267,14 @@ campaigns:
   agent-rerun-2026-10:
     captures:
     - ETH/meadow
+    - euroc/V1_02_medium
+    - euroc/V2_01_easy
     - tanks_and_temples/Caterpillar
     sections:
+      finding-3--choosing-between-the-two-estimators-models-nothing-decided-it:
+      - euroc/V2_01_easy
+      finding-4--a-fill-passed-both-gates-while-the-estimators-disputed-where-it-sat:
+      - euroc/V1_02_medium
       finding-1--the-reading-caught-a-fold-when-it-was-taken-and-nothing-else-did:
       - tanks_and_temples/Caterpillar
       finding-2--on-the-centre-form-alone-a-rebuilt-geometric-model-was-the-right-one:
@@ -529,6 +535,27 @@ campaigns:
     - euroc/V2_01_easy
     - tum_vi/room3
     - tum_vi/room4
+    sections:
+      7-the-two-correspondence-free-estimators-against-each-other:
+      - DTU/scan1
+      - DTU/scan10
+      - DTU/scan15
+      - DTU/scan23
+      - DTU/scan33
+      - DTU/scan4
+      - DTU/scan75
+      - DTU/scan9
+      - ETH/facade
+      - ETH/kicker
+      - ETH/office
+      - euroc/MH_05_difficult
+      - tum_vi/room3
+      - DTU/scan48
+      - ETH/delivery_area
+      - ETH/meadow
+      - ETH/playground
+      - euroc/V2_01_easy
+      - tum_vi/room4
   sparse-pose-2026-09:
     captures:
     - ETH/office
@@ -1275,3 +1302,7 @@ claims:
   hash: ce8e57939b5c
   starts: '**Before any step below, take the two-estimator '
   rests_on: agent-rerun-2026-10#finding-1--the-reading-caught-a-fold-when-it-was-taken-and-nothing-else-did
+- at: plan/pose.md#when-it-fires-fill-rather-than-swap--and-do-not-refine-the-fill
+  hash: 8d3312e23292
+  starts: '**When the delivery is the estimator''s model, no'
+  rests_on: sparse-compositions-2026-10#7-the-two-correspondence-free-estimators-against-each-other

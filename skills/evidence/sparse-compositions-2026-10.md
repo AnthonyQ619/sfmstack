@@ -145,3 +145,42 @@ alone.
   exhaustively, so order-independence and large-collection behaviour are untested.
 - **The visual-inertial families are n=2, n=2 and n=1 here.** The margin finding's
   traversal half rests on five captures in this file plus the unnamed second sweep.
+
+## 7. The two correspondence-free estimators against each other
+
+The two feed-forward compositions — each estimator's own model, nothing geometric after
+it — side by side on the nineteen captures where both compositions were run; on the other
+five one or both was not run, which is not a failure (§3: neither estimator ever returned
+nothing). Same scoring as §1.
+
+| capture | `PoseVGGT` composition | `PoseMapAnything` composition | ahead by more than 0.05 | gap |
+| --- | --- | --- | --- | --- |
+| `DTU/scan1` | 0.594 | 0.473 | PoseVGGT | 0.121 |
+| `DTU/scan10` | 0.710 | 0.527 | PoseVGGT | 0.182 |
+| `DTU/scan15` | 0.960 | 0.449 | PoseVGGT | 0.511 |
+| `DTU/scan23` | 0.969 | 0.518 | PoseVGGT | 0.452 |
+| `DTU/scan33` | 0.339 | 0.790 | PoseMapAnything | 0.451 |
+| `DTU/scan4` | 0.478 | 0.747 | PoseMapAnything | 0.268 |
+| `DTU/scan75` | 0.965 | 0.571 | PoseVGGT | 0.393 |
+| `DTU/scan9` | 0.968 | 0.558 | PoseVGGT | 0.409 |
+| `ETH/facade` | 0.462 | 0.786 | PoseMapAnything | 0.324 |
+| `ETH/kicker` | 0.913 | 0.421 | PoseVGGT | 0.492 |
+| `ETH/office` | 0.506 | 0.357 | PoseVGGT | 0.149 |
+| `euroc/MH_05_difficult` | 0.307 | 0.739 | PoseMapAnything | 0.432 |
+| `tum_vi/room3` | 0.419 | 0.446 | neither | 0.026 |
+| `DTU/scan48` | 0.574 | 0.718 | PoseMapAnything | 0.144 |
+| `ETH/delivery_area` | 0.310 | 0.575 | PoseMapAnything | 0.266 |
+| `ETH/meadow` | 0.690 | 0.707 | neither | 0.017 |
+| `ETH/playground` | 0.360 | 0.286 | PoseVGGT | 0.074 |
+| `euroc/V2_01_easy` | 0.844 | 0.881 | neither | 0.037 |
+| `tum_vi/room4` | 0.616 | 0.543 | PoseVGGT | 0.072 |
+
+`PoseVGGT` is ahead by more than 0.05 on ten, `PoseMapAnything` on six, neither on three.
+Beyond the learned estimator's repeat noise (up to 0.237, §4) each is ahead on five, by up
+to 0.51. No capture kind decides it: `PoseVGGT` is ahead on four rig orbits and
+`PoseMapAnything` on three others.
+
+At ten views, an agent that delivered the estimator's model on `/euroc/V2_01_easy` chose
+`PoseVGGT`'s (0.849) on the readings it had; `PoseMapAnything`'s, built in the same
+session and not chosen, scored 0.886 ([agent-rerun-2026-10](agent-rerun-2026-10.md)
+records the session).

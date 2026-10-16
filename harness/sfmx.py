@@ -51,7 +51,7 @@ REPO = Path("/home/anthonyq/projects/sfmstack")
 sys.path.insert(0, str(REPO / "packages" / "sfmorch" / "src"))
 sys.path.insert(0, str(REPO / "packages" / "sfmkit" / "src"))
 from sfmorch.mcp_server import build_service  # noqa: E402
-from gpu_gate import gpu_gate  # noqa: E402
+from gpu_gate import exclusive_on_gpu, gpu_gate  # noqa: E402
 from roots import context_roots  # noqa: E402
 
 DATASETS = Path("/home/anthonyq/datasets")
@@ -353,7 +353,7 @@ elif cmd == "run":
                                        "started": time.time(), "pid": os.getpid()}))
         t0 = time.time()
         # Dense steps get their GPU to themselves; see gpu_gate.py.
-        gate = (gpu_gate(EXP, GPU, desc.get("kind") == "dense", f"{CAPTURE} {module}")
+        gate = (gpu_gate(EXP, GPU, exclusive_on_gpu(desc), f"{CAPTURE} {module}")
                 if (desc.get("resources") or {}).get("gpu") else nullcontext())
         try:
             with gate:
@@ -403,7 +403,7 @@ elif cmd == "replay":
                                        "pid": os.getpid()}))
         t0 = time.time()
         # The same GPU gate `run` uses, keyed on the step being replayed.
-        gate = (gpu_gate(EXP, GPU, desc.get("kind") == "dense", f"{CAPTURE} replay {origin.module}")
+        gate = (gpu_gate(EXP, GPU, exclusive_on_gpu(desc), f"{CAPTURE} replay {origin.module}")
                 if (desc.get("resources") or {}).get("gpu") else nullcontext())
         try:
             with gate:
