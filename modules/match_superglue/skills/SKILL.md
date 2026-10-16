@@ -1,8 +1,8 @@
 ---
 module: FeatureMatchSuperGlue
-module_version: 1.6.1
+module_version: 1.6.2
 upstream: magicleap/SuperGluePretrainedNetwork @ ddcf11f
-curated_at: 2026-08-10
+curated_at: 2026-10-16
 sources: 3
 ---
 
@@ -55,9 +55,11 @@ matcher is not what limits this pipeline. Disagreement is the interesting case.
 assignment probability, LightGlue's is a matchability head. Read
 `mean_match_score` across settings *within* one module, never across the two.
 
-**Cheapest thing that usually works:** defaults with `weights: outdoor`. Switch to
-`indoor` for room interiors — the two are trained on different datasets (ScanNet
-vs MegaDepth), not merely tuned.
+**Cheapest thing that usually works:** defaults with `weights: outdoor`. On a room
+interior, measure both weight sets rather than switching to `indoor` — the two are
+trained on different datasets (ScanNet vs MegaDepth), not merely tuned, and on nine
+interiors neither was ahead more often: `indoor` was worse on four, `outdoor` on three
+([evidence](../../../skills/evidence/superglue-weights-2026-10.md)).
 
 **Reading the output:** [artifact.md](artifact.md).
 

@@ -289,6 +289,61 @@ campaigns:
       - tanks_and_temples/Barn
       - tanks_and_temples/Caterpillar
       - tanks_and_temples/Meetingroom
+      finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level:
+      - DTU/scan15
+      - ETH/office
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-6--lower-reprojection-error-went-with-worse-placement:
+      - DTU/scan15
+      - ETH/office
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+  superglue-weights-2026-10:
+    captures:
+    - ETH/delivery_area
+    - ETH/kicker
+    - ETH/office
+    - ETH/relief
+    - advio/advio-07
+    - euroc/MH_05_difficult
+    - euroc/V2_01_easy
+    - tum_vi/room3
+    - tum_vi/room4
+    sections:
+      finding-1--neither-weight-set-was-ahead-more-often:
+      - ETH/delivery_area
+      - ETH/kicker
+      - ETH/office
+      - ETH/relief
+      - advio/advio-07
+      - euroc/MH_05_difficult
+      - euroc/V2_01_easy
+      - tum_vi/room3
+      - tum_vi/room4
+  fill-and-view-graph-2026-10:
+    captures:
+    - DTU/scan15
+    - DTU/scan77
+    - ETH/meadow
+    - ETH/office
+    - ETH/relief
+    - euroc/V2_01_easy
+    - tum_vi/room2
+    - tum_vi/room4
+    sections:
+      finding-1--three-fill-cases-too-few-to-decide:
+      - ETH/office
+      - ETH/relief
+      - tum_vi/room4
+      finding-2--the-view-graph-rule-was-read-and-followed:
+      - DTU/scan15
+      - DTU/scan77
+      - ETH/meadow
+      - euroc/V2_01_easy
+      - tum_vi/room2
   agent-rerun-2026-10:
     captures:
     - DTU/scan77
@@ -1335,6 +1390,14 @@ claims:
   starts: '**When the delivery is the estimator''s model, no'
   rests_on: sparse-compositions-2026-10#7-the-two-correspondence-free-estimators-against-each-other
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
-  hash: 57383f5af48e
+  hash: 53939d2a62c9
   starts: '**Among models whose rotations are all right, pl'
   rests_on: dense-variance-2026-10#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement
+- at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
+  hash: 35e2230e3d9f
+  starts: '**So compare the centre form between your candid'
+  rests_on: dense-variance-2026-10#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level
+- at: health/ladder.md#when-the-ladder-runs-out-and-two-models-still-disagree
+  hash: 411c70ee6164
+  starts: '**When the difference survives the spread test**'
+  rests_on: dense-variance-2026-10#finding-6--lower-reprojection-error-went-with-worse-placement

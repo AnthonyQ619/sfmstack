@@ -197,16 +197,31 @@ much as a thousandth of a millimetre.** The fourth changed nothing at all, for a
 worth knowing: the detector's `saturation` was 0.000 on every capture, so its budget
 was never the binding constraint and doubling it returned an identical model.
 
-**Among models whose rotations are all right, placement still decides the cloud — at a
-scale nothing here resolves yet.** On an outdoor object orbit, two models of one capture
-with every rotation correct placed their cameras 0.20% and 0.68% of the span from the
-reference, and the same dense settings gave 30 and 63 mm; on an enclosure 0.28% and 2.82%
-gave 92 and 136 mm. Stereo itself reproduces to a hundredth of a millimetre, so a dense
-difference between two of your models is a difference between their placements, not noise
+**Among models whose rotations are all right, placement still decides the cloud.** On an
+outdoor object orbit, two models of one capture with every rotation correct placed their
+cameras 0.20% and 0.68% of the span from the reference, and the same dense settings gave
+30 and 63 mm; on an enclosure 0.28% and 2.82% gave 92 and 136 mm. Stereo itself
+reproduces to a hundredth of a millimetre, so a dense difference between two of your
+models is a difference between their placements, not noise
 ([evidence](../evidence/dense-variance-2026-10.md#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement)).
-No reading has been shown to rank models at that scale; until one has, report which model
-you densified and which correct alternatives you built, and do not read a close dense score
-as a verdict on either.
+
+**So compare the centre form between your candidates, even where it does not fire, and
+densify the one it reads lowest.** Pass every candidate and both correspondence-free
+estimators to `sfm_compare` in one call, as
+[`plan/pose.md`](pose.md#every-reading-above-is-built-on-the-models-own-evidence)
+describes, and read each candidate's centre form against the others'. Measured over 45
+models with every rotation correct, on object orbits and enclosures it ranked them by
+placement and the lowest reading gave the best cloud on every such capture: 0.82 against
+1.60 was 30 against 63 mm, and on another capture 1.07 against 1.15 was 38 against 94 mm
+— a small gap in the reading is not a small gap in the cloud. No other reading an agent
+has ranked them, and the lower reprojection error ranked them the wrong way
+([evidence](../evidence/dense-variance-2026-10.md#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level)).
+It is a comparison between candidates, not a threshold: no value says one model is good
+enough. Two kinds of capture are outside it. On a fixed rig orbit every model reads the
+same, because every model is placed the same, and any of them will do. On a built interior
+it does not order the models and nothing else measured does; report which model you
+densified and which correct alternatives you built, and do not read a close dense score
+there as a verdict on either.
 
 **So do not spend runs tuning the sparse stage for dense coverage.** There is an
 association across captures, but it holds on one kind of capture only: where a compact

@@ -165,10 +165,18 @@ simplicity is reproducible; a tie broken by a third decimal place is not.
 
 **When the difference survives the spread test**, rank by what the deliverable is for. A
 sparse model that feeds a dense stage is a set of camera poses first and a point cloud
-second: prefer the lower error, because every pose error reaches the dense cloud and the
-extra structure does not. A sparse model that is itself the deliverable prefers the
-structure, because that is the product. State which case you are in when you record the
-decision — a later reader cannot infer it from the numbers.
+second, and what reaches the cloud is where the cameras sit — which neither the error nor
+the structure reads. Rank those by the two-estimator reading in its centre form, compared
+between the candidates even where it fires on neither, and take the lowest: on object
+orbits and enclosures the lowest gave the best cloud every time, and the lower error
+ranked the same models the wrong way — a session that chose a model for its lower error in
+every bucket delivered a cloud twice as far off as the one it passed over
+([evidence](../evidence/dense-variance-2026-10.md#finding-6--lower-reprojection-error-went-with-worse-placement)).
+Where every candidate reads alike, or the capture is a built interior,
+[`plan/dense.md`](../plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable)
+says what is left. A sparse model that is itself the deliverable prefers the structure,
+because that is the product. State which case you are in when you record the decision — a
+later reader cannot infer it from the numbers.
 
 ---
 
@@ -585,8 +593,8 @@ and place their geometry very differently in the world.
 
 The consequence for this procedure: once registration and the verifier are level,
 further A/B between refined models buys very little, and **when a dense stage is
-downstream the tie breaks on structure and per-view coverage rather than on error**
-— see [plan/dense.md](../plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
+downstream the tie breaks on the centre-form comparison, not on error** — see
+[plan/dense.md](../plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable).
 
 **The service's second solve is not a comparison to run through this
 procedure.** When points escape the pose stage, the service re-solves the chain
