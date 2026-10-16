@@ -197,6 +197,17 @@ much as a thousandth of a millimetre.** The fourth changed nothing at all, for a
 worth knowing: the detector's `saturation` was 0.000 on every capture, so its budget
 was never the binding constraint and doubling it returned an identical model.
 
+**Among models whose rotations are all right, placement still decides the cloud — at a
+scale nothing here resolves yet.** On an outdoor object orbit, two models of one capture
+with every rotation correct placed their cameras 0.20% and 0.68% of the span from the
+reference, and the same dense settings gave 30 and 63 mm; on an enclosure 0.28% and 2.82%
+gave 92 and 136 mm. Stereo itself reproduces to a hundredth of a millimetre, so a dense
+difference between two of your models is a difference between their placements, not noise
+([evidence](../evidence/dense-variance-2026-10.md#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement)).
+No reading has been shown to rank models at that scale; until one has, report which model
+you densified and which correct alternatives you built, and do not read a close dense score
+as a verdict on either.
+
 **So do not spend runs tuning the sparse stage for dense coverage.** There is an
 association across captures, but it holds on one kind of capture only: where a compact
 subject is orbited at close range it is strong, and where the capture is a site — a
@@ -215,9 +226,10 @@ does not move when the model changes is not measuring the model.** One promoted
 capture was densified in three separate batches, each on a different context, and the
 agent delivered a **different sparse model** each time — different artifact, different
 lineage, eighty-five of ninety cameras aligned in all three. Its placement error read
-101.188, 101.187 and 101.189 mm. Five significant figures of agreement across three
-independent models says the sparse stage is not the constraint, and three batches had
-already been spent improving it. **If two deliveries of a capture give the same dense
+101.188, 101.187 and 101.189 mm. Five significant figures of agreement across three independent models says those three
+placed the cloud alike — not that no sparse model could do better: on the same capture a
+later session's model gave 91.6 mm, and one whose cameras sat 2.8% of the span out gave
+135.8 ([evidence](../evidence/dense-variance-2026-10.md#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement)). **If two deliveries of a capture give the same dense
 number, stop looking upstream** — read accuracy and coverage separately and look at the
 dense policy instead. That capture's cloud was the *most accurate* of four clouds and
 covered a third of the surface the reference holds. The campaign is in

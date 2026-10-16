@@ -23,7 +23,7 @@ few small mirrors and chrome at the room boundary. The camera rotates about fift
 degrees between frames and coverage means covering a volume rather than orbiting a
 subject.
 
-## The sparse stage is not the problem
+## Three deliveries placed the cloud alike
 
 Across three consecutive batches on three different contexts, the agent delivered
 **three different sparse models** — distinct artifact ids, distinct lineages — and
@@ -39,6 +39,13 @@ Three independently produced models agreeing to two parts in a hundred thousand.
 reading is not responding to the sparse model at all, because **the capture's dense
 result is determined by something the sparse model does not control**. Eighty-five of
 ninety cameras align; nothing in the pose stage is failing.
+
+Those three placed the cloud alike; they do not show that no sparse model could do better.
+Two later sessions on one context delivered other models of this capture: one gave 91.6 mm,
+and one whose cameras sat 2.8% of the span from the reference, with every rotation right,
+gave 135.8 ([dense-variance-2026-10](dense-variance-2026-10.md#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement)).
+Coverage stayed the dominant failure in both: completeness 122 and 176 mm against accuracy
+60 and 96.
 
 ## Where it actually fails: coverage, and only coverage
 

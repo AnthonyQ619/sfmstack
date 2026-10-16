@@ -264,8 +264,34 @@ campaigns:
     - ETH/meadow
     - ETH/playground
     - ETH/relief
+  dense-variance-2026-10:
+    captures:
+    - DTU/scan15
+    - ETH/office
+    - tanks_and_temples/Barn
+    - tanks_and_temples/Caterpillar
+    - tanks_and_temples/Meetingroom
+    sections:
+      finding-2--two-sessions-on-one-context-differ-by-a-third-to-double:
+      - DTU/scan15
+      - ETH/office
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement:
+      - DTU/scan15
+      - ETH/office
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-4--the-rotation-share-does-not-see-placement:
+      - ETH/office
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
   agent-rerun-2026-10:
     captures:
+    - DTU/scan77
     - ETH/meadow
     - euroc/V1_02_medium
     - euroc/V2_01_easy
@@ -275,6 +301,8 @@ campaigns:
       - euroc/V2_01_easy
       finding-4--a-fill-passed-both-gates-while-the-estimators-disputed-where-it-sat:
       - euroc/V1_02_medium
+      finding-5--a-classical-detectors-view-graph-broke-first-and-the-reading-said-so:
+      - DTU/scan77
       finding-1--the-reading-caught-a-fold-when-it-was-taken-and-nothing-else-did:
       - tanks_and_temples/Caterpillar
       finding-2--on-the-centre-form-alone-a-rebuilt-geometric-model-was-the-right-one:
@@ -690,7 +718,7 @@ claims:
   starts: '**Measured end to end, there is very little to p'
   rests_on: dense-batch-2026-09
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
-  hash: 72904a556e7e
+  hash: 33ac743f4986
   starts: '**And there is a cheap way to tell before you sp'
   rests_on: dense-saturated-2026-10
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
@@ -1255,8 +1283,8 @@ claims:
   starts: '**The veto''s domain is cameras that claim to res'
   rests_on: agent-controls-2026-10#finding-2--the-pixel-veto-fires-on-an-estimators-own-cameras-by-construction
 - at: plan/scene_to_pipeline.md#textureless_fraction--meaningless-without-empty_regions
-  hash: e342627f2747
-  starts: '**That evidence is from full captures, and on a '
+  hash: 44a91f68d50b
+  starts: '**If the images are far apart, ask connectivity '
   rests_on: agent-controls-2026-10#finding-4--classical-detection-and-matching-on-a-sparse-capture
 - at: plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself
   hash: dffa918dd58f
@@ -1306,3 +1334,7 @@ claims:
   hash: 8d3312e23292
   starts: '**When the delivery is the estimator''s model, no'
   rests_on: sparse-compositions-2026-10#7-the-two-correspondence-free-estimators-against-each-other
+- at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
+  hash: 57383f5af48e
+  starts: '**Among models whose rotations are all right, pl'
+  rests_on: dense-variance-2026-10#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement

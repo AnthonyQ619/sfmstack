@@ -96,6 +96,15 @@ dispute was systematic. The delivery scored 0.573 against reference poses; the b
 registry module has reached on this staging is 0.583. The gate did not see the dispute; on
 this capture the estimator the session chose happened to place the cluster well.
 
+## Finding 5 — a classical detector's view graph broke first, and the reading said so
+
+`/DTU/scan77`, a wide-spaced subset of a controlled-subject orbit. The session began with
+the classical detector and LightGlue: three components, 10 of 45 pairs; loosened, one
+component with a camera on a single pair, and the global solve registered 5 of 10
+(0.073 against reference poses). The learned detector on the same frames gave 38 of 45
+pairs at a minimum degree of 5. The matcher's own graph readings showed the break before
+any model was built. The session delivered 0.972.
+
 ## What this does not establish
 
 One capture for each finding, one draw each. Finding 1 does not show how often a fold

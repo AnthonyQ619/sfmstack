@@ -366,8 +366,25 @@ pixel metric in the pipeline and invalidates comparison with everything already
 built, which is why `SceneLoader`'s tuning notes now treat it as a fixed policy
 rather than a knob.
 
-So, in order: **take the classical detector for its exposure normalisation and
-re-ask the connectivity question**, since §3b.1's fragmentation risk is itself
+**If the images are far apart, ask connectivity before anything here.** Where
+neighbouring images share little of the scene — wide baselines, so each image overlaps
+only a few others — normalisation buys keypoints but not shared content, and a classical
+detector's view graph is the first thing to break. Run it, read the matcher's
+`graph_components` and `min_image_degree` before tuning anything, and if the graph is in
+pieces or a camera hangs on one or two pairs, change to a learned detector rather than
+adding normalisation. **The trigger is that reading, not the number of images.** The
+measurement behind it drew wide-spaced subsets from longer captures: there the better of
+the two classical compositions finished more than 0.2 below the best composition on 14
+of 27 corpus captures — every one of 8 traversals, 4 of 9 site walks, 2 of 10
+controlled-subject orbits
+([evidence](../evidence/agent-controls-2026-10.md#finding-4--classical-detection-and-matching-on-a-sparse-capture));
+on one orbit the matcher's graph showed three pieces before any model existed, and the
+learned detector on the same frames held it together
+([evidence](../evidence/agent-rerun-2026-10.md#finding-5--a-classical-detectors-view-graph-broke-first-and-the-reading-said-so)).
+Captures of few, closely spaced images were not measured.
+
+Where the graph holds, in order: **take the classical detector for its exposure
+normalisation and re-ask the connectivity question**, since §3b.1's fragmentation risk is itself
 reduced by loading every frame; or accept the detector's reading on those regions
 and carry the risk into the plan's watch line.
 
@@ -380,18 +397,6 @@ the difference between two thirds of the frames and nearly all of them. The row
 above frames it as the remedy for the hardest recoverable case; the evidence is
 that it is worth trying wherever the wanted surface is flat and unclipped,
 which is a wider set.
-
-**That evidence is from full captures, and on a sparse one the order reverses.**
-Normalisation buys keypoints; it does not buy shared content between frames that are
-far apart. On the corpus at ten views each, the better of the two classical
-compositions finished more than 0.2 below the best composition on **14 of 27
-captures** — 2 of 10 controlled-subject orbits, 4 of 9 site walks, and every one of 8
-traversals — and on one orbit an agent following this paragraph took the
-normalised classical detector and matcher, watched it fragment into three pieces, and delivered
-0.745 where the learned and detector-free compositions reached 0.94 to 0.97
-([`evidence/agent-controls-2026-10.md`](../evidence/agent-controls-2026-10.md#finding-4--classical-detection-and-matching-on-a-sparse-capture)).
-So with a handful of frames, ask §3b's connectivity question first and let it win;
-normalisation is the move once the graph holds.
 
 > **It does not work alone, and this is the part that is easy to miss.**
 > Normalising raises the number of keypoints the detector *would* return, so on
@@ -814,7 +819,6 @@ Two corollaries worth stating, because both have cost runs:
   tuning against a number that cannot move.
 - **A diagnostic's suggested actions can name parameters the module in use does not
   have.** Check the action against the schema before spending a run on it.
-
 
 1. **A textureless reading is meaningless alone.** 0.5954, 0.5981 and 0.8013 —
    two non-events and one fatal case. Read `empty_regions`.
