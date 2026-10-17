@@ -301,6 +301,44 @@ campaigns:
       - tanks_and_temples/Barn
       - tanks_and_temples/Caterpillar
       - tanks_and_temples/Meetingroom
+  final-validation-2026-10:
+    captures:
+    - DTU/scan15
+    - DTU/scan33
+    - DTU/scan77
+    - ETH/delivery_area
+    - ETH/kicker
+    - ETH/meadow
+    - ETH/office
+    - ETH/relief
+    - euroc/V1_02_medium
+    - euroc/V2_01_easy
+    - tanks_and_temples/Barn
+    - tanks_and_temples/Caterpillar
+    - tanks_and_temples/Meetingroom
+    - tum_vi/room2
+    sections:
+      finding-1--on-a-site-walk-the-threshold-rebuild-did-not-clear-the-centre-form-the-other-route-did:
+      - ETH/meadow
+      finding-2--the-centre-form-comparison-on-object-orbits-and-enclosures:
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-3--the-control-rows-two-sessions-each:
+      - DTU/scan15
+      - DTU/scan33
+      - DTU/scan77
+      - ETH/delivery_area
+      - ETH/kicker
+      - ETH/meadow
+      - ETH/office
+      - ETH/relief
+      - euroc/V1_02_medium
+      - euroc/V2_01_easy
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      - tum_vi/room2
   superglue-weights-2026-10:
     captures:
     - ETH/delivery_area
@@ -1370,7 +1408,7 @@ claims:
   starts: '**When the rotation form fires, deliver the feed'
   rests_on: estimator-outvote-2026-10#finding-6--every-fired-model-the-agents-built-not-only-the-delivered-ones
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
-  hash: 5bd566d2ce71
+  hash: 4e948b42a850
   starts: '**When only the centre form fires, keep a geomet'
   rests_on: consensus-2026-09
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
@@ -1401,3 +1439,7 @@ claims:
   hash: 411c70ee6164
   starts: '**When the difference survives the spread test**'
   rests_on: dense-variance-2026-10#finding-6--lower-reprojection-error-went-with-worse-placement
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: a3a8eee6cab6
+  starts: '**If the rebuild still fires, change the route, '
+  rests_on: final-validation-2026-10#finding-1--on-a-site-walk-the-threshold-rebuild-did-not-clear-the-centre-form-the-other-route-did

@@ -421,8 +421,8 @@ the median, and its worst loss was 12%
 verdict, no dense reading — so do not go looking for one to overrule the rule on a
 particular capture; report the alternative instead.
 
-**When only the centre form fires, keep a geometric delivery and report the fire.**
-On corpus captures it fired on two site walks whose rotations were right, and the
+**When only the centre form fires, keep a geometric delivery and report the fire** —
+unless no geometric model clears it after a rebuild, below. On corpus captures it fired on two site walks whose rotations were right, and the
 feed-forward result was the better cloud on one and the worse on the other — the
 vegetated case below. Nothing available to you separates them.
 
@@ -435,6 +435,19 @@ then passed, scored 0.977
 ([evidence](../evidence/agent-rerun-2026-10.md#finding-2--on-the-centre-form-alone-a-rebuilt-geometric-model-was-the-right-one)).
 Report both models and which the reading passed. This holds only where the two
 estimators agree with each other; where they do not, the reading carries no signal.
+
+**If the rebuild still fires, change the route, not the threshold again.** On a ten-view
+site walk a rebuild at the tighter threshold stayed 27% of the span out, like every model
+the incremental route built there, while the global reconstructor on the same matches
+placed the cameras within 0.15%
+([evidence](../evidence/final-validation-2026-10.md#finding-1--on-a-site-walk-the-threshold-rebuild-did-not-clear-the-centre-form-the-other-route-did)).
+Rebuild by the other route — global if you built incremental, incremental if you built
+global — and deliver the model the reading passes. Do not deliver a model the reading
+fired on while one it passed is in hand. If no geometric model passes and the two
+estimators agree with each other, a sparse deliverable takes the estimators' model: on that
+walk they scored 0.69 and 0.71 against 0.50 and 0.54 for the geometric models the reading
+fired on. A dense deliverable keeps the geometric model, as the vegetated case below does.
+Either way, report every model the reading fired on.
 
 **On the centre form alone, a disagreement is a reason to look, not to swap.** The
 two estimators are independent of your matcher; they are not independent of each other,
