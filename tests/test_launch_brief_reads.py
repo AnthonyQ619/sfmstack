@@ -49,7 +49,7 @@ def test_other_reads_are_not_logged(tmp_path):
     """The control: a contact sheet, brief.json itself, and a brief file of another capture."""
     cap = tmp_path / "runs" / "TT" / "Barn"
     (cap / "scratch").mkdir(parents=True)
-    other = tmp_path / "runs" / "TT" / "Church"
+    other = tmp_path / "runs" / "TT" / "Meetingroom"
     projects = tmp_path / "projects"
     _transcript(projects, cap / "scratch", "s1",
                 [(cap / "scratch" / "contact_sheet.jpg", None), (cap / "brief.json", None),
