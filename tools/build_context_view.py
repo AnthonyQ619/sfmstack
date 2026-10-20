@@ -63,6 +63,17 @@ DEFAULT_REPO = Path(__file__).resolve().parents[1]
 
 # ------------------------------------------------------------------ small helpers
 
+def _capture_list(path: Path) -> list[str]:
+    """One capture key per line. A `#` starts a comment, whole-line or trailing, so a
+    pre-registered order may annotate each key with its kind."""
+    out = []
+    for ln in path.read_text().splitlines():
+        key = ln.split("#", 1)[0].strip().lstrip("/")
+        if key:
+            out.append(key)
+    return out
+
+
 def _lines(path: Path) -> list[str]:
     return path.read_text(encoding="utf-8").splitlines(keepends=True)
 
@@ -374,14 +385,12 @@ def main(argv=None) -> int:
         if a.min_support is None or not (0 < a.min_support <= 1):
             sys.exit("--min-support in (0, 1] is required when reducing; it is a pre-registered choice")
         if a.keep:
-            keep = [ln.strip().lstrip("/") for ln in a.keep.read_text().splitlines()
-                    if ln.strip() and not ln.lstrip().startswith("#")]
+            keep = _capture_list(a.keep)
             mode = f"keep:{a.keep}"
         elif a.n is None or a.n < 0:
             sys.exit("--n needs a non-negative count")
         elif a.order:
-            order = [ln.strip().lstrip("/") for ln in a.order.read_text().splitlines()
-                     if ln.strip() and not ln.lstrip().startswith("#")]
+            order = _capture_list(a.order)
             keep, mode = order[:a.n], f"n={a.n} order:{a.order}"
         elif a.seed is not None:
             keep = random.Random(a.seed).sample(corpus, min(a.n, len(corpus)))
@@ -389,8 +398,7 @@ def main(argv=None) -> int:
         else:
             sys.exit("--n needs --order or --seed")
         if a.always:
-            always = [ln.strip().lstrip("/") for ln in a.always.read_text().splitlines()
-                      if ln.strip() and not ln.lstrip().startswith("#")]
+            always = _capture_list(a.always)
             keep = list(dict.fromkeys(keep + always))
             mode += f" always:{a.always}"
     unknown = sorted(set(keep) - set(corpus))

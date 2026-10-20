@@ -225,3 +225,17 @@ def test_the_launcher_drops_an_inherited_override(monkeypatch):
     assert "SFM_SKILLS" not in env and "SFM_MODULES" not in env
     monkeypatch.setattr(launch, "SKILLS", Path("/view/skills"))
     assert launch.environment("DTU/scan1", 0, Path("/tmp"), None)["SFM_SKILLS"] == "/view/skills"
+
+
+def test_a_capture_list_may_annotate_each_key(small_repo, tmp_path):
+    """A pre-registered order annotates each key with its kind after a `#`; the
+    builder reads the key and ignores the rest, whole-line comments included."""
+    corpus = prov.corpus_keys(small_repo / "skills")
+    order = tmp_path / "order.txt"
+    order.write_text("# the first two, annotated\n"
+                     f"/{corpus[0]}    # rig_orbit\n{corpus[1]}  # site_walk\n\n{corpus[2]}\n")
+    out = tmp_path / "view"
+    code, log = build("--repo", str(small_repo), "--out", str(out), "--n", "2",
+                      "--order", str(order), "--min-support", "0.5")
+    assert code == 0, log
+    assert report(out)["kept"] == sorted(corpus[:2])

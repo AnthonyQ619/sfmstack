@@ -811,7 +811,7 @@ claims:
   starts: '**Measured end to end, there is very little to p'
   rests_on: dense-batch-2026-09
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
-  hash: 33ac743f4986
+  hash: 2fbb2453bd6a
   starts: '**And there is a cheap way to tell before you sp'
   rests_on: dense-saturated-2026-10
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable

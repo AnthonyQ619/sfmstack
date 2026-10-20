@@ -103,11 +103,18 @@ and best-fit scores of the incremental cloud.
   The gain is a few frames.
 - It is **not** a route to complete registration from a badly short model.
 - Its effect on a dense deliverable is **small and of either sign**, does not follow
-  the drift penalty, and has **no agent-side trigger** — run both reconstructors and compare the
-  clouds.
+  the drift penalty, and nothing in the pipeline report predicts it. The reading that
+  does rank two correct models by placement was measured later and is not in this
+  campaign: the centre form of the two-estimator reading
+  ([dense-variance-2026-10, finding 5](dense-variance-2026-10.md#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level)).
+  Build on both reconstructors, read both, densify the one it reads lowest.
 
 ## What this does not settle
 
 - The regime **below** the 0.7 crossing. No capture here sits there.
-- Whether the consensus reading selects this reconstructor. It is not measured here.
+- Whether the two-estimator reading selects this reconstructor was not measured here.
+  Measured since: its centre form ranks correct models by placement
+  ([dense-variance-2026-10, finding 5](dense-variance-2026-10.md#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level)),
+  and on a site walk the global route placed cameras the incremental route had not
+  ([final-validation-2026-10, finding 1](final-validation-2026-10.md#finding-1--on-a-site-walk-the-threshold-rebuild-did-not-clear-the-centre-form-the-other-route-did)).
 - Why the one large dense gain is so much larger than the rest.

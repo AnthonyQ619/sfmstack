@@ -58,9 +58,13 @@ Protocol B on the same capture, our MVS cloud against the three feed-forward eva
 | pi3 | 0.045 | 0.029 | 0.762 | 1.000 |
 | vggt | 0.041 | 0.025 | 0.758 | 1.000 |
 
-**Our cloud is the most accurate of the four and covers a third of the surface.** It is
-not wrong where it exists; it does not exist across two thirds of what the reference
-holds. The flat wanted wall and ceiling panels the description flagged are exactly the
+**Under the dataset's own protocol our cloud is the most accurate of the four; under
+this one it is not; under both it covers a third of the surface.** On Protocol A (the
+dataset's evaluator, figures in the section below) its accuracy term leads the three
+networks by a third. On Protocol B above, which scores every rendered reference pixel,
+its median accuracy sits behind two of them, because the stray points in its tail count
+here and are cut off there. Where it exists it is not wrong by the dataset's measure; it
+does not exist across two thirds of what the reference holds. The flat wanted wall and ceiling panels the description flagged are exactly the
 surface MVS declines to reconstruct — a photometric refusal, not a geometric error, and
 the coherent reflectors at the room boundary add phantom structure in the background
 rather than removing real structure.
@@ -70,13 +74,61 @@ rather than removing real structure.
 **A sound sparse model does not make the dense result the sparse model's fault, and a
 reading that does not move when the model changes is not measuring the model.** Before
 spending runs on the pose stage for a dense deliverable, check whether the dense
-reading responds to the sparse model at all: deliver twice and see whether the number
-moves. Here it does not, to five significant figures, and three batches were spent
-improving a sparse stage that was never the constraint.
+reading responds to the sparse model at all: deliver twice, see whether the number
+moves, and read the centre form of the two-estimator reading on both models beside it.
+Two numbers that agree say the two models placed the cameras alike, not that no model
+could place them better — on this capture a later model placed further out moved the
+number by a third, and a better-placed one improved it
+([dense-variance-2026-10](dense-variance-2026-10.md#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement)).
+When the two deliveries also read alike on the centre form, the sparse stage is not the
+constraint. Here they did, and three batches were spent improving a sparse stage that
+was never the constraint.
 
-Accuracy beside coverage is the only honest reading of a cloud like this one. Ranked on
-accuracy alone our delivery is the best of four; ranked on what it covers it is last by
-a factor of three.
+Accuracy beside coverage is the only honest reading of a cloud like this one, and the
+protocol has to be named with the accuracy: on the dataset's own term our delivery is
+the best of four, on a protocol that scores every reference pixel it is third of four,
+and ranked on what it covers it is last by a factor of three either way.
+
+## Beside the networks under both protocols, and what the dense settings move
+
+Added 2026-10-18. The delivered cloud of a later session on this capture (its sparse
+model read 1.23 on the centre form, the lowest of that session's candidates), scored
+beside the three networks' predictions on the same frames with no agent. The networks
+are similarity-aligned to the reference; ours is scored as placed.
+
+| cloud | Protocol A overall (accuracy / completeness), mm | Protocol B robust accuracy / completeness, m | coverage |
+| --- | --- | --- | --- |
+| our stereo cloud, fusion at 4 | 92.0 (60.5 / 123.6) | 0.099 / 0.099 | 0.37 |
+| VGGT | 87.2 (87.5 / 86.8) | 0.064 / 0.037 | 1.00 |
+| pi3 | 92.7 (95.5 / 89.9) | 0.059 / 0.033 | 1.00 |
+| MapAnything | 217.0 (228.0 / 206.0) | 0.301 / 0.071 | 0.99 |
+
+The protocol decides who is "most accurate": on the dataset's own accuracy term our cloud
+leads by a third; on every rendered reference pixel it trails two networks, because the
+stray points in its tail count there. On the overall figure the three are inside this
+capture's two-session floor of one another
+([dense-variance-2026-10](dense-variance-2026-10.md#finding-2--two-sessions-on-one-context-differ-by-a-third-to-double)).
+
+The same sparse model, re-fused and re-run at other dense settings with the stereo
+workspace kept, so the sparse model is not a variable:
+
+| setting | Protocol A overall (accuracy / completeness), mm | Protocol B completeness, m | coverage |
+| --- | --- | --- | --- |
+| fusion at 2 | 78.2 (72.9 / 83.6) | 0.060 | 0.70 |
+| fusion at 3 | 86.2 (64.1 / 108.2) | 0.079 | 0.49 |
+| fusion at 4, as delivered | 92.0 (60.5 / 123.6) | 0.099 | 0.37 |
+| fusion at 5 | 97.7 (58.1 / 137.3) | 0.122 | 0.30 |
+| geometric check on, fusion at 4 | 94.8 (53.3 / 136.2) | 0.129 | 0.36 |
+| the learned densifier on the same model | 64.8 (79.7 / 50.0) | 0.030 | 0.91 |
+
+Each step down in the fusion threshold buys completeness with accuracy, monotonically,
+and no stereo setting reaches the networks' coverage: at 2 the cloud covers 0.70 of the
+reference where they cover all of it. The learned densifier on the same sparse model is
+a third better overall than the verified cloud at the delivered setting and level with
+the networks — the delivery rule's case in `plan/dense.md`, measured on a fixed input
+where the dense module's own repeat noise is nil (finding 1 of dense-variance). Fusion
+at 2 is not proposed from this: on one of the two rig orbits it was tried on it made the
+cloud worse by a fifth, and a rule scoped by capture kind would be post hoc.
 
 ## The alignment count is self-referential and must not be compared between models
 

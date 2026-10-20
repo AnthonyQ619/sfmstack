@@ -124,7 +124,7 @@ separated the kept model from the best alternative that failed.
 | `profile-misled` | A module choice registered the whole capture, the health profile selected it, and reference geometry says a rejected one was far better. | **Read this row before trusting a profile-based choice on a capture like yours.** The profile is an ordering over models, not a measurement of correctness, and this is where it is known to fail. |
 | `unsolved` | No module choice registered the capture. | Rule out the three cheaper answers, then check whether the registry has the shape the problem needs at all: a capability query coming back empty is the signal to build. See [swap_or_build](../judge/swap_or_build.md#when-to-build). |
 
-**Two of these six have no rows**, which is worth saying plainly because an
+**Two of these seven have no rows**, which is worth saying plainly because an
 empty category is easy to mistake for an impossible one.
 
 `unsolved` is empty because every capture here was solved by something already in
@@ -167,7 +167,7 @@ capture name.
 | [ETH/electro](agentic-campaign-2026-09.md#cap-eth-electro) | `outdoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | `reflective-coherent` · `movers` | RoMa (detector-free, outdoor weights) → union-find → incremental → triangulate → BA, re-solved at a wider window | SIFT → LightGlue and SIFT → NN, both far short; LoFTR and SuperPoint+SuperGlue short | `matcher-decided` |
 | [ETH/facade](agentic-campaign-2026-09.md#cap-eth-facade) | `outdoor` · `along-a-path` | `single-subject-cropped` | `textured` | `reflective-coherent` · `movers` | SIFT → LightGlue → global reconstructor → BA | the same detector and matcher into seed-and-grow; and SIFT with a ratio-test matcher into seed-and-grow at both resolutions | `reconstructor-decided` |
 | [ETH/kicker](agentic-campaign-2026-09.md#cap-eth-kicker) | `indoor` · `along-a-path` | `no-single-subject` | `low-texture` | `reflective-diffuse` | SIFT+CLAHE → LightGlue → global reconstructor → BA | seed-and-grow with and without CLAHE, at both resolutions; SuperPoint+SuperGlue | `reconstructor-decided` |
-| [ETH/meadow](agentic-campaign-2026-09.md#cap-eth-meadow) | `outdoor` · `along-a-path` | `single-subject-cropped` | `low-texture` | `reflective-coherent` · `movers` | RoMa (detector-free, outdoor weights) → union-find → incremental → triangulate → BA | SIFT → NN and SIFT → LightGlue, both nearly total failures; two other learned matchers also registered fully and returned less structure | `matcher-decided` |
+| [ETH/meadow](agentic-campaign-2026-09.md#cap-eth-meadow) | `outdoor` · `along-a-path` | `single-subject-cropped` | `low-texture` | `reflective-coherent` · `movers` | RoMa (detector-free, outdoor weights) → union-find → incremental → triangulate → BA | SIFT → NN and SIFT → LightGlue, both nearly total failures; two other learned matchers also registered fully and returned less structure. At ten views the incremental route registered everything with every rotation right and the cameras misplaced, the global route placed them, and only the centre form of the two-estimator reading told the two apart — read it before delivering ([final-validation-2026-10](final-validation-2026-10.md#finding-1--on-a-site-walk-the-threshold-rebuild-did-not-clear-the-centre-form-the-other-route-did)) | `matcher-decided` |
 | [ETH/office](agentic-campaign-2026-09.md#cap-eth-office) | `indoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | `reflective-coherent` | SuperPoint → LightGlue → global reconstructor → BA | every seed-and-grow composition tried, classical and learned and detector-free alike | `reconstructor-decided` |
 | [ETH/playground](agentic-campaign-2026-09.md#cap-eth-playground) | `outdoor` · `wander-around-a-site` | `no-single-subject` | `textured` | `reflective-coherent` · `movers` | SIFT+CLAHE → LightGlue → global reconstructor → BA | five seed-and-grow compositions, none past half the capture | `reconstructor-decided` |
 | [ETH/relief](agentic-campaign-2026-09.md#cap-eth-relief) | `indoor` · `along-a-path` | `no-single-subject` | `low-texture` | `reflective-diffuse` | SIFT → NN → union-find → incremental → triangulate → BA, at higher resolution, re-solved at a wider window | the same chain at lower resolution with a ratio-test and a joint matcher; **and a global reconstructor that also registered every frame and that truth ranked far above this chain's first solve** | `profile-misled` |
@@ -177,7 +177,7 @@ capture name.
 | [ADVIO/advio-07](short-core-2026-10.md#advioadvio-07--the-exception) | `indoor` · `along-a-path` | `no-single-subject` | `low-texture` | `reflective-coherent` · `movers` | LightGlue at a loose ratio → global reconstructor → BA, delivered at seven of ten frames | the same chain at a tighter ratio, equal on registration and far thinner on structure (344 points against 750, `min_frame_points` 5 against 78); the fill, refused by its gates; both estimators' own models, which scored **zero** — this is the capture where the short core was right | `density-decided` |
 | [TUM_VI/room3](short-core-2026-10.md#tum_viroom3--the-row-the-table-left-open) | `indoor` · `wander-around-a-site` | `no-single-subject` | `low-texture` | `reflective-diffuse` | RoMa (detector-free, indoor weights) → global reconstructor, delivered at five of ten frames | the only 10/10 candidate, vetoed by `SparseVerification`; the global model on SuperPoint+LightGlue, rejected because both correspondence-free estimators agreed with the core and sat ~104° from it; **the fill, not attempted because the core shared too few cameras — the row that then sent it to the core** | `consensus-decided` |
 | [TT/Barn](consensus-2026-09.md#the-capture-promoted-to-the-corpus) | `outdoor` · `around-a-subject` | `single-subject` | `textured` | — | SIFT → LightGlue → union-find → incremental → triangulate → BA → MVS | the same chain on NN matches, tied on every rung and preferred on neither | `consensus-decided` |
-| [TT/Meetingroom](dense-saturated-2026-10.md#the-capture) | `indoor` · `loop-inside-an-enclosure` | `no-single-subject` | `low-texture` | `reflective-coherent` · `movers` | SuperPoint → LightGlue → global reconstructor → BA → MVS, 85 of 90 cameras aligned | nothing, on the sparse side — three batches delivered three different sparse models and Protocol A could not separate them; the failure is dense COVERAGE against every learned-prior dense baseline, at the best accuracy of the four. Figures in the campaign file | `density-decided` |
+| [TT/Meetingroom](dense-saturated-2026-10.md#the-capture) | `indoor` · `loop-inside-an-enclosure` | `no-single-subject` | `low-texture` | `reflective-coherent` · `movers` | SuperPoint → LightGlue → global reconstructor → BA → MVS, 85 of 90 cameras aligned | three batches delivered three different sparse models that Protocol A could not separate, and two later sessions delivered models it could — the better-placed one, which the centre form read lowest, gave the better cloud. What remains is dense COVERAGE against every learned-prior dense baseline, with accuracy ahead of them on the dataset's own term and behind two of them on a protocol that scores every reference pixel. Figures in the campaign file | `density-decided` |
 
 ---
 
@@ -186,12 +186,11 @@ capture name.
 These are observations about this handful of captures, not rules. They are here
 because they are the reason to open the file at all.
 
-**The four `reconstructor-decided` rows have no surface trait in common, and
-that is the finding.** Two of them read `target-low-texture` and two read
-`target-textured`; they span an interior, an exterior frontage, and a vegetated
-site. Whatever makes a capture need a global reconstructor rather than
+**The `reconstructor-decided` rows have no surface trait in common, and that is
+the finding.** Some read `low-texture` and some `textured`; they span interiors, an
+exterior frontage and a vegetated site. Whatever makes a capture need a global reconstructor rather than
 seed-and-grow, **it is not visible in the traits recorded here**, and a planner
-should not expect these columns to predict it. What the four do share is the
+should not expect these columns to predict it. What they do share is the
 shape of the failure rather than the look of the scene: a seed-and-grow chain
 that stalls partway through a capture its correspondences can otherwise support.
 That is a symptom you read off a finished run, not a trait you read off the
@@ -239,6 +238,14 @@ it — [pose](../plan/pose.md) says which reading and what to do when it fires �
 note that on the losing side of the `matcher-decided` row the *rejected* model was
 the cleaner one on pose agreement while being short two frames, which is rung 1
 working as designed and is the reason these two are both here.
+
+**Three rows were densified from more than one correct sparse model, and the clouds
+differed by up to double with every rotation right.** What separated them was where the
+cameras sat, which the rotation share does not see and the centre form of the
+two-estimator reading does — on the two object-and-enclosure rows the model it read
+lowest gave the best cloud, and on the rig-orbit row every model read alike and every
+cloud scored alike. The procedure is in [dense](../plan/dense.md); the readings and the
+clouds are in [dense-variance-2026-10](dense-variance-2026-10.md#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level).
 
 **The one `profile-misled` row is the most valuable row in the file.** A capture
 whose target is dim, nearly featureless polished plaster, and whose viewpoints

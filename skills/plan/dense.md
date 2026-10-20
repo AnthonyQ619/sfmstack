@@ -245,9 +245,13 @@ lineage, eighty-five of ninety cameras aligned in all three. Its placement error
 placed the cloud alike — not that no sparse model could do better: on the same capture a
 later session's model gave 91.6 mm, and one whose cameras sat 2.8% of the span out gave
 135.8 ([evidence](../evidence/dense-variance-2026-10.md#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement)). **If two deliveries of a capture give the same dense
-number, stop looking upstream** — read accuracy and coverage separately and look at the
-dense policy instead. That capture's cloud was the *most accurate* of four clouds and
-covered a third of the surface the reference holds. The campaign is in
+number and read alike on the centre form, stop looking upstream** — read accuracy and
+coverage separately and look at the dense policy instead. If they read differently on the
+centre form, the equal numbers say only that both placed the cameras alike, and the
+lower-reading model is still the one to densify. That capture's cloud was the most
+accurate of four under the dataset's own protocol, third of four under a protocol that
+scores every reference pixel, and covered a third of the surface the reference holds
+either way. The campaign is in
 [`evidence/dense-saturated-2026-10.md`](../evidence/dense-saturated-2026-10.md).
 
 **Where thin models and poor dense coverage do go together, do not assume the
@@ -364,8 +368,10 @@ for the reason given earlier in this section.
 
 **So expect a small gain of either sign, and treat the one large win on record as an
 outlier rather than a template.** Where a reference-scored dense cloud is the
-deliverable, run both reconstructors and compare the clouds — there is no reading, with or
-without the reference, that chooses for you. The campaign is in
+deliverable, build on both reconstructors and compare the centre form of the two-estimator
+reading between the two models before densifying — that reading, not the drift penalty or
+anything in the pipeline report, is what ranked placement when it was measured (*Among
+models whose rotations are all right*, above). The campaign is in
 [`evidence/global-rebuild-2026-10.md`](../evidence/global-rebuild-2026-10.md).
 
 ## Delivering the verified cloud

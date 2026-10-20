@@ -73,12 +73,17 @@ differ most (Caterpillar 0.20% against 0.68%, Barn 0.12–0.21% against 0.56%, M
 0.28% against 2.82%), and does it rank strongly (ρ ≥ 0.8) on most captures. Only the centre
 form did both:
 
-| reading | within-capture rank correlation with centre error |
-| --- | --- |
-| centre form | Caterpillar 0.96, Barn 0.93, scan15 0.93, Meetingroom 0.80, office 0.49 |
-| centre disagreement with one estimator alone | as low as 0.08 (scan15) and 0.16 (Barn) |
-| rotation form | 0.80 at best, −0.37 on scan15 |
-| every model, verifier and health reading | strong on two captures at most, and several change sign between captures |
+| capture | centre form | centre disagreement with one estimator alone, the lower of the two | rotation form |
+| --- | --- | --- | --- |
+| Caterpillar | 0.96 | 0.96 | 0.68 |
+| Barn | 0.93 | 0.16 | 0.67 |
+| scan15 | 0.93 | 0.08 | −0.37 |
+| Meetingroom | 0.80 | 0.80 | 0.80 |
+| office | 0.49 | 0.32 | 0.35 |
+
+Within-capture rank correlation with centre error, per reading. Every model, verifier and
+health reading besides these was strong on two captures at most, and several change sign
+between captures; the mean reprojection error is Finding 6.
 
 The clouds follow it, with the same dense settings within a session:
 
