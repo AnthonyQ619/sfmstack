@@ -64,8 +64,32 @@ well-placed model (its best correct candidate at 0.64% of the span, the other se
 | `/tanks_and_temples/Barn` | overall mm ↓ | 40.7 | 48.6 |
 | `/tanks_and_temples/Meetingroom` | overall mm ↓ | 92.0 | 92.0 |
 
+## Finding 4 — on a rig orbit the as-placed score moves with camera placement, the surface does not
+
+Added 2026-10-22 from the locked-context dense batch that followed this one (same context
+content; one session per capture, a second where the first moved beyond 5% of the record).
+The dataset's as-placed score carries the cloud into the reference frame by a similarity
+fitted from the 49 camera centres; the best-fit score refits it to the reference surface.
+
+| capture | session 1 as placed (best fit), mm | session 2 as placed (best fit), mm | as-placed spread | best-fit spread |
+| --- | --- | --- | --- | --- |
+| `/DTU/scan4` | 0.906 (0.399) | 0.729 (0.403) | 0.177 (24%) | 0.004 (1%) |
+| `/DTU/scan1` | 0.416 (0.308) | 0.461 (0.304) | 0.045 (10%) | 0.004 (1%) |
+| `/DTU/scan48` | 1.784 (1.403) | 1.621 (1.417) | 0.163 (10%) | 0.014 (1%) |
+| `/DTU/scan10` | 0.780 (0.372) | 0.785 (0.371) | 0.005 (1%) | 0.001 |
+
+The camera fit behind every as-placed score here has an rms of 0.5–1.9 mm, so the placed
+score sits at the scale of camera placement. Every model kept the calibrated intrinsics
+exactly, and every model's centre error is 0.04–0.16% of the span. The fit's rms does **not**
+predict which way a model moves: across the record and both sessions of the captures run
+twice, a higher rms went with a larger placement penalty in 12 pairs and a smaller one in 9.
+No reading an agent has resolves placement at this scale — the centre form reads 0.51–0.62 on
+every model of every one of these captures.
+
 ## What this does not establish
 
-Two sessions per capture, one context. Finding 1 is one capture: it shows the threshold
+Two sessions per capture, one context. Finding 4 rests on rig orbits only; whether a site walk's
+or an enclosure's as-placed score carries the same camera-placement noise is not measured, and
+there the centre form does rank placement (Finding 2). Finding 1 is one capture: it shows the threshold
 rebuild is not enough there and the other route was, not that the other route always is.
 Four sessions of the fifty-six did not take the two-estimator reading; why is not measured.

@@ -303,8 +303,12 @@ campaigns:
       - tanks_and_temples/Meetingroom
   final-validation-2026-10:
     captures:
+    - DTU/scan1
+    - DTU/scan10
     - DTU/scan15
     - DTU/scan33
+    - DTU/scan4
+    - DTU/scan48
     - DTU/scan77
     - ETH/delivery_area
     - ETH/kicker
@@ -339,6 +343,11 @@ campaigns:
       - tanks_and_temples/Caterpillar
       - tanks_and_temples/Meetingroom
       - tum_vi/room2
+      finding-4--on-a-rig-orbit-the-as-placed-score-moves-with-camera-placement-the-surface-does-not:
+      - DTU/scan1
+      - DTU/scan10
+      - DTU/scan4
+      - DTU/scan48
   superglue-weights-2026-10:
     captures:
     - ETH/delivery_area
@@ -1432,9 +1441,13 @@ claims:
   starts: '**Among models whose rotations are all right, pl'
   rests_on: dense-variance-2026-10#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
-  hash: 35e2230e3d9f
+  hash: 924a4d6186aa
   starts: '**So compare the centre form between your candid'
   rests_on: dense-variance-2026-10#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level
+- at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
+  hash: b2b2c14f0f1b
+  starts: '**On a fixed rig orbit every model reads the sam'
+  rests_on: final-validation-2026-10#finding-4--on-a-rig-orbit-the-as-placed-score-moves-with-camera-placement-the-surface-does-not
 - at: health/ladder.md#when-the-ladder-runs-out-and-two-models-still-disagree
   hash: 411c70ee6164
   starts: '**When the difference survives the spread test**'

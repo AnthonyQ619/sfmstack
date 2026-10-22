@@ -217,11 +217,18 @@ placement and the lowest reading gave the best cloud on every such capture: 0.82
 has ranked them, and the lower reprojection error ranked them the wrong way
 ([evidence](../evidence/dense-variance-2026-10.md#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level)).
 It is a comparison between candidates, not a threshold: no value says one model is good
-enough. Two kinds of capture are outside it. On a fixed rig orbit every model reads the
-same, because every model is placed the same, and any of them will do. On a built interior
-it does not order the models and nothing else measured does; report which model you
-densified and which correct alternatives you built, and do not read a close dense score
-there as a verdict on either.
+enough. Two kinds of capture are outside it. On a built interior it does not order the
+models and nothing else measured does; report which model you densified and which correct
+alternatives you built, and do not read a close dense score there as a verdict on either.
+
+**On a fixed rig orbit every model reads the same and its surface comes out the same, so any
+of them will do — but its as-placed score still moves.** Two sessions on one context moved
+it by up to a quarter while the best-fit score moved by 1%: carrying the cloud into the
+reference frame through the camera centres is only good to about a millimetre there, and
+which way a model lands is read by nothing an agent has. So compare two rig-orbit clouds on
+the best-fit score; an as-placed difference with the best fit level is camera placement,
+not the pipeline, and it is not a reason to rebuild
+([evidence](../evidence/final-validation-2026-10.md#finding-4--on-a-rig-orbit-the-as-placed-score-moves-with-camera-placement-the-surface-does-not)).
 
 **So do not spend runs tuning the sparse stage for dense coverage.** There is an
 association across captures, but it holds on one kind of capture only: where a compact
