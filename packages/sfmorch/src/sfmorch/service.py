@@ -755,6 +755,11 @@ class SfmService:
     # launcher may build a service per call, and an estimator that ran out of memory
     # once would otherwise be retried on every refinement of the capture.
     ESTIMATOR_FAILURES = "estimator_reading_failures.json"
+    # Settings an estimator's own page says to turn on when a pass does not fit and
+    # that do not change its answer; tried once, only after an out-of-memory failure.
+    # Measured need: at full frame count on four indoor dense captures PoseMapAnything
+    # ran out of memory at its defaults in every session.
+    ESTIMATOR_MEMORY_RETRY = {"PoseMapAnything": {"memory_efficient_inference": True}}
 
     def _estimator_failures(self) -> dict[str, str]:
         try:
@@ -777,20 +782,15 @@ class SfmService:
         """The estimator's poses for `scene`: remembered, found in the store, or run."""
         memo = self._estimator_memo
         key = (name, scene)
-        failed = self._estimator_failures()
-        if key not in memo and f"{name} {scene}" in failed:
-            memo[key] = ("failed", failed[f"{name} {scene}"])
-        if key in memo:
-            kind, value = memo[key]
-            if kind == "ok":
-                try:
-                    return self.store.open(value), None
-                except Exception:
-                    memo.pop(key)
-            else:
-                return None, value
+        if key in memo and memo[key][0] == "ok":
+            try:
+                return self.store.open(memo[key][1]), None
+            except Exception:
+                memo.pop(key)
         if name not in self.registry.names():
             return None, "not registered"
+        # The store first, even after a failure: an agent told the reading is
+        # unavailable may have run the estimator itself with settings that fit.
         for aid in self.store.list(type=self.POSES_TYPE):
             try:
                 art = self.store.open(aid)
@@ -800,15 +800,27 @@ class SfmService:
             if art.manifest.scene == scene and made and made.module == name:
                 memo[key] = ("ok", art.id)
                 return art, None
+        failed = self._estimator_failures()
+        if f"{name} {scene}" in failed:
+            memo[key] = ("failed", failed[f"{name} {scene}"])
+            return None, failed[f"{name} {scene}"]
         if not run_missing:
             return None, "not run on this scene"
-        try:
-            with self.estimator_gate(name):
-                res = self.orch.run(name, run_id=run_id, inputs={"scene": scene})
-        except Exception as e:
-            reason = f"failed: {type(e).__name__}: {str(e)[:300]}"
-            self._remember_failure(key, reason)
-            return None, reason
+        attempts = [{}] + ([self.ESTIMATOR_MEMORY_RETRY[name]]
+                           if name in self.ESTIMATOR_MEMORY_RETRY else [])
+        for i, params in enumerate(attempts):
+            try:
+                with self.estimator_gate(name):
+                    res = self.orch.run(name, run_id=run_id, inputs={"scene": scene},
+                                        params=params or None)
+                break
+            except Exception as e:
+                reason = f"failed: {type(e).__name__}: {str(e)[:300]}"
+                if i + 1 < len(attempts) and "out of memory" in str(e).lower():
+                    continue
+                self._remember_failure(key, reason + (
+                    f" (also with {params})" if params else ""))
+                return None, reason
         art = next((a for a in res.outputs.values() if a.type == self.POSES_TYPE), None)
         if art is None:
             self._remember_failure(key, "produced no poses")

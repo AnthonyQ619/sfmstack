@@ -221,3 +221,35 @@ def test_the_gate_is_held_only_while_an_estimator_runs(service):
         "scene": service.store.open(refined["outputs"]["sparse"]).manifest.scene,
         "sparse": refined["outputs"]["sparse"]})
     assert len(held) == 2  # reused, so nothing ran and nothing was held
+
+
+def test_an_estimator_out_of_memory_at_its_defaults_is_retried_once_with_its_saving_setting(service):
+    service.ESTIMATORS = ("FakeEstimatorA", "FakeEstimatorOOM")
+    service.ESTIMATOR_MEMORY_RETRY = {"FakeEstimatorOOM": {"lowmem": True}}
+    _, refined = chain(service, escape_below=0)
+    assert refined["estimator_reading"]["status"] == "ran"
+    tried = [s for s in service.run_summary("r")["steps"] if s.get("module") == "FakeEstimatorOOM"]
+    assert [s.get("status") for s in tried] == ["failed", tried[-1].get("status")]
+    assert tried[-1]["params"]["lowmem"] is True
+
+
+def test_control_without_a_saving_setting_the_failure_stands(service):
+    service.ESTIMATORS = ("FakeEstimatorA", "FakeEstimatorOOM")
+    service.ESTIMATOR_MEMORY_RETRY = {}
+    _, refined = chain(service, escape_below=0)
+    assert refined["estimator_reading"]["status"] == "unavailable"
+    assert "out of memory" in refined["estimator_reading"]["reason"]
+
+
+def test_after_a_failure_the_agents_own_run_of_the_estimator_is_used(service):
+    service.ESTIMATORS = ("FakeEstimatorA", "FakeEstimatorOOM")
+    service.ESTIMATOR_MEMORY_RETRY = {}
+    _, refined = chain(service, escape_below=0)
+    assert refined["estimator_reading"]["status"] == "unavailable"
+    scene = service.store.open(refined["outputs"]["sparse"]).manifest.scene
+    own = service.run("FakeEstimatorOOM", run_id="r", wait_s=60.0, inputs={"scene": scene},
+                      params={"lowmem": True})["outputs"]["poses"]
+    again = service.run("FakeRefiner", run_id="r", wait_s=60.0,
+                        inputs={"scene": scene, "sparse": refined["outputs"]["sparse"]})
+    assert again["estimator_reading"]["status"] == "ran"
+    assert again["estimator_reading"]["estimators"]["FakeEstimatorOOM"] == own
