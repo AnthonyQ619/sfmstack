@@ -364,12 +364,18 @@ residual was the lowest of its batch, every camera registered, and the delivered
 cloud was metres out. **No amount of care with the readings above reaches this.** The
 evidence is not being read wrongly; the evidence is wrong.
 
-**So ask something that never saw your correspondences.** Run both
-correspondence-free estimators — `PoseVGGT` and `PoseMapAnything`, each of which
-consumes the scene and nothing else — and pass your model and both of them to
-`sfm_compare` in one call. It returns `pose_agreement`: all three pairwise
-disagreements, with nothing privileged, each in two forms — over relative rotations
-(`median_deg`) and over camera positions (`centre_median_of_span`).
+**So ask something that never saw your correspondences.** Two correspondence-free
+estimators — `PoseVGGT` and `PoseMapAnything`, each of which consumes the scene and
+nothing else — answer it, and the service asks them for you. After every refinement
+step it runs both once per scene, reusing any run of them already on the scene, and
+returns `estimator_reading` beside the verifier's verdict, on the model it keeps;
+`sfm_run_summary` carries the reading for every final model. Each form gives your
+model's disagreement with each estimator, theirs with each other, the ratio between
+them and whether it fires. To set candidates side by side, pass them and both
+estimators to `sfm_compare`: its `pose_agreement` gives all the pairwise
+disagreements in both forms, over relative rotations (`median_deg`) and over camera
+positions (`centre_median_of_span`). Take the reading that way yourself for a model
+no refinement step produced, and when the service reports it `unavailable`.
 
 **The two forms see different failures; read each against the estimators' spread in
 the same form.** The rotation form fires on a fold — cameras turned the wrong way —
@@ -387,6 +393,16 @@ technique and it is easy to get wrong by leaving out the second estimator:
 | the two estimators sit close to each other, and both sit far from you | the two independent answers agree, and yours is the outlier — **look** |
 | the two estimators sit far from each other | they are not agreeing on anything, so their distance from you measures their spread, not your error — no signal, whichever one you happened to compare against |
 | the two estimators sit close to each other and close to you | three independent answers agree; this is the quiet case |
+
+**Fired means 2 or more.** In each form, divide your disagreement with each
+estimator, averaged over the two, by the estimators' disagreement with each other. At 2
+or more the reading fires; below 2 it is quiet. A folded core read 8.7, a site walk
+whose cameras were misplaced read 10.5
+([evidence](../evidence/estimator-outvote-2026-10.md#finding-1--the-two-forms-of-the-reading-fire-on-different-captures)),
+and a sound core 1.6
+([evidence](../evidence/estimator-outvote-2026-10.md#finding-5--a-fill-keeps-whatever-its-core-is)).
+A model built on one estimator's poses reads about 0.5 by construction, so its quiet
+reading says nothing about it.
 
 One estimator cannot distinguish the first row from the second. Measured across a
 multi-family batch, a single estimator condemns captures where the *estimator* is the
@@ -422,7 +438,9 @@ verdict, no dense reading — so do not go looking for one to overrule the rule 
 particular capture; report the alternative instead.
 
 **When only the centre form fires, keep a geometric delivery and report the fire** —
-unless no geometric model clears it after a rebuild, below. On corpus captures it fired on two site walks whose rotations were right, and the
+unless no geometric model clears it after the rebuilds below and the two estimators
+agree with each other: then a sparse deliverable takes the estimators' model, and a
+dense one keeps the geometric model. On corpus captures it fired on two site walks whose rotations were right, and the
 feed-forward result was the better cloud on one and the worse on the other — the
 vegetated case below. Nothing available to you separates them.
 

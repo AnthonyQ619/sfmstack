@@ -311,16 +311,20 @@ campaigns:
     - DTU/scan48
     - DTU/scan77
     - ETH/delivery_area
+    - ETH/electro
     - ETH/kicker
     - ETH/meadow
     - ETH/office
     - ETH/relief
+    - euroc/MH_05_difficult
     - euroc/V1_02_medium
     - euroc/V2_01_easy
     - tanks_and_temples/Barn
     - tanks_and_temples/Caterpillar
     - tanks_and_temples/Meetingroom
     - tum_vi/room2
+    - tum_vi/room3
+    - tum_vi/room4
     sections:
       finding-1--on-a-site-walk-the-threshold-rebuild-did-not-clear-the-centre-form-the-other-route-did:
       - ETH/meadow
@@ -348,6 +352,11 @@ campaigns:
       - DTU/scan10
       - DTU/scan4
       - DTU/scan48
+      finding-5--on-a-sparse-deliverable-the-lowest-centre-form-candidate-is-not-the-better-one:
+      - ETH/electro
+      - euroc/MH_05_difficult
+      - tum_vi/room3
+      - tum_vi/room4
   superglue-weights-2026-10:
     captures:
     - ETH/delivery_area
@@ -1413,11 +1422,15 @@ claims:
   starts: '**The two forms see different failures; read eac'
   rests_on: estimator-outvote-2026-10#finding-1--the-two-forms-of-the-reading-fire-on-different-captures
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
+  hash: 70bdfb51fe97
+  starts: '**Fired means 2 or more.** In each form, divide '
+  rests_on: estimator-outvote-2026-10#finding-1--the-two-forms-of-the-reading-fire-on-different-captures
+- at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
   hash: 81910d32d103
   starts: '**When the rotation form fires, deliver the feed'
   rests_on: estimator-outvote-2026-10#finding-6--every-fired-model-the-agents-built-not-only-the-delivered-ones
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
-  hash: 4e948b42a850
+  hash: ebaa3a71282e
   starts: '**When only the centre form fires, keep a geomet'
   rests_on: consensus-2026-09
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
@@ -1429,7 +1442,7 @@ claims:
   starts: '**Rebuild before you deliver the model the centr'
   rests_on: agent-rerun-2026-10#finding-2--on-the-centre-form-alone-a-rebuilt-geometric-model-was-the-right-one
 - at: health/ladder.md#comparing-two-finished-models
-  hash: ce8e57939b5c
+  hash: 74b5ac772432
   starts: '**Before any step below, take the two-estimator '
   rests_on: agent-rerun-2026-10#finding-1--the-reading-caught-a-fold-when-it-was-taken-and-nothing-else-did
 - at: plan/pose.md#when-it-fires-fill-rather-than-swap--and-do-not-refine-the-fill

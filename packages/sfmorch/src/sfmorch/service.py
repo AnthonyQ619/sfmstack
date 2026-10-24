@@ -11,6 +11,8 @@ round trip on every single step and the metrics are the whole reason to look.
 
 from __future__ import annotations
 
+import contextlib
+import json
 import re
 import subprocess
 from dataclasses import dataclass
@@ -338,6 +340,12 @@ class SfmService:
         self.registry = registry
         self.jobs = jobs or JobManager()
         self.durations = DurationEstimator()
+        # (estimator, scene) -> ("ok", poses id) or ("failed", reason); see ESTIMATORS.
+        self._estimator_memo: dict[tuple[str, str], tuple[str, str]] = {}
+        # Held around an estimator the reading has to run itself, named for it. A
+        # launcher that shares a GPU between sessions passes its own lease here: the
+        # step the reading rides on (bundle adjustment) needs no GPU and takes none.
+        self.estimator_gate = lambda name: contextlib.nullcontext()
 
     @property
     def store(self) -> ArtifactStore:
@@ -603,6 +611,9 @@ class SfmService:
                     if digest is not None:
                         second["first_solve_health_profile"] = digest
                     payload["health_profile"] = kept_digest
+        reading = self._estimator_reading(result, run_id, second)
+        if reading is not None:
+            payload["estimator_reading"] = reading
         return payload
 
     # The fixed end step, and a VETO: SparseVerification rejects a refined model
@@ -672,6 +683,138 @@ class SfmService:
             "diagnostics": [d.to_doc() for d in art.manifest.diagnostics],
             "note": art.manifest.body.strip(),
         }
+
+    # The two-estimator reading, a fixed step like the verifier and at the same
+    # moment: after refinement, on the model the service keeps. plan/pose.md asks for
+    # it before any model is delivered, because every other reading is built on the
+    # model's own correspondences and a globally consistent wrong model satisfies them
+    # all. Left to the agent it was skipped in 5 of 113 sessions, and on one of those
+    # the skip cost the delivery. Here it is not a veto: it reports, in both forms,
+    # how far the model sits from two estimators that never saw its correspondences,
+    # against how far they sit from each other, and plan/pose.md says what follows.
+    #
+    # The estimators run once per scene. One the agent already ran on the scene is
+    # reused, whatever its parameters; otherwise each runs at its defaults through the
+    # same GPU lease as any module, and a failure is remembered for the scene so it is
+    # not retried on every refinement. A reading that cannot be taken says why.
+    ESTIMATORS = ("PoseVGGT", "PoseMapAnything")
+
+    def _estimator_reading(self, result, run_id: str | None,
+                           second: dict[str, Any] | None) -> dict[str, Any] | None:
+        try:
+            kind = self.registry.get(result.step.module).kind
+        except Exception:
+            return None
+        models = [a for a in result.outputs.values() if a.type == self.SPARSE_MODEL_TYPE]
+        if kind != "optimization" or not models:
+            return None
+        model = models[0]
+        kept = (second or {}).get("kept")
+        if (second or {}).get("status") == "kept_second" and kept and kept != model.id:
+            try:
+                model = self.store.open(kept)
+            except Exception:
+                pass
+        try:
+            return self._read_against_estimators(model, run_id)
+        except Exception as e:  # never take the step down with it
+            return {"status": "unavailable", "model": model.id,
+                    "reason": f"{type(e).__name__}: {e}"}
+
+    def _read_against_estimators(self, model, run_id: str | None, *,
+                                 run_missing: bool = True) -> dict[str, Any]:
+        from .health import two_estimator_reading
+
+        scene = model.manifest.scene
+        if not scene:
+            return {"status": "unavailable", "model": model.id,
+                    "reason": "the model records no scene to run the estimators on"}
+        estimators, reasons = {}, []
+        for name in self.ESTIMATORS:
+            art, reason = self._estimator_poses(name, scene, run_id or model.manifest.run,
+                                                run_missing=run_missing)
+            if art is None:
+                reasons.append(f"{name}: {reason}")
+            else:
+                estimators[name] = art
+        if reasons:
+            return {"status": "unavailable", "model": model.id, "reason": "; ".join(reasons),
+                    "note": ("Take the reading yourself as plan/pose.md describes, or say "
+                             "in the report that it could not be taken.")}
+        reading = two_estimator_reading(model, estimators)
+        return {"status": "ran", "model": model.id,
+                "estimators": {n: a.id for n, a in estimators.items()},
+                **reading,
+                "how_to_read": ("ratio is the model's disagreement with the two estimators, "
+                                "averaged, over their disagreement with each other; it fires "
+                                f"at {reading['fire_level']} or more. plan/pose.md, 'Every "
+                                "reading above is built on the model's own evidence', says "
+                                "what each form firing means and what to deliver.")}
+
+    # A failed estimator is remembered in the store, not only in this process: a
+    # launcher may build a service per call, and an estimator that ran out of memory
+    # once would otherwise be retried on every refinement of the capture.
+    ESTIMATOR_FAILURES = "estimator_reading_failures.json"
+
+    def _estimator_failures(self) -> dict[str, str]:
+        try:
+            return json.loads((Path(self.store.root) / self.ESTIMATOR_FAILURES).read_text())
+        except Exception:
+            return {}
+
+    def _remember_failure(self, key: tuple[str, str], reason: str) -> None:
+        self._estimator_memo[key] = ("failed", reason)
+        failed = self._estimator_failures()
+        failed[f"{key[0]} {key[1]}"] = reason
+        try:
+            (Path(self.store.root) / self.ESTIMATOR_FAILURES).write_text(
+                json.dumps(failed, indent=1))
+        except OSError:
+            pass
+
+    def _estimator_poses(self, name: str, scene: str, run_id: str, *,
+                         run_missing: bool = True):
+        """The estimator's poses for `scene`: remembered, found in the store, or run."""
+        memo = self._estimator_memo
+        key = (name, scene)
+        failed = self._estimator_failures()
+        if key not in memo and f"{name} {scene}" in failed:
+            memo[key] = ("failed", failed[f"{name} {scene}"])
+        if key in memo:
+            kind, value = memo[key]
+            if kind == "ok":
+                try:
+                    return self.store.open(value), None
+                except Exception:
+                    memo.pop(key)
+            else:
+                return None, value
+        if name not in self.registry.names():
+            return None, "not registered"
+        for aid in self.store.list(type=self.POSES_TYPE):
+            try:
+                art = self.store.open(aid)
+            except Exception:
+                continue
+            made = art.manifest.produced_by
+            if art.manifest.scene == scene and made and made.module == name:
+                memo[key] = ("ok", art.id)
+                return art, None
+        if not run_missing:
+            return None, "not run on this scene"
+        try:
+            with self.estimator_gate(name):
+                res = self.orch.run(name, run_id=run_id, inputs={"scene": scene})
+        except Exception as e:
+            reason = f"failed: {type(e).__name__}: {str(e)[:300]}"
+            self._remember_failure(key, reason)
+            return None, reason
+        art = next((a for a in res.outputs.values() if a.type == self.POSES_TYPE), None)
+        if art is None:
+            self._remember_failure(key, "produced no poses")
+            return None, "produced no poses"
+        memo[key] = ("ok", art.id)
+        return art, None
 
     # The second solve. When the pose stage reports points that left the image
     # during its in-loop window solves, one solve is not enough: on the captures
@@ -1656,7 +1799,28 @@ class SfmService:
         summary = self.orch.summary(run_id)
         summary["run_md"] = str(self.orch.runs_dir / run_id / "run.md")
         summary["verification"] = self._leaf_verification(summary)
+        summary["estimator_reading"] = self._leaf_readings(summary)
         return summary
+
+    def _leaf_readings(self, summary: dict[str, Any]) -> dict[str, Any]:
+        """The two-estimator reading of every final sparse model in the run, from
+        the estimators already on the scene; nothing is run for a summary."""
+        out: dict[str, Any] = {}
+        for leaf in summary.get("leaves") or []:
+            try:
+                art = self.store.open(leaf)
+            except Exception:
+                continue
+            if art.type != self.SPARSE_MODEL_TYPE:
+                continue
+            try:
+                r = self._read_against_estimators(art, None, run_missing=False)
+            except Exception as e:
+                r = {"status": "unavailable", "reason": f"{type(e).__name__}: {e}"}
+            out[leaf] = ({k: r.get(k) for k in ("status", "fired_forms")}
+                         | {f: (r.get(f) or {}).get("ratio") for f in ("rotation", "centre")}
+                         if r.get("status") == "ran" else r)
+        return out
 
     def _leaf_verification(self, summary: dict[str, Any]) -> dict[str, Any]:
         """The fixed step's verdict for every final sparse model in the run.

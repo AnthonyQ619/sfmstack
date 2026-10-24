@@ -1,0 +1,29 @@
+name: FakeEstimatorA
+version: 1.0.0
+kind: pose
+summary: Poses every image on a circle, from the scene alone, standing in for a correspondence-free estimator. Test fixture only.
+
+image: sfm-fixture:1.0.0
+resources: {gpu: false}
+
+consumes:
+  scene: {type: scene/v1, required: true}
+produces:
+  poses: {type: poses/v1}
+
+params:
+  shift:
+    type: integer
+    default: 0
+    minimum: 0
+    maximum: 100
+    description: Moves every camera off the circle by this many hundredths of its radius, alternating sides.
+
+metrics:
+  registered_fraction:
+    direction: higher_better
+    healthy: [0.9, null]
+    meaning: Images posed over scene images.
+  registered_images: {direction: higher_better, meaning: Images posed.}
+  mean_reprojection_error: {direction: lower_better, nullable: true, meaning: Null; no correspondences.}
+  median_reprojection_error: {direction: lower_better, nullable: true, meaning: Null; no correspondences.}

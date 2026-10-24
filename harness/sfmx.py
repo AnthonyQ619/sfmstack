@@ -144,9 +144,15 @@ def log_ctx(kind, **kw):
 
 
 def service(docker=False):
-    return build_service(modules_dir=MODULES, store_root=STORE,
-                         skills_dir=SKILLS, use_docker=docker,
-                         mounts=[str(DATASETS)], gpus=[GPU])
+    svc = build_service(modules_dir=MODULES, store_root=STORE,
+                        skills_dir=SKILLS, use_docker=docker,
+                        mounts=[str(DATASETS)], gpus=[GPU])
+    # The two-estimator reading runs an estimator itself when the scene has none yet.
+    # It rides on a step that takes no GPU, so it takes the estimators' own lease here.
+    svc.estimator_gate = lambda name: gpu_gate(
+        EXP, GPU, exclusive_on_gpu(svc.describe_module(name)),
+        f"{CAPTURE} {name} (estimator reading)")
+    return svc
 
 
 @contextmanager
@@ -355,6 +361,9 @@ elif cmd == "run":
         # Dense steps get their GPU to themselves; see gpu_gate.py.
         gate = (gpu_gate(EXP, GPU, exclusive_on_gpu(desc), f"{CAPTURE} {module}")
                 if (desc.get("resources") or {}).get("gpu") else nullcontext())
+        if (desc.get("resources") or {}).get("gpu"):
+            # This process already holds a lease; a second lock on it would wait on itself.
+            svc.estimator_gate = lambda name: nullcontext()
         try:
             with gate:
                 r = svc.run(module, run_id=RUN_ID, inputs=inputs, params=params, wait_s=21600)
@@ -405,6 +414,8 @@ elif cmd == "replay":
         # The same GPU gate `run` uses, keyed on the step being replayed.
         gate = (gpu_gate(EXP, GPU, exclusive_on_gpu(desc), f"{CAPTURE} replay {origin.module}")
                 if (desc.get("resources") or {}).get("gpu") else nullcontext())
+        if (desc.get("resources") or {}).get("gpu"):
+            svc.estimator_gate = lambda name: nullcontext()
         try:
             with gate:
                 r = svc.replay(run_id=RUN_ID, from_artifact=source, overrides=overrides,

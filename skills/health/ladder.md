@@ -524,16 +524,16 @@ has which reading, what it costs in false alarms, and what to do when it fires.
 step that follows — registration, the verifier, the error split, structure — reads the
 models against their own correspondences, and two models built on different matchers
 can be folded the same way, agree with each other, and read level or clean on all four.
-Run `PoseVGGT` and `PoseMapAnything` once on the scene and compare each candidate
-against them, as
+The service takes it on every refined model: read `estimator_reading` in the
+step's result or in `sfm_run_summary`, as
 [`plan/pose.md`](../plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence)
-describes. A candidate the rotation form fires on is out before step 1; if it fires on
+describes, and take it with `sfm_compare` for any candidate it does not cover. A candidate the rotation form fires on is out before step 1; if it fires on
 every candidate, or only the centre form fires, that section says what to deliver. On an
 outdoor object orbit, a session that skipped this delivered a model folded 163° from the
 reference with the verifier clean; a session on the same context that took it caught
 the fold and delivered a correct model
 ([evidence](../evidence/agent-rerun-2026-10.md#finding-1--the-reading-caught-a-fold-when-it-was-taken-and-nothing-else-did)).
-It costs two estimator runs per capture, not per candidate.
+The estimators run once per capture, not once per candidate.
 
 Most stopping decisions are really this decision. The procedure that survives
 scrutiny:

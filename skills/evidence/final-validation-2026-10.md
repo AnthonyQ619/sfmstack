@@ -86,6 +86,31 @@ twice, a higher rms went with a larger placement penalty in 12 pairs and a small
 No reading an agent has resolves placement at this scale — the centre form reads 0.51–0.62 on
 every model of every one of these captures.
 
+## Finding 5 — on a sparse deliverable the lowest centre-form candidate is not the better one
+
+Added 2026-10-24 from the locked-context sparse batch that followed this one (same context
+content; ten views per capture, one session each). Every sparse model a session built was
+scored by AUC@30 against reference poses and read by the two-estimator reading. The question:
+would delivering the candidate with the lowest centre-form reading, instead of the one the
+session chose, have done better?
+
+Over the 58 captures with two or more candidates, 22 of them corpus captures, it would have
+lost: net −0.98 AUC@30, losses beyond 0.05 on nine captures and gains beyond 0.05 on three.
+On the corpus captures alone the net is −0.51. Counting the estimators' own models as
+candidates changes nothing (net −1.00).
+
+| capture | delivered: AUC@30 (centre form) | lowest centre form: AUC@30 (centre form) | change |
+| --- | --- | --- | --- |
+| `/euroc/MH_05_difficult` | 0.818 (0.52) | 0.317 (0.05) | −0.50 |
+| `/ETH/electro` | 0.783 (0.52) | 0.663 (0.50) | −0.12 |
+| `/tum_vi/room3` | 0.555 (0.50) | 0.478 (0.43) | −0.08 |
+| `/tum_vi/room4` | 0.495 (1.89) | 0.719 (0.50) | +0.22 |
+
+Below the fire level the centre form does not order sparse candidates by accuracy. It does
+order placement among correct models for a dense deliverable
+([dense-variance Finding 5](dense-variance-2026-10.md#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level));
+the two results are about different questions, and only the dense one is guidance.
+
 ## What this does not establish
 
 Two sessions per capture, one context. Finding 4 rests on rig orbits only; whether a site walk's

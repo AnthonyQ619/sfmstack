@@ -424,3 +424,47 @@ def rotation_agreement(a, b, *, cap: int = 400) -> dict | None:
     return {"median_deg": round(float(np.median(ang)), 4),
             "p90_deg": round(float(np.percentile(ang, 90)), 4),
             "shared_cameras": len(shared)}
+
+
+# The level at which the two-estimator reading fires, in either form: the model's
+# disagreement with the two estimators, averaged, at twice or more the estimators'
+# disagreement with each other. evidence/estimator-outvote-2026-10 found the same fire
+# set at 2 and at 3; a folded core read 8.7 and a sound one 1.6. A model built on one
+# estimator's poses reads about 0.5 by construction.
+FIRE_LEVEL = 2.0
+
+
+def two_estimator_reading(model, estimators: dict) -> dict:
+    """The two-estimator reading of `model`, in both forms.
+
+    `estimators` maps a name to an artifact carrying poses, exactly two of them,
+    neither of which saw the model's correspondences. In each form the model's
+    disagreement with each estimator is averaged and divided by the estimators'
+    disagreement with each other, so the ratio is in units of their spread: a
+    disagreement read on its own, or against one estimator, cannot say whether the
+    model or the estimator is the outlier. `fires` is the ratio at FIRE_LEVEL or more;
+    a ratio the estimators could not supply a spread for is None, never a pass."""
+    if len(estimators) != 2:
+        raise ValueError(f"two estimators, not {len(estimators)}")
+    (na, a), (nb, b) = estimators.items()
+
+    def rotation(x, y):
+        r = rotation_agreement(x, y)
+        return r["median_deg"] if r else None
+
+    out: dict = {"fire_level": FIRE_LEVEL}
+    for form, measure, unit in (("rotation", rotation, "median_deg"),
+                                ("centre", centre_agreement, "median_of_span")):
+        mine = {na: measure(model, a), nb: measure(model, b)}
+        mutual = measure(a, b)
+        got = [v for v in mine.values() if v is not None]
+        ratio = (round(float(np.mean(got)) / mutual, 3)
+                 if got and mutual and mutual > 0 else None)
+        out[form] = {"unit": unit,
+                     "model_vs": mine,
+                     "estimators_vs_each_other": mutual,
+                     "ratio": ratio,
+                     "fires": None if ratio is None else ratio >= FIRE_LEVEL}
+    fired = [f for f in ("rotation", "centre") if out[f]["fires"]]
+    out["fired_forms"] = fired
+    return out
