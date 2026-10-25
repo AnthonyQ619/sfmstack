@@ -134,7 +134,8 @@ params:
       doubt. Measured against reference geometry on well-posed captures, though,
       off is the better delivery setting when paired with fusion_min_num_pixels one
       step below its default: more complete at matched accuracy, in half the time.
-      Never pair off with the loosest fusion settings. With it off, fusion reads
+      On a studio orbit never pair off with the loosest fusion settings; on an
+      accuracy-first studio rig orbit keep it on. With it off, fusion reads
       the photometric maps. tuning.md, "Delivering a dense cloud".
 
   geom_consistency_max_cost:
@@ -199,8 +200,9 @@ params:
       buy coverage. One step below the default, with geom_consistency off, is the
       best measured delivery trade on a well-posed capture; lower recovers more
       thin structure and rim at an accuracy cost that grows quickly; higher gives a
-      cleaner cloud and erodes anything seen from few views. To compare several
-      settings on one stereo pass, set keep_workspace and use DenseFusion.
+      cleaner cloud and erodes anything seen from few views. Coverage-first off a
+      studio orbit, fuse at 2 with DenseFusion. To compare several settings on one
+      stereo pass, set keep_workspace and use DenseFusion.
       tuning.md, "Delivering a dense cloud".
 
   fusion_max_reproj_error:

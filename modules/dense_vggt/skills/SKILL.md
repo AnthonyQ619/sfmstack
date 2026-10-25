@@ -58,6 +58,15 @@ predicted depth at the pixel that saw it, with nothing re-triangulated. A
 parameter, whose default of 1.0 is correct only when the poses came from VGGT too.
 `depth_scale_source` on the output says which of the three the run used.
 
+**Its poses must be VGGT's own.** If you pass `poses` beside `sparse`, pass `PoseVGGT`'s,
+by id. A slot left to be filled from the current chain gets whichever pose artifact is
+current, and after both estimators have run that is the later one. On an indoor capture
+whose geometric models were all folded, VGGT's depth unprojected through
+`PoseMapAnything`'s poses measured a scale of 1.37 with a spread of 0.65, raised
+`depth_scale_inconsistent`, and scored 183 mm; the same call on `PoseVGGT`'s poses
+measured 1.000 and scored 49 mm (`skills/evidence/dense-fixes-2026-10.md`, Finding 4).
+That diagnostic is the signature: rebuild on `PoseVGGT`'s poses before you deliver.
+
 Measured on 8 views of a studio rig orbit, classical poses:
 
 | | `depth_scale` | `depth_scale_spread` | points |

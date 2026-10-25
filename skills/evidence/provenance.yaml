@@ -301,6 +301,43 @@ campaigns:
       - tanks_and_temples/Barn
       - tanks_and_temples/Caterpillar
       - tanks_and_temples/Meetingroom
+  dense-fixes-2026-10:
+    captures:
+    - DTU/scan15
+    - DTU/scan33
+    - DTU/scan75
+    - ETH/courtyard
+    - ETH/delivery_area
+    - ETH/electro
+    - ETH/facade
+    - ETH/kicker
+    - ETH/meadow
+    - ETH/office
+    - ETH/playground
+    - ETH/relief
+    - tanks_and_temples/Barn
+    - tanks_and_temples/Caterpillar
+    - tanks_and_temples/Meetingroom
+    sections:
+      finding-1--off-a-studio-rig-orbit-stepping-fusion-down-to-2-was-best-past-where-the-doubling-rule-stops:
+      - DTU/scan15
+      - DTU/scan33
+      - ETH/courtyard
+      - ETH/delivery_area
+      - ETH/electro
+      - ETH/facade
+      - ETH/kicker
+      - ETH/meadow
+      - ETH/office
+      - ETH/playground
+      - ETH/relief
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      - tanks_and_temples/Meetingroom
+      finding-2--on-a-studio-rig-orbit-the-module-defaults-were-at-least-as-good-as-the-anchor:
+      - DTU/scan75
+      finding-3--on-a-vegetated-site-walk-the-detector-free-chains-model-is-what-densifies:
+      - ETH/meadow
   final-validation-2026-10:
     captures:
     - DTU/scan1

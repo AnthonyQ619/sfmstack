@@ -49,8 +49,9 @@ params:
       reverse. Step it down one at a time and watch point_count: while each step
       grows the cloud by a modest, steady factor it is adding surface, and the step
       that roughly doubles the cloud or more is adding noise -- go back up one. The
-      measured band is a few pixels either side of the default; the loosest settings
-      collapsed accuracy on every capture measured. Full curve: tuning.md.
+      measured band is a few pixels either side of the default; on studio orbits the
+      loosest settings collapsed accuracy on every capture measured. Coverage-first
+      off a studio orbit, 2 scored best on every capture measured. Full curve: tuning.md.
 
   max_reproj_error:
     type: number

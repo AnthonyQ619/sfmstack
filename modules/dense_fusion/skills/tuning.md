@@ -30,6 +30,10 @@ every capture:
   in the corpus was less accurate at every setting, and lost accuracy faster as the
   setting fell.
 
+Off a studio orbit the curve was measured again, scored on coverage, on site walks,
+rooms and outdoor object orbits: there 2 was still inside the good region, and the best
+setting measured (Stepping down, below).
+
 ## Stepping down, and when to stop
 
 There is no reference geometry on a real capture, so accuracy cannot be read.
@@ -45,9 +49,13 @@ stops sooner where lowering hurts more.
 delivered with, which makes the steps easy to compare. Compare **step to step**, not
 each setting to the source alone: the rule is about the jump between neighbours.
 
-When the deliverable is accuracy first, stay at or above the default. When it is
-coverage, take the lowest step the rule allows. Raising the setting well above the
-default gives a cleaner cloud and erodes whatever is seen from few views.
+When the deliverable is accuracy first, stay at or above the default. **When it is
+coverage, the capture decides the step.** On a site walk, a room or an outdoor object
+orbit, step to 2: on every such capture measured, 2 scored best, one step past where the
+rule above stops — twelve corpus captures, and six of seven outside the corpus with the
+seventh flat (`skills/evidence/dense-fixes-2026-10.md`, Finding 1). 1 was not measured.
+On a studio rig orbit, take the lowest step the rule allows. Raising the setting well
+above the default gives a cleaner cloud and erodes whatever is seen from few views.
 
 **And when the deliverable names neither, it is accuracy** — see
 [SKILL.md](SKILL.md), step 3. That resolves what reads as a conflict with `DenseMVS`:
@@ -62,8 +70,8 @@ it can fail to give you one.** Compare each step's growth against the step befor
 and stop where the factor jumps. On built and vegetated sites the growth instead
 accelerated smoothly — one capture stepped 1.2, 1.4, 1.8 with no break to find — and
 the rule cannot be applied as written. When no jump appears, do not keep stepping down
-looking for one: stay at the anchor, which is the accuracy default the paragraph above
-gives you.
+looking for one. On an accuracy-first deliverable, stay at the anchor. On a
+coverage-first one off a studio orbit the rule is not needed: step to 2, as above.
 
 ## The geometric check was decided upstream
 

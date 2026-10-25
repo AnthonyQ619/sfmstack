@@ -40,3 +40,33 @@ def test_no_corpus_record_is_unknown(tmp_path):
     scene = SimpleNamespace(manifest=SimpleNamespace(
         produced_by=SimpleNamespace(params={"image_dir": "/data/DTU/scan1"})))
     assert SfmService._corpus_membership(svc, scene)["known"] is False
+
+
+def _with_index(tmp_path, rows):
+    (tmp_path / "evidence").mkdir(exist_ok=True)
+    (tmp_path / "evidence" / "INDEX.md").write_text(
+        "# Index\n\n| capture | pipeline |\n| --- | --- |\n" + "\n".join(rows) + "\n",
+        encoding="utf-8")
+
+
+def test_a_member_gets_its_index_row(tmp_path):
+    _with_index(tmp_path, ["| [ETH/meadow](a.md#m) | RoMa → BA |",
+                           "| [TT/Barn](a.md#b) | SIFT → BA |"])
+    out = _membership(tmp_path, ["/ETH/meadow", "/tanks_and_temples/Barn"],
+                      "/data/ETH/meadow/images/dslr_images_undistorted")
+    assert out["worked_precedent"]["row"].startswith("| [ETH/meadow]")
+    out = _membership(tmp_path, ["/ETH/meadow", "/tanks_and_temples/Barn"],
+                      "/data/tanks_and_temples/Barn/n090/rgb")
+    assert out["worked_precedent"]["row"].startswith("| [TT/Barn]")
+
+
+def test_control_a_capture_outside_the_corpus_gets_no_row(tmp_path):
+    _with_index(tmp_path, ["| [ETH/meadow](a.md#m) | RoMa → BA |"])
+    out = _membership(tmp_path, ["/ETH/meadow"], "/data/ETH/elsewhere/images")
+    assert out["is_member"] is False and "worked_precedent" not in out
+
+
+def test_a_member_without_a_row_gets_none(tmp_path):
+    _with_index(tmp_path, ["| [ETH/meadow](a.md#m) | RoMa → BA |"])
+    out = _membership(tmp_path, ["/ETH/meadow", "/DTU/scan1"], "/data/DTU/scan1")
+    assert out["is_member"] is True and "worked_precedent" not in out

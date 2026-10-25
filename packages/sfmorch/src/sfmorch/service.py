@@ -326,6 +326,24 @@ class DurationEstimator:
         return module in self._observed
 
 
+def _index_row(skills_root: Path, entry: str) -> str | None:
+    """The evidence/INDEX.md row for a corpus entry, or None. Rows key the capture as
+    `[FAMILY/name]`, with the family in its short upper-case form; the corpus record
+    spells it the dataset's way."""
+    index = skills_root / "evidence" / "INDEX.md"
+    if not index.exists():
+        return None
+    def key(k: str) -> str:
+        k = k.strip("/").lower()
+        return "tt/" + k.split("/", 1)[1] if k.startswith("tanks_and_temples/") else k
+    want = key(entry)
+    for line in index.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"\|\s*\[([^\]]+)\]", line)
+        if m and key(m.group(1)) == want:
+            return line.strip()
+    return None
+
+
 class SfmService:
     def __init__(
         self,
@@ -1793,7 +1811,18 @@ class SfmService:
         # its second session) would claim captures it was never fitted on.
         source = str(scene.manifest.produced_by.params.get("image_dir", "")).rstrip("/") + "/"
         hit = next((e for e in entries if e and e.rstrip("/") + "/" in source), None)
+        row = _index_row(root, hit) if hit else None
+        precedent = {} if row is None else {"worked_precedent": {
+            "row": row,
+            "note": ("This capture's row in evidence/INDEX.md: what solved it and the "
+                     "decisive move. Read INDEX.md's 'Read this before matching a row' "
+                     "before following it. Its matcher matters past the pose stage: on a "
+                     "vegetated site walk, the two dense sessions that did not use the "
+                     "row's matcher fused a third fewer points or more and scored a "
+                     "quarter or less of what the row's chain scored."),
+        }}
         return {
+            **precedent,
             "known": True,
             "is_member": hit is not None,
             "note": (

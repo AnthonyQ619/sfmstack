@@ -50,6 +50,18 @@ EXP = Path(os.environ.get("SFM_EXP_ROOT") or Path.home() / "sfm_experiments")
 SKILLS: Path | None = None
 MODULES: Path | None = None
 GOALS = {"sparse": "a refined sparse model", "dense": "a dense reconstruction"}
+# What a dense deliverable is judged on, as a task would state it. DenseFusion's tuning
+# reads a task that names neither as accuracy-first, and every dense session then stopped
+# at the delivery anchor; replayed, the families below scored best at the settings their
+# objective leads to (skills/evidence/dense-fixes-2026-10.md). Families not listed were
+# not measured and get no objective. A batch entry's own "objective" wins.
+DENSE_OBJECTIVE = {"DTU": "accuracy", "ETH": "coverage", "TT": "coverage"}
+OBJECTIVE_TEXT = {
+    "accuracy": ("Deliverable: accuracy-first. Stray points off the surface cost as much "
+                 "as holes in it."),
+    "coverage": ("Deliverable: coverage-first. How much of the surface is reconstructed "
+                 "counts as much as how accurately."),
+}
 PROCEDURES = {"sparse": HARNESS / "PROCEDURE.md", "dense": HARNESS / "PROCEDURE_dense.md"}
 CLAUDE = os.environ.get("CLAUDE_BIN") or max(
     Path.home().glob(".vscode-server/extensions/anthropic.claude-code-*/resources/native-binary/claude"),
@@ -66,7 +78,7 @@ Read {procedure} first, in full, and follow it exactly.
 Your capture: {capture}
   image_dir: {image_dir}
   calibration_path: {calibration_path}
-
+{objective}
 When finished, write ../agent_report.json in the schema at the end of the
 procedure. Then reply with a 10-line summary: final pipeline, the refined artifact
 id, key metrics, runs spent, backtracks, the rule that chose the final model, and
@@ -207,6 +219,14 @@ def record_brief_reads(capture_dir: Path, session_ids: list, projects: Path | No
     return len(rows)
 
 
+def objective_line(capture: str, scope: str, entry: dict | None = None) -> str:
+    """The brief's deliverable line, or nothing: dense only, and only where measured."""
+    if scope != "dense":
+        return ""
+    obj = (entry or {}).get("objective") or DENSE_OBJECTIVE.get(capture.split("/")[0])
+    return "\n" + OBJECTIVE_TEXT[obj] + "\n" if obj in OBJECTIVE_TEXT else ""
+
+
 def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
           timeout: float = 6 * 3600, scope: str = "sparse", control: bool = False) -> dict:
     capture_dir = EXP / capture
@@ -223,7 +243,8 @@ def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
         paths = paths_for(capture, batch, control)
         prompt = BRIEF.format(procedure=procedure, capture=capture, goal=GOALS[scope],
                               image_dir=paths["image_dir"],
-                              calibration_path=paths["calibration_path"])
+                              calibration_path=paths["calibration_path"],
+                              objective=objective_line(capture, scope, paths))
     log = {"capture": capture, "gpu": gpu, "scope": scope, "control": control,
            "started": time.time(), "attempts": []}
     resume = None

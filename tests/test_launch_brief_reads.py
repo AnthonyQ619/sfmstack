@@ -56,3 +56,23 @@ def test_other_reads_are_not_logged(tmp_path):
                  (other / "brief_pose.md", 0)])
     assert _launch().record_brief_reads(cap, ["s1"], projects) == 0
     assert not (cap / "context_reads.jsonl").exists()
+
+
+def test_a_dense_brief_states_the_objective_only_where_it_was_measured():
+    launch = _launch()
+    assert "coverage-first" in launch.objective_line("ETH/kicker", "dense")
+    assert "coverage-first" in launch.objective_line("TT/Barn", "dense")
+    assert "accuracy-first" in launch.objective_line("DTU/scan75", "dense")
+    # Control: unmeasured families and every sparse brief get no objective line.
+    assert launch.objective_line("OTHER/capture", "dense") == ""
+    assert launch.objective_line("ETH/kicker", "sparse") == ""
+    # A batch entry's own objective wins over the family's.
+    assert "accuracy-first" in launch.objective_line("ETH/kicker", "dense", {"objective": "accuracy"})
+
+
+def test_the_brief_template_carries_the_objective_line():
+    launch = _launch()
+    text = launch.BRIEF.format(procedure="P.md", capture="ETH/kicker", goal="x", image_dir="i",
+                               calibration_path="c",
+                               objective=launch.objective_line("ETH/kicker", "dense"))
+    assert "Deliverable: coverage-first." in text

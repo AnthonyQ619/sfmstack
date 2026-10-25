@@ -75,19 +75,31 @@ Measurements: `skills/evidence/eth-dense-2026-09.md`.
 ## Delivering a dense cloud
 
 **On a well-posed capture, deliver with the geometric check off and
-`fusion_min_num_pixels` one step below the default.** That is one ordinary run, and
-it is the best measured trade: on a corpus of studio orbits scored against reference
-geometry it improved completeness substantially while keeping accuracy at the level
-classical MVS is published at, and it took about half the time of the default.
+`fusion_min_num_pixels` one step below the default** — the anchor. That is one ordinary
+run: on a corpus of studio orbits scored against reference geometry it improved
+completeness substantially while keeping accuracy at the level classical MVS is
+published at, and it took about half the time of the default.
+
+Two deliverables move off the anchor, both measured
+(`skills/evidence/dense-fixes-2026-10.md`):
+
+- **Accuracy-first on a studio rig orbit: the module defaults,** check on and fusion at
+  its default. On 22 such orbits the anchor was level with the defaults on 21 and a
+  tenth worse on the 22nd, where a replay on one sparse model isolated the setting.
+- **Coverage-first on anything but a studio rig orbit: the anchor's stereo pass with
+  `keep_workspace: true`, then `DenseFusion` at 2.** On every site walk, room and
+  outdoor object orbit measured, 2 scored best — see `DenseFusion`'s tuning,
+  "Stepping down, and when to stop".
 
 The region around it, and which way to move within it:
 
 - **The good region is a few pixels either side of the default, with the check
   off.** Across it the overall score is nearly flat — completeness and accuracy
   trade almost evenly. Move down for coverage, up for accuracy.
-- **Do not combine the check off with the loosest fusion settings.** With neither
-  in force nothing verifies anything, and accuracy collapsed several-fold on every
-  capture measured.
+- **On a studio orbit, do not combine the check off with the loosest fusion
+  settings.** With neither in force nothing verifies anything, and accuracy collapsed
+  several-fold on every orbit measured. Off a studio orbit, 2 with the check off is the
+  coverage delivery above; 1 was not measured.
 - **Keep the check on when the poses are in doubt.** It is also the diagnostic for
   bad poses — see "Nothing survives the filters". The region above was measured on
   captures whose poses were sound.
