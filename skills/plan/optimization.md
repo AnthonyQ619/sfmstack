@@ -78,7 +78,10 @@ It is a veto, not a ranking: it rejects a model that contradicts that evidence a
 says nothing about which of two accepted models is better. And when the pose stage
 behind the model reported escaped points, the service re-solves the chain from that
 stage at a wider window and returns `second_solve`, naming the model to continue
-from and any cameras the re-solve gave up. Read both before planning the next step.
+from and any cameras the re-solve gave up. The model it names is the incremental route's;
+where a dense stage follows, it is a candidate beside the global route's model, not the choice
+([`plan/dense.md`](dense.md#planning-the-sparse-stage-for-a-dense-deliverable)).
+Read both before planning the next step.
 See [SparseVerification](../../modules/sparse_verification/skills/SKILL.md) and
 [PoseEssentialToPnP's limitations](../../modules/pose_incremental/skills/limitations.md#escaped-points-start-a-second-solve).
 

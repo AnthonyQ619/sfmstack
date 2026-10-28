@@ -113,9 +113,59 @@ then chose by the ladder's dense tie-break — lower error in every bucket — a
 the 62.9 mm cloud over a 30.8 mm one. The two were not a model and its refinement but the
 incremental and global routes' models of the same capture.
 
+## Finding 7 — across the two routes on an outdoor object orbit, the lower centre form was the worse placement
+
+A later pair of sessions on a later context built both routes on each of two outdoor object
+orbits, read both models quiet, and densified the one the centre form read lower: the
+incremental route's second solve both times. With no agent, the other model of each session was
+densified with the same settings (1600 px, consistency off, fusion 2), and each delivered model
+was re-densified as a control. Both controls reproduced their delivered scores exactly.
+
+| capture | route | centre form | centre error, median % of span | cloud |
+| --- | --- | --- | --- | --- |
+| Barn | incremental, second solve (delivered) | 0.93 | 0.24–0.28 | 83.1 mm |
+| Barn | global reconstructor + BA | 1.09 | 0.21 | 48.5 mm |
+| a second outdoor object orbit, outside the corpus | incremental, second solve (delivered) | 0.871 | 0.16 | 21.9 mm |
+| the same | global reconstructor + BA | 0.895 | 0.13 | 19.2 mm |
+
+Finding 3 held: the better cloud sat on the model placed closer to the reference. Finding 5 did
+not hold across routes: the lower reading was the worse placement, at gaps of 1.17× and 1.03×,
+while Finding 5's own Barn models ranked correctly across routes at 1.04×. No gap in the reading
+separates the two cases. What every measured outdoor object orbit shares (Barn and Caterpillar
+here and in Finding 5, and the orbit outside the corpus) is that each quiet global model gave a
+better cloud than each incremental one. Finding 6 held as well: the incremental models carried
+the lower reprojection error (0.45 against 0.68–0.72 px; 0.67–0.74 against 0.98 px).
+
+The exception, and its scope: on an indoor enclosure outside the corpus, quiet global models
+read 1.29–1.42 and sat 18–23% of the span from the reference, while the incremental model read
+0.69 and sat at 1.3%. There the reading was right, and preferring the global route would have
+been wrong by an order of magnitude. Across every recorded dense session, preferring the global
+route between quiet models on outdoor object orbits, unless the other route reads at least 1.5×
+lower, changes four deliveries, and all four move to a model placed closer to the reference.
+
+## Finding 8 — on a site walk at full frame count, a detector-based global chain gave the best cloud
+
+Two sessions on a site walk followed the detector-free matcher the capture's row names, and
+registered 41 and 34 of 45 cameras incrementally. The detector-free global model fired the
+centre form at 11×. Densified with the same settings (1600 px, consistency off, fusion 2):
+
+| capture | chain | cameras | F1 @ 2 cm, as placed |
+| --- | --- | --- | --- |
+| electro | RoMa → incremental, verified core (delivered) | 34 of 45 | 0.491 |
+| electro | the same core with the missing cameras filled | 45 of 45 | 0.447 |
+| electro | SIFT+CLAHE → NN → global reconstructor + BA, an earlier session | 43 of 45 | 0.664 |
+
+The delivered model's control reproduced its score exactly. The detector-based global chain had
+not been tried on this capture in the campaign the row cites (alternatives there were on the
+incremental route at 1024 px).
+
 ## What this does not establish
 
 Five captures, two sessions each, one context. Finding 5 is a ranking among candidates of
 one capture, not a threshold: no centre-form value marks a model good, and the reading was
 tested only among models whose rotations were already correct. It was not tested on a
 capture where only one model was built. The interior's spread is not explained.
+
+Findings 7 and 8 are two outdoor object orbits and one site walk, one session each, with
+placement scored against reference cameras. The preference they support between routes was
+checked against every recorded dense session, not run forward on new captures.

@@ -167,8 +167,10 @@ simplicity is reproducible; a tie broken by a third decimal place is not.
 sparse model that feeds a dense stage is a set of camera poses first and a point cloud
 second, and what reaches the cloud is where the cameras sit — which neither the error nor
 the structure reads. Rank those by the two-estimator reading in its centre form, compared
-between the candidates even where it fires on neither, and take the lowest: on object
-orbits and enclosures the lowest gave the best cloud every time, and the lower error
+between the candidates even where it fires on neither, and take the lowest: within one
+route on object orbits and enclosures the lowest gave the best cloud every time (between the
+two routes on an `outdoor` · `around-a-subject` capture, `plan/dense.md` says what decides),
+and the lower error
 ranked the same models the wrong way — a session that chose a model for its lower error in
 every bucket delivered a cloud twice as far off as the one it passed over
 ([evidence](../evidence/dense-variance-2026-10.md#finding-6--lower-reprojection-error-went-with-worse-placement)).
@@ -606,6 +608,10 @@ The lost cameras are named in the kept attempt's `trade_off`, with how much of
 what they saw is still covered and how far the shared cameras' geometry moved.
 Overrule the service only on that trade-off — see
 [PoseEssentialToPnP's limitations](../../modules/pose_incremental/skills/limitations.md#escaped-points-start-a-second-solve).
+That the service kept a solve settles which incremental model continues; it does not settle
+what to densify. The kept model still meets the global route's model under
+[`plan/dense.md`](../plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable)
+before a dense stage.
 
 ---
 

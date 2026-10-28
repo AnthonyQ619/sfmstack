@@ -46,6 +46,20 @@ detector-free graph as a reason to check it against a detector-based one, which
 leaves the non-overlapping pairs unmatched — not as the strength it is on a capture
 that overlaps.
 
+**Where a dense cloud is the deliverable and a detector-free matcher's model comes up short,
+build a detector-based global model before filling or delivering a core.** If the incremental
+route on detector-free matches registers fewer cameras than the capture has, or the global
+route on them fires the two-estimator reading, run a detector-based matcher into the global
+reconstructor as well, and among the models no veto rules out, let the ladder's first rung —
+registration — choose. A detector-based model that a reading fires on is still out. On a site
+walk, the detector-free chain registered 34 and 41 of 45 in two sessions and its global model
+fired; the detector-based global chain registered 43 of 45 and gave the best dense cloud
+measured, 0.664 against 0.491 F1 for the delivered core and 0.447 for the core with its missing
+cameras filled
+([evidence](../evidence/dense-variance-2026-10.md#finding-8--on-a-site-walk-at-full-frame-count-a-detector-based-global-chain-gave-the-best-cloud)).
+Where the detector-free matcher registers the whole capture, or the deliverable is the sparse
+model itself, this does not arise.
+
 LoFTR remains the right thing to try where RoMa will not run or runs out of memory,
 and it is roughly three times faster. But it is not the stronger matcher on this
 corpus, and a capture that is fragmenting is not a reason to reach for it. The campaign

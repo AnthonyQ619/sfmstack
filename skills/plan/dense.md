@@ -206,7 +206,7 @@ models is a difference between their placements, not noise
 ([evidence](../evidence/dense-variance-2026-10.md#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement)).
 
 **So compare the centre form between your candidates, even where it does not fire, and
-densify the one it reads lowest.** Pass every candidate and both correspondence-free
+densify the one it reads lowest — except between the two routes on an outdoor object orbit.** Pass every candidate and both correspondence-free
 estimators to `sfm_compare` in one call, as
 [`plan/pose.md`](pose.md#every-reading-above-is-built-on-the-models-own-evidence)
 describes, and read each candidate's centre form against the others'. Measured over 45
@@ -220,6 +220,21 @@ It is a comparison between candidates, not a threshold: no value says one model 
 enough. Two kinds of capture are outside it. On a built interior it does not order the
 models and nothing else measured does; report which model you densified and which correct
 alternatives you built, and do not read a close dense score there as a verdict on either.
+
+**On an outdoor object orbit — a capture tagged `outdoor` · `around-a-subject`, circling one
+subject from outside, not an enclosure walked from inside — between the incremental and the
+global route, densify the global model unless the incremental one reads at least 1.5× lower.**
+Both models must read quiet; a reading that fires still ends the matter. On two such captures
+the centre form read the incremental route's second solve lower, at gaps of 1.17× and 1.03×,
+and it was the worse placement both times: 83 against 48 mm, and 22 against 19 mm. On every
+outdoor object orbit measured, each quiet global model gave a better cloud than each
+incremental one
+([evidence](../evidence/dense-variance-2026-10.md#finding-7--across-the-two-routes-on-an-outdoor-object-orbit-the-lower-centre-form-was-the-worse-placement)).
+The 1.5× is where a wide gap still means what it says: on an indoor enclosure the incremental
+model read 0.69 against 1.29–1.42 and sat ten times closer to the reference. That is why this
+rule stops at outdoor object orbits; on an enclosure, a site walk, a path, a rig orbit or a
+built interior, keep the comparison above. Report which model you densified, the other route's
+reading, and that this rule decided it.
 
 **On a fixed rig orbit every model reads the same and its surface comes out the same, so any
 of them will do — but its as-placed score still moves.** Two sessions on one context moved
@@ -378,7 +393,8 @@ outlier rather than a template.** Where a reference-scored dense cloud is the
 deliverable, build on both reconstructors and compare the centre form of the two-estimator
 reading between the two models before densifying — that reading, not the drift penalty or
 anything in the pipeline report, is what ranked placement when it was measured (*Among
-models whose rotations are all right*, above). The campaign is in
+models whose rotations are all right*, above). On an outdoor object orbit, the rule that
+follows that section decides between the two routes. The campaign is in
 [`evidence/global-rebuild-2026-10.md`](../evidence/global-rebuild-2026-10.md).
 
 ## Delivering the verified cloud

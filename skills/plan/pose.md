@@ -692,6 +692,10 @@ wider solve by default rather than on its error, and when that solve registers
 fewer cameras it records which, and what they cost, as a trade-off for you to
 weigh — see the same
 [limitations section](../../modules/pose_incremental/skills/limitations.md#escaped-points-start-a-second-solve).
+That the service kept a solve settles which incremental model continues; it does not settle
+what to densify. The kept model still meets the global route's model under
+[`plan/dense.md`](dense.md#planning-the-sparse-stage-for-a-dense-deliverable)
+before a dense stage.
 
 **But `registered_fraction` is itself a configured quantity, so the rung above
 only ranks two runs that obtained their poses the same way.** This module counts

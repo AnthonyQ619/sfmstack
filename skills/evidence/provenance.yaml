@@ -267,6 +267,7 @@ campaigns:
   dense-variance-2026-10:
     captures:
     - DTU/scan15
+    - ETH/electro
     - ETH/office
     - tanks_and_temples/Barn
     - tanks_and_temples/Caterpillar
@@ -301,6 +302,11 @@ campaigns:
       - tanks_and_temples/Barn
       - tanks_and_temples/Caterpillar
       - tanks_and_temples/Meetingroom
+      finding-7--across-the-two-routes-on-an-outdoor-object-orbit-the-lower-centre-form-was-the-worse-placement:
+      - tanks_and_temples/Barn
+      - tanks_and_temples/Caterpillar
+      finding-8--on-a-site-walk-at-full-frame-count-a-detector-based-global-chain-gave-the-best-cloud:
+      - ETH/electro
   dense-fixes-2026-10:
     captures:
     - DTU/scan15
@@ -1426,6 +1432,10 @@ claims:
   hash: 76500b85fe60
   starts: '**Once a joint matcher is the choice, there are '
   rests_on: agent-controls-2026-10#finding-3--the-two-joint-matchers-trade-places-and-neither-was-considered
+- at: plan/matching.md#1-detector-based-or-detector-free--and-what-it-costs-downstream
+  hash: a48d7bd76d26
+  starts: '**Where a dense cloud is the deliverable and a d'
+  rests_on: dense-variance-2026-10#finding-8--on-a-site-walk-at-full-frame-count-a-detector-based-global-chain-gave-the-best-cloud
 - at: plan/pose.md#before-you-deliver-a-model-ask-it-whether-it-agrees-with-itself
   hash: 006638a21a4d
   starts: '**The veto''s domain is cameras that claim to res'
@@ -1491,15 +1501,19 @@ claims:
   starts: '**Among models whose rotations are all right, pl'
   rests_on: dense-variance-2026-10#finding-3--the-spread-follows-which-sparse-model-is-densified-through-its-placement
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
-  hash: 924a4d6186aa
+  hash: 2b75cae1a846
   starts: '**So compare the centre form between your candid'
   rests_on: dense-variance-2026-10#finding-5--the-centre-form-of-the-two-estimator-reading-ranks-placement-below-its-fire-level
+- at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
+  hash: 8fcd456f3328
+  starts: '**On an outdoor object orbit — a capture tagged '
+  rests_on: dense-variance-2026-10#finding-7--across-the-two-routes-on-an-outdoor-object-orbit-the-lower-centre-form-was-the-worse-placement
 - at: plan/dense.md#planning-the-sparse-stage-for-a-dense-deliverable
   hash: b2b2c14f0f1b
   starts: '**On a fixed rig orbit every model reads the sam'
   rests_on: final-validation-2026-10#finding-4--on-a-rig-orbit-the-as-placed-score-moves-with-camera-placement-the-surface-does-not
 - at: health/ladder.md#when-the-ladder-runs-out-and-two-models-still-disagree
-  hash: 411c70ee6164
+  hash: 8e213e592c55
   starts: '**When the difference survives the spread test**'
   rests_on: dense-variance-2026-10#finding-6--lower-reprojection-error-went-with-worse-placement
 - at: plan/pose.md#every-reading-above-is-built-on-the-models-own-evidence
