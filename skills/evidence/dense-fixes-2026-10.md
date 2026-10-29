@@ -82,10 +82,40 @@ poses measured 1.000 (spread 0.04) and scored **48.9 mm**, ahead of VGGT run end
 capture under the robust point-map protocol (accuracy / completeness 42 / 17 mm against 75 / 46).
 One capture, outside the corpus; no corpus capture delivered `DenseVGGT` on mixed poses.
 
+## Finding 5 — on an indoor capture, the stereo pass's completeness says which dense module wins
+
+Every kept delivered model of seventeen indoor sessions was densified both ways with no agent:
+`DenseMVS` (1600 px, consistency off, fusion 2) and `DenseVGGT` (stride 2, on the refined
+model). Each session's own delivery reproduced its score. Completeness is the stereo pass's
+`depth_map_completeness`.
+
+| capture | completeness | `DenseMVS` | `DenseVGGT` |
+| --- | --- | --- | --- |
+| office (six sessions) | 0.26–0.39 | 0.329–0.492 F1 | **0.538–0.694 F1** |
+| an indoor office outside the corpus | 0.32 | 90.3 mm | **40.2 mm** |
+| another indoor office outside the corpus | – | 140.8 mm | **49.6 mm** |
+| Meetingroom | 0.18 | 137.7 mm | **72.3 mm** |
+| Meetingroom, another session | 0.53 | 110.2 mm | **96.8 mm** |
+| an indoor enclosure outside the corpus | 0.64 | **115.4 mm** | 125.5 mm |
+| two indoor living rooms outside the corpus | 0.78, 0.91 | **27.7, 20.9 mm** | 44.4, 60.9 mm |
+| an indoor path outside the corpus | 0.51 | **0.520 F1** | 0.460 F1 |
+| kicker | 0.69 | **0.660 F1** | 0.578 F1 |
+| delivery_area | 0.83 | **0.723 F1** | 0.134 F1 |
+| relief | 0.86 | **0.739 F1** | 0.224 F1 |
+
+At 0.39 or below the prior won every time and by a wide margin; at 0.51 or above the verified
+cloud won every time but once, a narrow loss at 0.53. Two office sessions built the identical
+sparse model (poses equal to the last digit): one delivered the prior at 0.694 F1, the other
+read the same 0.37 as respectable and delivered the verified cloud at 0.329. Across every
+recorded dense session, delivering the prior on indoor captures below 0.45 changes seven
+deliveries, and on all seven the paired run puts the prior ahead. Below 0.45 on a studio rig
+orbit or outdoors, neither module was compared here.
+
 ## What this does not establish
 
 All four are replays from kept models and workspaces: they show what the setting or input
 does, not that an agent given the revised context makes the choice. Finding 1's fusion-2 result
 is on the record runs' depth maps; the batch's own are deleted. Fusion 1 was not measured.
 Finding 2 is one orbit isolated and 21 compared against a record built on different sparse
-models. Finding 4 is one capture.
+models. Finding 4 is one capture. Finding 5 is seventeen sessions on indoor captures only; the level
+between 0.39 and 0.51 rests on the gap between them, and one capture sits inside it.

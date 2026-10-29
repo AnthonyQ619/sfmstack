@@ -163,6 +163,17 @@ complete, not by being right: on those same captures it is still the less accura
 the two. So this is a choice about which error the deliverable can afford, made on a
 number you can read, and not a sign that the prior became correct.
 
+**On an indoor capture, collapsed means below 0.45.** Read `depth_map_completeness` from the
+stereo pass. Scored both ways on the same models, every indoor capture at 0.39 or below went
+to the prior by a wide margin — on one built interior 0.54–0.69 F1 against 0.33–0.49, and the
+same sparse model scored 0.694 one way and 0.329 the other — and every capture at 0.51 or above
+went to the verified cloud but one, by a narrow margin
+([evidence](../evidence/dense-fixes-2026-10.md#finding-5--on-an-indoor-capture-the-stereo-passs-completeness-says-which-dense-module-wins)).
+So on a capture tagged `indoor` whose stereo pass reads below 0.45, deliver `DenseVGGT` and
+report the verified cloud as the alternative; at 0.45 or above, the judgement above stands. Do
+not carry the level to a studio rig orbit or an outdoor capture: completeness runs low there
+for other reasons, and the two modules were not compared on them.
+
 **Beware the averaged score here.** Where the verified cloud's completeness has fallen
 far enough, a single accuracy-and-completeness average stops separating a tight cloud
 from a loose one — a cloud several times worse on accuracy can tie or win on the mean.

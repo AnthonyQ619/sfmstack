@@ -325,6 +325,12 @@ campaigns:
     - tanks_and_temples/Caterpillar
     - tanks_and_temples/Meetingroom
     sections:
+      finding-5--on-an-indoor-capture-the-stereo-passs-completeness-says-which-dense-module-wins:
+      - ETH/delivery_area
+      - ETH/kicker
+      - ETH/office
+      - ETH/relief
+      - tanks_and_temples/Meetingroom
       finding-1--off-a-studio-rig-orbit-stepping-fusion-down-to-2-was-best-past-where-the-doubling-rule-stops:
       - DTU/scan15
       - DTU/scan33
@@ -1512,6 +1518,10 @@ claims:
   hash: b2b2c14f0f1b
   starts: '**On a fixed rig orbit every model reads the sam'
   rests_on: final-validation-2026-10#finding-4--on-a-rig-orbit-the-as-placed-score-moves-with-camera-placement-the-surface-does-not
+- at: plan/dense.md#which-end-to-reach-for
+  hash: 8dfbb8b2866f
+  starts: '**On an indoor capture, collapsed means below 0.'
+  rests_on: dense-fixes-2026-10#finding-5--on-an-indoor-capture-the-stereo-passs-completeness-says-which-dense-module-wins
 - at: health/ladder.md#when-the-ladder-runs-out-and-two-models-still-disagree
   hash: 8e213e592c55
   starts: '**When the difference survives the spread test**'
