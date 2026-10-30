@@ -111,6 +111,27 @@ recorded dense session, delivering the prior on indoor captures below 0.45 chang
 deliveries, and on all seven the paired run puts the prior ahead. Below 0.45 on a studio rig
 orbit or outdoors, neither module was compared here.
 
+## Finding 6 — DenseVGGT ran on inputs the agent had not named
+
+`DenseVGGT`'s `poses`, `sparse` and `tracks` are all optional, and `sfmx run` filled every slot
+left out from the chain's current artifact, optional ones included. When `poses` is present the
+cloud is unprojected through it and `sparse` only measures the scale. Eight sessions of one test
+ran `DenseVGGT` (office, Meetingroom and two indoor offices outside the corpus, two sessions
+each). Seven ran it at least once on an input they had not named, from a different solve than
+the one they passed:
+
+| filled without being named | sessions | readings on that run | outcome |
+| --- | --- | --- | --- |
+| the first solve's poses, beside the kept second solve's model | 1 (office) | 26 of 26 views, scale spread 0.036 | not noticed; delivered |
+| an earlier or other-branch solve's poses, beside the model passed | 5 (Meetingroom, the two offices outside the corpus) | 2–27 of 90 views, or scale spread 0.18–0.66 | noticed; rebuilt, or not delivered |
+| a folded global model as `sparse`, beside `PoseVGGT`'s poses | 1 (Meetingroom) | scale 5.27, spread 0.45 | noticed; rebuilt |
+
+The eighth built its model with the global reconstructor, so its chain held no `poses/v1` to
+fill. Replayed without an agent, office's delivered model densified with `sparse` alone scored
+**0.410 F1** as placed, against 0.363 with the first solve's poses filled in. Its readings were
+healthy both ways (scale 3.475 against 3.470). Two of the five noticed runs were blamed on the
+sparse model, not on the poses beside it, and the module guidance was reported as wrong.
+
 ## What this does not establish
 
 All four are replays from kept models and workspaces: they show what the setting or input
@@ -118,4 +139,5 @@ does, not that an agent given the revised context makes the choice. Finding 1's 
 is on the record runs' depth maps; the batch's own are deleted. Fusion 1 was not measured.
 Finding 2 is one orbit isolated and 21 compared against a record built on different sparse
 models. Finding 4 is one capture. Finding 5 is seventeen sessions on indoor captures only; the level
-between 0.39 and 0.51 rests on the gap between them, and one capture sits inside it.
+between 0.39 and 0.51 rests on the gap between them, and one capture sits inside it. Finding 6
+is one test's eight sessions; the 0.047 it measures is one capture.

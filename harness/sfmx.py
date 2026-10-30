@@ -14,8 +14,8 @@ command takes a scene argument. Its paths come from SFM_BATCH (a JSON list of
   find     <produces> [k=v ...]     sfm_find_alternatives
   run      <module> <params-json> [slot=artifact_id ...]
   run      <module> --params-file <path> [slot=artifact_id ...]
-                                    sfm_run; each consumed slot is wired from the chain
-                                    unless overridden. The step runs in a detached worker;
+                                    sfm_run; a required slot is wired from the chain
+                                    unless named, an optional one only when named. The step runs in a detached worker;
                                     this call blocks until it finishes or 540 s pass, and
                                     then says it is still running. One run at a time per
                                     capture: a second waits.
@@ -53,6 +53,7 @@ sys.path.insert(0, str(REPO / "packages" / "sfmkit" / "src"))
 from sfmorch.mcp_server import build_service  # noqa: E402
 from gpu_gate import exclusive_on_gpu, gpu_gate  # noqa: E402
 from roots import context_roots  # noqa: E402
+from slots import required as slot_required, wire_inputs  # noqa: E402
 
 DATASETS = Path("/home/anthonyq/datasets")
 # Where capture directories live; a batch with its own root sets SFM_EXP.
@@ -339,19 +340,10 @@ elif cmd == "run":
         sys.exit(f"{module} does not consume {bad}; it takes {sorted(consumes)}")
     with capture_lock():
         ch = load_chain()  # read under the lock: nothing else writes it meanwhile
-        inputs = {s: overrides.get(s, ch["current"].get(s)) for s in consumes}
-        inputs = {s: a for s, a in inputs.items() if a}
-        # Only a REQUIRED slot the chain cannot fill is an error. Every slot was
-        # treated as required until a module declared an optional input the chain
-        # never carries: the optional estimator PoseFill compares its fill against.
-        # Modules whose optional slots happen to name something the chain always has
-        # -- DenseVGGT's poses, sparse and tracks -- never exposed this, because
-        # `ch["current"]` filled them and they were never missing.
-        def needed(slot):
-            spec = consumes.get(slot)
-            return not isinstance(spec, dict) or spec.get("required", True)
-
-        missing = [s for s in consumes if s not in inputs and needed(s)]
+        # Required slots come from the chain unless named; optional ones only when named
+        # (slots.py says why).
+        inputs = wire_inputs(consumes, overrides, ch["current"])
+        missing = [s for s in consumes if s not in inputs and slot_required(consumes[s])]
         if missing and module != "SceneLoader":
             sys.exit(f"{module} needs {missing}, which this capture's chain does not carry. "
                      f"It has {sorted(ch['current'])}. Produce them first, or pass slot=artifact_id.")

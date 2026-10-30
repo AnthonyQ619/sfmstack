@@ -46,6 +46,10 @@ about the modules comes from the written context, reached through the tool below
     sfmx series <id> <group>
     sfmx cloud <id> [n]
 
+In `run`, a slot you name takes that artifact; a required slot you leave out
+is wired from the chain's current artifact, and an optional one stays empty. `describe`
+says which slots are optional.
+
 `skills` with no topic prints the index; start there. `image` returns a path:
 open it with your image-capable file reader to actually see the picture. A
 description of frames you have not looked at is fabrication, not analysis.

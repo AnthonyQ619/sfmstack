@@ -325,6 +325,9 @@ campaigns:
     - tanks_and_temples/Caterpillar
     - tanks_and_temples/Meetingroom
     sections:
+      finding-6--densevggt-ran-on-inputs-the-agent-had-not-named:
+      - ETH/office
+      - tanks_and_temples/Meetingroom
       finding-5--on-an-indoor-capture-the-stereo-passs-completeness-says-which-dense-module-wins:
       - ETH/delivery_area
       - ETH/kicker

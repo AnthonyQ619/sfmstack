@@ -58,14 +58,23 @@ predicted depth at the pixel that saw it, with nothing re-triangulated. A
 parameter, whose default of 1.0 is correct only when the poses came from VGGT too.
 `depth_scale_source` on the output says which of the three the run used.
 
-**Its poses must be VGGT's own.** If you pass `poses` beside `sparse`, pass `PoseVGGT`'s,
-by id. A slot left to be filled from the current chain gets whichever pose artifact is
-current, and after both estimators have run that is the later one. On an indoor capture
-whose geometric models were all folded, VGGT's depth unprojected through
-`PoseMapAnything`'s poses measured a scale of 1.37 with a spread of 0.65, raised
-`depth_scale_inconsistent`, and scored 183 mm; the same call on `PoseVGGT`'s poses
-measured 1.000 and scored 49 mm (`skills/evidence/dense-fixes-2026-10.md`, Finding 4).
-That diagnostic is the signature: rebuild on `PoseVGGT`'s poses before you deliver.
+**Name its inputs, all from the solve you deliver.** `poses`, `sparse` and `tracks` are
+optional, so `sfmx run` passes only the ones you name. When `poses` is passed, the cloud is
+unprojected through it and `sparse` only measures the scale, so the two must come from the
+same solve:
+- delivering a refined geometric model, pass `sparse=<that model>` alone;
+- delivering the estimators' model, pass `poses=<PoseVGGT's id>` with the `sparse` or
+  `tracks` built on those poses.
+
+Before this was enforced, seven of eight sessions in one test ran this module on poses or a
+model from another solve. One delivered it with healthy readings: the first solve's poses
+beside the kept second solve's model scored 0.363 F1 against 0.410 (`skills/evidence/dense-fixes-2026-10.md`,
+Finding 6). On an indoor capture whose geometric models were all folded, VGGT's depth
+unprojected through `PoseMapAnything`'s poses measured a scale of 1.37 with a spread of
+0.65, raised `depth_scale_inconsistent`, and scored 183 mm. The same call on `PoseVGGT`'s
+poses measured 1.000 and scored 49 mm (Finding 4). That diagnostic, or `views_contributing`
+short of the cameras you meant to pass, says the inputs are from two solves: read the run's
+`inputs` and rebuild before you deliver.
 
 Measured on 8 views of a studio rig orbit, classical poses:
 
