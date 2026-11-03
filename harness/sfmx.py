@@ -54,6 +54,7 @@ from sfmorch.mcp_server import build_service  # noqa: E402
 from gpu_gate import exclusive_on_gpu, gpu_gate  # noqa: E402
 from roots import context_roots  # noqa: E402
 from slots import required as slot_required, wire_inputs  # noqa: E402
+import withhold  # noqa: E402
 
 DATASETS = Path("/home/anthonyq/datasets")
 # Where capture directories live; a batch with its own root sets SFM_EXP.
@@ -119,15 +120,18 @@ RUN_ID = CAPTURE.replace("/", "_")
 GPU = int(os.environ.get("SFM_GPU", "4"))
 # Which context this capture was driven against, written on every call so the run
 # directory says so even when no override was set.
+# Scene-analysis signals an experiment withholds (harness/withhold.py); empty on every ordinary run.
+WITHHOLD = withhold.parse(os.environ.get("SFM_WITHHOLD"))
 (HOME / "context_roots.json").write_text(json.dumps({
     "skills": str(SKILLS), "modules": str(MODULES),
-    "default": SKILLS == REPO / "skills" and MODULES == REPO / "modules"}, indent=1))
+    "default": SKILLS == REPO / "skills" and MODULES == REPO / "modules" and not WITHHOLD,
+    **({"withheld": sorted(WITHHOLD)} if WITHHOLD else {})}, indent=1))
 
 
 def emit(obj):
     """Print, and keep a copy in this capture's scratch directory, so a long
     answer can be re-read with the file reader instead of piped through tools."""
-    text = json.dumps(obj, indent=1, default=str)
+    text = json.dumps(withhold.scrub(json.loads(json.dumps(obj, default=str)), WITHHOLD), indent=1, default=str)
     print(text)
     (SCRATCH / f"last_{sys.argv[1] if len(sys.argv) > 1 else 'out'}.json").write_text(text)
 
@@ -187,7 +191,7 @@ def load_chain():
 
 def save_chain(ch):
     tmp = CHAIN.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(ch, indent=1))
+    tmp.write_text(json.dumps(withhold.scrub(ch, WITHHOLD), indent=1))
     os.replace(tmp, CHAIN)
 
 
@@ -266,7 +270,7 @@ elif cmd == "brief":
         sys.exit("no scene artifact yet. Run SceneLoader first: its image_dir is "
                  f"{PATHS['image_dir']} and its calibration_path is {PATHS['calibration_path']}.")
     log_ctx("plan_brief")
-    brief = service().plan_brief(ch["current"]["scene"])
+    brief = withhold.scrub(json.loads(json.dumps(service().plan_brief(ch["current"]["scene"]), default=str)), WITHHOLD)
     # The brief inlines the planning guide and every stage file, each as one JSON
     # string, so the answer ran to 300 KB with single lines up to 92 KB -- longer than
     # the file reader will page. All fourteen agents of one batch said they could not
@@ -289,10 +293,14 @@ elif cmd == "brief":
     emit(brief)
 
 elif cmd == "describe":
+    if withhold.refusal(args[0], WITHHOLD):
+        sys.exit(withhold.refusal(args[0], WITHHOLD))
     log_ctx("describe_module", module=args[0])
     emit(service().describe_module(args[0]))
 
 elif cmd == "skill":
+    if withhold.refusal(args[0], WITHHOLD):
+        sys.exit(withhold.refusal(args[0], WITHHOLD))
     log_ctx("module_skill", module=args[0], topic=args[1])
     show(service().module_skill(args[0], args[1])["text"])
 
@@ -320,6 +328,8 @@ elif cmd == "pin":
 elif cmd == "run":
     follow_detached()
     module = args[0]
+    if withhold.refusal(module, WITHHOLD):
+        sys.exit(withhold.refusal(module, WITHHOLD))
     if len(args) > 2 and args[1] == "--params-file":
         params, rest = json.loads(Path(args[2]).read_text()), args[3:]
     else:
@@ -454,6 +464,12 @@ elif cmd == "artifact":
     emit(service().artifact(args[0], full=True))
 
 elif cmd == "image":
+    _ch = load_chain()
+    _scenes = {_ch["current"].get("scene")} | {h["outputs"]["scene"] for h in _ch["history"]
+                                               if "scene" in (h.get("outputs") or {})}
+    if "visual" in WITHHOLD and args[0] in _scenes:
+        sys.exit("Images of the scene's own frames are withheld in this experiment; images of "
+                 "every later artifact are available.")
     emit(service().artifact_image(args[0], name=args[1] if len(args) > 1 else ""))
 
 elif cmd == "compare":
@@ -463,6 +479,8 @@ elif cmd == "summary":
     emit(service().run_summary(RUN_ID))
 
 elif cmd == "series":
+    if "motion_illumination" in WITHHOLD and args[1] == "photometric":
+        sys.exit("SceneTriage's photometric group is withheld in this experiment.")
     import numpy as np
     grp = service().store.open(args[0]).load(args[1])
     emit({k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in grp.items()})

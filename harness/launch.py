@@ -49,6 +49,9 @@ EXP = Path(os.environ.get("SFM_EXP_ROOT") or Path.home() / "sfm_experiments")
 # own trees, which is every ordinary run.
 SKILLS: Path | None = None
 MODULES: Path | None = None
+# Set from --withhold for an experiment that removes scene-analysis signals
+# (harness/withhold.py); None on every ordinary run.
+WITHHOLD: str | None = None
 GOALS = {"sparse": "a refined sparse model", "dense": "a dense reconstruction"}
 # What a dense deliverable is judged on, as a task would state it. DenseFusion's tuning
 # reads a task that names neither as accuracy-first, and every dense session then stopped
@@ -131,7 +134,7 @@ def environment(capture: str, gpu: int, scratch: Path, batch: str | None,
         env["SFM_CONTROL"] = "1"
     # Context overrides. Absent, sfmx reads the repository's skills/ and modules/;
     # an inherited value is dropped so a batch never reads a view by accident.
-    for var, value in (("SFM_SKILLS", SKILLS), ("SFM_MODULES", MODULES)):
+    for var, value in (("SFM_SKILLS", SKILLS), ("SFM_MODULES", MODULES), ("SFM_WITHHOLD", WITHHOLD)):
         env.pop(var, None)
         if value:
             env[var] = str(value)
@@ -227,6 +230,20 @@ def objective_line(capture: str, scope: str, entry: dict | None = None) -> str:
     return "\n" + OBJECTIVE_TEXT[obj] + "\n" if obj in OBJECTIVE_TEXT else ""
 
 
+# What `claude -p --output-format json` reports about the attempt's cost. Kept whole, as the
+# CLI gives it: tokens by kind, cost in dollars overall and per model, turns, wall and API time.
+SPEND = ("total_cost_usd", "usage", "modelUsage", "num_turns", "duration_ms", "duration_api_ms",
+         "is_error", "subtype", "stop_reason")
+
+
+def attempt_record(returncode: int, stderr: str, out: dict) -> dict:
+    """One attempt's line in agent_log.json. A field the CLI did not report is left out, never
+    filled in, so a missing cost reads as missing rather than as zero."""
+    return {"exit": returncode, "stderr": stderr[-2000:], "session_id": out.get("session_id"),
+            "result": str(out.get("result", ""))[-4000:],
+            **{k: out[k] for k in SPEND if k in out}}
+
+
 def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
           timeout: float = 6 * 3600, scope: str = "sparse", control: bool = False) -> dict:
     capture_dir = EXP / capture
@@ -257,9 +274,7 @@ def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
             out = json.loads(proc.stdout)
         except json.JSONDecodeError:
             out = {"raw": proc.stdout[-4000:]}
-        log["attempts"].append({"exit": proc.returncode, "stderr": proc.stderr[-2000:],
-                                "session_id": out.get("session_id"),
-                                "result": str(out.get("result", ""))[-4000:]})
+        log["attempts"].append(attempt_record(proc.returncode, proc.stderr, out))
         (capture_dir / "agent_log.json").write_text(json.dumps(log, indent=1))
         if (capture_dir / "agent_report.json").exists() or prompt == SMOKE:
             break
@@ -291,8 +306,10 @@ def main() -> int:
                     "only; default: the repository's)")
     ap.add_argument("--modules", help="a modules/ tree to describe modules from (ablation "
                     "batches only; default: the repository's)")
+    ap.add_argument("--withhold", help="comma-separated scene-analysis signals to withhold "
+                    "(visual, motion_illumination; experiments only; default: none)")
     a = ap.parse_args()
-    global EXP, SKILLS, MODULES
+    global EXP, SKILLS, MODULES, WITHHOLD
     if a.exp:
         EXP = Path(a.exp).expanduser().resolve()
     if a.skills:
@@ -301,6 +318,10 @@ def main() -> int:
             sys.exit(f"--skills {SKILLS}: no evidence/CORPUS.txt there, so not a context tree")
     if a.modules:
         MODULES = Path(a.modules).expanduser().resolve()
+    if a.withhold:
+        sys.path.insert(0, str(HARNESS))
+        from withhold import parse as parse_withhold
+        WITHHOLD = ",".join(sorted(parse_withhold(a.withhold)))
     controls = {c for c in a.controls.split(",") if c}
     gpus = [int(g) for g in a.gpus.split(",")]
     if a.smoke:
