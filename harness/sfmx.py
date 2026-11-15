@@ -55,6 +55,7 @@ from gpu_gate import exclusive_on_gpu, gpu_gate  # noqa: E402
 from roots import context_roots  # noqa: E402
 from slots import required as slot_required, wire_inputs  # noqa: E402
 import withhold  # noqa: E402
+import bare  # noqa: E402
 
 DATASETS = Path("/home/anthonyq/datasets")
 # Where capture directories live; a batch with its own root sets SFM_EXP.
@@ -122,16 +123,19 @@ GPU = int(os.environ.get("SFM_GPU", "4"))
 # directory says so even when no override was set.
 # Scene-analysis signals an experiment withholds (harness/withhold.py); empty on every ordinary run.
 WITHHOLD = withhold.parse(os.environ.get("SFM_WITHHOLD"))
+# Bare service mode for the context-ablation arms (harness/bare.py); off on every ordinary run.
+BARE = os.environ.get("SFM_BARE") == "1"
 (HOME / "context_roots.json").write_text(json.dumps({
     "skills": str(SKILLS), "modules": str(MODULES),
-    "default": SKILLS == REPO / "skills" and MODULES == REPO / "modules" and not WITHHOLD,
-    **({"withheld": sorted(WITHHOLD)} if WITHHOLD else {})}, indent=1))
+    "default": SKILLS == REPO / "skills" and MODULES == REPO / "modules" and not WITHHOLD and not BARE,
+    **({"withheld": sorted(WITHHOLD)} if WITHHOLD else {}), **({"bare": True} if BARE else {})}, indent=1))
 
 
 def emit(obj):
     """Print, and keep a copy in this capture's scratch directory, so a long
     answer can be re-read with the file reader instead of piped through tools."""
-    text = json.dumps(withhold.scrub(json.loads(json.dumps(obj, default=str)), WITHHOLD), indent=1, default=str)
+    obj = withhold.scrub(json.loads(json.dumps(obj, default=str)), WITHHOLD)
+    text = json.dumps(bare.scrub(obj) if BARE else obj, indent=1, default=str)
     print(text)
     (SCRATCH / f"last_{sys.argv[1] if len(sys.argv) > 1 else 'out'}.json").write_text(text)
 
@@ -157,6 +161,11 @@ def service(docker=False):
     svc.estimator_gate = lambda name: gpu_gate(
         EXP, GPU, exclusive_on_gpu(svc.describe_module(name)),
         f"{CAPTURE} {name} (estimator reading)")
+    if BARE:
+        # The service's two automatic tuning moves are off in bare mode (harness/bare.py).
+        svc._second_solve = lambda *a, **k: None
+        svc._second_solve_notice = lambda *a, **k: None
+        svc.ESTIMATOR_TRIANGULATOR = ""
     return svc
 
 
@@ -255,6 +264,8 @@ def last_step():
 
 
 cmd, args = (sys.argv[1], sys.argv[2:]) if len(sys.argv) > 1 else ("help", [])
+if BARE and cmd in bare.REFUSED:
+    sys.exit(bare.REFUSAL.format(cmd=cmd))
 
 if cmd == "skills":
     topic = args[0] if args else "SKILLS"
@@ -496,6 +507,29 @@ elif cmd == "cloud":
           "radius_percentiles": {f"p{q}": float(v) for q, v in
                                  zip((5, 25, 50, 75, 95), np.percentile(d, [5, 25, 50, 75, 95]))},
           "sample": xyz[sel].round(4).tolist()})
+
+elif cmd == "mcmc":
+    # Ablation arm A3 only (harness/mcmc.py): the sampler draws proposals and decides acceptance.
+    if not os.environ.get("SFM_MCMC_N"):
+        sys.exit("`sfmx mcmc` is not available on this run.")
+    import mcmc
+    sub = args[0] if args else "status"
+    smp = mcmc.Sampler(service(), HOME, CAPTURE, RUN_ID, n=int(os.environ["SFM_MCMC_N"]),
+                       temp=float(os.environ.get("SFM_MCMC_T", "5")), seed=int(os.environ.get("SFM_MCMC_SEED", "0")))
+    with capture_lock():
+        if sub == "init":
+            ch = load_chain()
+            out = smp.init(args[1] if len(args) > 1 else ch["current"].get("sparse", ""))
+        elif sub == "propose":
+            out = smp.propose()
+        elif sub == "score":
+            if len(args) < 2:
+                sys.exit("usage: sfmx mcmc score <refined_artifact>|failed")
+            out = smp.score(args[1])
+        else:
+            out = smp.status()
+    log_ctx("mcmc", sub=sub)
+    emit(out)
 
 else:
     sys.exit(__doc__)

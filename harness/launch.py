@@ -52,6 +52,11 @@ MODULES: Path | None = None
 # Set from --withhold for an experiment that removes scene-analysis signals
 # (harness/withhold.py); None on every ordinary run.
 WITHHOLD: str | None = None
+# Set for a context-ablation arm (harness/bare.py, harness/mcmc.py, harness/ablation/); None on every ordinary run.
+PROCEDURE: Path | None = None          # --procedure: the arm's procedure in place of PROCEDURES[scope]
+EXTRA_READS: list[Path] = []           # --read: further files the agent may open (the arm's mechanics file)
+BARE = False                           # --bare
+MCMC: dict[str, str] = {}              # --mcmc-n / --mcmc-t / --mcmc-seed
 GOALS = {"sparse": "a refined sparse model", "dense": "a dense reconstruction"}
 # What a dense deliverable is judged on, as a task would state it. DenseFusion's tuning
 # reads a task that names neither as accuracy-first, and every dense session then stopped
@@ -102,11 +107,17 @@ Reply with four numbered lines."""
 
 def settings(capture_dir: Path, procedure: Path) -> dict:
     here = f"//{str(capture_dir).lstrip('/')}"
+    # Bare arms read only their scratch files and the images `sfmx image` points at: the store's manifests in the
+    # capture directory carry the advice bare mode withholds (harness/bare.py).
+    reads = ([f"Read({here}/scratch/**)", *[f"Read({here}/**/*.{x})" for x in ("png", "jpg", "jpeg")],
+              f"Edit({here}/scratch/**)", f"Edit({here}/agent_report.json)"] if BARE
+             else [f"Read({here}/**)", f"Edit({here}/**)"])
     return {"permissions": {
         "defaultMode": "dontAsk",
         "allow": ["Bash(sfmx:*)", "Bash(sfmx *)",
-                  f"Read({here}/**)", f"Write({here}/**)", f"Edit({here}/**)",
-                  f"Read(//{str(procedure).lstrip('/')})"],
+                  *reads, f"Write({here}/**)",
+                  f"Read(//{str(procedure).lstrip('/')})",
+                  *[f"Read(//{str(p).lstrip('/')})" for p in EXTRA_READS]],
         "deny": ["WebFetch", "WebSearch", "Agent", "Task"],
     }}
 
@@ -134,7 +145,9 @@ def environment(capture: str, gpu: int, scratch: Path, batch: str | None,
         env["SFM_CONTROL"] = "1"
     # Context overrides. Absent, sfmx reads the repository's skills/ and modules/;
     # an inherited value is dropped so a batch never reads a view by accident.
-    for var, value in (("SFM_SKILLS", SKILLS), ("SFM_MODULES", MODULES), ("SFM_WITHHOLD", WITHHOLD)):
+    for var, value in (("SFM_SKILLS", SKILLS), ("SFM_MODULES", MODULES), ("SFM_WITHHOLD", WITHHOLD),
+                       ("SFM_BARE", "1" if BARE else None), ("SFM_MCMC_N", MCMC.get("n")),
+                       ("SFM_MCMC_T", MCMC.get("t")), ("SFM_MCMC_SEED", MCMC.get("seed"))):
         env.pop(var, None)
         if value:
             env[var] = str(value)
@@ -250,7 +263,7 @@ def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
     scratch = capture_dir / "scratch"
     scratch.mkdir(parents=True, exist_ok=True)
     env = environment(capture, gpu, scratch, batch, scope, control)
-    procedure = PROCEDURES[scope]
+    procedure = PROCEDURE or PROCEDURES[scope]
     if prompt is None:
         # Name the brief's fields rather than splatting: a --batch entry carries its own
         # `capture` key alongside the two paths, and `capture` is already passed here by
@@ -263,7 +276,8 @@ def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
                               calibration_path=paths["calibration_path"],
                               objective=objective_line(capture, scope, paths))
     log = {"capture": capture, "gpu": gpu, "scope": scope, "control": control,
-           "started": time.time(), "attempts": []}
+           "started": time.time(), "attempts": [],
+           **({"procedure": str(procedure), "bare": BARE, "mcmc": MCMC} if PROCEDURE else {})}
     resume = None
     for attempt in range(2):
         proc = subprocess.run(command(prompt if resume is None else RESUME, capture_dir, procedure, resume),
@@ -308,8 +322,22 @@ def main() -> int:
                     "batches only; default: the repository's)")
     ap.add_argument("--withhold", help="comma-separated scene-analysis signals to withhold "
                     "(visual, motion_illumination; experiments only; default: none)")
+    ap.add_argument("--procedure", help="an ablation arm's procedure in place of the scope's (experiments only)")
+    ap.add_argument("--read", action="append", default=[], help="a further file the agent may read (repeatable)")
+    ap.add_argument("--bare", action="store_true", help="bare service mode (harness/bare.py; experiments only)")
+    ap.add_argument("--mcmc-n", help="enable `sfmx mcmc` with this many iterations (arm A3 only)")
+    ap.add_argument("--mcmc-t", default="5", help="MCMC temperature, in health-percentile points")
+    ap.add_argument("--mcmc-seed", default="0", help="MCMC base seed")
     a = ap.parse_args()
-    global EXP, SKILLS, MODULES, WITHHOLD
+    global EXP, SKILLS, MODULES, WITHHOLD, PROCEDURE, EXTRA_READS, BARE, MCMC
+    if a.procedure:
+        PROCEDURE = Path(a.procedure).expanduser().resolve()
+        if not PROCEDURE.is_file():
+            sys.exit(f"--procedure {PROCEDURE}: no such file")
+    EXTRA_READS = [Path(r).expanduser().resolve() for r in a.read]
+    BARE = a.bare
+    if a.mcmc_n:
+        MCMC = {"n": a.mcmc_n, "t": a.mcmc_t, "seed": a.mcmc_seed}
     if a.exp:
         EXP = Path(a.exp).expanduser().resolve()
     if a.skills:
