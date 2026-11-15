@@ -760,14 +760,57 @@ class SfmService:
                     "note": ("Take the reading yourself as plan/pose.md describes, or say "
                              "in the report that it could not be taken.")}
         reading = two_estimator_reading(model, estimators)
+        built = (self._estimator_models(model, estimators, run_id or model.manifest.run)
+                 if run_missing else None)
         return {"status": "ran", "model": model.id,
                 "estimators": {n: a.id for n, a in estimators.items()},
                 **reading,
+                **({"estimator_models": built} if built else {}),
                 "how_to_read": ("ratio is the model's disagreement with the two estimators, "
                                 "averaged, over their disagreement with each other; it fires "
                                 f"at {reading['fire_level']} or more. plan/pose.md, 'Every "
                                 "reading above is built on the model's own evidence', says "
                                 "what each form firing means and what to deliver.")}
+
+    # Each estimator's own model, built beside the reading. Choosing between a
+    # geometric model and an estimator's needs the estimator's model to exist, and
+    # agents left to build it did so in 20 of 62 sessions, then in 2 of 50. So once
+    # the reading has the estimators' poses, the service triangulates each set of
+    # poses on the model's own tracks with the plain geometric triangulator, which
+    # keeps the supplied poses as they are. Built once per (estimator, tracks), never
+    # refined here and never delivered here: plan/pose.md says when an estimator's
+    # model is the delivery. A failure is reported and never takes the step down.
+    ESTIMATOR_TRIANGULATOR = "SparseTriangulation"
+
+    def _estimator_models(self, model, estimators: dict[str, Any],
+                          run_id: str | None) -> dict[str, Any] | None:
+        tracks = self._ancestor_of_type(model, self.TRACKS_TYPE)
+        if tracks is None or self.ESTIMATOR_TRIANGULATOR not in self.registry.names():
+            return None
+        memo = self._estimator_memo
+        out = {}
+        for name, poses in estimators.items():
+            key = ("model", name, tracks.id)
+            if key in memo:
+                out[name] = memo[key]
+                continue
+            try:
+                res = self.orch.run(self.ESTIMATOR_TRIANGULATOR, run_id=run_id,
+                                    inputs={"scene": model.manifest.scene,
+                                            "tracks": tracks.id, "poses": poses.id})
+                art = next(a for a in res.outputs.values() if a.type == self.SPARSE_MODEL_TYPE)
+                reg = art.metric("registered_images")
+                entry = {"status": "built", "model": art.id, "poses": poses.id,
+                         "module": self.ESTIMATOR_TRIANGULATOR,
+                         "registered_images": None if reg is None else int(reg)}
+            except Exception as e:  # never take the step down with it
+                entry = {"status": "failed", "poses": poses.id,
+                         "reason": f"{type(e).__name__}: {str(e)[:300]}"}
+            memo[key] = entry
+            out[name] = entry
+        return {**out, "note": ("each estimator's poses triangulated on this model's tracks, "
+                                "poses unchanged; plan/pose.md's delivery table says when one of "
+                                "these is the delivery, and 'Which estimator's model' which one")}
 
     # A failed estimator is remembered in the store, not only in this process: a
     # launcher may build a service per call, and an estimator that ran out of memory

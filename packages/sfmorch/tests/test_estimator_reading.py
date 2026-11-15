@@ -253,3 +253,66 @@ def test_after_a_failure_the_agents_own_run_of_the_estimator_is_used(service):
                         inputs={"scene": scene, "sparse": refined["outputs"]["sparse"]})
     assert again["estimator_reading"]["status"] == "ran"
     assert again["estimator_reading"]["estimators"]["FakeEstimatorOOM"] == own
+
+
+# ------------------------------------------------------------------ each estimator's own model
+
+
+def test_each_estimator_gets_its_own_model_on_the_models_tracks(service):
+    service.ESTIMATOR_TRIANGULATOR = "FakeTriangulator"
+    _, refined = chain(service, escape_below=0)
+    r = refined["estimator_reading"]
+    built = r["estimator_models"]
+    model = service.store.open(refined["outputs"]["sparse"])
+    tracks = service._ancestor_of_type(model, "poses/v1") and service._ancestor_of_type(model, "tracks/v1")
+    for name in ("FakeEstimatorA", "FakeEstimatorB"):
+        e = built[name]
+        assert e["status"] == "built", e
+        assert e["poses"] == r["estimators"][name]
+        inputs = set(service.store.open(e["model"]).manifest.inputs)
+        assert {e["poses"], tracks.id} <= inputs          # the estimator's poses, the model's tracks
+
+
+def test_the_estimator_models_are_built_once_per_tracks(service):
+    service.ESTIMATOR_TRIANGULATOR = "FakeTriangulator"
+    _, refined = chain(service, escape_below=0)
+    first = refined["estimator_reading"]["estimator_models"]
+    n = len(estimator_steps(service, "FakeTriangulator"))
+    again = service.run("FakeRefiner", run_id="r", wait_s=60.0, inputs={
+        "scene": service.store.open(refined["outputs"]["sparse"]).manifest.scene,
+        "sparse": refined["outputs"]["sparse"]})
+    assert again["estimator_reading"]["estimator_models"] == first
+    assert len(estimator_steps(service, "FakeTriangulator")) == n
+
+
+def test_control_without_the_triangulator_registered_no_models_and_the_reading_stands(service):
+    service.ESTIMATOR_TRIANGULATOR = "NotARegisteredModule"
+    _, refined = chain(service, escape_below=0)
+    r = refined["estimator_reading"]
+    assert r["status"] == "ran" and "estimator_models" not in r
+
+
+def test_a_failed_build_is_reported_and_never_takes_the_step_down(service, monkeypatch):
+    service.ESTIMATOR_TRIANGULATOR = "FakeTriangulator"
+    real = service.orch.run
+
+    def run(module, **kw):
+        if module == "FakeTriangulator" and kw.get("inputs", {}).get("poses") in service._est_poses:
+            raise RuntimeError("boom")
+        return real(module, **kw)
+
+    service._est_poses = set()
+    orig = service._estimator_poses
+
+    def poses(name, scene, run_id, **kw):
+        art, why = orig(name, scene, run_id, **kw)
+        if art is not None:
+            service._est_poses.add(art.id)
+        return art, why
+
+    monkeypatch.setattr(service, "_estimator_poses", poses)
+    monkeypatch.setattr(service.orch, "run", run)
+    _, refined = chain(service, escape_below=0)
+    built = refined["estimator_reading"]["estimator_models"]
+    assert all(built[n]["status"] == "failed" and "boom" in built[n]["reason"]
+               for n in ("FakeEstimatorA", "FakeEstimatorB"))

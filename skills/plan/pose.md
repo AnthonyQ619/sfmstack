@@ -627,18 +627,45 @@ rule and they are opposites:**
 | fewer frames than the capture has, because a veto or the graph took them out | **fill them**, frozen, by the same chain. Stopping here is the unfinished move above |
 | fewer frames, `PoseFill` refuses or either gate fires, and **`registered_fraction` is above about 0.7** | deliver the core, and say plainly in the report which frames are missing and that the capture was not fully solved. A nearly-complete accurate core is the case the swap damages |
 | fewer frames, `PoseFill` refuses or either gate fires, and **`registered_fraction` is at or below about 0.7** | **deliver the estimator's model on its own**, marked as such. The core alone was the wrong delivery on most of the captures this row fired on, and on one of them by a wide margin. If no estimator will run, deliver the core and say the capture was not solved |
-| **a core too small to fill at all** — fewer than a handful of cameras shared with the estimator | there is nothing to fit a frame onto, and this is not a swap. **Deliver the estimator's model on its own**, marked as such. Every capture measured at this row delivered the core instead, and the estimator's model was the better delivery on nearly all of them — a core of two to five cameras is not the conservative delivery, it is most of the capture missing. Deliver the core only where the estimators are themselves unusable, and say so. Do **not** lower `min_shared_cameras` to get a fill through: a residual computed on four cameras is a fit to four points, and an agent that tried it had the fill caught by the other gate anyway |
+| **a core too small to fill at all** — fewer than a handful of cameras shared with the estimator | there is nothing to fit a frame onto, and this is not a swap. **Deliver the estimator's model on its own**, marked as such. Every capture measured at this row delivered the core instead, and the estimator's model was the better delivery on nearly all of them — a core of two to five cameras is not the conservative delivery, it is most of the capture missing. **Deliver the core only where an estimator could not run** (the reading reports it unavailable), and say so. "Unusable" was read too readily: on the captures that took this row, the core averaged 0.241 AUC@30 against 0.335 for the better estimator's model, though the core was the better delivery on 3 of 11. Choose which estimator's model by the capture kind (below). Do **not** lower `min_shared_cameras` to get a fill through: a residual computed on four cameras is a fit to four points, and an agent that tried it had the fill caught by the other gate anyway |
 
-**When the delivery is the estimator's model, nothing measured says which estimator's.**
-Over nineteen corpus captures at ten views, each estimator's own model was ahead of the
-other's by more than the learned estimator's repeat noise on five, by up to half the score,
-and no capture kind decided it
-([evidence](../evidence/sparse-compositions-2026-10.md#7-the-two-correspondence-free-estimators-against-each-other)).
-The ladder's rungs did not decide it either: chosen on coverage and yield, one delivery was
-the worse of the two by 0.037
-([evidence](../evidence/agent-rerun-2026-10.md#finding-3--choosing-between-the-two-estimators-models-nothing-decided-it)).
-Deliver one, report the other beside it as the alternative, and say the choice was not
-measured.
+**A full, verified geometric model whose reading is quiet is still the delivery.** Agreement on rotation doesn't
+certify it as the more accurate one. On two captures the geometric model and both estimators agreed within
+3.4°, and an estimator's model was still 0.03–0.07 AUC@30 better. But no reading measured so far says when that
+happens, and swapping on agreement alone made more captures worse than better. So deliver the geometric model,
+compare it with both estimator models in `sfm_compare`, and report them as the measured alternatives.
+
+**Both estimators' models are already built for you.** After every refinement the service triangulates each
+estimator's poses on the refined model's own tracks (`estimator_reading.estimator_models`: one model per
+estimator, poses unchanged). They are candidates like any other: pass them to `sfm_compare` beside the geometric
+model, and use one directly when the table above says the delivery is an estimator's model. Don't build them
+again.
+
+**Which estimator's model: go by the kind of capture, not by its size.** Over 62 captures at ten views, each
+estimator's own poses were scored against reference poses. Where they differed by more than 0.012 AUC@30, the
+better one followed the kind of capture:
+
+| capture kind | MapAnything better | VGGT better |
+| --- | --- | --- |
+| object turntable | 0 | 20 |
+| short handheld room loop | 0 | 4 |
+| indoor drone flight | 2 | 5 |
+| wide multi-view stills, indoor or outdoor | 6 | 2 |
+| long handheld phone walkthrough | 14 | 3 |
+
+So: **VGGT's model** for object turntables, short handheld room loops and indoor drone flights;
+**MapAnything's model** for long handheld phone walkthroughs and wide multi-view stills. This is a default for
+when nothing measured separates the two, not a rule that overrides a measurement. Report the other estimator's
+model beside the delivery as the alternative, and name the capture kind you read.
+
+**Point count and yield don't choose between the estimators' models.** They measure how much structure the
+triangulator kept, not where the cameras are. Over the 18 captures where both models were built and one was
+clearly better, the model with more points was the better one on 10. On phone walkthroughs MapAnything's model
+held 5–12 points against VGGT's 110–149 and still had the better poses.
+
+**Rotation against the core counts only when the core is verified and holds most cameras.** Comparing each
+estimator's rotations with a core of two or three cameras, or with an unverified one, pointed at the worse
+estimator on both captures where it was the deciding reading. Below that, go by the capture kind.
 
 **One consequence of a successful fill to keep in view:** `registered_fraction`
 reaches 1.0, so the rules below that key on *low* registration — global
