@@ -74,22 +74,40 @@ Measurements: `skills/evidence/eth-dense-2026-09.md`.
 
 ## Delivering a dense cloud
 
-**On a well-posed capture, deliver with the geometric check off and
-`fusion_min_num_pixels` one step below the default** — the anchor. That is one ordinary
-run: on a corpus of studio orbits scored against reference geometry it improved
-completeness substantially while keeping accuracy at the level classical MVS is
-published at, and it took about half the time of the default.
+**The anchor is the geometric check off and `fusion_min_num_pixels` one step below
+the default.** That is one ordinary run: on a corpus of studio orbits scored against
+reference geometry it improved completeness substantially while keeping accuracy at the
+level classical MVS is published at, and it took about half the time of the default.
+**It is no longer the delivery on every kind:** on the kinds named below, a verified
+pass delivered more accurate clouds that scored better, so read the list first and fall
+back to the anchor only for a kind it does not name.
 
-Two deliverables move off the anchor, both measured
-(`skills/evidence/dense-fixes-2026-10.md`):
+Three deliverables move off the anchor, all measured
+(`skills/evidence/dense-fixes-2026-10.md`, `skills/evidence/dense-strict-fusion-2026-11.md`):
 
-- **Accuracy-first on a studio rig orbit: the module defaults,** check on and fusion at
-  its default. On 22 such orbits the anchor was level with the defaults on 21 and a
-  tenth worse on the 22nd, where a replay on one sparse model isolated the setting.
-- **Coverage-first on anything but a studio rig orbit: the anchor's stereo pass with
-  `keep_workspace: true`, then `DenseFusion` at 2.** On every site walk, room and
-  outdoor object orbit measured, 2 scored best — see `DenseFusion`'s tuning,
-  "Stepping down, and when to stop".
+- **On a studio rig orbit, and on a video sequence (a ground rover, an underwater
+  camera): the verified pass, strictly fused.** Run the module defaults — check on,
+  fusion at its default — with `keep_workspace: true`, then deliver `DenseFusion` on its
+  geometric depth maps at `min_num_pixels` 8, `max_reproj_error` 1.0,
+  `max_depth_error` 0.005, `max_normal_error` 10 (`input_type: geometric`). Replayed on
+  the record's own sparse model, it beat the anchor on both studio orbits and both video
+  sequences tried, the sequences by a wide margin even where they were scored for
+  coverage. On 22 earlier studio orbits the defaults alone were level with the anchor;
+  the strict fusion is what moved them. One rover sequence was not replayed, and the
+  anchor delivery was already strong there.
+- **On a forest aerial (nadir over canopy): the verified pass at its own fusion,** the
+  module defaults with no re-fusion. It beat the anchor-plus-2 delivery clearly and the
+  strict fusion too: there the anchor's extra coverage came at several times the
+  accuracy cost.
+- **Coverage-first on a site walk, a room or an outdoor object orbit: the anchor's
+  stereo pass with `keep_workspace: true`, then `DenseFusion` at 2.** On every such
+  capture measured, 2 scored best — see `DenseFusion`'s tuning, "Stepping down, and when
+  to stop". The verified pass was not replayed on these kinds.
+
+**When the kind is in doubt, keep the stereo pass verified.** The check on costs time,
+not the option: from one kept workspace the strict fusion and any lower setting are
+seconds each, while the anchor's unverified depths cannot be fused back into a verified
+cloud.
 
 The region around it, and which way to move within it:
 
@@ -115,8 +133,9 @@ stop lowering the setting without reference geometry.
 
 1. **`geom_consistency: false`** — about 2.4× on a full capture, and the only one of
    these that changes what the result *means*: nothing checks the depths against each
-   other across views. On a well-posed capture that is also the better delivery
-   setting — see "Delivering a dense cloud" — but not when the poses are in doubt.
+   other across views. On a site walk, a room or an outdoor object orbit it is also
+   the better delivery setting; on a studio orbit, a video sequence or a forest aerial
+   it is not — see "Delivering a dense cloud" — and never when the poses are in doubt.
 2. **`window_step: 2`** — about 2.2× above ~1000 px, where neighbouring pixels are
    nearly redundant. Below that it just loses accuracy. This is the cheapest real
    saving that leaves the meaning of the result alone.
@@ -140,8 +159,8 @@ Bad poses fail the *geometric* pass while sailing through the photometric one, s
 the symptom is completeness that collapses when `geom_consistency` is on and
 recovers when it is off. **Here** turning it off is not a fix — it is switching off the
 test that caught the problem. Bundle-adjust and re-run. (That is about this diagnostic.
-As a delivery setting on a capture whose poses are sound, the check off is the better
-measured trade — see above.)
+As a delivery setting on a capture whose poses are sound, whether the check off is the
+better trade depends on the kind of capture — see above.)
 
 **The scene is low-texture.** Lower `filter_min_ncc` toward 0.05. Reflective,
 transparent and untextured surfaces are where PatchMatch has nothing to correlate,

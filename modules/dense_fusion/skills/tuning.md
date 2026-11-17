@@ -54,8 +54,15 @@ coverage, the capture decides the step.** On a site walk, a room or an outdoor o
 orbit, step to 2: on every such capture measured, 2 scored best, one step past where the
 rule above stops — twelve corpus captures, and six of seven outside the corpus with the
 seventh flat (`skills/evidence/dense-fixes-2026-10.md`, Finding 1). 1 was not measured.
-On a studio rig orbit, take the lowest step the rule allows. Raising the setting well
-above the default gives a cleaner cloud and erodes whatever is seen from few views.
+**On a studio rig orbit or a video sequence, fuse the verified pass strictly instead:**
+from a geometric-check-on workspace, `min_num_pixels` 8, `max_reproj_error` 1.0,
+`max_depth_error` 0.005, `max_normal_error` 10, `input_type: geometric`. On the two
+studio orbits and two sequences replayed (a ground rover, an underwater camera) it beat
+the stepped-down anchor, the sequences even when scored for coverage
+(`skills/evidence/dense-strict-fusion-2026-11.md`). There, raising the setting above the
+default costs some coverage and removes more error than it costs. On a forest aerial the
+verified pass's own fusion did better still; stepping down to 2 was the worst of the
+three. The step-to-2 rule above stands for the kinds it names.
 
 **And when the deliverable names neither, it is accuracy** — see
 [SKILL.md](SKILL.md), step 3. That resolves what reads as a conflict with `DenseMVS`:
@@ -70,7 +77,8 @@ it can fail to give you one.** Compare each step's growth against the step befor
 and stop where the factor jumps. On built and vegetated sites the growth instead
 accelerated smoothly — one capture stepped 1.2, 1.4, 1.8 with no break to find — and
 the rule cannot be applied as written. When no jump appears, do not keep stepping down
-looking for one. On an accuracy-first deliverable, stay at the anchor. On a
+looking for one. On an accuracy-first deliverable, stay at `DenseMVS`'s delivery for
+the capture's kind. On a
 coverage-first one off a studio orbit the rule is not needed: step to 2, as above.
 
 ## The geometric check was decided upstream

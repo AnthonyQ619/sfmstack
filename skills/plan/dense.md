@@ -410,11 +410,16 @@ follows that section decides between the two routes. The campaign is in
 
 ## Delivering the verified cloud
 
-**Plan one `DenseMVS` run at the measured operating region, not at the defaults.** On
-a well-posed capture that is the geometric check off and fusion one step below its
-default: markedly more complete, accuracy still at the level classical MVS is
-published at, and about half the runtime. The region, and when to stay out of it —
-doubtful poses, and never the check off with the loosest fusion — are in
+**Plan one `DenseMVS` run, and pick its setting by the kind of capture.** On a studio
+rig orbit or a video sequence (a ground rover, an underwater camera), run the verified
+pass — the module defaults, geometric check on, workspace kept — and deliver it strictly
+fused with `DenseFusion`. On a forest aerial, deliver the verified pass as it fused
+itself. On a site walk, a room or an outdoor object orbit, run the measured operating
+region instead: the geometric check off and fusion one step below its default, markedly
+more complete at about half the runtime. On the first group that region lost to the
+verified pass, because the scores there charge stray depths more than they reward
+coverage. Each setting, and when to stay out of it — doubtful poses, and never the check
+off with the loosest fusion on a studio orbit — is in
 [DenseMVS tuning, "Delivering a dense cloud"](../../modules/dense_mvs/skills/tuning.md#delivering-a-dense-cloud).
 
 **Decide what the cloud is for before you fuse it, and record the answer.** Every

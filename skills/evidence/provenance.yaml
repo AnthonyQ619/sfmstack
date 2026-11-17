@@ -264,6 +264,20 @@ campaigns:
     - ETH/meadow
     - ETH/playground
     - ETH/relief
+  dense-strict-fusion-2026-11:
+    captures:
+    - DTU/scan114
+    - DTU/scan24
+    - FLSea/tiny_canyon_scene_000
+    - Fuji/west_scene_000
+    - MADMAX3/H0_scene_000
+    sections:
+      finding-1--the-verified-stereo-pass-with-strict-fusion-beat-the-anchor-on-every-capture-replayed:
+      - DTU/scan114
+      - DTU/scan24
+      - FLSea/tiny_canyon_scene_000
+      - Fuji/west_scene_000
+      - MADMAX3/H0_scene_000
   dense-variance-2026-10:
     captures:
     - DTU/scan15

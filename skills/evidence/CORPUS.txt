@@ -87,3 +87,12 @@
 # reading catches). No control reproduced either. See
 # evidence/estimator-outvote-2026-10.md, findings 3 and 5.
 /tanks_and_temples/Caterpillar
+
+# Promoted 2026-11-16 to carry the kind-dependent dense delivery in
+# modules/dense_mvs/skills/tuning.md ("Delivering a dense cloud"), DenseFusion's tuning and
+# plan/dense.md: the five captures re-densified in evidence/dense-strict-fusion-2026-11.md.
+/DTU/scan24
+/DTU/scan114
+/MADMAX3/H0_scene_000
+/FLSea/tiny_canyon_scene_000
+/Fuji/west_scene_000
