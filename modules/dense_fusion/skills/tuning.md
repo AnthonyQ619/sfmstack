@@ -60,9 +60,11 @@ from a geometric-check-on workspace, `min_num_pixels` 8, `max_reproj_error` 1.0,
 studio orbits and two sequences replayed (a ground rover, an underwater camera) it beat
 the stepped-down anchor, the sequences even when scored for coverage
 (`skills/evidence/dense-strict-fusion-2026-11.md`). There, raising the setting above the
-default costs some coverage and removes more error than it costs. On a forest aerial the
-verified pass's own fusion did better still; stepping down to 2 was the worst of the
-three. The step-to-2 rule above stands for the kinds it names.
+default costs some coverage and removes more error than it costs. On a vegetated row walk
+(a ground-level walk along an orchard or hedge row, canopy filling the frame, sky or netting
+behind) the verified pass's own fusion did better still; stepping down to 2 was the worst of
+the three. The step-to-2 rule above stands for the kinds it names, and a vegetated row walk
+is not one of them.
 
 **And when the deliverable names neither, it is accuracy** — see
 [SKILL.md](SKILL.md), step 3. That resolves what reads as a conflict with `DenseMVS`:

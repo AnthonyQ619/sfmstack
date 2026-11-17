@@ -20,7 +20,7 @@ The record deliveries being compared against were all at the delivery anchor (ge
 fusion 4), and the three sequence captures were stepped down to fusion 2, the coverage route. So each
 row is the same sparse model and frames, with the dense setting changed. Scored by each benchmark's
 own evaluation: studio orbits, overall mm after best fit ↓; video depth, scale-only Abs Rel ↓ (with
-the fraction of pixels covered); the forest-aerial capture, F1 at 5 cm ↑. One replay per cell: the
+the fraction of pixels covered); the vegetated row walk, F1 at 5 cm ↑. One replay per cell: the
 studio-orbit differences are a few hundredths of a millimetre and could be run-to-run.
 
 ## Finding 1 — the verified stereo pass with strict fusion beat the anchor on every capture replayed
@@ -31,13 +31,13 @@ studio-orbit differences are a few hundredths of a millimetre and could be run-t
 | `/DTU/scan114` | studio rig orbit | 0.300 | 0.306 | **0.283** |
 | `/MADMAX3/H0_scene_000` | ground-rover video, outdoor terrain | 0.0113 (cov 0.98) | 0.0098 (0.97) | **0.0094** (0.96) |
 | `/FLSea/tiny_canyon_scene_000` | underwater video | 0.0102 (cov 0.86) | 0.0060 (0.79) | **0.0052** (0.68) |
-| `/Fuji/west_scene_000` | forest aerial, nadir | 0.393 | **0.494** | 0.436 |
+| `/Fuji/west_scene_000` | vegetated row walk (orchard, ground level) | 0.393 | **0.494** | 0.436 |
 
 - **On the studio orbits,** strict beat both the anchor and the defaults. The defaults were level
   with the anchor, as in `dense-fixes-2026-10`, Finding 2.
 - **On both video sequences,** the verified pass beat the anchor-plus-2 delivery at either fusion,
   by 17–49 % in Abs Rel. Coverage fell by a few points to 18, and the score still improved.
-- **On the forest aerial,** both improved on the anchor-plus-2 delivery. The record was the more
+- **On the vegetated row walk,** both improved on the anchor-plus-2 delivery. The record was the more
   complete cloud (completeness at 5 cm 0.62 against 0.47 at strict) and far less accurate (0.29
   against 0.52); the defaults' fusion scored best.
 - **Not replayed:** a second ground-rover sequence (`MADMAX3/C0`-like) on which the anchor-plus-2
@@ -58,3 +58,6 @@ switches off.
 Phase 10 of the experiments, salvage replay (`P10/salvage/`), 2026-11-16. Post-hoc: designed after
 the ablation arms' scores were known, on the captures they won. The five captures are promoted into
 `CORPUS.txt`; a later result on them is recall, not a cold test.
+
+Correction, 2026-11-17: the Fuji capture was first filed here as a forest aerial. It is a ground-level walk
+along one orchard row (cameras on both sides of the row, not overhead); the label is corrected, the measurements are unchanged.

@@ -95,10 +95,13 @@ Three deliverables move off the anchor, all measured
   coverage. On 22 earlier studio orbits the defaults alone were level with the anchor;
   the strict fusion is what moved them. One rover sequence was not replayed, and the
   anchor delivery was already strong there.
-- **On a forest aerial (nadir over canopy): the verified pass at its own fusion,** the
-  module defaults with no re-fusion. It beat the anchor-plus-2 delivery clearly and the
-  strict fusion too: there the anchor's extra coverage came at several times the
-  accuracy cost.
+- **On a vegetated row walk — a ground-level walk along a row of trees or hedge (an
+  orchard, a vineyard), the canopy filling the frame with sky or overhead netting behind
+  it: the verified pass at its own fusion,** the module defaults with no re-fusion. It
+  beat the anchor-plus-2 delivery clearly and the strict fusion too: there the anchor's
+  extra coverage came at several times the accuracy cost, much of it fused sky and net.
+  It is a walk, but the site-walk rule below does not cover it. One capture was
+  replayed.
 - **Coverage-first on a site walk, a room or an outdoor object orbit: the anchor's
   stereo pass with `keep_workspace: true`, then `DenseFusion` at 2.** On every such
   capture measured, 2 scored best — see `DenseFusion`'s tuning, "Stepping down, and when
@@ -134,8 +137,8 @@ stop lowering the setting without reference geometry.
 1. **`geom_consistency: false`** — about 2.4× on a full capture, and the only one of
    these that changes what the result *means*: nothing checks the depths against each
    other across views. On a site walk, a room or an outdoor object orbit it is also
-   the better delivery setting; on a studio orbit, a video sequence or a forest aerial
-   it is not — see "Delivering a dense cloud" — and never when the poses are in doubt.
+   the better delivery setting; on a studio orbit, a video sequence or a vegetated row
+   walk it is not — see "Delivering a dense cloud" — and never when the poses are in doubt.
 2. **`window_step: 2`** — about 2.2× above ~1000 px, where neighbouring pixels are
    nearly redundant. Below that it just loses accuracy. This is the cheapest real
    saving that leaves the meaning of the result alone.

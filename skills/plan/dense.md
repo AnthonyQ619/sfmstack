@@ -413,8 +413,9 @@ follows that section decides between the two routes. The campaign is in
 **Plan one `DenseMVS` run, and pick its setting by the kind of capture.** On a studio
 rig orbit or a video sequence (a ground rover, an underwater camera), run the verified
 pass — the module defaults, geometric check on, workspace kept — and deliver it strictly
-fused with `DenseFusion`. On a forest aerial, deliver the verified pass as it fused
-itself. On a site walk, a room or an outdoor object orbit, run the measured operating
+fused with `DenseFusion`. On a vegetated row walk — a ground-level walk along an orchard
+or hedge row, the canopy filling the frame with sky or netting behind it — deliver the
+verified pass as it fused itself; the site-walk setting below does not apply to it. On a site walk, a room or an outdoor object orbit, run the measured operating
 region instead: the geometric check off and fusion one step below its default, markedly
 more complete at about half the runtime. On the first group that region lost to the
 verified pass, because the scores there charge stray depths more than they reward
