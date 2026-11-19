@@ -127,7 +127,13 @@ def find_leaks(text: str, readings: dict, signals: set[str], measuring: bool = T
 def transcripts(capture_dir: Path) -> list[Path]:
     sys.path.insert(0, str(HERE))
     from launch import transcript_dir
-    return sorted(transcript_dir(capture_dir / "scratch").glob("*.jsonl"))
+    found = sorted(transcript_dir(capture_dir / "scratch").glob("*.jsonl"))
+    # The transcript folder is keyed by the scratch path, so an earlier run at the same path shares it.
+    # Audit this run's own sessions (agent_log.json) when it names them.
+    log = capture_dir / "agent_log.json"
+    ids = {a.get("session_id") for a in (json.loads(log.read_text()).get("attempts") or [])} - {None} \
+        if log.exists() else set()
+    return [t for t in found if t.stem in ids] if ids else found
 
 
 def audit(capture_dir: Path, signals: set[str] | None = None) -> dict:
@@ -203,7 +209,10 @@ def audit(capture_dir: Path, signals: set[str] | None = None) -> dict:
             rep["frames"].append(f"served un-normalised {v}")
     for k in ("values", "keys", "colour", "frames", "channels", "refused", "denied"):
         rep[k] = sorted(set(rep[k]))
-    rep["pass"] = not (rep["values"] or rep["keys"] or rep["colour"] or rep["frames"] or rep["channels"])
+    # Nothing to read is not a clean session: a moved directory or a wrong transcript path would pass.
+    rep["transcripts"] = [t.name for t in transcripts(capture_dir)]
+    rep["pass"] = bool(rep["transcripts"]) and rep["tool_calls"] > 0 and not (
+        rep["values"] or rep["keys"] or rep["colour"] or rep["frames"] or rep["channels"])
     return rep
 
 
@@ -216,7 +225,7 @@ def main() -> int:
     sig = withhold.parse(a.signals) if a.signals else None
     reps = [audit(Path(d).resolve(), sig) for d in a.dirs]
     for r in reps:
-        print(f"{'PASS' if r['pass'] else 'FAIL'} {r['capture_dir']} signals={r['signals']} calls={r['tool_calls']} "
+        print(f"{'PASS' if r['pass'] else 'FAIL'}{'' if r['transcripts'] else ' (no transcript)'} {r['capture_dir']} signals={r['signals']} calls={r['tool_calls']} "
               f"values={len(r['values'])} keys={len(r['keys'])} colour={len(r['colour'])} frames={len(r['frames'])} channels={len(r['channels'])} "
               f"refused={len(r['refused'])} denied={len(r['denied'])} scene_words={len(r['scene_words'])}")
     if a.out:

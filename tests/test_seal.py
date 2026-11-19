@@ -208,6 +208,26 @@ def test_the_audit_fails_a_session_that_messaged_a_peer(tmp_path, monkeypatch):
     assert not audit_seal.audit(cap)["pass"]
 
 
+def test_the_audit_reads_only_this_runs_sessions_and_fails_with_none(tmp_path, monkeypatch):
+    import launch
+    cap = tmp_path / "cap"
+    (cap / "store" / "artifacts").mkdir(parents=True)
+    (cap / "context_roots.json").write_text(json.dumps({"withheld": ["visual"], "sealed": True}))
+    tr = tmp_path / "t"
+    tr.mkdir()
+    monkeypatch.setattr(launch, "transcript_dir", lambda scratch: tr)
+    assert not audit_seal.audit(cap)["pass"]              # no transcript at all: never a pass
+    ok = {"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": "a", "name": "Bash", "input": {"command": "sfmx state"}}]}}
+    bad = {"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": "b", "name": "SendMessage", "input": {"to": "peer"}}]}}
+    (tr / "old.jsonl").write_text(json.dumps(bad))
+    (tr / "new.jsonl").write_text(json.dumps(ok))
+    assert not audit_seal.audit(cap)["pass"]              # negative control: no log, both read, old one fails it
+    (cap / "agent_log.json").write_text(json.dumps({"attempts": [{"session_id": "new"}]}))
+    assert audit_seal.audit(cap)["pass"]
+
+
 def test_the_audit_reads_results_saved_outside_the_transcript(tmp_path, monkeypatch):
     cap = tmp_path / "cap"
     a = cap / "store" / "artifacts" / "art_1"
@@ -217,7 +237,8 @@ def test_the_audit_reads_results_saved_outside_the_transcript(tmp_path, monkeypa
     (cap / "context_roots.json").write_text(json.dumps({"withheld": ["motion"], "sealed": True}))
     tr = tmp_path / "t"
     (tr / "s" / "tool-results").mkdir(parents=True)
-    (tr / "s.jsonl").write_text("")
+    (tr / "s.jsonl").write_text(json.dumps({"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": "a", "name": "Bash", "input": {"command": "sfmx state"}}]}}))
     monkeypatch.setattr(audit_seal, "transcripts", lambda d: sorted(tr.glob("*.jsonl")))
     assert audit_seal.audit(cap)["pass"]
     (tr / "s" / "tool-results" / "big.txt").write_text('{"overall_magnitude": 0.2041}')
