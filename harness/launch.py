@@ -56,6 +56,8 @@ WITHHOLD: str | None = None
 PROCEDURE: Path | None = None          # --procedure: the arm's procedure in place of PROCEDURES[scope]
 EXTRA_READS: list[Path] = []           # --read: further files the agent may open (the arm's mechanics file)
 BARE = False                           # --bare
+SEALED = False                         # --sealed: P11 scene-information ablation (harness/views.py)
+PROMPT_FILE: Path | None = None        # --prompt-file: a fixed prompt in place of BRIEF (leak tests)
 MCMC: dict[str, str] = {}              # --mcmc-n / --mcmc-t / --mcmc-seed
 GOALS = {"sparse": "a refined sparse model", "dense": "a dense reconstruction"}
 # What a dense deliverable is judged on, as a task would state it. DenseFusion's tuning
@@ -112,13 +114,33 @@ def settings(capture_dir: Path, procedure: Path) -> dict:
     reads = ([f"Read({here}/scratch/**)", *[f"Read({here}/**/*.{x})" for x in ("png", "jpg", "jpeg")],
               f"Edit({here}/scratch/**)", f"Edit({here}/agent_report.json)"] if BARE
              else [f"Read({here}/**)", f"Edit({here}/**)"])
+    writes = [f"Write({here}/**)"]
+    deny = ["WebFetch", "WebSearch", "Agent", "Task"]
+    if SEALED:
+        # Scratch (where `sfmx` leaves a filtered copy of every answer and every image it serves),
+        # the brief's Markdown, and the report. Nothing else in the capture directory: the store's
+        # manifests and frames, the chain, the run's own records and the alias key are unfiltered.
+        reads = [f"Read({here}/scratch/**)", f"Read({here}/brief_*.md)", f"Read({here}/brief.json)",
+                 f"Read({here}/agent_report.json)", f"Edit({here}/scratch/**)",
+                 f"Edit({here}/agent_report.json)"]
+        writes = [f"Write({here}/scratch/**)", f"Write({here}/agent_report.json)"]
+        deny += [f"Read({here}/store/**)", f"Read({here}/.views_key.json)", f"Read({here}/.views_log.jsonl)", f"Read({here}/chain.json)",
+                 f"Read({here}/context_roots.json)", f"Read({here}/context_reads.jsonl)",
+                 f"Read({here}/agent_log.json)", f"Read({here}/running.json)",
+                 "Read(//home/anthonyq/datasets/**)", "Read(//home/anthonyq/projects/**)",
+                 "Read(//home/anthonyq/sfm_experiments/**/store/**)", "Read(//bigdata/**)",
+                 "Read(//home/anthonyq/.claude/projects/**/*.jsonl)", "Glob", "Grep",
+                 *[f"Bash({c}:*)" for c in ("cat", "head", "tail", "less", "more", "grep", "rg",
+                                             "ls", "find", "sed", "awk", "python", "python3", "strings",
+                                             "xxd", "od", "file", "stat", "du", "tree", "wc", "env",
+                                             "printenv", "echo", "cd", "cp", "mv", "tar")]]
     return {"permissions": {
         "defaultMode": "dontAsk",
         "allow": ["Bash(sfmx:*)", "Bash(sfmx *)",
-                  *reads, f"Write({here}/**)",
+                  *reads, *writes,
                   f"Read(//{str(procedure).lstrip('/')})",
                   *[f"Read(//{str(p).lstrip('/')})" for p in EXTRA_READS]],
-        "deny": ["WebFetch", "WebSearch", "Agent", "Task"],
+        "deny": deny,
     }}
 
 
@@ -146,7 +168,8 @@ def environment(capture: str, gpu: int, scratch: Path, batch: str | None,
     # Context overrides. Absent, sfmx reads the repository's skills/ and modules/;
     # an inherited value is dropped so a batch never reads a view by accident.
     for var, value in (("SFM_SKILLS", SKILLS), ("SFM_MODULES", MODULES), ("SFM_WITHHOLD", WITHHOLD),
-                       ("SFM_BARE", "1" if BARE else None), ("SFM_MCMC_N", MCMC.get("n")),
+                       ("SFM_BARE", "1" if BARE else None), ("SFM_SEALED", "1" if SEALED else None),
+                       ("SFM_MCMC_N", MCMC.get("n")),
                        ("SFM_MCMC_T", MCMC.get("t")), ("SFM_MCMC_SEED", MCMC.get("seed"))):
         env.pop(var, None)
         if value:
@@ -264,6 +287,11 @@ def drive(capture: str, gpu: int, batch: str | None, prompt: str | None = None,
     scratch.mkdir(parents=True, exist_ok=True)
     env = environment(capture, gpu, scratch, batch, scope, control)
     procedure = PROCEDURE or PROCEDURES[scope]
+    if prompt is None and PROMPT_FILE:
+        paths = paths_for(capture, batch, control)
+        prompt = PROMPT_FILE.read_text().format(procedure=procedure, capture=capture, goal=GOALS[scope],
+                                                image_dir=paths["image_dir"],
+                                                calibration_path=paths["calibration_path"])
     if prompt is None:
         # Name the brief's fields rather than splatting: a --batch entry carries its own
         # `capture` key alongside the two paths, and `capture` is already passed here by
@@ -321,7 +349,10 @@ def main() -> int:
     ap.add_argument("--modules", help="a modules/ tree to describe modules from (ablation "
                     "batches only; default: the repository's)")
     ap.add_argument("--withhold", help="comma-separated scene-analysis signals to withhold "
-                    "(visual, motion_illumination; experiments only; default: none)")
+                    "(visual, illumination, motion; experiments only; default: none)")
+    ap.add_argument("--sealed", action="store_true", help="P11 sealing: no store reads, images as "
+                    "scratch copies (harness/views.py); experiments only")
+    ap.add_argument("--prompt-file", help="a fixed prompt in place of the brief (leak tests only)")
     ap.add_argument("--procedure", help="an ablation arm's procedure in place of the scope's (experiments only)")
     ap.add_argument("--read", action="append", default=[], help="a further file the agent may read (repeatable)")
     ap.add_argument("--bare", action="store_true", help="bare service mode (harness/bare.py; experiments only)")
@@ -329,7 +360,10 @@ def main() -> int:
     ap.add_argument("--mcmc-t", default="5", help="MCMC temperature, in health-percentile points")
     ap.add_argument("--mcmc-seed", default="0", help="MCMC base seed")
     a = ap.parse_args()
-    global EXP, SKILLS, MODULES, WITHHOLD, PROCEDURE, EXTRA_READS, BARE, MCMC
+    global EXP, SKILLS, MODULES, WITHHOLD, PROCEDURE, EXTRA_READS, BARE, MCMC, SEALED, PROMPT_FILE
+    SEALED = a.sealed
+    if a.prompt_file:
+        PROMPT_FILE = Path(a.prompt_file).expanduser().resolve()
     if a.procedure:
         PROCEDURE = Path(a.procedure).expanduser().resolve()
         if not PROCEDURE.is_file():

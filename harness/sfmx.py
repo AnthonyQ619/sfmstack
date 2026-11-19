@@ -56,6 +56,7 @@ from roots import context_roots  # noqa: E402
 from slots import required as slot_required, wire_inputs  # noqa: E402
 import withhold  # noqa: E402
 import bare  # noqa: E402
+import views  # noqa: E402
 
 DATASETS = Path("/home/anthonyq/datasets")
 # Where capture directories live; a batch with its own root sets SFM_EXP.
@@ -104,7 +105,17 @@ if not CAPTURE or "/" not in CAPTURE:
 PATHS = capture_paths(CAPTURE)
 if not Path(PATHS["image_dir"]).is_dir():
     sys.exit(f"{CAPTURE}: no image directory at {PATHS['image_dir']}")
-_hit = corpus_entry(PATHS["image_dir"])
+# A sealed experiment stages each capture under an opaque name (harness/stage_anon.py); its key,
+# which the agent cannot read, names the source, and the corpus guard is applied to that.
+ANON_ROOT = DATASETS / "anon"
+STAGE_KEY = None
+if Path(PATHS["image_dir"]).resolve().is_relative_to(ANON_ROOT):
+    _token = Path(PATHS["image_dir"]).resolve().relative_to(ANON_ROOT).parts[0]
+    _keyf = ANON_ROOT / ".keys" / f"{_token}.json"
+    if not _keyf.is_file():
+        sys.exit(f"{CAPTURE}: staged capture {_token} has no key; stage it with harness/stage_anon.py")
+    STAGE_KEY = json.loads(_keyf.read_text())
+_hit = corpus_entry(STAGE_KEY["source"]["image_dir"] if STAGE_KEY else PATHS["image_dir"])
 if _hit and os.environ.get("SFM_CONTROL") != "1":
     sys.exit(f"{CAPTURE} is in the planning corpus ({_hit} in evidence/CORPUS.txt), so it "
              "cannot be a holdout capture. Set SFM_CONTROL=1 to run it as a named control.")
@@ -125,19 +136,71 @@ GPU = int(os.environ.get("SFM_GPU", "4"))
 WITHHOLD = withhold.parse(os.environ.get("SFM_WITHHOLD"))
 # Bare service mode for the context-ablation arms (harness/bare.py); off on every ordinary run.
 BARE = os.environ.get("SFM_BARE") == "1"
+# Sealed run (P11, harness/views.py): no store reads by the agent, every image served as a scratch copy.
+SEALED = os.environ.get("SFM_SEALED") == "1"
 (HOME / "context_roots.json").write_text(json.dumps({
     "skills": str(SKILLS), "modules": str(MODULES),
     "default": SKILLS == REPO / "skills" and MODULES == REPO / "modules" and not WITHHOLD and not BARE,
-    **({"withheld": sorted(WITHHOLD)} if WITHHOLD else {}), **({"bare": True} if BARE else {})}, indent=1))
+    **({"withheld": sorted(WITHHOLD)} if WITHHOLD else {}), **({"bare": True} if BARE else {}),
+    **({"sealed": True} if SEALED else {})}, indent=1))
 
 
 def emit(obj):
     """Print, and keep a copy in this capture's scratch directory, so a long
     answer can be re-read with the file reader instead of piped through tools."""
     obj = withhold.scrub(json.loads(json.dumps(obj, default=str)), WITHHOLD)
+    if SEALED and "motion" in WITHHOLD:
+        obj = alias_descriptions(obj)
     text = json.dumps(bare.scrub(obj) if BARE else obj, indent=1, default=str)
+    if STAGE_KEY:
+        for real, anon in STAGE_KEY["redact"]:
+            text = text.replace(real, anon)
     print(text)
     (SCRATCH / f"last_{sys.argv[1] if len(sys.argv) > 1 else 'out'}.json").write_text(text)
+
+
+def alias_descriptions(obj):
+    """Under motion on a sealed run: frame names inside SceneDescription's answers become the
+    per-run aliases `sfmx image` serves (harness/views.py), and the protocol's "first and last"
+    stops naming a position in the sequence."""
+    def walk(x, inside=False):
+        if isinstance(x, dict):
+            here = inside or x.get("module") == "SceneDescription" or (
+                isinstance(x.get("artifact_md"), str) and "module: SceneDescription" in x["artifact_md"])
+            if here and not inside:
+                scenes = {load_chain()["current"].get("scene", "")} | {x.get("scene", "")}
+                y = views_handle().alias_text(x, {s for s in scenes if s})
+                return walk_text(y)
+            return {k: walk(v, inside) for k, v in x.items()}
+        if isinstance(x, list):
+            return [walk(v, inside) for v in x]
+        return x
+    return walk(obj)
+
+
+def walk_text(x):
+    swaps = (("the first and last of the sheet", "two cells of the sheet"),
+             ("the FIRST and LAST of the browse set", "two cells of the browse set"),
+             ("first and last of the browse set", "two cells of the browse set"),
+             (" are fixed (from scene", " are prescribed (from scene"))
+    if isinstance(x, dict):
+        return {k: walk_text(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [walk_text(v) for v in x]
+    if isinstance(x, str):
+        for a, b in swaps:
+            x = x.replace(a, b)
+    return x
+
+
+_VIEWS = None
+
+
+def views_handle():
+    global _VIEWS
+    if _VIEWS is None:
+        _VIEWS = views.Views(HOME, service().store, WITHHOLD)
+    return _VIEWS
 
 
 def show(text):
@@ -264,6 +327,16 @@ def last_step():
 
 
 cmd, args = (sys.argv[1], sys.argv[2:]) if len(sys.argv) > 1 else ("help", [])
+# An artifact a withheld module produced is unknown on this run, whatever command names it.
+if WITHHOLD and cmd in ("artifact", "image", "series", "cloud", "compare", "replay", "pin"):
+    _ids = [x for x in args if x.startswith("art_")]
+    for _id in _ids:
+        try:
+            _pb = service().store.open(_id).manifest.produced_by
+        except Exception:
+            continue
+        if _pb is not None and _pb.module in withhold.modules(WITHHOLD):
+            sys.exit(f"no artifact {_id} on this run.")
 if BARE and cmd in bare.REFUSED:
     sys.exit(bare.REFUSAL.format(cmd=cmd))
 
@@ -282,6 +355,8 @@ elif cmd == "brief":
                  f"{PATHS['image_dir']} and its calibration_path is {PATHS['calibration_path']}.")
     log_ctx("plan_brief")
     brief = withhold.scrub(json.loads(json.dumps(service().plan_brief(ch["current"]["scene"]), default=str)), WITHHOLD)
+    if SEALED and "motion" in WITHHOLD:
+        brief = alias_descriptions(brief)
     # The brief inlines the planning guide and every stage file, each as one JSON
     # string, so the answer ran to 300 KB with single lines up to 92 KB -- longer than
     # the file reader will page. All fourteen agents of one batch said they could not
@@ -478,9 +553,11 @@ elif cmd == "image":
     _ch = load_chain()
     _scenes = {_ch["current"].get("scene")} | {h["outputs"]["scene"] for h in _ch["history"]
                                                if "scene" in (h.get("outputs") or {})}
+    if SEALED:
+        emit(views_handle().serve(args[0], args[1] if len(args) > 1 else ""))
+        sys.exit(0)
     if "visual" in WITHHOLD and args[0] in _scenes:
-        sys.exit("Images of the scene's own frames are withheld in this experiment; images of "
-                 "every later artifact are available.")
+        sys.exit(views.REFUSE_FRAMES)
     emit(service().artifact_image(args[0], name=args[1] if len(args) > 1 else ""))
 
 elif cmd == "compare":
@@ -490,8 +567,8 @@ elif cmd == "summary":
     emit(service().run_summary(RUN_ID))
 
 elif cmd == "series":
-    if "motion_illumination" in WITHHOLD and args[1] == "photometric":
-        sys.exit("SceneTriage's photometric group is withheld in this experiment.")
+    if withhold.series_refusal(args[1], WITHHOLD):
+        sys.exit(withhold.series_refusal(args[1], WITHHOLD))
     import numpy as np
     grp = service().store.open(args[0]).load(args[1])
     emit({k: (v.tolist() if isinstance(v, np.ndarray) else v) for k, v in grp.items()})

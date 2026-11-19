@@ -40,10 +40,11 @@ def test_motion_illumination_removes_scene_motion_and_the_photometric_group():
     assert not any(n in s for n in PHOTO_NAMES)
     assert "SceneMotion" not in s
     tri = next(a for a in out["analysis"] if a["module"] == "SceneTriage")
-    # texture, sharpness and ordering stay
-    assert {"texture_density", "repetitiveness", "textureless_fraction", "sharpness_ratio", "ordered"} <= set(tri["metrics"])
+    # texture and sharpness stay; ordering is a motion reading since P11, so it goes too
+    assert {"texture_density", "repetitiveness", "textureless_fraction", "sharpness_ratio"} <= set(tri["metrics"])
+    assert "ordered" not in tri["metrics"]
     assert "texture" in tri["series"] and "photometric" not in tri["groups"]
-    assert "Texture:" in tri["notes"] and "UNORDERED" in tri["notes"]
+    assert "Texture:" in tri["notes"] and "UNORDERED" not in tri["notes"]
     # the visual signal is untouched
     assert any(a["module"] == "SceneDescription" for a in out["analysis"])
 
