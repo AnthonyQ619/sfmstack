@@ -138,6 +138,13 @@ WITHHOLD = withhold.parse(os.environ.get("SFM_WITHHOLD"))
 BARE = os.environ.get("SFM_BARE") == "1"
 # Sealed run (P11, harness/views.py): no store reads by the agent, every image served as a scratch copy.
 SEALED = os.environ.get("SFM_SEALED") == "1"
+if SEALED:
+    # A traceback prints harness source lines (the withhold gate among them): one neutral line instead.
+    def _sealed_excepthook(kind, exc, tb):
+        print(f"sfmx: {sys.argv[1] if len(sys.argv) > 1 else ''} failed ({kind.__name__}); "
+              "check the arguments with `sfmx` (no arguments) for usage.", file=sys.stderr)
+        sys.exit(1)
+    sys.excepthook = _sealed_excepthook
 (HOME / "context_roots.json").write_text(json.dumps({
     "skills": str(SKILLS), "modules": str(MODULES),
     "default": SKILLS == REPO / "skills" and MODULES == REPO / "modules" and not WITHHOLD and not BARE,

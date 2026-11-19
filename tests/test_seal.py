@@ -166,6 +166,76 @@ def test_sealed_settings_deny_the_store_and_unfiltered_records():
               "datasets/**", "Grep", "Glob", "Bash(cat:*)", "Bash(ls:*)"):
         assert d in deny, d
 
+
+def test_sealed_sessions_get_four_tools_and_no_peers_or_connectors():
+    import launch
+    launch.SEALED = True
+    try:
+        cmd = launch.command("p", Path("/x/cap"), Path("/x/PROCEDURE.md"))
+        env = launch.environment("c", 0, Path("/x/cap/scratch"), None)
+    finally:
+        launch.SEALED = False
+    assert cmd[cmd.index("--tools") + 1] == "Bash,Read,Edit,Write"
+    assert "--strict-mcp-config" in cmd and "--disable-slash-commands" in cmd
+    off = cmd[cmd.index("--disallowedTools") + 1:]
+    for t in ("SendMessage", "ListAgents", "ToolSearch", "mcp__*"):
+        assert t in off, t
+    assert env["ENABLE_CLAUDEAI_MCP_SERVERS"] == "false"
+    # negative control: an ordinary run is unchanged
+    plain = launch.command("p", Path("/x/cap"), Path("/x/PROCEDURE.md"))
+    assert "--tools" not in plain and "--strict-mcp-config" not in plain
+
+
+def test_the_audit_fails_a_session_that_messaged_a_peer(tmp_path, monkeypatch):
+    cap = tmp_path / "cap"
+    (cap / "store" / "artifacts").mkdir(parents=True)
+    (cap / "context_roots.json").write_text(json.dumps({"withheld": ["visual"], "sealed": True}))
+    tr = tmp_path / "t"
+    tr.mkdir()
+
+    def write(lines):
+        (tr / "s.jsonl").write_text("\n".join(json.dumps(x) for x in lines))
+    monkeypatch.setattr(audit_seal, "transcripts", lambda d: sorted(tr.glob("*.jsonl")))
+    use = {"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": "a", "name": "Bash", "input": {"command": "sfmx state"}}]}}
+    write([use])
+    assert audit_seal.audit(cap)["pass"]                   # negative control: clean session passes
+    write([use, {"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "id": "b", "name": "SendMessage", "input": {"to": "peer", "message": "what do you see"}}]}}])
+    assert not audit_seal.audit(cap)["pass"]
+    write([use, {"type": "user", "message": {"content": "Another Claude session sent a message:\n"
+                                                        "<cross-session-message from=\"x\">hi</cross-session-message>"}}])
+    assert not audit_seal.audit(cap)["pass"]
+
+
+def test_the_audit_reads_results_saved_outside_the_transcript(tmp_path, monkeypatch):
+    cap = tmp_path / "cap"
+    a = cap / "store" / "artifacts" / "art_1"
+    a.mkdir(parents=True)
+    a.joinpath("artifact.md").write_text("---\nproduced_by: {module: SceneMotion}\nmetrics:\n"
+                                         "  overall_magnitude: {value: 0.2041}\n---\nnotes\n")
+    (cap / "context_roots.json").write_text(json.dumps({"withheld": ["motion"], "sealed": True}))
+    tr = tmp_path / "t"
+    (tr / "s" / "tool-results").mkdir(parents=True)
+    (tr / "s.jsonl").write_text("")
+    monkeypatch.setattr(audit_seal, "transcripts", lambda d: sorted(tr.glob("*.jsonl")))
+    assert audit_seal.audit(cap)["pass"]
+    (tr / "s" / "tool-results" / "big.txt").write_text('{"overall_magnitude": 0.2041}')
+    r = audit_seal.audit(cap)
+    assert not r["pass"] and any("tool-results/big.txt" in v for v in r["values"])
+
+
+def test_a_sealed_sfmx_error_prints_no_source():
+    cap = captures()[0]
+    env = {**os.environ, "SFM_BATCH": str(TEST / "anon_batch.json"), "SFM_EXP": str(TEST / "exp"),
+           "SFM_SEALED": "1", "SFM_CAPTURE": cap, "SFM_WITHHOLD": "visual"}
+    r = subprocess.run([str(SFMX), "skill"], env=env, capture_output=True, text=True)
+    plain = subprocess.run([str(SFMX), "skill"], env={**env, "SFM_SEALED": ""}, capture_output=True, text=True)
+    restore(cap)
+    assert "Traceback" in plain.stderr                    # negative control: the same call does trace
+    assert "Traceback" not in r.stderr and "withhold" not in r.stderr and "sfmx.py" not in r.stderr
+    assert "failed" in r.stderr
+
 # --------------------------------------------------------------------------------- integration
 
 

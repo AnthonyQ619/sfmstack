@@ -144,10 +144,24 @@ def settings(capture_dir: Path, procedure: Path) -> dict:
     }}
 
 
+SEALED_TOOLS = ("Bash", "Read", "Edit", "Write")
+SEALED_DISALLOWED = ("SendMessage", "ListAgents", "ToolSearch", "Agent", "Task", "WebFetch", "WebSearch",
+                     "RemoteTrigger", "SendToProject", "SendToProjectContext", "PushNotification",
+                     "CronCreate", "Monitor", "Skill", "NotebookEdit", "mcp__*")
+
+
 def command(prompt: str, capture_dir: Path, procedure: Path, resume: str | None = None) -> list[str]:
     cmd = [str(CLAUDE), "-p", prompt, "--output-format", "json",
            "--permission-mode", "dontAsk", "--setting-sources", "local",
            "--settings", json.dumps(settings(capture_dir, procedure)), "--model", "opus"]
+    if SEALED:
+        # Only the four tools the procedure needs. Without this a headless session also gets
+        # ListAgents/SendMessage (the P11 red team used them to question a concurrent session that
+        # could see its frames, and the list included the experimenter's own session), ToolSearch,
+        # and every claude.ai connector and plugin MCP server the account has.
+        cmd += ["--tools", ",".join(SEALED_TOOLS), "--strict-mcp-config",
+                "--mcp-config", json.dumps({"mcpServers": {}}), "--disable-slash-commands",
+                "--disallowedTools", *SEALED_DISALLOWED]
     if resume:
         cmd += ["--resume", resume]
     return cmd
@@ -161,6 +175,8 @@ def environment(capture: str, gpu: int, scratch: Path, batch: str | None,
                 "SFM_EXP": str(EXP), "SFM_SCOPE": scope,
                 "PATH": f"{HARNESS / 'bin'}:{env.get('PATH', '')}",
                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"})
+    if SEALED:
+        env["ENABLE_CLAUDEAI_MCP_SERVERS"] = "false"     # no account connectors (Gmail, Drive, ...)
     if batch:
         env["SFM_BATCH"] = batch
     if control:

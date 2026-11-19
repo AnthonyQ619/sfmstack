@@ -17,10 +17,13 @@ transcript(s) under ~/.claude/projects and the store:
                 layer served (its log) under a signal that refuses it
   refused       calls to a withheld module, and refusals the agent hit (expected: counted, not leaks)
   denied        reads the permission layer refused (expected: attempts, not leaks)
+  channels      any tool beyond Bash/Read/Edit/Write (messaging, connectors, ToolSearch, ...) and any
+                message from another session: on a sealed run each is a FAIL, used or not
   scene_words   scene-type words in the agent's OWN text (underwater, orchard, rover, ...): not proof of
                 a leak -- the agent may infer them -- but each is listed for review
 
-A session passes when values, keys, colour and frames are all empty.
+A session passes when values, keys, colour, frames and channels are all empty. Results too large for the
+transcript are saved under the session's tool-results/ folder; those files are scanned as well.
 """
 from __future__ import annotations
 
@@ -36,6 +39,7 @@ import withhold  # noqa: E402
 
 PHOTO_METRICS = ("illumination_change", "color_shift", "exposure_shift", "combined_change",
                  "highlight_clipped_fraction", "shadow_clipped_fraction")
+SEALED_TOOLS = {"Bash", "Read", "Edit", "Write"}
 MEASURING = re.compile(r"^sfmx (run|artifact|series|state|summary|compare|wait|brief|replay)\b")
 SCENE_WORDS = re.compile(r"underwater|under water|seafloor|sea floor|seabed|marine|diver|\bcoral|ocean|"
                          r"subsea|aquatic|turbid|backscatter|caustic|\brover\b|\bmars\b|martian|orchard|"
@@ -132,7 +136,8 @@ def audit(capture_dir: Path, signals: set[str] | None = None) -> dict:
         signals = set(roots.get("withheld") or [])
     readings = withheld_readings(capture_dir / "store", signals)
     rep = {"capture_dir": str(capture_dir), "signals": sorted(signals), "sealed": bool(roots.get("sealed")),
-           "values": [], "keys": [], "colour": [], "frames": [], "refused": [], "denied": [], "scene_words": [],
+           "values": [], "keys": [], "colour": [], "frames": [], "channels": [], "refused": [], "denied": [],
+           "scene_words": [],
            "tool_calls": 0}
     calls = {}
     for tr in transcripts(capture_dir):
@@ -146,6 +151,8 @@ def audit(capture_dir: Path, signals: set[str] | None = None) -> dict:
                     continue
                 if p.get("type") == "tool_use":
                     rep["tool_calls"] += 1
+                    if p.get("name") not in SEALED_TOOLS:
+                        rep["channels"].append(f"tool {p.get('name')} {json.dumps(p.get('input'))[:120]}")
                     inp = p.get("input") or {}
                     calls[p["id"]] = (p.get("name"), inp)
                     cmd = str(inp.get("command", ""))
@@ -170,10 +177,21 @@ def audit(capture_dir: Path, signals: set[str] | None = None) -> dict:
                     if name == "Read" and rep["frames"] and rep["frames"][-1].endswith(str(inp.get("file_path", ""))) \
                             and ("denied" in text.lower() or "not allowed" in text.lower()):
                         rep["denied"].append(rep["frames"].pop())
+                elif p.get("type") == "text" and e.get("type") == "user" and "cross-session-message" in (p.get("text") or ""):
+                    rep["channels"].append("incoming cross-session message: " + p["text"][:160])
                 elif p.get("type") in ("text", "thinking") and e.get("type") == "assistant":
                     t = p.get("text") or p.get("thinking") or ""
                     for m in SCENE_WORDS.finditer(t):
                         rep["scene_words"].append(t[max(0, m.start() - 80):m.end() + 80].replace("\n", " "))
+            if isinstance(e.get("message", {}).get("content"), str) and e.get("type") == "user" \
+                    and "cross-session-message" in e["message"]["content"]:
+                rep["channels"].append("incoming cross-session message: " + e["message"]["content"][:160])
+    # Results too large for the transcript are persisted whole next to it; the transcript holds a preview.
+    for tr in transcripts(capture_dir):
+        for f in sorted((tr.parent / tr.stem / "tool-results").glob("*")):
+            h = find_leaks(f.read_text(errors="replace"), readings, signals, True)
+            for k in ("values", "keys", "colour"):
+                rep[k] += [f"{x} <- tool-results/{f.name}" for x in h[k]]
     log = capture_dir / ".views_log.jsonl"
     for line in (log.read_text().splitlines() if log.exists() else []):
         v = json.loads(line)
@@ -183,9 +201,9 @@ def audit(capture_dir: Path, signals: set[str] | None = None) -> dict:
             rep["frames"].append(f"served coloured render {v}")
         if "illumination" in signals and v["kind"] in ("frame", "sheet") and "normalised" not in v["transform"]:
             rep["frames"].append(f"served un-normalised {v}")
-    for k in ("values", "keys", "colour", "frames", "refused", "denied"):
+    for k in ("values", "keys", "colour", "frames", "channels", "refused", "denied"):
         rep[k] = sorted(set(rep[k]))
-    rep["pass"] = not (rep["values"] or rep["keys"] or rep["colour"] or rep["frames"])
+    rep["pass"] = not (rep["values"] or rep["keys"] or rep["colour"] or rep["frames"] or rep["channels"])
     return rep
 
 
@@ -199,7 +217,7 @@ def main() -> int:
     reps = [audit(Path(d).resolve(), sig) for d in a.dirs]
     for r in reps:
         print(f"{'PASS' if r['pass'] else 'FAIL'} {r['capture_dir']} signals={r['signals']} calls={r['tool_calls']} "
-              f"values={len(r['values'])} keys={len(r['keys'])} colour={len(r['colour'])} frames={len(r['frames'])} "
+              f"values={len(r['values'])} keys={len(r['keys'])} colour={len(r['colour'])} frames={len(r['frames'])} channels={len(r['channels'])} "
               f"refused={len(r['refused'])} denied={len(r['denied'])} scene_words={len(r['scene_words'])}")
     if a.out:
         Path(a.out).write_text(json.dumps(reps, indent=1))
